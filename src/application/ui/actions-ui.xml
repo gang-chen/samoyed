@@ -1,0 +1,44 @@
+<!-- Definitions of menu bar, toolbars and popup menus for actions -->
+<ui>
+
+  <menubar name="main-menu-bar">
+    <menu name="session-menu" action="session">
+	  <menuitem name="session-new-item" action="session-new"/>
+	  <menuitem name="session-switch-item" action="session-switch"/>
+	  <menuitem name="session-manage-item" action="session-manage"/>
+	  <menuitem name="session-quit-item" action="session-quit"/>
+	</menu>
+
+	<menu name="project-menu" action="project">
+	  <menuitem name="project-new-item" action="project-new"/>
+	</menu>
+
+	<menu name="file-menu" action="file">
+	  <menuitme name="file-save-item" action="file-save"/>
+	  <menuitem name="file-save-all-item" action="file-save-all"/>
+	</menu>
+
+	<menu name="edit-menu" action="edit">
+	  <menumitem name="edit-cut-item" action="edit-cut"/>
+	</menu>
+
+	<menu name="help-menu" action="help">
+	  <menuitem name="help-manual-item" action="help-manual"/>
+	  <menuitem name="help-tutorial-item" action="help-tutorial"/>
+	  <menuitme name="help-about-item" action="help-about"/>
+	</menu>
+  </menubar>
+
+  <toolbar name="main-toolbar">
+	<toolitem name="file-save-item" action="file-save"/>
+	<toolitem name="file-save-all-item" action="file-save-all"/>
+	<separator/>
+	<toolitem name="edit-cut-item" action="edit-cut"/>
+	<separator/>
+  </toolbar>
+
+  <popup name="editor-popup-menu" action="editor-popup">
+	<menuitem name="edit-cut-item" action="edit-cut"/>
+  </popup>
+
+</ui>
