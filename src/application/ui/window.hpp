@@ -17,74 +17,74 @@ namespace Samoyed
 class Window
 {
 public:
-	struct Configuration
-	{
-		int width;
-		int height;
-		int x;
-		int y;
-		bool fullScreen;
-		bool maximized;
-		bool toolbarVisible;
-		bool sidePanelVisible;
-		int sidePanelWidth;
-	};
+    struct Configuration
+    {
+        int width;
+        int height;
+        int x;
+        int y;
+        bool fullScreen;
+        bool maximized;
+        bool toolbarVisible;
+        bool sidePanelVisible;
+        int sidePanelWidth;
+    };
 
-	Configuration configuration() const;
+    Configuration configuration() const;
 
 private:
-	static gboolean onDestroyEvent(GtkWidget *widget,
-								   GdkEvent *event,
-								   gpointer window);
-	static void onDestroyed(GtkWidget *widget, gpointer window);
-	static gboolean onFocusIn(GtkWidget *widget,
-							  GdkEvent *event,
-							  gpointer window);
+    static gboolean onDestroyEvent(GtkWidget *widget,
+                                   GdkEvent *event,
+                                   gpointer window);
+    static void onDestroyed(GtkWidget *widget, gpointer window);
+    static gboolean onFocusIn(GtkWidget *widget,
+                              GdkEvent *event,
+                              gpointer window);
 
-	Window();
+    Window();
 
-	~Window();
+    ~Window();
 
-	GtkWidget *gtkWidget() { return m_window; }
+    GtkWidget *gtkWidget() { return m_window; }
 
-	bool create(const Configuration *config);
+    bool create(const Configuration *config);
 
-	bool destroy();
+    bool destroy();
 
-	/**
-	 * The GTK+ window.
-	 */
-	GtkWidget *m_window;
+    /**
+     * The GTK+ window.
+     */
+    GtkWidget *m_window;
 
-	GtkWidget *m_mainBox;
+    GtkWidget *m_mainBox;
 
-	GtkWidget *m_menuBar;
+    GtkWidget *m_menuBar;
 
-	GtkWidget *m_toolbar;
+    GtkWidget *m_toolbar;
 
-	/**
-	 * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in
-	 * this window.
-	 */
-	GtkUIManager *m_uiManager;
+    /**
+     * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in
+     * this window.
+     */
+    GtkUIManager *m_uiManager;
 
-	/**
-	 * The GTK+ actions that are always sensitive.
-	 */
-	GtkActionGroup *m_basicActions;
+    /**
+     * The GTK+ actions that are always sensitive.
+     */
+    GtkActionGroup *m_basicActions;
 
-	/**
-	 * The GTK+ actions that are sensitive when some projects are opened.
-	 */
-	GtkActionGroup *m_projectActions;
+    /**
+     * The GTK+ actions that are sensitive when some projects are opened.
+     */
+    GtkActionGroup *m_projectActions;
 
-	/**
-	 * The GTK+ actions that are sensitive when some files are opened.
-	 */
-	GtkActionGroup *m_documentActions;
+    /**
+     * The GTK+ actions that are sensitive when some files are opened.
+     */
+    GtkActionGroup *m_documentActions;
 
-	friend class Application;
-	friend class Actions;
+    friend class Application;
+    friend class Actions;
 };
 
 }

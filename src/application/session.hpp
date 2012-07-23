@@ -44,67 +44,67 @@ namespace Samoyed
 class Session
 {
 public:
-	Session(const char *name);
+    Session(const char *name);
 
-	bool loadMetaData();
+    bool loadMetaData();
 
-	/**
-	 * Create a new session and start it.
-	 */
-	bool create();
+    /**
+     * Create a new session and start it.
+     */
+    bool create();
 
-	/**
-	 * Restore this session.  If the session has unsaved, modified files, ask
-	 * the user whether to recover the session or not.
-	 */
-	bool restore();
+    /**
+     * Restore this session.  If the session has unsaved, modified files, ask
+     * the user whether to recover the session or not.
+     */
+    bool restore();
 
-	bool save();
+    bool save();
 
-	/**
-	 * Save and quit the current session.  Close all opened files, projects and
-	 * windows.  This will eventually quit the application.
-	 * @return False if the user requests not to quit the current session.
-	 */
-	bool quit();
+    /**
+     * Save and quit the current session.  Close all opened files, projects and
+     * windows.  This will eventually quit the application.
+     * @return False if the user requests not to quit the current session.
+     */
+    bool quit();
 
-	bool addUnsavedFileName(const char *fileName);
-	bool removeUnsavedFileName(const char *fileName);
+    bool addUnsavedFileName(const char *fileName);
+    bool removeUnsavedFileName(const char *fileName);
 
-	const char *name() const { return m_name.c_str(); }
+    const char *name() const { return m_name.c_str(); }
 
-	/**
-	 * @return The last saving time, or 0 if unknown.
-	 */
-	time_t lastSavingTime() const { return m_lastSavingTime; }
+    /**
+     * @return The last saving time, or 0 if unknown.
+     */
+    time_t lastSavingTime() const { return m_lastSavingTime; }
 
-	/**
-	 * @return The locking process ID, or 0 if unknown or unlocked.
-	 */
-	int lockingProcessId() const { return m_lockingPid; }
+    /**
+     * @return The locking process ID, or 0 if unknown or unlocked.
+     */
+    int lockingProcessId() const { return m_lockingPid; }
 
 private:
-	void makeDirectoryName(std::string &dirName) const;
+    void makeDirectoryName(std::string &dirName) const;
 
-	void makeLockFileName(std::string &fileName) const
-	{ fileName += G_DIR_SEPARATOR_S "lock"; }
+    void makeLockFileName(std::string &fileName) const
+    { fileName += G_DIR_SEPARATOR_S "lock"; }
 
-	void makeUnsavedFilesFileName(std::string &fileName) const
-	{ fileName += G_DIR_SEPARATOR_S "unsaved-files"; }
+    void makeUnsavedFilesFileName(std::string &fileName) const
+    { fileName += G_DIR_SEPARATOR_S "unsaved-files"; }
 
-	void makeSessionFileName(std::string &fileName) const
-	{ fileName += G_DIR_SEPARATOR_S "session.xml"; }
+    void makeSessionFileName(std::string &fileName) const
+    { fileName += G_DIR_SEPARATOR_S "session.xml"; }
 
-	bool lock();
+    bool lock();
 
-	bool unlock();
+    bool unlock();
 
-	bool recover();
+    bool recover();
 
-	// Meta-data.
-	std::string m_name;
-	time_t m_lastSavingTime;
-	int m_lockingPid;
+    // Meta-data.
+    std::string m_name;
+    time_t m_lastSavingTime;
+    int m_lockingPid;
 };
 
 }

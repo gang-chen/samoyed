@@ -19,21 +19,21 @@ namespace Samoyed
 class Scheduler: public boost::threadpool::prio_pool
 {
 public:
-	Scheduler(size_t nThreads = 0):
-		boost::threadpool::prio_pool(nThreads)
-	{}
+    Scheduler(size_t nThreads = 0):
+        boost::threadpool::prio_pool(nThreads)
+    {}
 
-	void schedule(Worker& worker)
-	{
-		boost::threadpool::prio_pool::schedule(
-			boost::threadpool::prio_task_func(worker.priority(),
-											  boost::ref(worker)));
-	}
+    void schedule(Worker& worker)
+    {
+        boost::threadpool::prio_pool::schedule(
+            boost::threadpool::prio_task_func(worker.priority(),
+                                              boost::ref(worker)));
+    }
 
-	unsigned int highestPendingWorkerPriority() const
-	{
-		return m_core->highest_pending_priority();
-	}
+    unsigned int highestPendingWorkerPriority() const
+    {
+        return m_core->highest_pending_priority();
+    }
 
 };
 

@@ -18,22 +18,22 @@ namespace Shell
 class Preferences
 {
 public:
-	Preferences();
-	~Preferences();
+    Preferences();
+    ~Preferences();
 
-	bool getBoolean(const char* key) const;
-	int getInteger(const char* key) const;
-	std::string getString(const char* key) const;
-	Utilities::Range getRange(const char* key) const;
+    bool getBoolean(const char* key) const;
+    int getInteger(const char* key) const;
+    std::string getString(const char* key) const;
+    Utilities::Range getRange(const char* key) const;
 
-	// Sugars that facilitate setting accesses.
-	bool getFileEncoding() const;
+    // Sugars that facilitate setting accesses.
+    bool getFileEncoding() const;
 
 private:
-	static const char* KEY_FILE_ENCODING_LOCALE = "file-encoding-locale";
-	static const char* KEY_FILE_ENCODING = "file-encoding";
+    static const char* KEY_FILE_ENCODING_LOCALE = "file-encoding-locale";
+    static const char* KEY_FILE_ENCODING = "file-encoding";
 
-	GSettings* m_settings;
+    GSettings* m_settings;
 };
 
 }

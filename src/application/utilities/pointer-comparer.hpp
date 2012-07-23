@@ -9,8 +9,8 @@ namespace Samoyed
 
 template<class T> struct PointerComparer
 {
-	bool operator()(const T *lhs, const T *rhs) const
-	{ return *lhs < *rhs; }
+    bool operator()(const T *lhs, const T *rhs) const
+    { return *lhs < *rhs; }
 };
 
 }

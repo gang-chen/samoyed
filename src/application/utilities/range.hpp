@@ -24,63 +24,63 @@ namespace Samoyed
 class Range
 {
 public:
-	/**
-	 * Construct an empty range.
-	 */
-	Range(): m_begin(0), m_end(-1) {}
+    /**
+     * Construct an empty range.
+     */
+    Range(): m_begin(0), m_end(-1) {}
 
-	/**
-	 * @param begin The inclusive first character.
-	 * @paran end The exclusive last character.
-	 */
-	Range(int begin, int end): m_begin(begin), m_end(end)
-	{}
+    /**
+     * @param begin The inclusive first character.
+     * @paran end The exclusive last character.
+     */
+    Range(int begin, int end): m_begin(begin), m_end(end)
+    {}
 
-	int begin() const { return m_begin; }
+    int begin() const { return m_begin; }
 
-	int end() const { return m_end; }
+    int end() const { return m_end; }
 
-	void setBegin(int begin) { m_begin = begin; }
+    void setBegin(int begin) { m_begin = begin; }
 
-	void setEnd(int end) { m_end = end; }
+    void setEnd(int end) { m_end = end; }
 
-	bool empty() const { return m_begin > m_end; }
+    bool empty() const { return m_begin > m_end; }
 
-	bool operator==(const Range &rhs) const
-	{
-		return m_begin == rhs.m_begin && m_end == rhs.m_end;
-	}
+    bool operator==(const Range &rhs) const
+    {
+        return m_begin == rhs.m_begin && m_end == rhs.m_end;
+    }
 
-	bool operator!=(const Range &rhs) const
-	{
-		return !(*this == rhs);
-	}
+    bool operator!=(const Range &rhs) const
+    {
+        return !(*this == rhs);
+    }
 
-	Range operator+(const Range &rhs) const
-	{
-		if (empty())
-			return rhs;
-		if (rhs.empty())
-			return *this;
-		return Range(std::min(m_begin, rhs.m_begin),
-					 std::max(m_end, rhs.m_end));
-	}
+    Range operator+(const Range &rhs) const
+    {
+        if (empty())
+            return rhs;
+        if (rhs.empty())
+            return *this;
+        return Range(std::min(m_begin, rhs.m_begin),
+                     std::max(m_end, rhs.m_end));
+    }
 
-	const Range &operator+=(const Range &rhs)
-	{
-		if (empty())
-			*this = rhs;
-		else if (!rhs.empty())
-		{
-			m_begin = std::min(m_begin, rhs.m_begin);
-			m_end = std::max(m_end, rhs.m_end);
-		}
-		return *this;
-	}
+    const Range &operator+=(const Range &rhs)
+    {
+        if (empty())
+            *this = rhs;
+        else if (!rhs.empty())
+        {
+            m_begin = std::min(m_begin, rhs.m_begin);
+            m_end = std::max(m_end, rhs.m_end);
+        }
+        return *this;
+    }
 
 private:
-	int m_begin;
-	int m_end;
+    int m_begin;
+    int m_end;
 };
 
 }

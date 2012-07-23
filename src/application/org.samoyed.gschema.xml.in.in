@@ -1,14 +1,9 @@
 <!-- GSettings schemas -->
 <schemalist>
   <schema id="org.samoyed" path="/org/samoyed/" gettext-domain="samoyed">
-	<child name="preferences" schema="org.samoyed.preferences"/>
+    <child name="preferences" schema="org.samoyed.preferences"/>
   </schema>
   <schema id="org.samoyed.preferences" path="/org/samoyed/preferences/"
-		  gettext-domain="samoyed">
-	<key name="text-file-encoding-locale" type="as">
-	  <default>USE_CURRENT_LOCALE</default>
-	  <_summary>Text File Encoding</_summary>
-	  <_description>Set it to "USE_CURRENT_LOCALE" to use the character encoding specified by the current locale as the text file encoding, "AUTO_DETECT" to automatically detect the character encoding, or the string representation of the character encoding.</_description>
-	</key>
+          gettext-domain="samoyed">
   </schema>
 </schemalist>

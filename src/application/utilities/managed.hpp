@@ -25,35 +25,35 @@ template<class Key, class Object>
 class Managed: public Key
 {
 protected:
-	Managed(const Key &key,
-			unsigned long serialNumber,
-			Manager<Object> &manager):
-		Key(key),
-		m_refCount(0),
-		m_serialNumber(serialNumber),
-		m_manager(manager),
-		m_nextFree(NULL),
-		m_prevFree(NULL)
-	{}
+    Managed(const Key &key,
+            unsigned long serialNumber,
+            Manager<Object> &manager):
+        Key(key),
+        m_refCount(0),
+        m_serialNumber(serialNumber),
+        m_manager(manager),
+        m_nextFree(NULL),
+        m_prevFree(NULL)
+    {}
 
-	~Managed()
-	{ assert(m_refCount == 0); }
+    ~Managed()
+    { assert(m_refCount == 0); }
 
-	const Key &key() const
-	{ return *this; }
+    const Key &key() const
+    { return *this; }
 
 private:
-	typedef Key KeyT;
+    typedef Key KeyT;
 
-	int m_refCount;
-	unsigned long m_serialNumber;
-	Manager<Object> &m_manager;
-	Object *m_nextFree;
-	Object *m_prevFree;
+    int m_refCount;
+    unsigned long m_serialNumber;
+    Manager<Object> &m_manager;
+    Object *m_nextFree;
+    Object *m_prevFree;
 
-	template<class> friend class Manager;
-	template<class> friend class ReferencePointer;
-	template<class> friend class WeakPointer;
+    template<class> friend class Manager;
+    template<class> friend class ReferencePointer;
+    template<class> friend class WeakPointer;
 };
 
 }

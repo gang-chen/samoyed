@@ -10,10 +10,10 @@ namespace Samoyed
 class Signal
 {
 public:
-	typedef void (*SignalHandler)(int signalNumber);
+    typedef void (*SignalHandler)(int signalNumber);
 
-	static void registerCrashHandler(SignalHandler handler);
-	static void registerTerminationHandler(SignalHandler handler);
+    static void registerCrashHandler(SignalHandler handler);
+    static void registerTerminationHandler(SignalHandler handler);
 };
 
 }

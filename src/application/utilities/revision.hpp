@@ -23,57 +23,57 @@ namespace Samoyed
 class Revision
 {
 public:
-	/**
-	 * Construct revision zero.
-	 */
-	Revision(): m_fileTimeStamp(0), m_changeCount(0) {}
+    /**
+     * Construct revision zero.
+     */
+    Revision(): m_fileTimeStamp(0), m_changeCount(0) {}
 
-	bool operator==(const Revision &rhs) const
-	{
-		return m_fileTimeStamp == rhs.m_fileTimeStamp &&
-			   m_changeCount == rhs.m_changeCount;
-	}
+    bool operator==(const Revision &rhs) const
+    {
+        return m_fileTimeStamp == rhs.m_fileTimeStamp &&
+               m_changeCount == rhs.m_changeCount;
+    }
 
-	bool operator!=(const Revision &rhs) const
-	{
-		return !(*this == rhs);
-	}
+    bool operator!=(const Revision &rhs) const
+    {
+        return !(*this == rhs);
+    }
 
-	bool operator<(const Revision &rhs) const
-	{
-		if (m_fileTimeStamp < rhs.m_fileTimeStamp)
-			return true;
-		if (m_fileTimeStamp > rhs.m_fileTimeStamp)
-			return false;
-		if (m_changeCount < rhs.m_changeCount)
-			return true;
-		return false;
-	}
+    bool operator<(const Revision &rhs) const
+    {
+        if (m_fileTimeStamp < rhs.m_fileTimeStamp)
+            return true;
+        if (m_fileTimeStamp > rhs.m_fileTimeStamp)
+            return false;
+        if (m_changeCount < rhs.m_changeCount)
+            return true;
+        return false;
+    }
 
-	void onSynchronized(uint64_t fileTimeStamp)
-	{
-		m_fileTimeStamp = fileTimeStamp;
-		m_changeCount = 0;
-	}
+    void onSynchronized(uint64_t fileTimeStamp)
+    {
+        m_fileTimeStamp = fileTimeStamp;
+        m_changeCount = 0;
+    }
 
-	void onChanged() { ++m_changeCount; }
+    void onChanged() { ++m_changeCount; }
 
-	bool zero() const { return m_fileTimeStamp == 0 && m_changeCount == 0; }
+    bool zero() const { return m_fileTimeStamp == 0 && m_changeCount == 0; }
 
-	bool synchronized() const { return m_changeCount == 0; }
+    bool synchronized() const { return m_changeCount == 0; }
 
-	/**
-	 * Synchronize the revision with the disk file revision.
-	 */
-	bool synchronize(GFile *file, GError **error);
+    /**
+     * Synchronize the revision with the disk file revision.
+     */
+    bool synchronize(GFile *file, GError **error);
 
 private:
-	/**
-	 * The last modification time of the disk file by the last synchronization.
-	 */
-	uint64_t m_fileTimeStamp;
+    /**
+     * The last modification time of the disk file by the last synchronization.
+     */
+    uint64_t m_fileTimeStamp;
 
-	unsigned long m_changeCount;
+    unsigned long m_changeCount;
 };
 
 }

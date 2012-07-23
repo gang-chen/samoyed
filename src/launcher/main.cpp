@@ -5,6 +5,6 @@
 
 int main(int argc, char *argv[])
 {
-	Samoyed::Application application;
-	return application.run(argc, argv);
+    Samoyed::Application application;
+    return application.run(argc, argv);
 }

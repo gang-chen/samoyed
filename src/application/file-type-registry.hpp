@@ -12,9 +12,9 @@ class ParserFactory;
 class FileTypeRegistry
 {
 public:
-	void registerFileType();
+    void registerFileType();
 
-	ParserFactory *getParserFactory(const char *fileName) const;
+    ParserFactory *getParserFactory(const char *fileName) const;
 };
 
 }

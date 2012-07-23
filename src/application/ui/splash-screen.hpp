@@ -13,20 +13,20 @@ namespace Samoyed
 class SplashScreen
 {
 public:
-	SplashScreen(const char *title, const char *imageFileName);
-	~SplashScreen();
-	void setProgress(double progress, const char *message);
+    SplashScreen(const char *title, const char *imageFileName);
+    ~SplashScreen();
+    void setProgress(double progress, const char *message);
 
 private:
-	static gboolean drawImage(GtkWidget *widget,
-							  cairo_t *cr,
-							  gpointer splash);
-	static gboolean onDestroyEvent(GtkWidget *widget,
-								   GdkEvent *event,
-								   gpointer data);
-	GdkPixbuf *m_image;
-	GtkWidget *m_window;
-	GtkWidget *m_progressBar;
+    static gboolean drawImage(GtkWidget *widget,
+                              cairo_t *cr,
+                              gpointer splash);
+    static gboolean onDestroyEvent(GtkWidget *widget,
+                                   GdkEvent *event,
+                                   gpointer data);
+    GdkPixbuf *m_image;
+    GtkWidget *m_window;
+    GtkWidget *m_progressBar;
 };
 
 }

@@ -4,7 +4,7 @@ m4_define(samoyed_major_version, 0)
 m4_define(samoyed_minor_version, 0)
 m4_define(samoyed_micro_version, 0)
 m4_define(samoyed_version,
-		  samoyed_major_version.samoyed_minor_version.samoyed_micro_version)
+          samoyed_major_version.samoyed_minor_version.samoyed_micro_version)
 
 AC_INIT([Samoyed], [samoyed_version])
 
@@ -37,7 +37,7 @@ os_win32=no
 case $host_os in
   *-*-mingw*)
     os_win32=yes
-	;;
+    ;;
 esac
 AM_CONDITIONAL(OS_WIN32, test "$os_win32" = "yes")
 
