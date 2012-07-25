@@ -4,20 +4,17 @@
 #ifndef SMYD_DOCUMENT_HPP
 #define SMYD_DOCUMENT_HPP
 
-#include "document-loader.hpp"
-#include "document-saver.hpp"
 #include "utilities/manager.hpp"
 #include <string>
 #include <vector>
 #include <stack>
-#include <boost/thread/mutex.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
 class Editor;
-class SourceImage;
+class FileSource;
 class CompiledImage;
 
 /**
@@ -26,11 +23,10 @@ class CompiledImage;
  *
  * A document saves the editing history, supporting undo and redo.
  *
- * If a document is a source file, it notifies the source image of text edits so
- * that the source image can update itself and notify the compiled image.  The
- * document also collects information on the abstract syntax tree and
- * diagnostics from the compiled image to perform syntax highlighting, code
- * folding, diagnostics highlighting, etc.
+ * If a document is a source file, it notifies the source code of text edits so
+ * that the source code can update itself and notify the abstract syntax tree.
+ * The document also collects information on the abstract syntax tree to perform
+ * syntax highlighting, code folding, diagnostics highlighting, etc.
  */
 class Document
 {
@@ -64,14 +60,11 @@ public:
          * @param text The text to be inserted.
          * @param length The number of the bytes to be inserted, or -1 if
          * inserting the text until '\0'.
-         * @param numChars The number of the characters to be inserted, or -1 if
-         * the caller doesn't know it.
          */
-        Insertion(int line, int column, const char *text, int length, int numChars):
+        Insertion(int line, int column, const char *text, int length):
             m_line(line),
             m_column(column),
-            m_text(text),
-            m_numChars(numChars)
+            m_text(text, length)
         {}
 
         virtual void execute(Document &document) const
@@ -83,7 +76,6 @@ public:
         int m_line;
         int m_column;
         std::string m_text;
-        int m_numChars;
     };
 
     class Removal: public Edit
@@ -148,7 +140,7 @@ public:
 
     static void destroySharedData();
 
-    const char *fileName() const { return m_fileName.c_str(); }
+    const char *uri() const { return m_uri.c_str(); }
 
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
@@ -196,12 +188,12 @@ public:
     /**
      * Load the specified file into the document.
      */
-    void load(const char *fileName, bool convertEncoding);
+    void load(const char *uri, bool convertEncoding);
 
     /**
      * Save the document into the specified file.
      */
-    void save(const char *fileName, bool convertEncoding);
+    void save(const char *uri, bool convertEncoding);
 
     bool frozen() const { return m_frozen; }
 
@@ -303,7 +295,7 @@ private:
         std::stack<Edit *> m_edits;
     };
 
-    Document(const char *fileName);
+    Document(const char *uri);
 
     ~Document();
 
@@ -341,9 +333,9 @@ private:
      */
     static GtkTextTagTable *s_sharedTagTable;
 
-    std::string m_fileName;
+    std::string m_uri;
 
-    std::string m_shortName;
+    std::string m_name;
 
     bool m_initialized;
 
@@ -375,11 +367,10 @@ private:
 
     int m_editCount;
 
-    ReferencePointer<SourceImage> m_source;
-    ReferencePointer<CompiledImage> m_compiled;
+    ReferencePointer<FileSource> m_source;
+    ReferencePointer<FileAst> m_ast;
 
     friend class DocumentManager;
-    friend class DocumentLoader;
 };
 
 }
