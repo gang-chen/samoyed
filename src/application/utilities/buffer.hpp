@@ -1391,17 +1391,16 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     {
         // Iterate backward from here.
         Pointer save = m_pointer;
-        while (m_pointer > begin)
+        while (m_pointer > begin && m_index3InBlock >= index3InBlock)
         {
             Pointer tp = m_pointer -
                 AtomTraits::previousAtomLength(m_pointer);
-            int ti = m_index3InBlock - AtomTraits::skip3(tp) -
-                AtomTraits::length3(tp);
+            int ti = m_index3InBlock - AtomTraits::length3(tp);
             if (ti < index3InBlock)
                 break;
             m_pointer = tp;
+            m_index3InBlock = ti - AtomTraits::skip3(tp);
             --m_index2InBlock;
-            m_index3InBlock = ti;
         }
         m_indexInBlock += m_pointer - save;
     }
@@ -1425,17 +1424,16 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
         m_pointer = end;
         m_index2InBlock = endIndex2;
         m_index3InBlock = endIndex3;
-        while (m_pointer > begin)
+        while (m_pointer > begin && m_index3InBlock >= index3InBlock)
         {
             Pointer tp = m_pointer -
                 AtomTraits::previousAtomLength(m_pointer);
-            int ti = m_index3InBlock - AtomTraits::skip3(tp) -
-                AtomTraits::length3(tp);
+            int ti = m_index3InBlock - AtomTraits::length3(tp);
             if (ti < index3InBlock)
                 break;
             m_pointer = tp;
+            m_index3InBlock = ti - AtomTraits::skip3(tp);
             --m_index2InBlock;
-            m_index3InBlock = ti;
         }
         m_indexInBlock = endIndex + m_pointer - end;
     }

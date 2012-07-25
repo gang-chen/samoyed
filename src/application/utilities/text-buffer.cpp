@@ -11,6 +11,17 @@ g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST -Wall -o text-buffer
 #include <assert.h>
 #include <string.h>
 
+namespace Samoyed
+{
+
+void TextBuffer::transformByteOffsetToLineColumn(int byte, int &line, int &column)
+{
+    int charOffset;
+    transformIndex(byte, charOffset, line);
+}
+
+}
+
 int main()
 {
     const char *TEXT1 = "hello world\n";

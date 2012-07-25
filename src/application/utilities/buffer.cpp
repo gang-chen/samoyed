@@ -140,6 +140,7 @@ int main()
     assert(i1 == i2);
     // Remove from the end.
     buffer.setCursor(buffer.length());
+    buffer2.setCursor3(buffer.cursor3());
     buffer.moveCursor(-3);
     buffer2.setCursor3(buffer.cursor3());
     testRemoval(buffer, buffer2, string, 3);
@@ -148,6 +149,8 @@ int main()
     testRemoval(buffer, buffer2, string, 10);
     // Remove from the beginning.
     buffer.setCursor(0);
+    buffer2.setCursor3(buffer.cursor3());
+    buffer2.moveCursor2(5);
     buffer2.setCursor2(0);
     testRemoval(buffer, buffer2, string, 8);
     // Remove and insert in a pseudo-ramdon way.
