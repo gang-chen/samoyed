@@ -25,8 +25,8 @@ class Document;
 class Worker;
 
 /**
- * A file source represents the source code in a source file.  It regulates all
- * the accesses to the data.
+ * A file source represents the source code contents of a source file.  It
+ * regulates all the accesses to the data.
  *
  * A file source is multithreading safe.  A read-write mutex is used to protect
  * it.
@@ -35,11 +35,11 @@ class Worker;
  * callback to a file source.  The callback will be called after every change
  * on the file source occurs.
  */
-class SourceImage: public Managed<std::string, SourceImage>
+class FileSource: public Managed<std::string, FileSource>
 {
 private:
     typedef
-    boost::signals2::signal_type<void (const SourceImage &source,
+    boost::signals2::signal_type<void (const FileSource &source,
                                        const ChangeHint &changeHint),
         boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >::
         type ChangeSignal;
@@ -47,15 +47,15 @@ private:
 public:
     typedef ChangeSignal::slot_type ChangeCallback;
 
-    const char *fileName() const { return key().c_str(); }
+    const char *uri() const { return key().c_str(); }
 
     /**
-     * Synchronize the source image with the contents of the disk file.
+     * Synchronize the data with the contents of the external file.
      */
     void synchronize();
 
     /**
-     * Lock the source image for read.
+     * Lock the source for read.
      */
     bool beginRead(bool trying,
                    const TextBuffer *&buffer,
@@ -66,10 +66,9 @@ public:
 
     /**
      * Add an observer by registering a callback.  It is assumed that the
-     * observer has observed the source image of revision zero.  Notify the
-     * observer of a virtual change from revision zero to the current revision,
-     * so that the observer can synchronize itself with the up-to-date source
-     * image.
+     * observer has observed the source of revision zero.  Notify the observer
+     * of a virtual change from revision zero to the current revision, so that
+     * the observer can synchronize itself with the up-to-date source.
      * @param callback The callback to be called after every change.
      * @return The connection of the callback, which can be used to remove the
      * observer later.
@@ -107,7 +106,7 @@ private:
         /**
          * @return True if the execution completes.
          */
-        virtual bool execute(SourceImage &source) = 0;
+        virtual bool execute(FileSource &source) = 0;
     };
 
     class Loading: public Change
@@ -115,11 +114,11 @@ private:
     public:
         virtual bool incremental() const { return false; }
         virtual bool asynchronous() const { return true; }
-        virtual bool execute(SourceImage &source);
+        virtual bool execute(FileSource &source);
 
     private:
         void onLoaded(Worker &worker);
-        WeakPointer<SourceImage> m_source;
+        WeakPointer<FileSource> m_source;
     };
 
     class RevisionChange: public Change
@@ -128,7 +127,7 @@ private:
         RevisionChange(const Revision &revision): m_revision(revision) {}
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
-        virtual bool execute(SourceImage &source);
+        virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -149,7 +148,7 @@ private:
         virtual ~Insertion() { g_free(m_text); }
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
-        virtual bool execute(SourceImage &source);
+        virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -168,7 +167,7 @@ private:
         {}
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
-        virtual bool execute(SourceImage &source);
+        virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -187,18 +186,18 @@ private:
         { g_free(m_text); }
         virtual bool incremental() const { return false; }
         virtual bool asynchronous() const { return false; }
-        virtual bool execute(SourceImage &source);
+        virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
         char *m_text;
     };
 
-    SourceImage(const std::string &fileName,
-                unsigned long serialNumber,
-                Manager<SourceImage> &mgr);
+    FileSource(const std::string &fileName,
+               unsigned long serialNumber,
+               Manager<FileSource> &mgr);
 
-    ~SourceImage();
+    ~FileSource();
 
     bool beginWrite(bool trying,
                     TextBuffer *&buffer,
