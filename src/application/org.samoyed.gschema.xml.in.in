@@ -1,9 +1,0 @@
-<!-- GSettings schemas -->
-<schemalist>
-  <schema id="org.samoyed" path="/org/samoyed/" gettext-domain="samoyed">
-    <child name="preferences" schema="org.samoyed.preferences"/>
-  </schema>
-  <schema id="org.samoyed.preferences" path="/org/samoyed/preferences/"
-          gettext-domain="samoyed">
-  </schema>
-</schemalist>

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <boost/signals2/signal.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -30,6 +31,24 @@ class CompiledImage;
  */
 class Document
 {
+private:
+    typedef boost::signals2::signal<void (const Document &doc)>
+    	DocumentLoadingSignal;
+    typedef boost::signals2::signal<void (const Document &doc)>
+	DocumentSavingSignal;
+    typedef boost::signals2::signal<void (const Document &doc,
+                                          int line,
+                                          int column,
+                                          const char *text,
+                                          int length)>
+    	DocumentTextInsertionSignal;
+    typedef boost::signals2::signal<void (const Document &doc,
+                                          int beginLine,
+                                          int beginColumn,
+                                          int endLine,
+                                          int endColumn)>
+    	DocumentTextRemovalSignal;
+
 public:
     class Insertion;
     class Removal;
@@ -68,7 +87,9 @@ public:
         {}
 
         virtual void execute(Document &document) const
-        { document.insert(m_line, m_column, m_text.c_str(), -1); }
+        {
+            document.insert(m_line, m_column, m_text.c_str(), -1);
+        }
 
         virtual bool merge(const Insertion &ins);
 
@@ -186,14 +207,14 @@ public:
     int editCount() const { return m_editCount; }
 
     /**
-     * Load the specified file into the document.
+     * Load the external file into the document.
      */
-    void load(const char *uri, bool convertEncoding);
+    void load();
 
     /**
-     * Save the document into the specified file.
+     * Save the document into the external file.
      */
-    void save(const char *uri, bool convertEncoding);
+    void save();
 
     bool frozen() const { return m_frozen; }
 
