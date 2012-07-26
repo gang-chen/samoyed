@@ -33,6 +33,8 @@ class Document
 {
 private:
     typedef boost::signals2::signal<void (const Document &doc)>
+    	DocumentClosingSignal;
+    typedef boost::signals2::signal<void (const Document &doc)>
     	DocumentLoadingSignal;
     typedef boost::signals2::signal<void (const Document &doc)>
 	DocumentSavingSignal;
@@ -50,6 +52,13 @@ private:
     	DocumentTextRemovalSignal;
 
 public:
+    typedef DocumentClosingSignal::slot_type DocumentClosingCallback;
+    typedef DocumentLoadingSignal::slot_type DocumentLoadingCallback;
+    typedef DocumentSavingSignal::slot_type DocumentSavingCallback;
+    typedef DocumentTextInsertionSignal::slot_type
+    	DocumentTextInsertionCallback;
+    typedef DocumentTextRemovalSignal::slot_type DocumentTextRemovalCallback;
+
     class Insertion;
     class Removal;
 

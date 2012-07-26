@@ -7,6 +7,7 @@
 #include "../utilities/pointer-comparer.hpp"
 #include <utility>
 #include <string>
+#include <boost/signals2/signal.hpp>
 #include <map>
 
 namespace Shell
@@ -18,11 +19,41 @@ class EditorGroup;
 
 class DocumentManager
 {
+private:
+    typedef boost::signals2::signal<void (const Document &doc)>
+    	DocumentOpeningSignal;
+    typedef boost::signals2::signal<void (const Document &doc)>
+    	DocumentClosingSignal;
+    typedef boost::signals2::signal<void (const Document &doc)>
+    	DocumentLoadingSignal;
+    typedef boost::signals2::signal<void (const Document &doc)>
+	DocumentSavingSignal;
+    typedef boost::signals2::signal<void (const Document &doc,
+                                          int line,
+                                          int column,
+                                          const char *text,
+                                          int length)>
+    	DocumentTextInsertionSignal;
+    typedef boost::signals2::signal<void (const Document &doc,
+                                          int beginLine,
+                                          int beginColumn,
+                                          int endLine,
+                                          int endColumn)>
+    	DocumentTextRemovalSignal;
+
 public:
+    typedef DocumentOpeningSignal::slot_type DocumentOpeningCallback;
+    typedef DocumentClosingSignal::slot_type DocumentClosingCallback;
+    typedef DocumentLoadingSignal::slot_type DocumentLoadingCallback;
+    typedef DocumentSavingSignal::slot_type DocumentSavingCallback;
+    typedef DocumentTextInsertionSignal::slot_type
+    	DocumentTextInsertionCallback;
+    typedef DocumentTextRemovalSignal::slot_type DocumentTextRemovalCallback;
+
     /**
      * Retrieve the opened document that is mapped to a file.
      */
-    Document *get(const char *fileName);
+    Document *get(const char *uri);
 
     /**
      * Load a file into a document and open an editor to edit it if the file is
@@ -37,7 +68,7 @@ public:
      * @param editorIndex The index of the new editor in the containing editor
      * group, or -1 if put the new editor after the current editor.
      */
-    std::pair<Document *, Editor *> open(const char *fileName,
+    std::pair<Document *, Editor *> open(const char *uri,
                                          int line,
                                          int column,
                                          bool newEditor,
@@ -53,8 +84,8 @@ public:
     bool closeEditor(Editor *editor);
 
 private:
-    typedef std::map<std::string *, Document *,
-                     Utilities::PointerComparer<std::string> > DocumentStore;
+    typedef std::map<std::string *, Document *, PointerComparator<std::string> >
+	DocumentStore;
 
     DocumentStore m_documents;
 };
