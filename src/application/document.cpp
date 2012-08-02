@@ -11,19 +11,30 @@ namespace Samoyed
 
 bool Document::Insertion::merge(const Insertion &ins)
 {
-    if (m_line == ins.m_line)
+    if (m_line == ins.m_line && m_column == ins.m_column)
     {
-        if (m_column == ins.m_column)
+        m_text.append(ins.m_text);
+        return true;
+    }
+    const char *cp = ins.m_text.c_str();
+    int line = ins.m_line;
+    int column = ins.m_column;
+    while (cp)
+    {
+        if (cp == '\n')
         {
-            m_text.append(ins.m_text);
-            return true;
+            ++line;
+            column = 0;
         }
-        if (ins.m_numChars >= 0 && m_column == ins.m_column + ins.m_numChars)
-        {
-            m_column = ins.m_column;
-            m_text.insert(0, ins.m_text);
-            return true;
-        }
+        cp += length(cp);
+        ++column;
+    }
+    if (m_line == line && m_column == column)
+    {
+        m_line = ins.m_line;
+        m_column = ins.m_column;
+        m_text.insert(0, ins.m_text);
+        return true;
     }
     return false;
 }
@@ -101,11 +112,11 @@ void Document::destroySharedData()
     g_object_unref(s_sharedTagTable);
 }
 
-Document::Document(const char* fileName):
-    m_fileName(fileName),
-    m_shortName(basename(fileName)),
+Document::Document(const char* uri):
+    m_uri(uri),
+    m_name(basename(uri)),
     m_initialized(false),
-    m_frozen(false),
+    m_frozen(true),
     m_loading(false),
     m_saving(false),
     m_undoing(false),
@@ -123,20 +134,27 @@ Document::Document(const char* fileName):
                      G_CALLBACK(::onTextRemoved),
                      this);
 
-    m_source = Application::instance()->sourceImageManager()->
-        get(m_fileName.c_str());
-    m_compiled = Application::instance()->compiledImageManager()->
-        get(m_fileName.c_str());
+    m_source = Application::instance()->fileSourceManager()->get(uri);
+    m_source->onDocumentOpened(*this);
 
-    // The initial loading.
-    load(fileName, true);
+    m_ast = Application::instance()->fileAstManager()->get(uri);
+
+    // Start loading.
+    load();
 }
 
 Document::~Document()
 {
     assert(m_editors.empty());
-    m_source->onDocumentClosed(*this);
     g_object_unref(m_gtkBuffer);
+
+    // Notify the source only if it still exists after we unreference it.
+    WeakPointer<FileSource> wp(m_source);
+    m_source.clear();
+    ReferencePointer<FileSource> src =
+        Application::instance()->fileSourceManager()->get(wp);
+    if (src)
+        src->onDocumentClosed(*this);
 }
 
 Document::onLoaded()
@@ -151,11 +169,11 @@ Document::onSaved()
     m_source->onDocumentSaved(*this);
 }
 
-void Document::load(const char *fileName, bool convertEncoding)
+void Document::load()
 {
 }
 
-void Document::save(const char *fileName, bool convertEncoding)
+void Document::save()
 {
 }
 

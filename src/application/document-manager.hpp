@@ -20,36 +20,22 @@ class EditorGroup;
 class DocumentManager
 {
 private:
-    typedef boost::signals2::signal<void (const Document &doc)>
-    	DocumentOpeningSignal;
-    typedef boost::signals2::signal<void (const Document &doc)>
-    	DocumentClosingSignal;
-    typedef boost::signals2::signal<void (const Document &doc)>
-    	DocumentLoadingSignal;
-    typedef boost::signals2::signal<void (const Document &doc)>
-	DocumentSavingSignal;
+    typedef boost::signals2::signal<void (const Document &doc)> DocumentOpened;
+    typedef boost::signals2::signal<void (const Document &doc)> DocumentClosed;
+    typedef boost::signals2::signal<void (const Document &doc)> DocumentLoaded;
+    typedef boost::signals2::signal<void (const Document &doc)> DocumentSaved;
     typedef boost::signals2::signal<void (const Document &doc,
                                           int line,
                                           int column,
                                           const char *text,
-                                          int length)>
-    	DocumentTextInsertionSignal;
+                                          int length)> DocumentTextInserted;
     typedef boost::signals2::signal<void (const Document &doc,
                                           int beginLine,
                                           int beginColumn,
                                           int endLine,
-                                          int endColumn)>
-    	DocumentTextRemovalSignal;
+                                          int endColumn)> DocumentTextRemoved;
 
 public:
-    typedef DocumentOpeningSignal::slot_type DocumentOpeningCallback;
-    typedef DocumentClosingSignal::slot_type DocumentClosingCallback;
-    typedef DocumentLoadingSignal::slot_type DocumentLoadingCallback;
-    typedef DocumentSavingSignal::slot_type DocumentSavingCallback;
-    typedef DocumentTextInsertionSignal::slot_type
-    	DocumentTextInsertionCallback;
-    typedef DocumentTextRemovalSignal::slot_type DocumentTextRemovalCallback;
-
     /**
      * Retrieve the opened document that is mapped to a file.
      */
@@ -88,6 +74,13 @@ private:
 	DocumentStore;
 
     DocumentStore m_documents;
+
+    DocumentOpened m_docOpened;
+    DocumentClosed m_docClosed;
+    DocumentLoaded m_docLoaded;
+    DocumentSaved m_docSaved;
+    DocumentTextInserted m_docTextInserted;
+    DocumentTextRemoved m_docTextRemoved;
 };
 
 }

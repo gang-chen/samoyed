@@ -9,6 +9,7 @@
 #include <vector>
 #include <stack>
 #include <boost/signals2/signal.hpp>
+#include <glib.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -16,7 +17,7 @@ namespace Samoyed
 
 class Editor;
 class FileSource;
-class CompiledImage;
+class FileAst;
 
 /**
  * A document is the model of an editor or, actually, the model of the text view
@@ -32,33 +33,21 @@ class CompiledImage;
 class Document
 {
 private:
-    typedef boost::signals2::signal<void (const Document &doc)>
-    	DocumentClosingSignal;
-    typedef boost::signals2::signal<void (const Document &doc)>
-    	DocumentLoadingSignal;
-    typedef boost::signals2::signal<void (const Document &doc)>
-	DocumentSavingSignal;
+    typedef boost::signals2::signal<void (const Document &doc)> Closed;
+    typedef boost::signals2::signal<void (const Document &doc)> Loaded;
+    typedef boost::signals2::signal<void (const Document &doc)> Saved;
     typedef boost::signals2::signal<void (const Document &doc,
                                           int line,
                                           int column,
                                           const char *text,
-                                          int length)>
-    	DocumentTextInsertionSignal;
+                                          int length)> TextInserted;
     typedef boost::signals2::signal<void (const Document &doc,
                                           int beginLine,
                                           int beginColumn,
                                           int endLine,
-                                          int endColumn)>
-    	DocumentTextRemovalSignal;
+                                          int endColumn)> TextRemoved;
 
 public:
-    typedef DocumentClosingSignal::slot_type DocumentClosingCallback;
-    typedef DocumentLoadingSignal::slot_type DocumentLoadingCallback;
-    typedef DocumentSavingSignal::slot_type DocumentSavingCallback;
-    typedef DocumentTextInsertionSignal::slot_type
-    	DocumentTextInsertionCallback;
-    typedef DocumentTextRemovalSignal::slot_type DocumentTextRemovalCallback;
-
     class Insertion;
     class Removal;
 
@@ -282,6 +271,26 @@ public:
 
     void removeEditor(Editor &editor);
 
+    boost::signals2::connection
+    addClosedCallback(const Closed::slot_type &callback)
+    { return m_closed.connect(callback); }
+
+    boost::signals2::connection
+    addLoadedCallback(const Loaded::slot_type &callback)
+    { return m_loaded.connect(callback); }
+
+    boost::signals2::connection
+    addSavedCallback(const Saved::slot_type &callback)
+    { return m_saved.connect(callback); }
+
+    boost::signals2::connection
+    addTextInsertedCallback(const TextInserted::slot_type &callback)
+    { return m_textInserted.connect(callback); }
+
+    boost::signals2::connection
+    addTextRemovedCallback(const TextRemoved::slot_type &callback)
+    { return m_textRemoved.connect(callback); }
+
 private:
     /**
      * A stack of text edits.
@@ -389,6 +398,10 @@ private:
      */
     std::vector<Editor *> m_editors;
 
+    Revision m_revision;
+
+    GError *m_error;
+
     EditStack m_undoHistory;
 
     EditStack m_redoHistory;
@@ -399,6 +412,12 @@ private:
 
     ReferencePointer<FileSource> m_source;
     ReferencePointer<FileAst> m_ast;
+
+    Closed m_closed;
+    Loaded m_loaded;
+    Saved m_saved;
+    TextInserted m_textInserted;
+    TextRemoved m_textRemoved;
 
     friend class DocumentManager;
 };

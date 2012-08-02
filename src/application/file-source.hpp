@@ -42,11 +42,9 @@ private:
     boost::signals2::signal_type<void (const FileSource &source,
                                        const ChangeHint &changeHint),
         boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >::
-        type ChangeSignal;
+        type Changed;
 
 public:
-    typedef ChangeSignal::slot_type ChangeCallback;
-
     const char *uri() const { return key().c_str(); }
 
     /**
@@ -73,21 +71,21 @@ public:
      * @return The connection of the callback, which can be used to remove the
      * observer later.
      */
-    boost::signals2::connection addObserver(const ChangeCallback &changeCb)
+    boost::signals2::connection addObserver(const Changed::slot_type &callback)
     {
         boost::mutex::scoped_lock lock(m_controlMutex);
         if (!m_revision.zero())
-            changeCb(*this,
+            callback(*this,
                      ChangeHint(Revision(), m_revision, Range(0, -1)));
         else if (m_errorCode)
-            changeCb(*this,
+            callback(*this,
                      ChangeHint(Revision(), m_revision, Range()));
-        return m_changeSignal.connect(changeCb);
+        return m_changed.connect(callback);
     }
 
     /**
-     * Remove an observer by unregistering the change callback.
-     * @param connection The connection of the change callback.
+     * Remove an observer by unregistering the registered callback.
+     * @param connection The connection of the registered callback.
      */
     void removeObserver(const boost::signals2::connection &connection)
     {
@@ -124,46 +122,56 @@ private:
     class RevisionChange: public Change
     {
     public:
-        RevisionChange(const Revision &revision): m_revision(revision) {}
+        RevisionChange(const Revision &revision, GError *error):
+            m_revision(revision),
+            m_error(error)
+        {}
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
+        GError *m_error;
     };
 
     class Insertion: public Change
     {
     public:
         Insertion(const Revision &revision,
-                  int charIndex,
+                  int line,
+                  int column,
                   char *text,
                   int length):
             m_revision(revision),
-            m_charIndex(charIndex),
-            m_text(text),
-            m_length(length)
+            m_line(line),
+            m_column(column),
+            m_text(text, length)
         {}
-        virtual ~Insertion() { g_free(m_text); }
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
-        int m_charIndex;
-        char *m_text;
-        int m_length;
+        int m_line;
+        int m_column;
+        std::string m_text;
     };
 
     class Removal: public Change
     {
     public:
-        Removal(const Revision &revision, int charIndex, int numChars):
+        Removal(const Revision &revision,
+                int beginLine,
+                int beginColumn,
+                int endLine,
+                int endColumn):
             m_revision(revision),
-            m_charIndex(charIndex),
-            m_numChars(numChars)
+            m_beginLine(beginLine),
+            m_beginColumn(beginColumn),
+            m_endLine(endLine),
+            m_endColumn(endColumn)
         {}
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
@@ -171,15 +179,22 @@ private:
 
     private:
         Revision m_revision;
-        int m_charIndex;
-        int m_numChars;
+        int m_beginLine;
+        int m_beginColumn;
+        int m_endLine;
+        int m_endColumn;
     };
 
     class Replacement: public Change
     {
     public:
-        Replacement(const Revision &revision, char *text):
+        /**
+         * @param text The new text contents, which should be freed by
+         * 'g_free()'.
+         */
+        Replacement(const Revision &revision, GError *error, char *text):
             m_revision(revision),
+            m_error(error),
             m_text(text)
         {}
         virtual ~Replacement()
@@ -190,10 +205,11 @@ private:
 
     private:
         Revision m_revision;
+        GError *m_error;
         char *m_text;
     };
 
-    FileSource(const std::string &fileName,
+    FileSource(const std::string &uri,
                unsigned long serialNumber,
                Manager<FileSource> &mgr);
 
@@ -219,31 +235,25 @@ private:
 
     void requestChange(Change *change);
 
-    void onDocumentLoaded(Document &document);
+    void onDocumentClosed(const Document &document);
 
-    void onDocumentClosed(Document &document);
+    void onDocumentLoaded(const Document &document);
 
-    void onDocumentSaved(Document &document);
+    void onDocumentSaved(const Document &document);
 
-    /**
-     * @param charIndex The character index of the insertion position, starting
-     * from 0.
-     * @param text The inserted text, in a memory chunk allocated by GTK+.
-     * @param length The number of the inserted bytes.
-     */
-    void onDocumentTextInserted(Document &document,
-                                int charIndex,
-                                char *text,
+    void onDocumentTextInserted(const Document &document,
+                                int line,
+                                int column,
+                                const char *text,
                                 int length);
 
-    /**
-     * @param charIndex The index of the first removed character, starting from
-     * 0.
-     * @param numChars The number of the removed characters.
-     */
-    void onDocumentTextRemoved(Document &document,
-                               int charIndex,
-                               int numChars);
+    void onDocumentTextRemoved(const Document &document,
+                               int beginLine,
+                               int beginColumn,
+                               int endLine,
+                               int endColumn);
+
+    void doSynchronizationNow();
 
     static gboolean doSynchronization(gpointer param);
 
@@ -261,7 +271,7 @@ private:
 
     mutable boost::shared_mutex m_dataMutex;
 
-    ChangeSignal m_changeSignal;
+    Changed m_changed;
 
     mutable boost::mutex m_controlMutex;
 
@@ -280,7 +290,6 @@ private:
     friend class Insertion;
     friend class Removal;
     friend class Replacement;
-    friend class Document;
 };
 
 }

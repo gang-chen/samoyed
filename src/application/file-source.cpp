@@ -1,12 +1,11 @@
-// Source image of a source file.
+// Source code in a source file.
 // Copyright (C) 2012 Gang Chen.
 
-#include "source-image.hpp"
-#include "compiled-image.hpp"
+#include "file-source.hpp"
 #include "application.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/text-buffer.hpp"
-#include "utilities/text-buffer-loader.hpp"
+#include "utilities/text-file-reader.hpp"
 #include <assert.h>
 #include <boost/bind.hpp>
 #include <glib.h>
@@ -14,63 +13,68 @@
 namespace Samoyed
 {
 
-bool SourceImage::Loading::execute(SourceImage &source)
+bool FileSource::Loading::execute(FileSource &source)
 {
-    m_source = WeakPointer<SourceImage>(&source);
-    TextBufferLoader *loader =
-        new TextBufferLoader(Worker::PRIORITY_FOREGROUND,
-                             boost::bind(&SourceImage::Loading::onLoaded,
-                                         this,
-                                         _1));
-    Application::instance()->scheduler()->schedule(*loader);
+    m_source = WeakPointer<FileSource>(&source);
+    TextFileReader *reader =
+        new TextFileReader(Worker::PRIORITY_FOREGROUND,
+                           boost::bind(&FileSource::Loading::onLoaded,
+                                       this,
+                                       _1));
+    Application::instance()->scheduler()->schedule(*reader);
     return false;
 }
 
-void SourceImage::Loading::onLoaded(Worker &worker)
+void FileSource::Loading::onLoaded(Worker &worker)
 {
-    ReferencePointer<SourceImage> src =
-        Application::instance()->sourceImageManager()->get(m_source);
+    ReferencePointer<FileSource> src =
+        Application::instance()->fileSourceManager()->get(m_source);
     if (src)
     {
-        TextBufferLoader &loader = static_cast<TextBufferLoader &>(worker);
-        Revision rev;
-        src->beginWrite(false, NULL, &rev, NULL);
-        if (rev == loader.revision())
-            src->endWrite(rev, NULL, Range());
-        else
+        TextFileReader &reader = static_cast<TextFileReader &>(worker);
+        Revision oldRev;
+        GError *oldError;
+        src->beginWrite(false, NULL, &oldRev, &oldError);
+        if (oldRev != reader.revision() || oldError)
         {
-            TextBuffer *buffer = loader.fetchBuffer();
+            TextBuffer *buffer = reader.fetchBuffer();
             src->setBuffer(buffer);
-            src->endWrite(loader.revision(), NULL, Range(0, buffer->length()));
+            src->endWrite(reader.revision(),
+                          reader.fetchError(),
+                          Range(0, buffer->length()));
         }
+        else
+            src->endWrite(oldRev, oldError, Range());
         src->onChangeDone(this);
     }
     delete &worker;
 }
 
-bool SourceImage::RevisionChange::execute(SourceImage &source)
+bool FileSource::RevisionChange::execute(FileSource &source)
 {
     if (!source.beginWrite(true, NULL, NULL, NULL))
         return false;
-    source.endWrite(m_revision, NULL, Range());
+    source.endWrite(m_revision, m_error, Range());
     return true;
 }
 
-bool SourceImage::Insertion::execute(SourceImage &source)
+bool FileSource::Insertion::execute(FileSource &source)
 {
     TextBuffer *buffer;
-    Revision rev;
-    if (!source.beginWrite(true, &buffer, &rev, NULL))
+    Revision oldRev;
+    GError *oldError;
+    if (!source.beginWrite(true, &buffer, &oldRev, &oldError))
         return false;
-    if (rev == m_revision)
-        source.endWrite(m_revision, NULL, Range());
+    if (oldRev == m_revision)
+        source.endWrite(oldRev, oldError, Range());
     else
     {
-        buffer->setCursor2(m_charIndex);
-        buffer->insert(m_text, m_length, -1, -1);
+        buffer->setLineColumn(m_line, m_column);
+        buffer->insert(m_text.c_str(), m_text.length(), -1, -1);
         source.endWrite(m_revision,
-                        NULL,
-                        Range(buffer->cursor() - m_length, buffer->cursor()));
+                        oldError,
+                        Range(buffer->cursor() - m_text.length(),
+                              buffer->cursor()));
     }
     return true;
 }
@@ -78,7 +82,7 @@ bool SourceImage::Insertion::execute(SourceImage &source)
 bool SourceImage::Removal::execute(SourceImage &source)
 {
     TextBuffer *buffer;
-    Revision rev;
+    Revision oldRev;
     if (!source.beginWrite(true, &buffer, &rev, NULL))
         return false;
     if (rev == m_revision)
@@ -199,16 +203,19 @@ void SourceImage::endWrite(Revision &revision,
                            GError *error,
                            const Range &range)
 {
-    Revision oldRevision = m_revision;
+    Revision oldRev = m_revision;
     GError *oldError = m_error;
     m_revision = revision;
-    if (m_error)
-        g_error_free(m_error);
+    // Do not free 'oldError' if it is the same as 'error'.  This allows the
+    // caller to pass the error code obtained from 'beginWrite()' back here if
+    // the error code isn't changed.
+    if (oldEerror && oldError != error)
+        g_error_free(oldError);
     m_error = error;
     m_dataMutex.unlock();
-    if (oldRevision != revision || oldError != m_error)
+    if (oldRev != revision || oldError != m_error)
     {
-        ChangeHint changeHint(oldRevision, revision, range);
+        ChangeHint changeHint(oldRev, revision, range);
         if (revision.synchronized())
         {
             Revision compRev = Application::instance()->compiledImageManager()->
@@ -301,85 +308,95 @@ void SourceImage::requestChange(Change *change)
     executePendingChanges();
 }
 
-void SourceImage::onDocumentLoaded(Document &document)
-{
-    Replacement *rep = new Replacement(document.revision(), document.getText());
-    requestChange(rep);
-}
-
-void SourceImage::onDocumentClosed(Document &document)
+void SourceImage::onDocumentClosed(const Document &document)
 {
     if (document.editCount())
     {
         // The document was changed but the changes were discarded.  Reload the
-        // source from the disk file.
+        // source from the external file.
         Loading *load = new Loading;
         requestChange(load);
     }
 }
 
-void SourceImage::onDocumentSaved(Document &document)
+void SourceImage::onDocumentLoaded(const Document &document)
+{
+    Replacement *rep = new Replacement(document.revision(), document.getText());
+    requestChange(rep);
+}
+
+void SourceImage::onDocumentSaved(const Document &document)
 {
     RevisionChange *revChange = new RevisionChange(document.revision());
     requestChange(revChange);
 }
 
-void SourceImage::onDocumentTextInserted(Document &document,
-                                         int charIndex,
-                                         char *text,
+void SourceImage::onDocumentTextInserted(const Document &document,
+                                         int line,
+                                         int column,
+                                         const char *text,
                                          int length)
 {
     Insertion *ins =
-        new Insertion(document.revision(), charIndex, text, length);
+        new Insertion(document.revision(), line, column, text, length);
     requestChange(ins);
 }
 
-void SourceImage::onDocumentTextRemoved(Document &document,
-                                        int charIndex,
-                                        int numChars)
+void SourceImage::onDocumentTextRemoved(const Document &document,
+                                        int beginLine,
+                                        int beginColumn,
+                                        int endLine,
+                                        int endColumn)
 {
-    Removal *rem = new Removal(document.revision(), charIndex, numChars);
+    Removal *rem = new Removal(document.revision(),
+                               beginLine,
+                               beginColumn,
+                               endLine,
+                               endColumn);
     requestChange(rem);
 }
 
-gboolean SourceImage::doSynchronization(gpointer param)
+void FileSource::doSynchronizationNow()
+{
+    // Check to see if the file is opened for editing.  If so, synchronize the
+    // source with the document.  Otherwise, load the source from the external
+    // file.
+    DocumentManager *docMgr = Application::instance()->documentManager();
+    Document *doc = docMgr->get(uri());
+    if (doc)
+    {
+        // If we are loading the document, we can stop here because the source
+        // will be notified to update itself when the document is loaded.
+        // Otherwise, request to replace the source with the document.
+        if (doc->initialized() && !doc->loading())
+        {
+            Replacement *rep = new Replacement(doc->getText());
+            requestChange(rep);
+        }
+    }
+    else
+    {
+        Loading *load = new Loading;
+        requestChange(load);
+    }
+}
+
+gboolean FileSource::doSynchronization(gpointer param)
 {
     WeakPointer<SourceImage> *wp =
         static_cast<WeakPointer<SourceImage> *>(param);
     ReferencePointer<SourceImage> src =
         Application::instance()->sourceImageManager()->get(*wp);
     if (src)
-    {
-        // Check to see if the file is opened for editing.  If so, synchronize
-        // the source with the document.  Otherwise, load the source from the
-        // disk file.
-        DocumentManager *docMgr = Application::instance()->documentManager();
-        Document *doc = docMgr->get(fileName());
-        if (doc)
-        {
-            // If we are loading the document, we can stop here because the source
-            // will be notified to update itself when the document is loaded.
-            // Otherwise, request to replace the source with the document.
-            if (doc->initialized() && !doc->loading())
-            {
-                Replacement *rep = new Replacement(doc->getText());
-                src->requestChange(rep);
-            }
-        }
-        else
-        {
-            Loading *load = new Loading;
-            src->requestChange(load);
-        }
-    }
+        src->doSynchronizationNow();
     delete wp;
     return FALSE;
 }
 
-void SourceImage::synchronize()
+void FileSource::synchronize()
 {
     if (Application::instance()->inMainThread())
-        doSynchronization(this);
+        doSynchronizationNow();
     else
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         G_CALLBACK(doSynchronization),
