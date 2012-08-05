@@ -48,6 +48,7 @@ bool FileSource::RevisionChange::execute(FileSource &source)
     if (!source.beginWrite(true, NULL, NULL, NULL))
         return false;
     source.endWrite(m_revision, m_error, Range());
+    m_error = NULL;
     return true;
 }
 
@@ -94,6 +95,7 @@ bool FileSource::Replacement::execute(FileSource &source)
     source.endWrite(m_revision,
                     m_error,
                     Range(0, buffer->length()));
+    m_error = NULL;
     return true;
 }
 
