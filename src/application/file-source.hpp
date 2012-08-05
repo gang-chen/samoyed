@@ -124,8 +124,13 @@ private:
     public:
         RevisionChange(const Revision &revision, GError *error):
             m_revision(revision),
-            m_error(error)
+            m_error(g_error_copy(error))
         {}
+        virtual ~RevisionChange()
+        {
+            if (m_error)
+                g_error_free(m_error);
+        }
         virtual bool incremental() const { return true; }
         virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
@@ -194,11 +199,15 @@ private:
          */
         Replacement(const Revision &revision, GError *error, char *text):
             m_revision(revision),
-            m_error(error),
+            m_error(g_error_copy(error)),
             m_text(text)
         {}
         virtual ~Replacement()
-        { g_free(m_text); }
+        {
+            if (m_error)
+                g_error_free(m_error);
+            g_free(m_text);
+        }
         virtual bool incremental() const { return false; }
         virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
