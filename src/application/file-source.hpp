@@ -122,7 +122,7 @@ private:
     class RevisionChange: public Change
     {
     public:
-        RevisionChange(const Revision &revision, GError *error):
+        RevisionChange(const Revision &revision, const GError *error):
             m_revision(revision),
             m_error(g_error_copy(error))
         {}
@@ -197,7 +197,7 @@ private:
          * @param text The new text contents, which should be freed by
          * 'g_free()'.
          */
-        Replacement(const Revision &revision, GError *error, char *text):
+        Replacement(const Revision &revision, const GError *error, char *text):
             m_revision(revision),
             m_error(g_error_copy(error)),
             m_text(text)
