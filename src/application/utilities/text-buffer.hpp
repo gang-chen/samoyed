@@ -35,7 +35,10 @@ struct Utf8CharTraits
     }
 };
 
-typedef Buffer<char, Utf8CharTraits, 20000, -1, true, true> TextBufferBase;
+const int TEXT_BUFFER_BLOCK_SIZE = 20000;
+
+typedef Buffer<char, Utf8CharTraits, TEXT_BUFFER_BLOCK_SIZE, -1, true, true>
+        TextBufferBase;
 
 /**
  * A text buffer stores a stream of UTF-8 encoded characters.
@@ -45,19 +48,29 @@ typedef Buffer<char, Utf8CharTraits, 20000, -1, true, true> TextBufferBase;
 class TextBuffer: public TextBufferBase
 {
 public:
-    class ConstIterator: public TextBufferBase::ConstIterator
-    {
-    };
-
     int byteCount() const { return length(); }
 
     int characterCount() const { return length2(); }
 
     int lineCount() const { return length3() + 1; }
 
-    void transformByteOffsetToLineColumn(int byte, int &line, int &column);
+    void setLineColumn(int line, int column);
 
-    void transformLineColumnToByteOffset(int line, int column, int &byte);
+    void transformByteOffsetToLineColumn(int byteOffset,
+                                         int &line,
+                                         int &column);
+
+    void transformLineColumnToByteOffset(int line,
+                                         int column,
+                                         int &byteOffset);
+
+    void transformCharOffsetToLineColumn(int charOffset,
+                                         int &line,
+                                         int &column);
+
+    void transformLineColumnToCharOffset(int line,
+                                         int column,
+                                         int &charOffset);
 };
 
 }

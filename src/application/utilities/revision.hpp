@@ -4,7 +4,7 @@
 #ifndef SMYD_REVISION_HPP
 #define SMYD_REVISION_HPP
 
-#include <string>
+#include <stdint.h>
 #include <glib.h>
 #include <gio/gio.h>
 
@@ -15,7 +15,7 @@ namespace Samoyed
  * A revision represents the revision of a source file, the revision of the
  * source code contents and the revision of the abstract syntax tree.
  *
- * A revision is defined by the entity tag of the external file and the number
+ * A revision is defined by the time stamp of the external file and the number
  * of the changes performed after the last synchronization with the external
  * file.
  *
@@ -28,11 +28,12 @@ public:
     /**
      * Construct revision zero.
      */
-    Revision(): m_changeCount(0) {}
+    Revision(): m_fileTimeStamp(0), m_changeCount(0) {}
 
     bool operator==(const Revision &rhs) const
     {
-        return m_etag == rhs.m_etag && m_changeCount == rhs.m_changeCount;
+        return m_fileTimeStamp == rhs.m_fileTimeStamp &&
+            m_changeCount == rhs.m_changeCount;
     }
 
     bool operator!=(const Revision &rhs) const
@@ -40,19 +41,30 @@ public:
         return !(*this == rhs);
     }
 
-    void onSynchronized(const char *etag)
+    bool operator<(const Revision &rhs) const
     {
-        m_etag = etag;
+        if (m_fileTimeStamp < rhs.m_fileTimeStamp)
+            return true;
+        if (m_fileTimeStamp > rhs.m_fileTimeStamp)
+            return false;
+        if (m_changeCount < rhs.m_changeCount)
+            return true;
+        return false;
+    }
+
+    void onSynchronized(uint64_t fileTimeStamp)
+    {
+        m_fileTimeStamp = fileTimeStamp;
         m_changeCount = 0;
     }
 
     void onChanged() { ++m_changeCount; }
 
-    bool zero() const { return m_etag.empty() && m_changeCount == 0; }
+    bool zero() const { return m_fileTimeStamp == 0 && m_changeCount == 0; }
 
     void reset()
     {
-        m_etag.clear();
+        m_fileTimeStamp = 0;
         m_changeCount = 0;
     }
 
@@ -64,7 +76,11 @@ public:
     bool synchronize(GFile *file, GError **error);
 
 private:
-    std::string m_etag;
+    /**
+     * The last modification time of the external file by the last
+     * synchronization time.
+     */
+    uint64_t m_fileTimeStamp;
 
     unsigned long m_changeCount;
 };

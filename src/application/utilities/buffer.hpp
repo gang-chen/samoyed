@@ -628,7 +628,7 @@ public:
         int i = index ? *index : -1;
         int i2 = index2 ? *index2 : -1;
         int i3 = index3 ? *index3 : -1;
-        ConstIterator iter(i, i2, i3);
+        ConstIterator iter(*this, i, i2, i3);
         if (index)
             *index = iter.index();
         if (index2)
@@ -1272,7 +1272,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
             m_index2InBlock = m_block->length2();
             m_index3InBlock = m_block->length3();
         }
-        else if (index3 >= m_index3 - m_index3InBlock + m_block->length3())
+        else if (index3 > m_index3 - m_index3InBlock + m_block->length3())
         {
             // Iterate forward.
             m_index -= m_indexInBlock;
@@ -1371,7 +1371,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     assert(m_pointer <= end);
 
     // Iterate to the target in this block from the closest position.
-    if (index3InBlock < (beginIndex3 + m_index3InBlock) / 2)
+    if (index3InBlock <= (beginIndex3 + m_index3InBlock) / 2)
     {
         // Iterate forward from the beginning.
         m_pointer = begin;
@@ -1387,7 +1387,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
         }
         m_indexInBlock = beginIndex + m_pointer - begin;
     }
-    else if (index3InBlock < m_index3InBlock)
+    else if (index3InBlock <= m_index3InBlock)
     {
         // Iterate backward from here.
         Pointer save = m_pointer;
@@ -1404,7 +1404,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
         }
         m_indexInBlock += m_pointer - save;
     }
-    else if (index3InBlock < (m_index3InBlock + endIndex3) / 2)
+    else if (index3InBlock <= (m_index3InBlock + endIndex3) / 2)
     {
         // Iterate forward from here.
         Pointer save = m_pointer;

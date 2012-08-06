@@ -21,7 +21,7 @@ bool Revision::synchronize(GFile *file, GError **error)
 {
     GFileInfo *fileInfo =
         g_file_query_info(file,
-                          G_FILE_ATTRIBUTE_ETAG_VALUE,
+                          G_FILE_ATTRIBUTE_TIME_MODIFIED,
                           G_FILE_QUERY_INFO_NONE,
                           NULL,
                           error);
@@ -30,16 +30,10 @@ bool Revision::synchronize(GFile *file, GError **error)
         reset();
         return false;
     }
-    const char *etag =
-        g_file_info_get_attribute_string(fileInfo,
-                                         G_FILE_ATTRIBUTE_ETAG_VALUE);
-    if (!etag)
-    {
-        reset();
-        g_object_unref(fileInfo);
-        return false;
-    }
-    onSynchronized(etag);
+    uint64_t fileTimeStamp =
+        g_file_info_get_attribute_uint64(fileInfo,
+                                         G_FILE_ATTRIBUTE_TIME_MODIFIED);
+    onSynchronized(fileTimeStamp);
     g_object_unref(fileInfo);
     return true;
 }

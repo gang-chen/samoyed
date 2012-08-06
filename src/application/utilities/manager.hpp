@@ -4,7 +4,7 @@
 #ifndef SMYD_MANAGER_HPP
 #define SMYD_MANAGER_HPP
 
-#include "pointer-comparer.hpp"
+#include "pointer-comparator.hpp"
 #include <assert.h>
 #include <set>
 #include <boost/utility.hpp>
@@ -23,11 +23,10 @@ template<class> class WeakPointer;
  * A manager manages the lifetimes of objects using reference counts, and
  * maintains the uniqueness of objects.
  *
- * A client can observe a manager to get it notified of every construction and
- * destruction of every managed object, by registering two callbacks.  A
- * callback, post-construction callback, is called after every object is
- * constructed, while the other callback, pre-destruction callback, is called
- * before every object is destructed.
+ * A client can observe a manager to get it notified of construction and
+ * destruction of each managed object, by registering two callbacks.  A callback
+ * is called after each object is constructed, while the other callback is
+ * called before each object is destructed.
  *
  * We pass the constructed or to-be-destructed objects, instead of their
  * reference pointers, to the callbacks because we can't create reference
@@ -44,16 +43,18 @@ class Manager: public boost::noncopyable
 private:
     typedef typename Object::KeyT Key;
 
-    typedef std::set<Key *, PointerComparer<Key> > Store;
+    typedef std::set<Key *, PointerComparator<Key> > Store;
 
     typedef typename
     boost::signals2::signal_type<void (Object &),
         boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >
-        ::type ChangeSignal;
+        ::type ObjectConstructed;
+    typedef typename
+    boost::signals2::signal_type<void (Object &),
+        boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >
+        ::type ObjectToBeDestructed;
 
 public:
-    typedef typename ChangeSignal::slot_type ChangeCallback;
-
     Manager(int cacheSize):
         m_serialNumber(0),
         m_cacheSize(cacheSize),
@@ -70,7 +71,7 @@ public:
         {
             Object *object = static_cast<Object *>(*it);
             assert(object->m_refCount == 0);
-            m_preDestructionSignal(*object);
+            m_objectToBeDestructed(*object);
             delete object;
             --m_nCachedObjects;
         }
@@ -93,8 +94,10 @@ public:
      * callbacks, which can be used to remove the observer later.
      */
     std::pair<boost::signals2::connection, boost::signals2::connection>
-    addObserver(const ChangeCallback &postConstructionCb,
-                const ChangeCallback &preDestructionCb)
+    addObserver(const typename ObjectConstructed::slot_type
+                &postConstructionCb,
+                const typename ObjectToBeDestructed::slot_type
+                &preDestructionCb)
     {
         boost::mutex::scoped_lock lock(m_mutex);
         for (typename Store::const_iterator it = m_store.begin(),
@@ -105,8 +108,8 @@ public:
             postConstructionCb(*static_cast<Object *>(*it));
         }
         return std::make_pair(
-            m_postConstructionSignal.connect(postConstructionCb),
-            m_preDestructionSignal.connect(preDestructionCb));
+            m_objectConstructed.connect(postConstructionCb),
+            m_objectToBeDestructed.connect(preDestructionCb));
     }
 
     /**
@@ -119,7 +122,8 @@ public:
      */
     void removeObserver(std::pair<boost::signals2::connection,
                                   boost::signals2::connection> connections,
-                        const ChangeCallback &preDestructionCb)
+                        const typename ObjectToBeDestructed::slot_type
+                        &preDestructionCb)
     {
         boost::mutex::scoped_lock lock(m_mutex);
         for (typename Store::const_iterator it = m_store.begin(),
@@ -160,7 +164,7 @@ private:
                     m_mruFreeObject = object->m_prevFree;
                 m_lruFreeObject = object->m_nextFree;
                 m_store.erase(object);
-                m_preDestructionSignal(*object);
+                m_objectToBeDestructed(*object);
                 delete object;
             }
             else
@@ -176,7 +180,7 @@ private:
             if (--oldObject->m_refCount == 0)
             {
                 m_store.erase(oldObject);
-                m_preDestructionSignal(*oldObject);
+                m_objectToBeDestructed(*oldObject);
                 delete oldObject;
             }
             ++newObject->m_refCount;
@@ -192,9 +196,8 @@ private:
     Object *m_lruFreeObject;
     Object *m_mruFreeObject;
 
-    ChangeSignal m_postConstructionSignal;
-
-    ChangeSignal m_preDestructionSignal;
+    ObjectConstructed m_objectConstructed;
+    ObjectToBeDestructed m_objectToBeDestructed;
 
     mutable boost::mutex m_mutex;
 
@@ -364,7 +367,7 @@ ReferencePointer<Object> Manager<Object>::get(const Key& key)
     if (it == m_store.end())
     {
         Object *newObject = new Object(key, m_serialNumber++, *this);
-        m_postConstructionSignal(*newObject);
+        m_objectConstructed(*newObject);
         it = m_store.insert(newObject).first;
     }
     Object *object = static_cast<Object *>(*it);

@@ -10,6 +10,13 @@
 namespace Samoyed
 {
 
+/**
+ * There are two special types of changes.  One type is dummy changes that do
+ * not change the contents but only change the revisions, typically due to
+ * writing to external files.  The other type of changes keep the revisions
+ * unchanged but change the contents, typically due to rereading external files
+ * after reading failures.
+ */
 class ChangeHint
 {
 public:
