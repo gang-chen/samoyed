@@ -3,8 +3,37 @@
 
 #include "document.hpp"
 #include "application.hpp"
+#include "utilities/utf8.hpp"
+#include "utilities/text-buffer.hpp"
+#include "utilities/text-file-reader.hpp"
+#include "utilities/text-file-writer.hpp"
 #include <assert.h>
 #include <string.h>
+
+#define INSERTION_MERGE_LENGTH_THRESHOLD 100
+
+namespace
+{
+
+struct DocumentLoadedParam
+{
+    DocumentLoadedParam(Document &document, TextFileReader &reader):
+        m_document(document), m_reader(reader)
+    {}
+    Document &m_document;
+    TextFileReader &m_reader;
+};
+
+struct DocumentSavedParam
+{
+    DocumentSavedParam(Document &document, TextFileWriter &writer):
+        m_document(document), m_writer(writer)
+    {}
+    Document &m_document;
+    TextFileWriter &m_writer;
+};
+
+}
 
 namespace Samoyed
 {
@@ -16,6 +45,8 @@ bool Document::Insertion::merge(const Insertion &ins)
         m_text.append(ins.m_text);
         return true;
     }
+    if (ins.m_text.length() > INSERTION_MERGE_LENGTH_THRESHOLD)
+        return false;
     const char *cp = ins.m_text.c_str();
     int line = ins.m_line;
     int column = ins.m_column;
@@ -26,7 +57,7 @@ bool Document::Insertion::merge(const Insertion &ins)
             ++line;
             column = 0;
         }
-        cp += length(cp);
+        cp += Utf8::length(cp);
         ++column;
     }
     if (m_line == line && m_column == column)
@@ -146,7 +177,6 @@ Document::Document(const char* uri):
 Document::~Document()
 {
     assert(m_editors.empty());
-    g_object_unref(m_gtkBuffer);
 
     // Notify the source only if it still exists after we unreference it.
     WeakPointer<FileSource> wp(m_source);
@@ -155,18 +185,58 @@ Document::~Document()
         Application::instance()->fileSourceManager()->get(wp);
     if (src)
         src->onDocumentClosed(*this);
+
+    m_closed(*this);
+
+    g_object_unref(m_gtkBuffer);
 }
 
-Document::onLoaded()
+gboolean Document::loaded(gpointer param)
 {
-    m_initialized = true;
-    m_loading = false;
-    m_source->onDocumentLoaded(*this);
+    DocumentLoadedParam *p = static_cast<DocumentLoadedParam *>(param);
+
+    // Copy contents in the reader's buffer to the document's buffer.
+    GtkTextBuffer *gtkBuffer = p->m_document.m_gtkBuffer;
+    TextBuffer *buffer = p->m_reader.buffer();
+
+    p->m_document.m_revision = p->m_reader.revision();
+    p->m_document.m_ioError = p->m_reader.fetchError();
+    p->m_document.m_initialized = true;
+    p->m_document.m_loading = false;
+    p->m_document.unfreeze();
+    p->m_document.m_source->onDocumentLoaded(p->m_document);
+    p->m_document.m_loaded(p->m_document);
+    delete &p->m_reader;
+    delete p;
+
+    // If any error was encountered, report it.
+    if (p->m_document.m_ioError)
+    {
+    }
+
+    return FALSE;
 }
 
-Document::onSaved()
+gboolean Document::saved(gpointer param)
 {
-    m_source->onDocumentSaved(*this);
+    DocumentSavedParam *p = static_cast<DocumentSavedParam *>(param);
+    p->m_document.m_revision = p->m_writer.revision();
+    p->m_document.m_ioError = p->m_writer.fetchError();
+    p->m_document.m_saving = false;
+    p->m_document.unfreeze();
+    p->m_document.m_source->onDocumentSaved(p->m_document);
+    p->m_document.m_saved(p->m_document);
+    delete &p->m_writer;
+    delete p;
+    return FALSE;
+}
+
+gboolean Document::onLoaded(Worker &worker)
+{
+}
+
+void Document::onSaved(Worker &worker)
+{
 }
 
 void Document::load()
@@ -177,19 +247,22 @@ void Document::save()
 {
 }
 
-void Document::insert(int position, const char* text)
+void Document::insert(int line, int column, const char* text, int length)
 {
     GtkTextIter iter;
-    gtk_text_buffer_get_iter_at_offset(m_gtkBuffer, &iter, position);
-    gtk_text_buffer_insert(m_gtkBuffer, &iter, text, -1);
+    gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer, &iter, line, column);
+    gtk_text_buffer_insert(m_gtkBuffer, &iter, text, length);
 }
 
-void Document::remove(int begin, int end)
+void Document::remove(int beginLine, int beginColumn,
+                      int endLine, int endColumn)
 {
-    GtkTextIter bi, ei;
-    gtk_text_buffer_get_iter_at_offset(m_gtkBuffer, &bi, begin);
-    gtk_text_buffer_get_iter_at_offset(m_gtkBuffer, &ei, end);
-    gtk_text_buffer_delete(m_gtkBuffer, &bi, &ei);
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_iter_at_offset(m_gtkBuffer, &begin,
+                                       beginLine, beginColumn);
+    gtk_text_buffer_get_iter_at_offset(m_gtkBuffer, &end,
+                                       endLine, endColumn);
+    gtk_text_buffer_delete(m_gtkBuffer, &begin, &end);
 }
 
 void Document::addEditor(Editor& editor)
