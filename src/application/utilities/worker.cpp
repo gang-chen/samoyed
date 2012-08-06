@@ -72,9 +72,6 @@ void Worker::operator()()
     {
         ExecutionWrapper wrapper(*this);
         m_blocked = false;
-#ifndef SMYD_WORKER_UNIT_TEST
-        Application::instance()->setThreadWorker(this);
-#endif
         {
             // After preparing for the execution but before entering the
             // execution, check to see if we are updated.
@@ -320,7 +317,7 @@ public:
             boost::scoped_array<char> desc(m_alarm->description());
             if (update)
             {
-                   if (m_alarm->update(times))
+                if (m_alarm->update(times))
                 {
                     printf("%s: Update requested successfully\n", desc.get());
                 }
