@@ -7,10 +7,9 @@
 #include "utilities/text-buffer.hpp"
 #include "utilities/text-file-reader.hpp"
 #include "utilities/text-file-writer.hpp"
+#include "utilities/scheduler.hpp"
 #include <assert.h>
 #include <string.h>
-
-#define INSERTION_MERGE_LENGTH_THRESHOLD 100
 
 namespace
 {
@@ -33,6 +32,8 @@ struct DocumentSavedParam
     TextFileWriter &m_writer;
 };
 
+const int DOCUMENT_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
+
 }
 
 namespace Samoyed
@@ -45,7 +46,7 @@ bool Document::Insertion::merge(const Insertion &ins)
         m_text.append(ins.m_text);
         return true;
     }
-    if (ins.m_text.length() > INSERTION_MERGE_LENGTH_THRESHOLD)
+    if (ins.m_text.length() > DOCUMENT_INSERTION_MERGE_LENGTH_THRESHOLD)
         return false;
     const char *cp = ins.m_text.c_str();
     int line = ins.m_line;
@@ -130,7 +131,7 @@ void Document::EditStack::execute(Document &document) const
     document.endUserAction();
 }
 
-GtkTextTagTable* Document::s_sharedTagTable = 0;
+GtkTextTagTable* Document::s_sharedTagTable = NULL;
 
 void Document::createSharedData()
 {
@@ -169,9 +170,6 @@ Document::Document(const char* uri):
     m_source->onDocumentOpened(*this);
 
     m_ast = Application::instance()->fileAstManager()->get(uri);
-
-    // Start loading.
-    load();
 }
 
 Document::~Document()
@@ -194,23 +192,37 @@ Document::~Document()
 gboolean Document::loaded(gpointer param)
 {
     DocumentLoadedParam *p = static_cast<DocumentLoadedParam *>(param);
+    Document &doc = p->m_document;
+    TextFileReader &reader = p->m_reader;
 
     // Copy contents in the reader's buffer to the document's buffer.
-    GtkTextBuffer *gtkBuffer = p->m_document.m_gtkBuffer;
-    TextBuffer *buffer = p->m_reader.buffer();
+    GtkTextBuffer *gtkBuffer = doc.m_gtkBuffer;
+    TextBuffer *buffer = reader.buffer();
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_start_iter(gtkBuffer, &begin);
+    gtk_text_buffer_get_end_iter(gtkBuffer, &end);
+    gtk_text_buffer_delete(gtkBuffer, &begin, &end);
+    TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
+    do
+    {
+        const char *begin, *end;
+        if (it.getAtomsBulk(begin, end))
+            gtk_text_buffer_insert_at_cursor(gtkBuffer, begin, end - begin);
+    }
+    while (it.goToNextBulk());
 
-    p->m_document.m_revision = p->m_reader.revision();
-    p->m_document.m_ioError = p->m_reader.fetchError();
-    p->m_document.m_initialized = true;
-    p->m_document.m_loading = false;
-    p->m_document.unfreeze();
-    p->m_document.m_source->onDocumentLoaded(p->m_document);
-    p->m_document.m_loaded(p->m_document);
-    delete &p->m_reader;
+    doc.m_revision = reader.revision();
+    doc.m_ioError = reader.fetchError();
+    doc.m_initialized = true;
+    doc.m_loading = false;
+    doc.unfreeze();
+    doc.m_source->onDocumentLoaded(doc);
+    doc.m_loaded(doc);
+    delete &reader;
     delete p;
 
     // If any error was encountered, report it.
-    if (p->m_document.m_ioError)
+    if (doc.m_ioError)
     {
     }
 
@@ -220,31 +232,67 @@ gboolean Document::loaded(gpointer param)
 gboolean Document::saved(gpointer param)
 {
     DocumentSavedParam *p = static_cast<DocumentSavedParam *>(param);
-    p->m_document.m_revision = p->m_writer.revision();
-    p->m_document.m_ioError = p->m_writer.fetchError();
-    p->m_document.m_saving = false;
-    p->m_document.unfreeze();
-    p->m_document.m_source->onDocumentSaved(p->m_document);
-    p->m_document.m_saved(p->m_document);
-    delete &p->m_writer;
+    doc.m_revision = writer.revision();
+    doc.m_ioError = writer.fetchError();
+    doc.m_saving = false;
+    doc.unfreeze();
+    doc.m_source->onDocumentSaved(doc);
+    doc.m_saved(doc);
+    delete &writer;
     delete p;
+
+    // If any error was encountered, report it.
+    if (doc.m_ioError)
+    {
+    }
+
     return FALSE;
 }
 
-gboolean Document::onLoaded(Worker &worker)
+void Document::onLoaded(Worker &worker)
 {
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    G_CALLBACK(loaded),
+                    new DocumentLoadedParam(*this,
+                        static_cast<TextFileReader &>(worker)),
+                    NULL);
 }
 
 void Document::onSaved(Worker &worker)
 {
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    G_CALLBACK(saved),
+                    new DocumentLoadedParam(*this,
+                        static_cast<TextFileWriter &>(worker)),
+                    NULL);
 }
 
-void Document::load()
+void Document::load(const char *uri, bool convertEncoding)
 {
+    m_loading = true;
+    freeze();
+    TextFileReader *reader =
+        new TextFileReader(uri ? uri : m_uri.c_str(),
+                           convertEncoding,
+                           Worker::PRIORITY_INTERACTIVE,
+                           boost::bind(&Document::onLoaded,
+                                       this,
+                                       _1));
+    Application::instance()->scheduler()->schedule(*reader);
 }
 
-void Document::save()
+void Document::save(const char *uri, bool convertEncoding)
 {
+    m_saving = true;
+    freeze();
+    TextFileWriter *writer =
+        new TextFileWriter(uri ? uri : m_uri.c_str(),
+                           convertEncoding,
+                           Worker::PRIORITY_INTERACTIVE,
+                           boost::bind(&Document::onSaved,
+                                       this,
+                                       _1));
+    Application::instance()->scheduler()->schedule(*writer);
 }
 
 void Document::insert(int line, int column, const char* text, int length)

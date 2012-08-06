@@ -18,7 +18,9 @@ bool FileSource::Loading::execute(FileSource &source)
 {
     m_source = WeakPointer<FileSource>(&source);
     TextFileReader *reader =
-        new TextFileReader(Worker::PRIORITY_FOREGROUND,
+        new TextFileReader(source.uri(),
+                           true,
+                           Worker::defaultPriorityInCurrentThread(),
                            boost::bind(&FileSource::Loading::onLoaded,
                                        this,
                                        _1));

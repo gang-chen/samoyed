@@ -76,7 +76,7 @@ public:
 
     typedef boost::function<void (Worker &)> Callback;
 
-    static Priority defaultPriority();
+    static Priority defaultPriorityInCurrentThread();
 
     /**
      * Construct a worker.  It is assumed that the worker will be submitted to

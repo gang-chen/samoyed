@@ -40,13 +40,12 @@ Application *Application::s_instance = NULL;
 
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
-    m_preferences(NULL),
     m_fileTypeRegistry(NULL),
     m_sessionManager(NULL),
     m_scheduler(NULL),
     m_documentManager(NULL),
-    m_sourceImageManager(NULL),
-    m_compiledImageManager(NULL),
+    m_fileSourceManager(NULL),
+    m_fileAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
     m_currentWindow(NULL),
     m_switchingSession(false)
@@ -299,7 +298,7 @@ bool Application::quit()
     return m_sessionManager->quitSession();
 }
 
-Window *Application::createWindow(const Window::Configuration &config)
+Window *Application::createWindow(const Window::Configuration *config)
 {
     Window *window = new Window;
     if (!window->create(config))
@@ -314,26 +313,26 @@ Window *Application::createWindow(const Window::Configuration &config)
     return window;
 }
 
-bool Application::destroyWindow(Window *window)
+bool Application::destroyWindow(Window &window)
 {
     // If this is the only one window, we quit the current session.
     if (m_windows.size() == 1)
     {
-        assert(m_windows.front() == window);
+        assert(m_windows.front() == &window);
         return quit();
     }
 
-    return window->destroy();
+    return window.destroy();
 }
 
-bool Application::destroyWindowOnly(Window *window)
+bool Application::destroyWindowOnly(Window &window)
 {
-    return window->destroy();
+    return window.destroy();
 }
 
-void Application::onWindowDestroyed(Window *window)
+void Application::onWindowDestroyed(Window &window)
 {
-    std::remove(m_windows.begin(), m_windows.end(), window);
+    std::remove(m_windows.begin(), m_windows.end(), &window);
     delete &window;
     if (m_windows.empty())
     {
@@ -351,14 +350,14 @@ void Application::onWindowDestroyed(Window *window)
     }
 }
 
-void Application::setCurrentWindow(Window *window)
+void Application::setCurrentWindow(Window &window)
 {
-    gtk_window_present(GTK_WINDOW(window->gtkWidget()));
+    gtk_window_present(GTK_WINDOW(window.gtkWidget()));
 }
 
-void Application::onWindowFocusIn(Window *window)
+void Application::onWindowFocusIn(Window &window)
 {
-    m_currentWindow = window;
+    m_currentWindow = &window;
 }
 
 }

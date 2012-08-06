@@ -59,7 +59,7 @@ bool Window::create(const Configuration *config)
 
     g_signal_connect(m_window,
                      "destroy-event",
-                     G_CALLBACK(requstDestroy),
+                     G_CALLBACK(onDestroyEvent),
                      this);
     g_signal_connect(m_window,
                      "destroy",
@@ -90,7 +90,7 @@ gboolean Window::onDestroyEvent(GtkWidget *widget,
                                 gpointer window)
 {
     Window *w = static_cast<Window *>(window);
-    Application::instance()->destroyWindow(w);
+    Application::instance()->destroyWindow(*w);
     return TRUE;
 }
 
@@ -106,7 +106,7 @@ gboolean Window::onFocusIn(GtkWidget *widget,
                            gpointer window)
 {
     Window *w = static_cast<Window *>(window);
-    Application::instance()->onWindowFocusIn(w);
+    Application::instance()->onWindowFocusIn(*w);
     return FALSE;
 }
 

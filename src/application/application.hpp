@@ -7,18 +7,18 @@
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/thread/tss.hpp>
 
 namespace Samoyed
 {
 
 template<class> class Manager;
-class Preferences;
 class FileTypeRegistry;
 class SessionManager;
 class Scheduler;
 class DocumentManager;
-class SourceImage;
-class CompiledImageManager;
+class FileSource;
+class FileAstManager;
 class Window;
 
 /**
@@ -57,38 +57,43 @@ public:
      */
     static Application *instance() { return s_instance; }
 
-    Preferences *preferences() const { return m_preferences; }
-
     FileTypeRegistry *fileTypeRegistry() const { return m_fileTypeRegistry; }
 
     SessionManager *sessionManager() const { return m_sessionManager; }
+
     Scheduler *scheduler() const { return m_scheduler; }
 
     DocumentManager *documentManager() const { return m_documentManager; }
 
-    Manager<SourceImage> *sourceImageManager() const
-    { return m_sourceImageManager; }
+    Manager<FileSource> *fileSourceManager() const
+    { return m_fileSourceManager; }
 
-    CompiledImageManager *compiledImageManager() const
-    { return m_compiledImageManager; }
+    FileAstManager *fileAstManager() const
+    { return m_fileAstManager; }
 
     /**
      * @return True, if we are in the main thread.  The main thread is the
      * thread where the application instance was created and started to run.
      * The GTK+ main event loop is in the main thread.
      */
-    bool inMainThreadId() const
+    bool inMainThread() const
     { return boost::this_thread::get_id() == m_mainThreadId; }
 
-    Window *currentWindow() const { return m_currentWindow; }
+    Worker *threadWorker() const
+    { return m_threadWorker.get(); }
 
-    void setCurrentWindow(Window *window);
+    void setThreadWorker(Worker *worker)
+    { m_threadWorker.reset(worker); }
+
+    Window &currentWindow() const { return *m_currentWindow; }
+
+    void setCurrentWindow(Window &window);
 
     const std::vector<Window *> &windows() const { return m_windows; }
 
     Window *createWindow(const Window::Configuration *config);
 
-    bool destroyWindow(Window *window);
+    bool destroyWindow(Window &window);
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -103,14 +108,16 @@ public:
     { return m_userDirName.c_str(); }
 
 private:
-    bool destroyWindowOnly(Window *window);
+    bool destroyWindowOnly(Window &window);
 
     void setSwitchingSession(bool sw) { m_switchingSession = true; }
 
     /**
      * If no window exists, quit the GTK+ main event loop.
      */
-    void onWindowDestroyed(Window *window);
+    void onWindowDestroyed(Window &window);
+
+    void onWindowFocusIn(Window &window);
 
     bool startUp();
 
@@ -131,11 +138,13 @@ private:
 
     DocumentManager *m_documentManager;
 
-    Manager<SourceImage> *m_sourceImageManager;
+    Manager<FileSource> *m_fileSourceManager;
 
-    CompiledImageManager *m_compiledImageManager;
+    FileAstManager *m_fileAstManager;
 
     boost::thread::id m_mainThreadId;
+
+    boost::thread_specific_ptr<Worker> m_threadWorker;
 
     /**
      * The top-level windows.

@@ -161,6 +161,12 @@ public:
 
     const char *uri() const { return m_uri.c_str(); }
 
+    const char *name() const { return m_name.c_str(); }
+
+    const Revision &revision() const { return m_revision; }
+
+    int editCount() const { return m_editCount; }
+
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
      */
@@ -200,19 +206,15 @@ public:
         return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
     }
 
-    const Revision &revision() const { return m_revision; }
-
-    int editCount() const { return m_editCount; }
-
     /**
      * Load the external file into the document.
      */
-    void load();
+    void load(const char *uri, bool convertEncoding);
 
     /**
      * Save the document into the external file.
      */
-    void save();
+    void save(const char *uri, bool convertEncoding);
 
     bool frozen() const { return m_frozen; }
 
@@ -338,9 +340,13 @@ private:
 
     ~Document();
 
-    void onLoaded(Worker &loader);
+    static gboolean loaded(gpointer param);
 
-    void onSaved(Worker &saver);
+    static gboolean saved(gpointer param);
+
+    void onLoaded(Worker &worker);
+
+    void onSaved(Worker &worker);
 
     static void onTextInserted(GtkTextBuffer *buffer,
                                GtkTextIter *position,
@@ -400,7 +406,7 @@ private:
 
     Revision m_revision;
 
-    GError *m_error;
+    GError *m_ioError;
 
     EditStack m_undoHistory;
 

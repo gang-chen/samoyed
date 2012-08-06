@@ -28,6 +28,17 @@ Samoyed::Scheduler scheduler;
 namespace Samoyed
 {
 
+Worker::Priority Worker::defaultPriorityInCurrentThread()
+{
+#ifdef SMYD_WORKER_UNIT_TEST
+    return PRIORITY_INTERACTIVE;
+#else
+    if (Application::instance()->inMainThread())
+        return PRIORITY_INTERACTIVE;
+    return Application::instance()->threadWorker()->priority();
+#endif
+}
+
 void Worker::operator()()
 {
     {
