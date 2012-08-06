@@ -5,7 +5,7 @@
 #define SMYD_WORKER_HPP
 
 #ifndef SMYD_WORKER_UNIT_TEST
-# include "application.hpp"
+# include "../application.hpp"
 #endif
 #include <string>
 #include <boost/utility.hpp>
