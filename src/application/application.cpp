@@ -2,7 +2,7 @@
 // Copyright (C) 2010 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
- #include <config.h>
+# include <config.h>
 #endif
 #include "application.hpp"
 #include "utilities/manager.hpp"
@@ -57,7 +57,7 @@ Application::Application():
 
 Application::~Application()
 {
-    s_instance = 0;
+    s_instance = NULL;
 }
 
 bool Application::startUp()
@@ -338,14 +338,15 @@ void Application::onWindowDestroyed(Window &window)
     {
         m_currentWindow = NULL;
 
-        // If we're switching session, we'll start a new session.
+        // If we're switching to another session, do not quit the application.
         if (!m_switchingSession)
             gtk_main_quit();
     }
     else
     {
         // Temporarily set the current window.  The window manager will choose
-        // one as the current one, which is possibly not owned this application.
+        // one as the current one, which is possibly not owned by this
+        // application.
         m_currentWindow = m_windows[0];
     }
 }
