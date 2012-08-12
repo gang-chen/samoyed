@@ -16,8 +16,8 @@ namespace Samoyed
 
 /**
  * A session can be restored so that the user can continue her work later.  The
- * information on a session, including the configuration of the top-level
- * windows, the opened projects and the opened files, is stored in an XML file.
+ * state of a session, including the configuration of the top-level windows, the
+ * opened projects and the opened files, is stored in an XML file.
  *
  * A session is locked when it is active in an instance of the application.  A
  * lock file is created when a session starts.  The lock file is removed when

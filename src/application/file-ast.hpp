@@ -1,13 +1,13 @@
-// Compiled image of a source file.
+// Abstract syntax tree representation of a source file.
 // Copyright (C) 2012 Gang Chen.
 
-#ifndef SMYD_COMPILED_IMAGE_HPP
-#define SMYD_COMPILED_IMAGE_HPP
+#ifndef SMYD_FILE_AST_HPP
+#define SMYD_FILE_AST_HPP
 
 namespace Samoyed
 {
 
-class CompiledImage
+class FileAst
 {
 public:
 

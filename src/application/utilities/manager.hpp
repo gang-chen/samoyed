@@ -11,6 +11,7 @@
 #include <boost/signals2/dummy_mutex.hpp>
 #include <boost/signals2/signal_type.hpp>
 #include <boost/signals2/signal.hpp>
+#include <boost/function.hpp>
 #include <boost/thread/mutex.hpp>
 
 namespace Samoyed
@@ -101,7 +102,7 @@ public:
     {
         boost::mutex::scoped_lock lock(m_mutex);
         for (typename Store::const_iterator it = m_store.begin(),
-             endIt = m_store.end();
+                 endIt = m_store.end();
              it != endIt;
              ++it)
         {
@@ -127,7 +128,7 @@ public:
     {
         boost::mutex::scoped_lock lock(m_mutex);
         for (typename Store::const_iterator it = m_store.begin(),
-             endIt = m_store.end();
+                 endIt = m_store.end();
              it != endIt;
              ++it)
         {
@@ -135,6 +136,19 @@ public:
         }
         connections.first.disconnect();
         connections.second.disconnect();
+    }
+
+    void forEach(boost::function<bool (Object &)> callback)
+    {
+        boost::mutex::scoped_lock lock(m_mutex);
+        for (typename Store::const_iterator it = m_store.begin(),
+                 endIt = m_store.end();
+             it != endIt;
+             ++it)
+        {
+            if (callback(*static_cast<Object *>(*it)))
+                break;
+        }
     }
 
 private:

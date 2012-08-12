@@ -3,7 +3,7 @@
 
 #include "file-source.hpp"
 #include "application.hpp"
-#include "file-ast-manager.hpp"
+#include "project-ast-manager.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/text-buffer.hpp"
 #include "utilities/text-file-reader.hpp"
@@ -196,25 +196,9 @@ void FileSource::endWrite(Revision &revision,
     m_dataMutex.unlock();
     if (oldRev != revision || oldError != m_error || !range.empty())
     {
-        ChangeHint changeHint(oldRev, revision, range);
-        if (revision.synchronized())
-        {
-            Revision astRev = Application::instance()->fileAstManager()->
-                lookupRevision(uri());
-            if (astRev != revision)
-            {
-                ReferencePointer<FileAst> ast =
-                    Application::instance()->fileAstManager()->get(uri());
-                ast->onSourceChanged(*this, changeHint);
-            }
-        }
-        else
-        {
-            ReferencePointer<FileAst> ast =
-                Application::instance()->fileAstManager()->get(uri());
-            ast->onSourceChanged(*this, changeHint);
-        }
-        m_changeSignal(*this, changeHint);
+        Application::instance()->projectAstManager()->
+            onFileSourceChanged(*this,
+                                ChangeHint(oldRev, revision, range));
     }
     m_controlMutex.unlock();
 }

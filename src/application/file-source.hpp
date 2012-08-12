@@ -294,6 +294,7 @@ private:
     mutable boost::mutex m_pendingChangeMutex;
 
     template<class> friend class Manager;
+    friend class Document;
     friend class Loading;
     friend class RevisionChange;
     friend class Insertion;
