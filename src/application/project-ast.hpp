@@ -6,7 +6,6 @@
 
 #include "file-ast-manager.hpp"
 #include "project-symbol-table-manager.hpp"
-#include <boost/shared_ptr.hpp"
 
 namespace Samoyed
 {
