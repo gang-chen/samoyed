@@ -15,11 +15,14 @@ class ChangeHint;
 class ProjectConfiguration;
 
 /**
- * A project abstract syntax tree consists of abstract syntax tree
- * representations of programs, translation units and source files in the
- * project.  It also contains the look-up table of global symbols in the
- * project.  Individual abstract syntax trees and the symbol table can be
- * retrieved and accessed separately.
+ * A project abstract syntax tree, actually, is a collection of abstract syntax
+ * tree representations the source files in the project and the look-up table of
+ * the global symbols in the project.  These abstract syntax trees and the
+ * symbol table, combined with the project configuration, can construct a
+ * complete and useful abstract syntax tree representation of the project.
+ * Individual abstract syntax trees and the symbol table can be retrieved and
+ * accessed separately.  They are collected together into the project abstract
+ * syntax tree because they are updated together and they are project specific.
  */
 class ProjectAst
 {
