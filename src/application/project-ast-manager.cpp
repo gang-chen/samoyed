@@ -12,7 +12,7 @@ void ProjectAstManager::onFileSourceChanged(const FileSource &source,
                                             const ChangeHint &changeHint)
 {
     // Broadcast the signal to all the projects.
-    forEach(boost::bind(&ProjectAst::onFileSourceChanged,
+    iterate(boost::bind(&ProjectAst::onFileSourceChanged,
                         source, _2,
                         changeHint, _3));
 }
