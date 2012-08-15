@@ -138,7 +138,7 @@ public:
         connections.second.disconnect();
     }
 
-    void forEach(boost::function<bool (Object &)> callback)
+    void iterate(boost::function<bool (Object &)> callback)
     {
         boost::mutex::scoped_lock lock(m_mutex);
         for (typename Store::const_iterator it = m_store.begin(),
