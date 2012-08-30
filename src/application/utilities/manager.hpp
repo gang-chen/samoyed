@@ -1,4 +1,4 @@
-// Object manager, reference pointer.
+// Object manager, reference pointer and weak pointer.
 // Copyright (C) 2011 Gang Chen.
 
 #ifndef SMYD_MANAGER_HPP
@@ -203,6 +203,9 @@ private:
 
     Store m_store;
 
+    /**
+     * Used to assign unique ID's to objects.
+     */
     unsigned long m_serialNumber;
 
     int m_cacheSize;
@@ -219,24 +222,30 @@ private:
 };
 
 /**
- * A reference pointer points to a managed object, like an std::shared_ptr.
+ * A reference pointer points to a managed object and holds a reference to it,
+ * like an std::shared_ptr.
  *
- * A reference pointer can only obtained from a manager or copied from an
- * existing reference pointer.
- *
- * A reference pointer does not protect itself from asynchronous accesses.
+ * A reference pointer can be obtained by wrapping a free pointer, interpreting
+ * a weak pointer or looking up a manager by a key, or copied from an existing
+ * reference pointer.
  */
 template<class Object> class ReferencePointer
 {
 public:
     ReferencePointer(): m_pointer(NULL) {}
 
+    /**
+     * Wrap a free pointer.
+     */
     ReferencePointer(Object *pointer): m_pointer(pointer)
     {
         if (m_pointer)
             m_pointer->m_manager.increaseReference(m_pointer);
     }
 
+    /**
+     * Interprete a weak pointer.
+     */
     ReferencePointer(const WeakPointer<Object> &weak);
 
     ReferencePointer(const ReferencePointer &reference):
@@ -310,15 +319,11 @@ public:
 
 private:
     /**
-     * This constructor is only used by the manager.
-     * @param pointer The pointer to the referenced object.
+     * This constructor doesn't increase the reference count the referenced
+     * object.  It can only be called by the manager, which is responsible for
+     * increasing the reference count.
      */
-    ReferencePointer(Object *pointer, int): m_pointer(pointer)
-    {
-        // This constructor doesn't increase the reference count of the object.
-        // This constructor can only be called by Manager's member functions,
-        // who are responsible for increasing the reference count.
-    }
+    ReferencePointer(Object *pointer, int): m_pointer(pointer) {}
 
     Object *m_pointer;
 
@@ -326,6 +331,10 @@ private:
     template<class> friend class WeakPointer;
 };
 
+/**
+ * A weak pointer keeps track of a managed object and is used to retrieve it
+ * from a manager later, like an std::weak_ptr.
+ */
 template<class Object> class WeakPointer
 {
 public:
@@ -333,17 +342,17 @@ public:
 
     WeakPointer(const Object *pointer):
         m_key(*pointer),
-        m_serialNumber(pointer->m_serialNumber)
+        m_objectId(pointer->m_id)
     {}
 
     WeakPointer(const ReferencePointer<Object> &reference):
         m_key(*reference.m_pointer),
-        m_serialNumber(reference->m_serialNumber)
+        m_objectId(reference->m_id)
     {}
 
     bool operator==(const WeakPointer &rhs) const
     {
-        return m_serialNumber == rhs.m_serialNumber;
+        return m_objectId == rhs.m_objectId;
     }
 
     bool operator!=(const WeakPointer &rhs) const
@@ -354,7 +363,7 @@ public:
 private:
     typename Object::KeyT m_key;
 
-    unsigned long m_serialNumber;
+    unsigned long m_objectId;
 
     template<class> friend class Manager;
 };
@@ -409,7 +418,7 @@ ReferencePointer<Object> Manager<Object>::get(const WeakPointer<Object> &weak)
     ReferencePointer<Object> r = find(weak.m_key);
     if (r)
     {
-        if (r->m_serialNumber == weak.m_serialNumber)
+        if (r->m_id == weak.m_objectId)
             return r;
     }
     return ReferencePointer<Object>(NULL, 0);
