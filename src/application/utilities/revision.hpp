@@ -15,9 +15,9 @@ namespace Samoyed
  * A revision represents the revision of a source file, the revision of the
  * source code contents and the revision of the abstract syntax tree.
  *
- * A revision is defined by the entity tag of the external file, with which the
+ * A revision is defined by the revision of the external file, with which the
  * revision was synchronized last time, and the number of the changes performed
- * after the last synchronization with the external file.
+ * since the last synchronization with the external file.
  *
  * A special revision that represents the empty source file is reserved.  It is
  * called revision zero.
@@ -28,11 +28,11 @@ public:
     /**
      * Construct revision zero.
      */
-    Revision(): m_entityTag(0), m_changeCount(0) {}
+    Revision(): m_externalRevision(0), m_changeCount(0) {}
 
     bool operator==(const Revision &rhs) const
     {
-        return m_entityTag == rhs.m_entityTag &&
+        return m_externalRevision == rhs.m_externalRevision &&
             m_changeCount == rhs.m_changeCount;
     }
 
@@ -43,7 +43,7 @@ public:
 
     void onChanged() { ++m_changeCount; }
 
-    bool zero() const { return m_entityTag == 0 && m_changeCount == 0; }
+    bool zero() const { return m_externalRevision == 0 && m_changeCount == 0; }
 
     void reset()
     {
@@ -59,7 +59,7 @@ public:
     bool synchronize(GFile *file, GError **error);
 
 private:
-    unsigned long m_entityTag;
+    unsigned long m_externalRevision;
 
     unsigned long m_changeCount;
 };
