@@ -17,7 +17,8 @@ namespace Samoyed
  *
  * A revision is defined by the revision of the external file, with which the
  * revision was synchronized last time, and the number of the changes performed
- * since the last synchronization with the external file.
+ * since the last synchronization with the external file.  The external
+ * revision is represented by the time stamp of the external file.
  *
  * A special revision that represents the empty source file is reserved.  It is
  * called revision zero.
@@ -47,7 +48,7 @@ public:
 
     void reset()
     {
-        m_entityTag = 0;
+        m_externalRevision = 0;
         m_changeCount = 0;
     }
 

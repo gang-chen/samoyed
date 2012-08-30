@@ -30,10 +30,9 @@ bool Revision::synchronize(GFile *file, GError **error)
         reset();
         return false;
     }
-    uint64_t fileTimeStamp =
+    m_externalRevision =
         g_file_info_get_attribute_uint64(fileInfo,
                                          G_FILE_ATTRIBUTE_TIME_MODIFIED);
-    onSynchronized(fileTimeStamp);
     g_object_unref(fileInfo);
     return true;
 }

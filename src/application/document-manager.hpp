@@ -1,16 +1,16 @@
 // Document manager.
 // Copyright (C) 2011 Gang Chen.
 
-#ifndef SHELL_DOCUMENT_MANAGER_HPP_INCLUDED
-#define SHELL_DOCUMENT_MANAGER_HPP_INCLUDED
+#ifndef SMYD_DOCUMENT_MANAGER_HPP
+#define SMYD_DOCUMENT_MANAGER_HPP
 
-#include "../utilities/pointer-comparer.hpp"
+#include "utilities/pointer-comparator.hpp"
 #include <utility>
 #include <string>
 #include <boost/signals2/signal.hpp>
 #include <map>
 
-namespace Shell
+namespace Samoyed
 {
 
 class Document;
