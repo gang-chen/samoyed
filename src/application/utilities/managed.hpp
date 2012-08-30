@@ -26,11 +26,11 @@ class Managed: public Key
 {
 protected:
     Managed(const Key &key,
-            unsigned long serialNumber,
+            unsigned long id,
             Manager<Object> &manager):
         Key(key),
         m_refCount(0),
-        m_serialNumber(serialNumber),
+        m_id(id),
         m_manager(manager),
         m_nextFree(NULL),
         m_prevFree(NULL)
@@ -46,7 +46,7 @@ private:
     typedef Key KeyT;
 
     int m_refCount;
-    unsigned long m_serialNumber;
+    unsigned long m_id;
     Manager<Object> &m_manager;
     Object *m_nextFree;
     Object *m_prevFree;
