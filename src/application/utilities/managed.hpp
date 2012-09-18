@@ -13,12 +13,12 @@ namespace Samoyed
 template<class> class Manager;
 
 /**
- * A managed object is an object that can only be obtained from a manager who
- * may either retrieve the existing one or create a new one, if none.  It must
- * not be created or deleted in any other way.  A key is used to look up the
- * object in the manager.
+ * A managed object is an object whose lifetime is managed by a manager.  A
+ * managed object can only be obtained from a manager by a key.  The key
+ * identifies a unique object in the manager.  The manager may either retrieve
+ * the existing one or create a new one, if none.
  *
- * @param Key The type of the lookup key that uniquely identifies objects.
+ * @param Key The type of the lookup keys that uniquely identify objects.
  * @param Object The type of the actual managed objects.
  */
 template<class Key, class Object>
@@ -32,8 +32,8 @@ protected:
         m_refCount(0),
         m_id(id),
         m_manager(manager),
-        m_nextFree(NULL),
-        m_prevFree(NULL)
+        m_nextCached(NULL),
+        m_prevCached(NULL)
     {}
 
     ~Managed()
@@ -48,8 +48,8 @@ private:
     int m_refCount;
     unsigned long m_id;
     Manager<Object> &m_manager;
-    Object *m_nextFree;
-    Object *m_prevFree;
+    Object *m_nextCached;
+    Object *m_prevCached;
 
     template<class> friend class Manager;
     template<class> friend class ReferencePointer;

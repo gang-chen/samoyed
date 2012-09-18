@@ -8,10 +8,8 @@
 #include <assert.h>
 #include <set>
 #include <boost/utility.hpp>
-#include <boost/signals2/dummy_mutex.hpp>
-#include <boost/signals2/signal_type.hpp>
-#include <boost/signals2/signal.hpp>
 #include <boost/function.hpp>
+#include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 
 namespace Samoyed
@@ -22,18 +20,16 @@ template<class> class WeakPointer;
 
 /**
  * A manager manages the lifetimes of objects using reference counts, and
- * maintains the uniqueness of objects.
+ * maintains the uniqueness of objects within the manager.
  *
- * A client can observe a manager to get it notified of construction and
- * destruction of each managed object, by registering two callbacks.  A callback
- * is called after each object is constructed, while the other callback is
- * called before each object is destructed.
+ * A manager caches objects in memory.  When a reference count reaches zero, a
+ * manager keeps the object in memory and still allows users to retrieve it.
+ * When the cache is full, swap the least recently used cached objects out of
+ * memory.
  *
- * We pass the constructed or to-be-destructed objects, instead of their
- * reference pointers, to the callbacks because we can't create reference
- * pointers to to-be-destructed objects, and we'd like to eliminate the
- * overhead caused by reference pointers creation.  Anyway, the callbacks can
- * acquire a reference pointer to the object or a new equivalent object.
+ * A manager can't be deleted directly because it may hold some objects and we
+ * don't know when these objects are deleted.  A manager can only be requested
+ * to be deleted when all the managed objects are deleted.
  *
  * @param Object The type of the managed objects.  It should be derived from
  * 'Managed<Key, Object>'.
@@ -46,37 +42,32 @@ private:
 
     typedef std::set<Key *, PointerComparator<Key> > Store;
 
-    typedef typename
-    boost::signals2::signal_type<void (Object &),
-        boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >
-        ::type ObjectConstructed;
-    typedef typename
-    boost::signals2::signal_type<void (Object &),
-        boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >
-        ::type ObjectToBeDestructed;
-
 public:
     Manager(int cacheSize):
         m_serialNumber(0),
         m_cacheSize(cacheSize),
         m_nCachedObjects(0),
-        m_lruFreeObject(NULL),
-        m_mruFreeObject(NULL)
+        m_lruCachedObject(NULL),
+        m_mruCachedObject(NULL)
     {}
 
-    ~Manager()
+    /**
+     * Request to destroy the manager.
+     */
+    void destroy()
     {
-        for (typename Store::const_iterator it = m_store.begin();
-             it != m_store.end();
-             ++it)
+        bool del = false;
         {
-            Object *object = static_cast<Object *>(*it);
-            assert(object->m_refCount == 0);
-            m_objectToBeDestructed(*object);
-            delete object;
-            --m_nCachedObjects;
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_destroy = true; 
+            // If no one holds any reference to objects, it is safe to destroy
+            // the manager.
+            if (m_store.size() ==
+                static_cast<typename Store::size_type>(m_nCachedObjects))
+                del = true;
         }
-        assert(m_nCachedObjects == 0);
+        if (del)
+            delete this;
     }
 
     ReferencePointer<Object> find(const Key &key);
@@ -84,59 +75,6 @@ public:
     ReferencePointer<Object> get(const Key &key);
 
     ReferencePointer<Object> get(const WeakPointer<Object> &weak);
-
-    /**
-     * Add an observer by registering a post-construction callback and a
-     * pre-destruction callback.  Notify the observer of virtual constructions
-     * of all the existing objects.
-     * @param postConstructionCb The post-construction callback.
-     * @param preDestructionCb The pre-destruction callback.
-     * @return The connections of the post-construction and pre-destruction
-     * callbacks, which can be used to remove the observer later.
-     */
-    std::pair<boost::signals2::connection, boost::signals2::connection>
-    addObserver(const typename ObjectConstructed::slot_type
-                &postConstructionCb,
-                const typename ObjectToBeDestructed::slot_type
-                &preDestructionCb)
-    {
-        boost::mutex::scoped_lock lock(m_mutex);
-        for (typename Store::const_iterator it = m_store.begin(),
-                 endIt = m_store.end();
-             it != endIt;
-             ++it)
-        {
-            postConstructionCb(*static_cast<Object *>(*it));
-        }
-        return std::make_pair(
-            m_objectConstructed.connect(postConstructionCb),
-            m_objectToBeDestructed.connect(preDestructionCb));
-    }
-
-    /**
-     * Remove an observer by unregistering the post-construction and
-     * pre-destruction callbacks.  Notify the observer of virtual destructions
-     * of all the existing objects.
-     * @param connections The connections of the post-construction and
-     * pre-destruction callbacks.
-     * @param preDestructionCb The pre-destruction callback.
-     */
-    void removeObserver(std::pair<boost::signals2::connection,
-                                  boost::signals2::connection> connections,
-                        const typename ObjectToBeDestructed::slot_type
-                        &preDestructionCb)
-    {
-        boost::mutex::scoped_lock lock(m_mutex);
-        for (typename Store::const_iterator it = m_store.begin(),
-                 endIt = m_store.end();
-             it != endIt;
-             ++it)
-        {
-            preDestructionCb(*static_cast<Object *>(*it));
-        }
-        connections.first.disconnect();
-        connections.second.disconnect();
-    }
 
     void iterate(boost::function<bool (Object &)> callback)
     {
@@ -152,6 +90,47 @@ public:
     }
 
 private:
+    ~Manager()
+    {
+        // Delete all cached objects.
+        for (typename Store::const_iterator it = m_store.begin(),
+                 endIt = m_store.end();
+             it != endIt;
+             ++it)
+        {
+            Object *object = static_cast<Object *>(*it);
+            assert(object->m_refCount == 0);
+            delete object;
+        }
+    }
+
+    void cacheObject(Object *object)
+    {
+        // Cache the object.
+        if (m_mruCachedObject)
+            m_mruCachedObject->m_nextCached = object;
+        else
+            m_lruCachedObject = object;
+        object->m_prevCached = m_mruCachedObject;
+        m_mruCachedObject = object;
+        ++m_nCachedObjects;
+
+        // If the cache is full, swap the least recently used cached objects out
+        // of memory.
+        while (m_nCachedObjects > m_cacheSize)
+        {
+            Object *object = m_lruCachedObject;
+            if (object->m_nextCached)
+                object->m_nextCached->m_prevCached = object->m_prevCached;
+            else
+                m_mruCachedObject = object->m_prevCached;
+            m_lruCachedObject = object->m_nextCached;
+            m_store.erase(object);
+            delete object;
+            --m_nCachedObjects;
+        }
+    }
+
     void increaseReference(Object *object)
     {
         boost::mutex::scoped_lock lock(m_mutex);
@@ -160,30 +139,22 @@ private:
 
     void decreaseReference(Object *object)
     {
-        boost::mutex::scoped_lock lock(m_mutex);
-        if (--object->m_refCount == 0)
+        bool del = false;
         {
-            if (m_mruFreeObject)
-                m_mruFreeObject->m_nextFree = object;
-            else
-                m_lruFreeObject = object;
-            object->m_prevFree = m_mruFreeObject;
-            m_mruFreeObject = object;
-            if (m_nCachedObjects == m_cacheSize)
+            boost::mutex::scoped_lock lock(m_mutex);
+            if (--object->m_refCount == 0)
             {
-                Object *object = m_lruFreeObject;
-                if (object->m_nextFree)
-                    object->m_nextFree->m_prevFree = object->m_prevFree;
-                else
-                    m_mruFreeObject = object->m_prevFree;
-                m_lruFreeObject = object->m_nextFree;
-                m_store.erase(object);
-                m_objectToBeDestructed(*object);
-                delete object;
+                cacheObject(object);
+                // If no one holds any reference to objects, it is safe to
+                // destroy the manager.
+                if (m_destroy &&
+                    m_store.size() ==
+                    static_cast<typename Store::size_type>(m_nCachedObjects))
+                    del = true;
             }
-            else
-                ++m_nCachedObjects;
         }
+        if (del)
+            delete this;
     }
 
     void switchReference(Object *newObject, Object *oldObject)
@@ -192,11 +163,7 @@ private:
         {
             boost::mutex::scoped_lock lock(m_mutex);
             if (--oldObject->m_refCount == 0)
-            {
-                m_store.erase(oldObject);
-                m_objectToBeDestructed(*oldObject);
-                delete oldObject;
-            }
+                cacheObject(oldObject);
             ++newObject->m_refCount;
         }
     }
@@ -208,13 +175,16 @@ private:
      */
     unsigned long m_serialNumber;
 
+    // Cache.
     int m_cacheSize;
     int m_nCachedObjects;
-    Object *m_lruFreeObject;
-    Object *m_mruFreeObject;
+    Object *m_lruCachedObject;
+    Object *m_mruCachedObject;
 
-    ObjectConstructed m_objectConstructed;
-    ObjectToBeDestructed m_objectToBeDestructed;
+    /**
+     * Requested to destroy the manager?
+     */
+    bool m_destroy;
 
     mutable boost::mutex m_mutex;
 
@@ -244,7 +214,7 @@ public:
     }
 
     /**
-     * Interprete a weak pointer.
+     * Interpret a weak pointer.
      */
     ReferencePointer(const WeakPointer<Object> &weak);
 
@@ -376,7 +346,7 @@ ReferencePointer<Object> Manager<Object>::find(const Key &key)
     if (it == m_store.end())
         return ReferencePointer<Object>(NULL, 0);
     Object *object = static_cast<Object *>(*it);
-    if (object->m_nextFree || object == m_mruFreeObject)
+    if (object->m_refCount == 0)
         return ReferencePointer<Object>(NULL, 0);
     ++object->m_refCount;
     return ReferencePointer<Object>(object, 0);
@@ -387,26 +357,29 @@ ReferencePointer<Object> Manager<Object>::get(const Key& key)
 {
     boost::mutex::scoped_lock lock(m_mutex);
     typename Store::iterator it = m_store.find(const_cast<Key *>(&key));
+    Object *object;
     if (it == m_store.end())
     {
-        Object *newObject = new Object(key, m_serialNumber++, *this);
-        m_objectConstructed(*newObject);
-        it = m_store.insert(newObject).first;
+        object = new Object(key, m_serialNumber++, *this);
+        m_store.insert(object);
     }
-    Object *object = static_cast<Object *>(*it);
-    if (object->m_nextFree || object == m_mruFreeObject)
+    else
     {
-        --m_nCachedObjects;
-        if (object->m_nextFree)
-            object->m_nextFree->m_prevFree = object->m_prevFree;
-        else
-            m_mruFreeObject = object->m_prevFree;
-        if (object->m_prevFree)
-            object->m_prevFree->m_nextFree = object->m_nextFree;
-        else
-            m_lruFreeObject = object->m_nextFree;
-        object->m_nextFree = NULL;
-        object->m_prevFree = NULL;
+        object = static_cast<Object *>(*it);
+        if (object->m_refCount == 0)
+        {
+            if (object->m_nextCached)
+                object->m_nextCached->m_prevCached = object->m_prevCached;
+            else
+                m_mruCachedObject = object->m_prevCached;
+            if (object->m_prevCached)
+                object->m_prevCached->m_nextCached = object->m_nextCached;
+            else
+                m_lruCachedObject = object->m_nextCached;
+            object->m_nextCached = NULL;
+            object->m_prevCached = NULL;
+            --m_nCachedObjects;
+        }
     }
     ++object->m_refCount;
     return ReferencePointer<Object>(object, 0);

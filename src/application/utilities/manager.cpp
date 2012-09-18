@@ -41,11 +41,11 @@ private:
                                               serialNumber,
                                               mgr)
     {
-        printf("constructing %s\n", this->name());
+        printf("Constructing %s\n", this->name());
     }
     ~Person()
     {
-        printf("destructing %s\n", name());
+        printf("Destructing %s\n", name());
     }
     template<class> friend class Samoyed::Manager;
 };
@@ -66,23 +66,23 @@ struct ThreadProc
         {
             Samoyed::ReferencePointer<Person> p =
                 m_manager.get(persons[i % 10]);
-            printf("thread %d is holding a reference to %s\n", m_id, p->name());
+            printf("Thread %d is holding a reference to %s\n", m_id, p->name());
             if (i == 1)
             {
                 w1 = Samoyed::WeakPointer<Person>(p);
-                printf("thread %d is holding a weak reference to %s\n",
+                printf("Thread %d is holding a weak reference to %s\n",
                        m_id, p->name());
             }
             if (i == 2)
             {
                 w2 = Samoyed::WeakPointer<Person>(p);
-                printf("thread %d is holding a weak reference to %s\n",
+                printf("Thread %d is holding a weak reference to %s\n",
                        m_id, p->name());
             }
             if (i == 3)
             {
                 w3 = Samoyed::WeakPointer<Person>(p);
-                printf("thread %d is holding a weak reference to %s\n",
+                printf("Thread %d is holding a weak reference to %s\n",
                        m_id, p->name());
             }
             boost::system_time t = boost::get_system_time();
@@ -91,13 +91,13 @@ struct ThreadProc
 
             p = m_manager.get(w1);
             if (p)
-                printf("thread %d got %s\n", m_id, p->name());
+                printf("Thread %d got %s\n", m_id, p->name());
             p = m_manager.get(w2);
             if (p)
-                printf("thread %d got %s\n", m_id, p->name());
+                printf("Thread %d got %s\n", m_id, p->name());
             p = m_manager.get(w3);
             if (p)
-                printf("thread %d got %s\n", m_id, p->name());
+                printf("Thread %d got %s\n", m_id, p->name());
         }
     }
 
@@ -107,43 +107,33 @@ struct ThreadProc
     int m_times;
 };
 
-void onPersonCreated(Person &p)
-{
-    printf("%s created\n", p.name());
-}
-
-void onPersonDestroyed(Person &p)
-{
-    printf("%s to be destroyed\n", p.name());
-}
-
 int main()
 {
-    Samoyed::Manager<Person> manager(0);
-    std::pair<boost::signals2::connection, boost::signals2::connection> c =
-        manager.addObserver(onPersonCreated, onPersonDestroyed);
-    boost::thread t1(ThreadProc(manager, 1, 2, 20));
-    boost::thread t2(ThreadProc(manager, 2, 3, 18));
-    boost::thread t3(ThreadProc(manager, 3, 5, 15));
-    boost::thread t4(ThreadProc(manager, 4, 7, 10));
+    printf("Disable manager cache\n");
+    Samoyed::Manager<Person> *manager = new Samoyed::Manager<Person>(0);
+    boost::thread t1(ThreadProc(*manager, 1, 2, 20));
+    boost::thread t2(ThreadProc(*manager, 2, 3, 18));
+    boost::thread t3(ThreadProc(*manager, 3, 5, 15));
+    boost::thread t4(ThreadProc(*manager, 4, 7, 10));
     t1.join();
     t2.join();
     t3.join();
     t4.join();
-    manager.removeObserver(c, onPersonDestroyed);
+    printf("Request to delete manager\n");
+    manager->destroy();
 
-    Samoyed::Manager<Person> manager2(2);
-    std::pair<boost::signals2::connection, boost::signals2::connection> c2 =
-        manager2.addObserver(onPersonCreated, onPersonDestroyed);
-    boost::thread t12(ThreadProc(manager2, 1, 2, 20));
-    boost::thread t22(ThreadProc(manager2, 2, 3, 18));
-    boost::thread t32(ThreadProc(manager2, 3, 5, 15));
-    boost::thread t42(ThreadProc(manager2, 4, 7, 10));
+    printf("Set manager cache size to 2\n");
+    manager = new Samoyed::Manager<Person>(2);
+    boost::thread t12(ThreadProc(*manager, 1, 2, 20));
+    boost::thread t22(ThreadProc(*manager, 2, 3, 18));
+    boost::thread t32(ThreadProc(*manager, 3, 5, 15));
+    boost::thread t42(ThreadProc(*manager, 4, 7, 10));
     t12.join();
     t22.join();
     t32.join();
     t42.join();
-    manager2.removeObserver(c, onPersonDestroyed);
+    printf("Request to delete manager\n");
+    manager->destroy();
 }
 
 #endif // #ifdef SMYD_MANAGER_UNIT_TEST

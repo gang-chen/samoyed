@@ -146,8 +146,8 @@ int main()
     assert(buffer.cursor3() == 1);
 
     buffer.setCursor3(1);
-    assert(static_cast<unsigned>(buffer.cursor()) == strlen(TEXT1));
-    assert(static_cast<unsigned>(buffer.cursor2()) == strlen(TEXT1));
+    assert(static_cast<size_t>(buffer.cursor()) == strlen(TEXT1));
+    assert(static_cast<size_t>(buffer.cursor2()) == strlen(TEXT1));
     assert(buffer.cursor3() == 1);
 
     buffer.setCursor3(0);
@@ -162,13 +162,13 @@ int main()
 
     buffer.moveCursor(-1);
     buffer.remove(1, -1, -1);
-    assert(static_cast<unsigned>(buffer.length()) == strlen(TEXT1) * 2 - 1);
-    assert(static_cast<unsigned>(buffer.length2()) == strlen(TEXT1) * 2 - 1);
+    assert(static_cast<size_t>(buffer.length()) == strlen(TEXT1) * 2 - 1);
+    assert(static_cast<size_t>(buffer.length2()) == strlen(TEXT1) * 2 - 1);
     assert(buffer.length3() == 1);
 
     buffer.setCursor3(1);
-    assert(static_cast<unsigned>(buffer.cursor()) == strlen(TEXT1));
-    assert(static_cast<unsigned>(buffer.cursor2()) == strlen(TEXT1));
+    assert(static_cast<size_t>(buffer.cursor()) == strlen(TEXT1));
+    assert(static_cast<size_t>(buffer.cursor2()) == strlen(TEXT1));
     assert(buffer.cursor3() == 1);
 
     buffer.setCursor3(0);
@@ -189,7 +189,7 @@ int main()
     assert(buffer.cursor() == buffer.length());
     assert(buffer.cursor2() == buffer.length2());
     assert(buffer.cursor3() == buffer.length3());
-    assert(static_cast<unsigned>(buffer.length()) ==
+    assert(static_cast<size_t>(buffer.length()) ==
            strlen(TEXT1) + strlen(TEXT2));
     assert(buffer.length2() == 15);
     assert(buffer.length3() == 2);
@@ -286,8 +286,8 @@ int main()
     assert(buffer.cursor3() == 2);
 
     buffer.setCursor3(1);
-    assert(static_cast<unsigned>(buffer.cursor()) == strlen(TEXT1));
-    assert(static_cast<unsigned>(buffer.cursor2()) == strlen(TEXT1));
+    assert(static_cast<size_t>(buffer.cursor()) == strlen(TEXT1));
+    assert(static_cast<size_t>(buffer.cursor2()) == strlen(TEXT1));
     assert(buffer.cursor3() == 1);
 
     buffer.getAtoms(buffer.cursor(), buffer.length() - buffer.cursor(), text);

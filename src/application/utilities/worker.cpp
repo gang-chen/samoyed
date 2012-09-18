@@ -28,7 +28,7 @@ Samoyed::Scheduler scheduler;
 namespace Samoyed
 {
 
-Worker::Priority Worker::defaultPriorityInCurrentThread()
+unsigned int Worker::defaultPriorityInCurrentThread()
 {
 #ifdef SMYD_WORKER_UNIT_TEST
     return PRIORITY_INTERACTIVE;
@@ -59,19 +59,20 @@ void Worker::operator()()
             m_block = false;
             return;
         }
-        if (
+        unsigned int hpp =
 #ifdef SMYD_WORKER_UNIT_TEST
             scheduler.
 #else
             Application::instance()->scheduler()->
 #endif
-                highestPendingWorkerPriority()
-            > m_priority)
+            highestPendingWorkerPriority();
+        if (hpp > m_priority)
         {
 #ifdef SMYD_WORKER_UNIT_TEST
             scheduler.schedule(*this);
             boost::scoped_array<char> desc(description());
-            printf("%s: Preempted\n", desc.get());
+            printf("%s: Priority %u preempted by priority %u\n",
+                   desc.get(), m_priority, hpp);
 #else
             Application::instance()->scheduler()->schedule(*this);
 #endif
@@ -131,14 +132,14 @@ void Worker::operator()()
                     m_blocked = true;
                     return;
                 }
-                if (
+                unsigned int hpp =
 #ifdef SMYD_WORKER_UNIT_TEST
                     scheduler.
 #else
                     Application::instance()->scheduler()->
 #endif
-                        highestPendingWorkerPriority()
-                    > m_priority)
+                    highestPendingWorkerPriority();
+                if (hpp > m_priority)
                 {
                     // FIXME It is possible that multiple low priority workers
                     // are preempted by a higher priority.  But actually only
@@ -152,7 +153,8 @@ void Worker::operator()()
                         schedule(*this);
 #ifdef SMYD_WORKER_UNIT_TEST
                     boost::scoped_array<char> desc(description());
-                    printf("%s: Preempted\n", desc.get());
+                    printf("%s: Priority %u preempted by priority %u\n",
+                           desc.get(), m_priority, hpp);
 #endif
                     return;
                 }
@@ -259,11 +261,11 @@ public:
     {
         int size =
             snprintf(NULL, 0,
-                     "Alarm %d: alarm every %d seconds for %d times",
+                     "Alarm %d: Alarm every %d seconds for %d times",
                      m_id, m_sec, m_times);
         char *desc = new char[size + 1];
         snprintf(desc, size + 1,
-                 "Alarm %d: alarm every %d seconds for %d times",
+                 "Alarm %d: Alarm every %d seconds for %d times",
                  m_id, m_sec, m_times);
         return desc;
     }
@@ -318,7 +320,7 @@ public:
         run(times, true);
     }
 
-    void run(int times, bool update)
+    void run(int times, bool incremental)
     {
         if (!times)
             return;
@@ -326,7 +328,7 @@ public:
         if (m_alarm)
         {
             boost::scoped_array<char> desc(m_alarm->description());
-            if (update)
+            if (incremental)
             {
                 if (m_alarm->update(times))
                 {
@@ -397,24 +399,38 @@ int main()
 {
     AlarmDriver d1(1, 1, 1), d2(2, 2, 2), d3(3, 3, 3), d4(4, 4, 4), d5(5, 5, 5);
     boost::system_time t = boost::get_system_time();
+    printf("Alarm 1 runs 10 times\n");
     d1.run(10, false);
+    printf("Scheduler starts 3 threads\n");
     scheduler.size_controller().resize(3);
+    printf("Alarm 2 runs 1 more time\n");
     d2.run(1, true);
     t += boost::posix_time::seconds(5);
     boost::thread::sleep(t);
+    printf("Alarm 1 runs 1 time\n");
     d1.run(1, false);
+    printf("Alarm 2 runs 2 more times\n");
     d2.run(2, true);
+    printf("Alarm 3 runs 1 more time\n");
     d3.run(1, true);
+    printf("Alarm 4 runs 7 more times\n");
     d4.run(7, true);
+    printf("Alarm 5 runs 5 more times\n");
     d5.run(5, true);
     t += boost::posix_time::seconds(7);
     boost::thread::sleep(t);
+    printf("Scheduler resizes to 2 threads\n");
     scheduler.size_controller().resize(2);
+    printf("Alarm 1 runs 1 time\n");
     d1.run(1, false);
+    printf("Alarm 2 runs 7 more times\n");
     d2.run(7, true);
+    printf("Alarm 3 runs 11 more times\n");
     d3.run(11, true);
+    printf("Alarm 4 runs 5 more times\n");
     d4.run(5, true);
-    d5.run(7, true);
+    printf("Alarm 5 runs 7 times\n");
+    d5.run(7, false);
     scheduler.wait();
     return 0;
 }
