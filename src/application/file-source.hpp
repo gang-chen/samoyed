@@ -206,7 +206,7 @@ private:
     {
     public:
         ChangeExecutionWorker(FileSource &source): m_source(&source) {}
-        virtual bool operator()();
+        virtual bool step();
 
     private:
         ReferencePointer<FileSource> m_source;
@@ -250,8 +250,6 @@ private:
                                int beginColumn,
                                int endLine,
                                int endColumn);
-
-    void updateNow();
 
     static gboolean updateInMainThread(gpointer param);
 
