@@ -2,8 +2,9 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
+UNIT TEST BUILD
 g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -I/usr/include -lboost_thread\
- -pthread -Wall -o manager
+ -pthread -Werror -Wall -o manager
 */
 
 #ifdef SMYD_MANAGER_UNIT_TEST

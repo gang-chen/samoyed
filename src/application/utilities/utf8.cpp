@@ -2,7 +2,8 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
-g++ utf8.cpp -DSMYD_UTF8_UNIT_TEST -Wall -o utf8
+UNIT TEST BUILD
+g++ utf8.cpp -DSMYD_UTF8_UNIT_TEST -Werror -Wall -o utf8
 */
 
 #include "utf8.hpp"

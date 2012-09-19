@@ -7,8 +7,6 @@
 #include "utilities/managed.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/revision.hpp"
-#include "utilities/range.hpp"
-#include "utilities/change-hint.hpp"
 #include "utilities/worker.hpp"
 #include <string>
 #include <deque>
@@ -21,6 +19,8 @@
 namespace Samoyed
 {
 
+class Range;
+class ChangeHint;
 class TextBuffer;
 class Document;
 
@@ -90,18 +90,14 @@ private:
     public:
         virtual ~Change() {}
         virtual bool incremental() const = 0;
-
-        /**
-         * @return True if the execution completes.
-         */
-        virtual bool execute(FileSource &source) = 0;
+        virtual void execute(FileSource &source) = 0;
     };
 
     class Loading: public Change
     {
     public:
         virtual bool incremental() const { return false; }
-        virtual bool execute(FileSource &source);
+        virtual void execute(FileSource &source);
     };
 
     class RevisionChange: public Change
@@ -117,7 +113,7 @@ private:
                 g_error_free(m_error);
         }
         virtual bool incremental() const { return true; }
-        virtual bool execute(FileSource &source);
+        virtual void execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -138,7 +134,7 @@ private:
             m_text(text, length)
         {}
         virtual bool incremental() const { return true; }
-        virtual bool execute(FileSource &source);
+        virtual void execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -162,7 +158,7 @@ private:
             m_endColumn(endColumn)
         {}
         virtual bool incremental() const { return true; }
-        virtual bool execute(FileSource &source);
+        virtual void execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -191,7 +187,7 @@ private:
             g_free(m_text);
         }
         virtual bool incremental() const { return false; }
-        virtual bool execute(FileSource &source);
+        virtual void execute(FileSource &source);
 
     private:
         Revision m_revision;
@@ -205,7 +201,12 @@ private:
     class ChangeExecutionWorker: public Worker
     {
     public:
-        ChangeExecutionWorker(FileSource &source): m_source(&source) {}
+        ChangeExecutionWorker(unsigned int priority,
+                              const Callback &callback,
+                              FileSource &source):
+            Worker(priority, callback),
+            m_source(&source)
+        {}
         virtual bool step();
 
     private:
@@ -232,6 +233,8 @@ private:
     void executeQueuedChanges();
 
     void requestChange(Change *change);
+
+    void onChangeWorkerDone(Worker &worker);
 
     void onDocumentClosed(const Document &document);
 
@@ -280,7 +283,7 @@ private:
 
     mutable boost::mutex m_changeExecutorMutex;
 
-    ChangeExecutionWorker m_changeWorker;
+    ChangeExecutionWorker *m_changeWorker;
 
     mutable boost::mutex m_changeWorkerMutex;
 

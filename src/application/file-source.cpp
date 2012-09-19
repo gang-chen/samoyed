@@ -7,55 +7,40 @@
 #include "utilities/scheduler.hpp"
 #include "utilities/text-buffer.hpp"
 #include "utilities/text-file-reader.hpp"
+#include "utilities/range.hpp"
+#include "utilities/change-hint.hpp"
 #include <assert.h>
+#include <string>
+#include <deque>
 #include <boost/bind.hpp>
 #include <glib.h>
 
 namespace Samoyed
 {
 
-bool FileSource::Loading::execute(FileSource &source)
+void FileSource::Loading::execute(FileSource &source)
 {
-    m_source = WeakPointer<FileSource>(&source);
-    TextFileReader *reader =
-        new TextFileReader(source.uri(),
-                           true,
-                           Worker::defaultPriorityInCurrentThread(),
-                           boost::bind(&FileSource::Loading::onLoaded,
-                                       this,
-                                       _1));
-    Application::instance()->scheduler()->schedule(*reader);
-    return false;
+    TextFileReader reader;
+    reader.open(source.uri());
+    reader.read();
+    reader.close();
+    source.beginWrite(false, NULL, NULL, NULL);
+    TextBuffer *buffer = reader.fetchBuffer();
+    source.setBuffer(buffer);
+    source.endWrite(reader.revision(),
+                    reader.fetchError(),
+                    Range(0, buffer->length()));
 }
 
-void FileSource::Loading::onLoaded(Worker &worker)
-{
-    ReferencePointer<FileSource> src =
-        Application::instance()->fileSourceManager()->get(m_source);
-    if (src)
-    {
-        TextFileReader &reader = static_cast<TextFileReader &>(worker);
-        src->beginWrite(false, NULL, NULL, NULL);
-        TextBuffer *buffer = reader.fetchBuffer();
-        src->setBuffer(buffer);
-        src->endWrite(reader.revision(),
-                      reader.fetchError(),
-                      Range(0, buffer->length()));
-        src->onChangeDone(this);
-    }
-    delete &worker;
-}
-
-bool FileSource::RevisionChange::execute(FileSource &source)
+void FileSource::RevisionChange::execute(FileSource &source)
 {
     if (!source.beginWrite(true, NULL, NULL, NULL))
         return false;
     source.endWrite(m_revision, m_error, Range());
     m_error = NULL;
-    return true;
 }
 
-bool FileSource::Insertion::execute(FileSource &source)
+void FileSource::Insertion::execute(FileSource &source)
 {
     TextBuffer *buffer;
     GError *oldError;
@@ -67,10 +52,9 @@ bool FileSource::Insertion::execute(FileSource &source)
                     oldError,
                     Range(buffer->cursor() - m_text.length(),
                           buffer->cursor()));
-    return true;
 }
 
-bool FileSource::Removal::execute(FileSource &source)
+void FileSource::Removal::execute(FileSource &source)
 {
     TextBuffer *buffer;
     GError *oldError;
@@ -85,10 +69,9 @@ bool FileSource::Removal::execute(FileSource &source)
     source.endWrite(m_revision,
                     oldError,
                     Range(buffer->cursor()));
-    return true;
 }
 
-bool FileSource::Replacement::execute(FileSource &source)
+void FileSource::Replacement::execute(FileSource &source)
 {
     TextBuffer *buffer;
     if (!source.beginWrite(true, &buffer, NULL, NULL))
@@ -99,6 +82,11 @@ bool FileSource::Replacement::execute(FileSource &source)
                     m_error,
                     Range(0, buffer->length()));
     m_error = NULL;
+}
+
+bool FileSource::ChangeExecutionWorker::step()
+{
+    m_source.executeQueuedChanges();
     return true;
 }
 
@@ -107,7 +95,7 @@ FileSource::FileSource(const std::string &uri,
                        Manager<FileSource> &mgr):
     Managed<std::string, FileSource>(uri, serialNumber, mgr),
     m_error(NULL),
-    m_executingChange(false)
+    m_changeWorker(NULL)
 {
     m_buffer = new TextBuffer;
     update();
@@ -115,6 +103,8 @@ FileSource::FileSource(const std::string &uri,
 
 FileSource::~FileSource()
 {
+    assert(m_changeQueue.empty());
+    assert(!m_changeWorker);
     delete m_buffer;
     if (m_error)
         g_error_free(m_error);
@@ -222,16 +212,77 @@ void FileSource::endWrite(Revision &revision,
 
 void FileSource::queueChange(Change *change)
 {
+    boost::mutex::scoped_lock lock(m_changeQueueMutex);
+    if (!change->incremental())
+    {
+        while (!m_changeQueue.empty())
+        {
+            Change *c = m_changeQueue.pop_front();
+            delete c;
+        }
+    }
+    m_changeQueue.push_back(change);
 }
 
 void FileSource::executePendingChanges()
 {
+    boost::mutex::scoped_lock exeLock(m_changeExecutorMutex);
+    for (;;)
+    {
+        std::deque<Change *> changes;
+        {
+            boost::mutex::scoped_lock queueLock(m_changeQueueMutex);
+            changes.swap(m_changeQueue);
+        }
+        if (changes.empty())
+            return;
+        do
+        {
+            Change *c = changes.pop_front();
+            c->execute(*this);
+            delete c;
+        }
+        while (!changes.empty());
+    }
 }
 
 void FileSource::requestChange(Change *change)
 {
     assert(Application::instance()->inMainThread());
     queueChange(change);
+
+    // Since we are in the main thread, use a background worker to execute the
+    // change requests.
+    boost::mutex::scoped_lock workerLock(m_changeWorkerMutex);
+    if (!m_changeWorker)
+    {
+        m_changeWorker = new
+            ChangeExecutionWorker(Worker::defaultPriorityInCurrentThread(),
+                                  boost::bind(&FileSource::onChangeWorkerDone,
+                                              this, _1));
+        Application::instance()->scheduler()->schedule(*m_changeWorker);
+    }
+}
+
+void FileSource::onChangeWorkerDone(Worker &worker)
+{
+    {
+        boost::mutex::scoped_lock workerLock(m_changeWorkerMutex);
+        assert(&worker == &m_changeWorker);
+        boost::mutex::scoped_lock queueLock(m_changeQueueMutex);
+        if (!m_changeQueue.empty())
+        {
+            // Some new change requests were queued.  Create a new background
+            // worker to execute them.
+            m_changeWorker = new ChangeExecutionWorker(
+                Worker::defaultPriorityInCurrentThread(),
+                boost::bind(&FileSource::onChangeWorkerDone, this, _1));
+            Application::instance()->scheduler()->schedule(*m_changeWorker);
+        }
+        else
+            m_changeWorker = NULL;
+    }
+    delete &worker;
 }
 
 void FileSource::onDocumentClosed(const Document &document)

@@ -20,15 +20,17 @@ class FileSource;
 class FileAst;
 
 /**
- * A document is the model of an editor or, actually, the model of the text view
- * in an editor.  A document is implemented by a GTK+ text buffer.
+ * A document is the model of the text view in an editor.  A document can be
+ * explicitly opened, loaded, edited, saved and closed by the user.  A document
+ * is implemented by a GTK+ text buffer.
  *
  * A document saves the editing history, supporting undo and redo.
  *
- * If a document is a source file, it notifies the source code of text edits so
- * that the source code can update itself and notify the abstract syntax tree.
- * The document also collects information on the abstract syntax tree to perform
- * syntax highlighting, code folding, diagnostics highlighting, etc.
+ * If a document is a source file, it pushes user edits to the file source
+ * resource so that it can update itself and notify the abstract syntax tree
+ * resources.  The document also collects information on the abstract syntax
+ * tree to perform syntax highlighting, code folding, diagnostics highlighting,
+ * etc.
  */
 class Document
 {
@@ -207,14 +209,14 @@ public:
     }
 
     /**
-     * Load the external file into the document.
+     * Load the document from the external file.
      */
-    void load(const char *uri, bool convertEncoding);
+    void load(const char *uri);
 
     /**
      * Save the document into the external file.
      */
-    void save(const char *uri, bool convertEncoding);
+    void save(const char *uri);
 
     bool frozen() const { return m_frozen; }
 
@@ -340,9 +342,9 @@ private:
 
     ~Document();
 
-    static gboolean loaded(gpointer param);
+    static gboolean onLoadedInMainThread(gpointer param);
 
-    static gboolean saved(gpointer param);
+    static gboolean onLavedInMainThread(gpointer param);
 
     void onLoaded(Worker &worker);
 

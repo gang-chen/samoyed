@@ -2,7 +2,8 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
-g++ range.cpp -DSMYD_RANGE_UNIT_TEST -Wall -o range
+UNIT TEST BUILD
+g++ range.cpp -DSMYD_RANGE_UNIT_TEST -Werror -Wall -o range
 */
 
 #ifdef SMYD_RANGE_UNIT_TEST

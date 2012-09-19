@@ -2,7 +2,9 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
-g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST -Wall -o text-buffer
+UNIT TEST BUILD
+g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST -Werror -Wall -o\
+ text-buffer
 */
 
 #ifdef SMYD_TEXT_BUFFER_UNIT_TEST

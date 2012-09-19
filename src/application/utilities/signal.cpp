@@ -2,7 +2,8 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
-g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Wall -o signal
+UNIT TEST BUILD
+g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 */
 
 #include "signal.hpp"
@@ -156,6 +157,9 @@ void Signal::registerTerminationHandler(SignalHandler handler)
 
 #ifdef SMYD_SIGNAL_UNIT_TEST
 
+namespace
+{
+
 int i = 0;
 
 void myOnCrashed(int sig)
@@ -168,6 +172,8 @@ void myOnCrashed(int sig)
 void myOnKilled(int sig)
 {
     printf("Killed at %d!\n", i);
+}
+
 }
 
 int main()

@@ -2,8 +2,9 @@
 // Copyright (C) 2012 Gang Chen.
 
 /*
+UNIT TEST BUILD
 g++ revision.cpp -DSMYD_REVISION_UNIT_TEST\
- `pkg-config --cflags --libs glib-2.0 gio-2.0` -Wall -o revision
+ `pkg-config --cflags --libs glib-2.0 gio-2.0` -Werror -Wall -o revision
 */
 
 #include "revision.hpp"

@@ -189,7 +189,7 @@ Document::~Document()
     g_object_unref(m_gtkBuffer);
 }
 
-gboolean Document::loaded(gpointer param)
+gboolean Document::onLoadedInMainThread(gpointer param)
 {
     DocumentLoadedParam *p = static_cast<DocumentLoadedParam *>(param);
     Document &doc = p->m_document;
@@ -229,7 +229,7 @@ gboolean Document::loaded(gpointer param)
     return FALSE;
 }
 
-gboolean Document::saved(gpointer param)
+gboolean Document::onSavedInMainThead(gpointer param)
 {
     DocumentSavedParam *p = static_cast<DocumentSavedParam *>(param);
     doc.m_revision = writer.revision();
@@ -252,7 +252,7 @@ gboolean Document::saved(gpointer param)
 void Document::onLoaded(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(loaded),
+                    G_CALLBACK(onLoadedInMainThread),
                     new DocumentLoadedParam(*this,
                         static_cast<TextFileReader &>(worker)),
                     NULL);
@@ -261,7 +261,7 @@ void Document::onLoaded(Worker &worker)
 void Document::onSaved(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(saved),
+                    G_CALLBACK(onSavedInMainThread),
                     new DocumentLoadedParam(*this,
                         static_cast<TextFileWriter &>(worker)),
                     NULL);

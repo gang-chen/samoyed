@@ -2,8 +2,9 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
+UNIT TEST BUILD
 g++ splash-screen.cpp -DSMYD_SPLASH_SCREEN_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -Wall -o splash-screen
+ `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o splash-screen
 */
  
 #include "splash-screen.hpp"
@@ -99,8 +100,8 @@ double progress = 0.;
 gboolean addProgress(gpointer splash)
 {
     char buffer[100];
-    Shell::SplashScreen *s = static_cast<Shell::SplashScreen *>(splash);
-    if (progress >= 0.)
+    Samoyed::SplashScreen *s = static_cast<Samoyed::SplashScreen *>(splash);
+    if (progress >= 1.)
     {
         gtk_main_quit();
         return FALSE;
@@ -118,8 +119,8 @@ int main(int argc, char *argv[])
 {
     char buffer[100];
     gtk_init(&argc, &argv);
-    Shell::SplashScreen splash("Splash screen test",
-                               "../../../images/splash-screen.png");
+    Samoyed::SplashScreen splash("Splash screen test",
+                                 "../../../images/splash-screen.png");
     snprintf(buffer, sizeof(buffer),
              "Testing splash screen.  Finished %.2f.", progress);
     splash.setProgress(progress, buffer);

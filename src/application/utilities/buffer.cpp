@@ -2,7 +2,8 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
-g++ buffer.cpp -DSMYD_BUFFER_UNIT_TEST -Wall -o buffer
+UNIT TEST BUILD
+g++ buffer.cpp -DSMYD_BUFFER_UNIT_TEST -Werror -Wall -o buffer
 */
 
 #ifdef SMYD_BUFFER_UNIT_TEST

@@ -2,8 +2,9 @@
 // Copyright (C) 2011 Gang Chen.
 
 /*
+UNIT TEST BUILD
 g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I.. -I../../../libs -I/usr/include\
- -lboost_thread -pthread -Wall -o worker
+ -lboost_thread -pthread -Werror -Wall -o worker
 */
 
 #include "worker.hpp"
