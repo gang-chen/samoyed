@@ -4,9 +4,6 @@
 #ifndef SMYD_WORKER_HPP
 #define SMYD_WORKER_HPP
 
-#ifndef SMYD_WORKER_UNIT_TEST
-# include "../application.hpp"
-#endif
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
@@ -199,23 +196,8 @@ private:
     class ExecutionWrapper
     {
     public:
-        ExecutionWrapper(Worker &worker): m_worker(worker)
-        {
-#ifndef SMYD_WORKER_UNIT_TEST
-            Application::instance()->setThreadWorker(&m_worker);
-#endif
-            if (!m_worker.m_blocked)
-                m_worker.begin();
-        }
-
-        ~ExecutionWrapper()
-        {
-            if (!m_worker.m_blocked)
-                m_worker.end();
-#ifndef SMYD_WORKER_UNIT_TEST
-            Application::instance()->setThreadWorker(NULL);
-#endif
-        }
+        ExecutionWrapper(Worker &worker);
+        ~ExecutionWrapper();
 
     private:
         Worker &m_worker;
