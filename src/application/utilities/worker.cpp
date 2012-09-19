@@ -28,6 +28,25 @@ Samoyed::Scheduler scheduler;
 namespace Samoyed
 {
 
+Worker::ExecutionWrapper::ExecutionWrapper(Worker &worker):
+    m_worker(worker)
+{
+#ifndef SMYD_WORKER_UNIT_TEST
+    Application::instance()->setThreadWorker(&m_worker);
+#endif
+    if (!m_worker.m_blocked)
+        m_worker.begin();
+}
+
+Worker::ExecutionWrapper::~ExecutionWrapper()
+{
+    if (!m_worker.m_blocked)
+        m_worker.end();
+#ifndef SMYD_WORKER_UNIT_TEST
+    Application::instance()->setThreadWorker(NULL);
+#endif
+}
+
 unsigned int Worker::defaultPriorityInCurrentThread()
 {
 #ifdef SMYD_WORKER_UNIT_TEST

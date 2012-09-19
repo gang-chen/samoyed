@@ -110,7 +110,7 @@ FileSource::FileSource(const std::string &uri,
     m_executingChange(false)
 {
     m_buffer = new TextBuffer;
-    synchronize();
+    update();
 }
 
 FileSource::~FileSource()
@@ -118,7 +118,6 @@ FileSource::~FileSource()
     delete m_buffer;
     if (m_error)
         g_error_free(m_error);
-    clearPendingChanges();
 }
 
 bool FileSource::beginRead(bool trying,
@@ -142,13 +141,28 @@ bool FileSource::beginRead(bool trying,
     return true;
 }
 
-void FileSource::endRead()
+void FileSource::endRead() const
 {
     m_dataMutex.unlock_shared();
+}
 
-    // It is possible that some changes are requested during reading the source.
-    // Execute them.
-    executePendingChanges();
+boost::signals2::connection
+FileSource::addObserver(const Changed::slot_type &callback)
+{
+    boost::mutex::scoped_lock lock(m_observerMutex);
+    if (!m_revision.zero())
+        callback(*this,
+                 ChangeHint(Revision(), m_revision, Range(0, -1)));
+    else if (m_errorCode)
+        callback(*this,
+                 ChangeHint(Revision(), m_revision, Range()));
+    return m_changed.connect(callback);
+}
+
+void FileSource::removeObserver(const boost::signals2::connection &connection)
+{
+    boost::mutex::scoped_lock lock(m_observerMutex);
+    connection.disconnect();
 }
 
 bool FileSource::beginWrite(bool trying,
@@ -158,17 +172,17 @@ bool FileSource::beginWrite(bool trying,
 {
     if (trying)
     {
-        if (!m_controlMutex.try_lock())
+        if (!m_observerMutex.try_lock())
             return false;
         if (!m_dataMutex.try_lock())
         {
-            m_controlMutex.unlock();
+            m_observerMutex.unlock();
             return false;
         }
     }
     else
     {
-        m_controlMutex.lock();
+        m_observerMutex.lock();
         m_dataMutex.lock();
     }
     if (buffer)
@@ -196,87 +210,38 @@ void FileSource::endWrite(Revision &revision,
     m_dataMutex.unlock();
     if (oldRev != revision || oldError != m_error || !range.empty())
     {
+        // Notify the observers first because the abstract syntax tree updating
+        // will lead to long-time parsing in this thread.
+        m_changed(*this, ChangeHint(oldRev, revision, range));
         Application::instance()->projectAstManager()->
             onFileSourceChanged(*this,
                                 ChangeHint(oldRev, revision, range));
     }
-    m_controlMutex.unlock();
+    m_observerMutex.unlock();
 }
 
-void FileSource::clearPendingChanges()
+void FileSource::queueChange(Change *change)
 {
-    for (std::deque<Change *>::const_iterator i = m_pendingChangeQueue.begin();
-         i != m_pendingChangeQueue.end();
-         ++i)
-        delete *i;
-    m_pendingChangeQueue.clear();
 }
 
 void FileSource::executePendingChanges()
 {
-    {
-        boost::mutex::scoped_lock lock(m_pendingChangeMutex);
-        if (m_executingChange)
-            return;
-        m_executingChange = true;
-        for (;;)
-        {
-            // If the queue is empty, we're done.
-            if (m_pendingChangeQueue.empty())
-            {
-                m_executingChange = false;
-                return;
-            }
-            Change *change = m_pendingChangeQueue.front();
-            // If the change needs to be executed asynchronously, do it out of
-            // the locking.
-            if (change->asynchronous())
-            {
-                m_pendingChangeQueue.pop_front();
-                break;
-            }
-            // Execute the change here.  If failed, retry it later.  Otherwise
-            // continue.
-            if (!change->execute(*this))
-            {
-                m_executingChange = false;
-                return;
-            }
-            m_pendingChangeQueue.pop_front();
-            delete change;
-        }
-    }
-    change->execute(*this);
-}
-
-void FileSource::onChangeDone(Change *change)
-{
-    delete change;
-    {
-        boost::mutex::scoped_lock lock(m_pendingChangeMutex);
-        assert(m_executingChange);
-        m_executingChange = false;
-    }
-    executePendingChanges();
 }
 
 void FileSource::requestChange(Change *change)
 {
-    {
-        boost::mutex::scoped_lock lock(m_pendingChangeMutex);
-        if (!change->incremental())
-            clearPendingChanges();
-        m_pendingChangeQueue.push_back(change);
-    }
-    executePendingChanges();
+    assert(Application::instance()->inMainThread());
+    queueChange(change);
 }
 
 void FileSource::onDocumentClosed(const Document &document)
 {
-    if (document.editCount())
+    if (document.editCount() || !document.initialized())
     {
-        // The document was changed but the changes were discarded.  Reload the
-        // source from the external file.
+        // If the document was changed but the changes were discarded, or the
+        // document wasn't loaded yet, reload the source from the external file.
+        // We need to keep the source up-to-date even if the source isn't used
+        // by any user because it may be cached.
         Loading *load = new Loading;
         requestChange(load);
     }
@@ -322,52 +287,49 @@ void FileSource::onDocumentTextRemoved(const Document &document,
     requestChange(rem);
 }
 
-void FileSource::doSynchronizationNow()
+gboolean FileSource::updateInMainThread(gpointer param)
 {
-    // Check to see if the file is opened for editing.  If so, synchronize the
-    // source with the document.  Otherwise, load the source from the external
-    // file.
-    DocumentManager *docMgr = Application::instance()->documentManager();
-    Document *doc = docMgr->get(uri());
-    if (doc)
+    WeakPointer<FileSource> *wp =
+        static_cast<WeakPointer<FileSource> *>(param);
+    ReferencePointer<FileSource> src =
+        Application::instance()->fileSourceManager()->get(*wp);
+    if (src)
     {
-        // If we are loading the document, we can stop here because the source
-        // will be notified to update itself when the document is loaded.
-        // Otherwise, request to replace the source with the document.
-        if (doc->initialized() && !doc->loading())
+        // Check to see if the file is opened for editing.  If so, copy the
+        // document to the source.  Otherwise, load the source from the external
+        // file.
+        DocumentManager *docMgr = Application::instance()->documentManager();
+        Document *doc = docMgr->get(uri());
+        if (doc)
         {
-            Replacement *rep = new Replacement(doc->getText());
-            requestChange(rep);
+            // If we are loading the document, we can stop here because the
+            // source will be notified to update itself when the document is
+            // loaded.  Otherwise, request to replace the source with the
+            // document.
+            if (doc->initialized() && !doc->loading())
+            {
+                Replacement *rep = new Replacement(doc->getText());
+                requestChange(rep);
+            }
+        }
+        else
+        {
+            Loading *load = new Loading;
+            requestChange(load);
         }
     }
-    else
-    {
-        Loading *load = new Loading;
-        requestChange(load);
-    }
-}
-
-gboolean FileSource::doSynchronization(gpointer param)
-{
-    WeakPointer<SourceImage> *wp =
-        static_cast<WeakPointer<SourceImage> *>(param);
-    ReferencePointer<SourceImage> src =
-        Application::instance()->sourceImageManager()->get(*wp);
-    if (src)
-        src->doSynchronizationNow();
     delete wp;
     return FALSE;
 }
 
-void FileSource::synchronize()
+void FileSource::update()
 {
-    if (Application::instance()->inMainThread())
-        doSynchronizationNow();
-    else
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                        G_CALLBACK(doSynchronization),
-                        new WeakPointer<SourceImage>(this),
-                        NULL);
+    // Delay the updating even if we are in the main thread so as to let the
+    // document, if newly created, register itself to the document manager.
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    G_CALLBACK(updateInMainThread),
+                    new WeakPointer<FileSource>(this),
+                    NULL);
 }
 
 }

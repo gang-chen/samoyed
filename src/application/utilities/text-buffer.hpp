@@ -37,15 +37,13 @@ struct Utf8CharTraits
 
 const int TEXT_BUFFER_BLOCK_SIZE = 20000;
 
-typedef Buffer<char, Utf8CharTraits, TEXT_BUFFER_BLOCK_SIZE, -1, true, true>
-        TextBufferBase;
-
 /**
  * A text buffer stores a stream of UTF-8 encoded characters.
  *
  * A text buffer uses line offsets as the tertiary indexes.
  */
-class TextBuffer: public TextBufferBase
+class TextBuffer:
+    public Buffer<char, Utf8CharTraits, TEXT_BUFFER_BLOCK_SIZE, -1, true, true>
 {
 public:
     int byteCount() const { return length(); }
