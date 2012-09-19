@@ -7,8 +7,8 @@ g++ splash-screen.cpp -DSMYD_SPLASH_SCREEN_UNIT_TEST\
 */
  
 #include "splash-screen.hpp"
-#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gtk/gtk.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #ifdef SMYD_SPLASH_SCREEN_UNIT_TEST
 # include <stdio.h>
 #endif

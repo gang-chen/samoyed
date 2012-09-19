@@ -4,8 +4,8 @@
 #ifndef SMYD_SPLASH_SCREEN_HPP
 #define SMYD_SPLASH_SCREEN_HPP
 
-#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gtk/gtk.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 
 namespace Samoyed
 {
@@ -25,9 +25,9 @@ private:
                                    GdkEvent *event,
                                    gpointer data);
 
-    GdkPixbuf *m_image;
     GtkWidget *m_window;
     GtkWidget *m_progressBar;
+    GdkPixbuf *m_image;
 };
 
 }
