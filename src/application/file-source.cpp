@@ -118,7 +118,6 @@ FileSource::~FileSource()
     delete m_buffer;
     if (m_error)
         g_error_free(m_error);
-    clearPendingChanges();
 }
 
 bool FileSource::beginRead(bool trying,
@@ -288,31 +287,6 @@ void FileSource::onDocumentTextRemoved(const Document &document,
     requestChange(rem);
 }
 
-void FileSource::updateNow()
-{
-    // Check to see if the file is opened for editing.  If so, synchronize the
-    // source with the document.  Otherwise, load the source from the external
-    // file.
-    DocumentManager *docMgr = Application::instance()->documentManager();
-    Document *doc = docMgr->get(uri());
-    if (doc)
-    {
-        // If we are loading the document, we can stop here because the source
-        // will be notified to update itself when the document is loaded.
-        // Otherwise, request to replace the source with the document.
-        if (doc->initialized() && !doc->loading())
-        {
-            Replacement *rep = new Replacement(doc->getText());
-            requestChange(rep);
-        }
-    }
-    else
-    {
-        Loading *load = new Loading;
-        requestChange(load);
-    }
-}
-
 gboolean FileSource::updateInMainThread(gpointer param)
 {
     WeakPointer<FileSource> *wp =
@@ -320,20 +294,42 @@ gboolean FileSource::updateInMainThread(gpointer param)
     ReferencePointer<FileSource> src =
         Application::instance()->fileSourceManager()->get(*wp);
     if (src)
-        src->updateNow();
+    {
+        // Check to see if the file is opened for editing.  If so, copy the
+        // document to the source.  Otherwise, load the source from the external
+        // file.
+        DocumentManager *docMgr = Application::instance()->documentManager();
+        Document *doc = docMgr->get(uri());
+        if (doc)
+        {
+            // If we are loading the document, we can stop here because the
+            // source will be notified to update itself when the document is
+            // loaded.  Otherwise, request to replace the source with the
+            // document.
+            if (doc->initialized() && !doc->loading())
+            {
+                Replacement *rep = new Replacement(doc->getText());
+                requestChange(rep);
+            }
+        }
+        else
+        {
+            Loading *load = new Loading;
+            requestChange(load);
+        }
+    }
     delete wp;
     return FALSE;
 }
 
 void FileSource::update()
 {
-    if (Application::instance()->inMainThread())
-        updateNow();
-    else
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                        G_CALLBACK(updateInMainThread),
-                        new WeakPointer<FileSource>(this),
-                        NULL);
+    // Delay the updating even if we are in the main thread so as to let the
+    // document, if newly created, register itself to the document manager.
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    G_CALLBACK(updateInMainThread),
+                    new WeakPointer<FileSource>(this),
+                    NULL);
 }
 
 }
