@@ -5,7 +5,6 @@
 #define SMYD_MANAGED_HPP
 
 #include <assert.h>
-#include <boost/utility.hpp>
 
 namespace Samoyed
 {
