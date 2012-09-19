@@ -5,10 +5,11 @@
 #define SMYD_FILE_SOURCE_HPP
 
 #include "utilities/managed.hpp"
-#include "utilities/text-buffer.hpp"
+#include "utilities/manager.hpp"
 #include "utilities/revision.hpp"
 #include "utilities/range.hpp"
 #include "utilities/change-hint.hpp"
+#include "utilities/worker.hpp"
 #include <string>
 #include <deque>
 #include <boost/signals2/dummy_mutex.hpp>
@@ -20,16 +21,16 @@
 namespace Samoyed
 {
 
-template<class> class Manager;
+class TextBuffer;
 class Document;
-class Worker;
 
 /**
- * A file source represents the source code contents of a source file.  It
- * regulates all the accesses to the data.
+ * A file source represents the source code contents of a source file.  It is a
+ * shared thread-safe resource.
  *
- * A file source is multithreading safe.  A read-write mutex is used to protect
- * it.
+ * A file source is readable, but not writable.  Users can only request a file
+ * source to update itself.  But actually a file source updates itself
+ * automatically.
  *
  * A file source is observable.  An observer can be added by registering a
  * callback to a file source.  The callback will be called after every change
@@ -48,9 +49,10 @@ public:
     const char *uri() const { return key().c_str(); }
 
     /**
-     * Synchronize the data with the contents of the external file.
+     * Request to update the source by loading from the external file or the
+     * opened document.
      */
-    void synchronize();
+    void update();
 
     /**
      * Lock the source for read.
@@ -71,35 +73,23 @@ public:
      * @return The connection of the callback, which can be used to remove the
      * observer later.
      */
-    boost::signals2::connection addObserver(const Changed::slot_type &callback)
-    {
-        boost::mutex::scoped_lock lock(m_controlMutex);
-        if (!m_revision.zero())
-            callback(*this,
-                     ChangeHint(Revision(), m_revision, Range(0, -1)));
-        else if (m_errorCode)
-            callback(*this,
-                     ChangeHint(Revision(), m_revision, Range()));
-        return m_changed.connect(callback);
-    }
+    boost::signals2::connection addObserver(const Changed::slot_type &callback);
 
     /**
      * Remove an observer by unregistering the registered callback.
      * @param connection The connection of the registered callback.
      */
-    void removeObserver(const boost::signals2::connection &connection)
-    {
-        boost::mutex::scoped_lock lock(m_controlMutex);
-        connection.disconnect();
-    }
+    void removeObserver(const boost::signals2::connection &connection);
 
 private:
+    /**
+     * Change request.
+     */
     class Change
     {
     public:
         virtual ~Change() {}
         virtual bool incremental() const = 0;
-        virtual bool asynchronous() const = 0;
 
         /**
          * @return True if the execution completes.
@@ -111,12 +101,7 @@ private:
     {
     public:
         virtual bool incremental() const { return false; }
-        virtual bool asynchronous() const { return true; }
         virtual bool execute(FileSource &source);
-
-    private:
-        void onLoaded(Worker &worker);
-        WeakPointer<FileSource> m_source;
     };
 
     class RevisionChange: public Change
@@ -132,7 +117,6 @@ private:
                 g_error_free(m_error);
         }
         virtual bool incremental() const { return true; }
-        virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
 
     private:
@@ -154,7 +138,6 @@ private:
             m_text(text, length)
         {}
         virtual bool incremental() const { return true; }
-        virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
 
     private:
@@ -179,7 +162,6 @@ private:
             m_endColumn(endColumn)
         {}
         virtual bool incremental() const { return true; }
-        virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
 
     private:
@@ -209,13 +191,25 @@ private:
             g_free(m_text);
         }
         virtual bool incremental() const { return false; }
-        virtual bool asynchronous() const { return false; }
         virtual bool execute(FileSource &source);
 
     private:
         Revision m_revision;
         GError *m_error;
         char *m_text;
+    };
+
+    /**
+     * Background worker that executes queued change requests.
+     */
+    class ChangeExecutionWorker: public Worker
+    {
+    public:
+        ChangeExecutionWorker(FileSource &source): m_source(&source) {}
+        virtual bool operator()();
+
+    private:
+        ReferencePointer<FileSource> m_source;
     };
 
     FileSource(const std::string &uri,
@@ -233,14 +227,9 @@ private:
                   GError *error,
                   const Range &range);
 
-    void clearPendingChanges();
+    void queueChange(Change *change);
 
-    void executePendingChanges();
-
-    /**
-     * Called when an asynchronous change is completed.
-     */
-    void onChangeDone(Change *change);
+    void executeQueuedChanges();
 
     void requestChange(Change *change);
 
@@ -262,9 +251,9 @@ private:
                                int endLine,
                                int endColumn);
 
-    void doSynchronizationNow();
+    void updateNow();
 
-    static gboolean doSynchronization(gpointer param);
+    static gboolean updateInMainThread(gpointer param);
 
     void setBuffer(TextBuffer *buffer)
     {
@@ -282,16 +271,20 @@ private:
 
     Changed m_changed;
 
-    mutable boost::mutex m_controlMutex;
-
-    bool m_executingChange;
+    mutable boost::mutex m_observerMutex;
 
     /**
      * Pending change request queue.
      */
-    std::deque<Change *> m_pendingChangeQueue;
+    std::deque<Change *> m_changeQueue;
 
-    mutable boost::mutex m_pendingChangeMutex;
+    mutable boost::mutex m_changeQueueMutex;
+
+    mutable boost::mutex m_changeExecutorMutex;
+
+    ChangeExecutionWorker m_changeWorker;
+
+    mutable boost::mutex m_changeWorkerMutex;
 
     template<class> friend class Manager;
     friend class Document;
@@ -300,6 +293,7 @@ private:
     friend class Insertion;
     friend class Removal;
     friend class Replacement;
+    friend class ChangeExecutionWorker;
 };
 
 }
