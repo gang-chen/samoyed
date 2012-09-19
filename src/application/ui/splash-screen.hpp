@@ -24,6 +24,7 @@ private:
     static gboolean onDestroyEvent(GtkWidget *widget,
                                    GdkEvent *event,
                                    gpointer data);
+
     GdkPixbuf *m_image;
     GtkWidget *m_window;
     GtkWidget *m_progressBar;
