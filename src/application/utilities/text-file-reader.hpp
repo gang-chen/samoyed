@@ -1,10 +1,11 @@
-// Text file reader.
+// Text file reader and worker.
 // Copyright (C) 2012 Gang Chen.
 
 #ifndef SMYD_TEXT_FILE_READER_HPP
 #define SMYD_TEXT_FILE_READER_HPP
 
 #include "revision.hpp"
+#include "worker.hpp"
 #include <glib.h>
 
 namespace Samoyed
@@ -23,7 +24,7 @@ public:
 
     ~TextFileReader();
 
-    void open(const char *uri);
+    void open(const char *uri, bool convertEncoding);
 
     void read();
 
@@ -52,6 +53,29 @@ private:
     Revision m_revision;
 
     GError *m_error;
+};
+
+/**
+ * Worker wrapping a text file reader.
+ */
+class TextFileReadWorker: public Worker
+{
+public:
+    TextFileReadWorker(unsigned int priority,
+                       const Callback &callback,
+                       const char *uri,
+                       bool convertEncoding):
+        Worker(priority, callback),
+        m_uri(uri),
+        m_convertEncoding(convertEncoding)
+    {}
+    TextFileReader &reader() { return m_reader; }
+    virtual bool step();
+    
+private:
+    std::string m_uri;
+    bool m_convertEncoding;
+    TextFileReader m_reader;
 };
 
 }
