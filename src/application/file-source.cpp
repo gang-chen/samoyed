@@ -21,7 +21,7 @@ namespace Samoyed
 void FileSource::Loading::execute(FileSource &source)
 {
     TextFileReader reader;
-    reader.open(source.uri());
+    reader.open(source.uri(), true);
     reader.read();
     reader.close();
     source.beginWrite(false, NULL, NULL, NULL);
@@ -86,7 +86,7 @@ void FileSource::Replacement::execute(FileSource &source)
 
 bool FileSource::ChangeExecutionWorker::step()
 {
-    m_source.executeQueuedChanges();
+    m_source->executeQueuedChanges();
     return true;
 }
 
@@ -259,7 +259,8 @@ void FileSource::requestChange(Change *change)
         m_changeWorker = new
             ChangeExecutionWorker(Worker::defaultPriorityInCurrentThread(),
                                   boost::bind(&FileSource::onChangeWorkerDone,
-                                              this, _1));
+                                              this, _1),
+                                  *this);
         Application::instance()->scheduler()->schedule(*m_changeWorker);
     }
 }
