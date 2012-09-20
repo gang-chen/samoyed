@@ -4,6 +4,7 @@
 #ifndef SMYD_DOCUMENT_HPP
 #define SMYD_DOCUMENT_HPP
 
+#include "utilities/revision.hpp"
 #include "utilities/manager.hpp"
 #include <string>
 #include <vector>
@@ -20,17 +21,22 @@ class FileSource;
 class FileAst;
 
 /**
- * A document is the model of the text view in an editor.  A document can be
- * explicitly opened, loaded, edited, saved and closed by the user.  A document
- * is implemented by a GTK+ text buffer.
+ * A document is the in-memory buffer for a file being edited by the user.  It
+ * can be explicitly opened, loaded, edited, saved and closed by the user.
+ *
+ * For a file, the document is the model while the editors are the views.
+ * Basically, a document is a buffer implemented a GTK+ text buffer, and editors
+ * are views implemented by GTK+ text views.  For a source file, we extend their
+ * functionality further.  The document also models the abstract syntax tree
+ * representation of the source file, and the editors not only display the text
+ * but also performs syntax highlighting, code folding, etc. based on the
+ * abstract syntax tree.
  *
  * A document saves the editing history, supporting undo and redo.
  *
- * If a document is a source file, it pushes user edits to the file source
- * resource so that it can update itself and notify the abstract syntax tree
- * resources.  The document also collects information on the abstract syntax
- * tree to perform syntax highlighting, code folding, diagnostics highlighting,
- * etc.
+ * When a document is opened, it will keep a reference to the file source, and
+ * then push user edits so as to the file source to update it and, if the file
+ * is a source file, the related abstract syntax trees.
  */
 class Document
 {
@@ -344,7 +350,7 @@ private:
 
     static gboolean onLoadedInMainThread(gpointer param);
 
-    static gboolean onLavedInMainThread(gpointer param);
+    static gboolean onSavedInMainThread(gpointer param);
 
     void onLoaded(Worker &worker);
 
@@ -367,11 +373,16 @@ private:
     static void onUserActionEnded(GtkTextBuffer *buffer,
                                   gpointer document);
 
-    template<class Edit> void saveUndo(Edit *undo)
+    template<class EditT> void saveUndo(EditT *undo)
     {
         if (m_undoing)
+            m_redoHistory.push(undo, false);
+        else if (m_redoing)
+            m_undoHistory.push(undo, false);
+        else
         {
             // If the edit count is zero, do not merge undoes.
+            m_undoHistory.push(undo, !m_editCount);
         }
     }
 
@@ -399,7 +410,7 @@ private:
     /**
      * The GTK+ text buffer.
      */
-    GtkTextBuffer *m_gtkBuffer;
+    GtkTextBuffer *m_buffer;
 
     /**
      * The editors that are editing this document.
@@ -416,6 +427,10 @@ private:
 
     EditStack *m_superUndo;
 
+    /**
+     * The number of text edits performed since the latest document loading or
+     * saving.  It may become negative if the user undoes edits.
+     */
     int m_editCount;
 
     ReferencePointer<FileSource> m_source;
