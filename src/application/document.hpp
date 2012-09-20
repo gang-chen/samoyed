@@ -216,13 +216,19 @@ public:
 
     /**
      * Load the document from the external file.
+     * @param uri The URI of the external file if load from a different file, or
+     * NULL if load from the current file.  The URI of the document will not
+     * change.
      */
-    void load(const char *uri);
+    void load(const char *uri, bool convertEncoding);
 
     /**
      * Save the document into the external file.
+     * @param uri The URI of the external file if save into a different file, or
+     * NULL if save into the current file.  The URI of the document will not
+     * change.
      */
-    void save(const char *uri);
+    void save(const char *uri, bool convertEncoding);
 
     bool frozen() const { return m_frozen; }
 
