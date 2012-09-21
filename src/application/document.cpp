@@ -148,10 +148,9 @@ void Document::destroySharedData()
 Document::Document(const char* uri):
     m_uri(uri),
     m_name(basename(uri)),
-    m_initialized(false),
-    m_frozen(true),
     m_loading(false),
     m_saving(false),
+    m_frozen(false),
     m_undoing(false),
     m_redoing(false),
     m_superUndo(NULL),
@@ -168,24 +167,18 @@ Document::Document(const char* uri):
                      this);
 
     m_source = Application::instance()->fileSourceManager()->get(uri);
-    m_source->onDocumentOpened(*this);
-
     m_ast = Application::instance()->fileAstManager()->get(uri);
+    
+    // Start the initial loading.
+    load(NULL, true);
 }
 
 Document::~Document()
 {
     assert(m_editors.empty());
 
-    // Notify the source only if it still exists after we unreference it.
-    WeakPointer<FileSource> wp(m_source);
-    m_source.clear();
-    ReferencePointer<FileSource> src =
-        Application::instance()->fileSourceManager()->get(wp);
-    if (src)
-        src->onDocumentClosed(*this);
-
     m_closed(*this);
+    m_source->onDocumentClosed(*this);
 
     g_object_unref(m_buffer);
 }
@@ -214,7 +207,6 @@ gboolean Document::onFileReadInMainThread(gpointer param)
 
     doc.m_revision = reader.revision();
     doc.m_ioError = reader.fetchError();
-    doc.m_initialized = true;
     doc.m_loading = false;
     doc.unfreeze();
     doc.m_loaded(doc);
