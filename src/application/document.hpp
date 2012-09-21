@@ -215,6 +215,16 @@ public:
     }
 
     /**
+     * @return True if the document is being loaded.
+     */
+    bool loading() const { return m_loading; }
+
+    /**
+     * @return True if the document is being storing.
+     */
+    bool storing() const { return m_storing; }
+
+    /**
      * Load the document from the external file.
      * @param uri The URI of the external file if load from a different file, or
      * NULL if load from the current file.  The URI of the document will not
@@ -401,13 +411,11 @@ private:
 
     std::string m_name;
 
-    bool m_initialized;
-
-    bool m_frozen;
-
     bool m_loading;
 
     bool m_saving;
+
+    bool m_frozen;
 
     bool m_undoing;
 
