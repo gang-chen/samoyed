@@ -64,7 +64,10 @@ public:
     public:
         virtual ~Edit() {}
 
-        virtual void execute(Document &document) const = 0;
+        /**
+         * @return True if successful.
+         */
+        virtual bool execute(Document &document) const = 0;
 
         /**
          * Merge this text edit with the edit that will be executed immediately
@@ -92,9 +95,9 @@ public:
             m_text(text, length)
         {}
 
-        virtual void execute(Document &document) const
+        virtual bool execute(Document &document) const
         {
-            document.insert(m_line, m_column, m_text.c_str(), -1);
+            bool document.insert(m_line, m_column, m_text.c_str(), -1);
         }
 
         virtual bool merge(const Insertion &ins);
@@ -125,9 +128,10 @@ public:
             m_endColumn(endColumn)
         {}
 
-        virtual void execute(Document &document) const
+        virtual bool execute(Document &document) const
         {
-            document.remove(m_beginLine, m_beginColumn, m_endLine, m_endColumn);
+            return document.remove(m_beginLine, m_beginColumn,
+                                   m_endLine, m_endColumn);
         }
 
         virtual bool merge(const Removal &rem);
@@ -148,7 +152,7 @@ public:
     public:
         virtual ~EditGroup();
 
-        virtual void execute(Document &document) const;
+        virtual bool execute(Document &document) const;
 
         void add(Edit *edit) { m_edits.push_back(edit); }
 
@@ -172,6 +176,8 @@ public:
     const char *name() const { return m_name.c_str(); }
 
     const Revision &revision() const { return m_revision; }
+
+    const GError *ioError() const { return m_ioError; }
 
     int editCount() const { return m_editCount; }
 
@@ -225,20 +231,20 @@ public:
     bool storing() const { return m_storing; }
 
     /**
-     * Load the document from the external file.
+     * Request to load the document from the external file.
      * @param uri The URI of the external file if load from a different file, or
      * NULL if load from the current file.  The URI of the document will not
      * change.
      */
-    void load(const char *uri, bool convertEncoding);
+    bool load(const char *uri, bool convertEncoding);
 
     /**
-     * Save the document into the external file.
+     * Request to save the document into the external file.
      * @param uri The URI of the external file if save into a different file, or
      * NULL if save into the current file.  The URI of the document will not
      * change.
      */
-    void save(const char *uri, bool convertEncoding);
+    bool save(const char *uri, bool convertEncoding);
 
     bool frozen() const { return m_frozen; }
 
@@ -260,7 +266,7 @@ public:
      * @param length The number of the bytes to be inserted, or -1 if inserting
      * the text until '\0'.
      */
-    void insert(int line, int column, const char *text, int length);
+    bool insert(int line, int column, const char *text, int length);
 
     /**
      * @param beginLine The line number of the first character to be removed,
@@ -272,7 +278,7 @@ public:
      * @param endColumn The column number of the exclusive last character to be
      * removed, the character index, starting from 0.
      */
-    void remove(int beginLine, int beginColumn, int endLine, int endColumn);
+    bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
     void edit(const Edit &edit)
     { edit.execute(*this); }
@@ -289,9 +295,9 @@ public:
     bool canRedo() const
     { return !m_redoHistory.empty() && !m_superUndo; }
 
-    void undo();
+    bool undo();
 
-    void redo();
+    bool redo();
 
     void addEditor(Editor &editor);
 
@@ -326,7 +332,7 @@ private:
     public:
         virtual ~EditStack() { clear(); }
 
-        virtual void execute(Document &document) const;
+        virtual bool execute(Document &document) const;
 
         template<class EditT> bool push(EditT *edit, bool mergeable)
         {

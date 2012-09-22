@@ -288,7 +288,7 @@ void FileSource::onChangeWorkerDone(Worker &worker)
 
 void FileSource::onDocumentClosed(const Document &document)
 {
-    if (document.editCount() || !document.initialized())
+    if (document.editCount() || document.loading())
     {
         // If the document was changed but the changes were discarded, or the
         // document wasn't loaded yet, reload the source from the external file.
@@ -358,7 +358,7 @@ gboolean FileSource::updateInMainThread(gpointer param)
             // source will be notified to update itself when the document is
             // loaded.  Otherwise, request to replace the source with the
             // document.
-            if (doc->initialized() && !doc->loading())
+            if (!doc->loading())
             {
                 Replacement *rep = new Replacement(doc->getText());
                 requestChange(rep);
