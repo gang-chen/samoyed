@@ -22,7 +22,8 @@ class FileAst;
 
 /**
  * A document is the in-memory buffer for a file being edited by the user.  It
- * can be explicitly opened, loaded, edited, saved and closed by the user.
+ * can be opened, loaded, edited, saved and closed by the user.  It is a user
+ * interface object that can be accessed in the main thread only.
  *
  * For a file, the document is the model while the editors are the views.
  * Basically, a document is a buffer implemented a GTK+ text buffer, and editors
@@ -34,9 +35,9 @@ class FileAst;
  *
  * A document saves the editing history, supporting undo and redo.
  *
- * When a document is opened, it will keep a reference to the file source, and
- * then push user edits so as to the file source to update it and, if the file
- * is a source file, the related abstract syntax trees.
+ * When a document is opened, it keeps a reference to the file source, and then
+ * pushes user edits so as to let the file source update it and, if the file is
+ * a source file, the related abstract syntax trees.
  */
 class Document
 {
@@ -65,7 +66,7 @@ public:
         virtual ~Edit() {}
 
         /**
-         * @return True if successful.
+         * @return True iff successful.
          */
         virtual bool execute(Document &document) const = 0;
 
@@ -182,15 +183,48 @@ public:
     int editCount() const { return m_editCount; }
 
     /**
+     * @return True iff the document is being closed.
+     */
+    bool closing() const { return m_closing; }
+
+    /**
+     * @return True iff the document is being loaded.
+     */
+    bool loading() const { return m_loading; }
+
+    /**
+     * @return True iff the document is being saved.
+     */
+    bool saving() const { return m_saving; }
+
+    /**
+     * Request to load the document from the external file.  The document cannot
+     * be loaded if it is being closed, loaded or saved, or is frozen.  When
+     * loading, the document is frozen.  The caller can get notified of the
+     * completion of the loading by adding a callback.
+     * @param uri The URI of the external file if load from a different file, or
+     * NULL if load from the current file.  The URI of the document will not be
+     * changed.
+     * @return True iff the loading is started.
+     */
+    bool load(const char *uri, bool convertEncoding);
+
+    /**
+     * Request to save the document into the external file.  The document cannot
+     * be saved if it is being closed, loaded or saved, or is frozen.  When
+     * saving, the document is frozen.  The caller can get notified of the
+     * completion of the saving by adding a callback.
+     * @param uri The URI of the external file if save into a different file, or
+     * NULL if save into the current file.  The URI of the document will not be
+     * changed.
+     * @return True iff the saving is started.
+     */
+    bool save(const char *uri, bool convertEncoding);
+
+    /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
      */
-    char *getText() const
-    {
-        GtkTextIter begin, end;
-        gtk_text_buffer_get_start_iter(m_gtkBuffer, &begin);
-        gtk_text_buffer_get_end_iter(m_gtkBuffer, &end);
-        return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
-    }
+    char *getText() const;
 
     /**
      * @param beginLine The line number of the first character to be returned,
@@ -203,60 +237,8 @@ public:
      * returned, the character index, starting from 0.
      * @return The text contents, in a memory chunk allocated by GTK+.
      */
-    char *getText(int beginLine,
-                  int beginColumn,
-                  int endLine,
-                  int endColumn) const
-    {
-        GtkTextIter begin, end;
-        gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer,
-                                                &begin,
-                                                beginLine,
-                                                beginColumn);
-        gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer,
-                                                &end,
-                                                endLine,
-                                                endColumn);
-        return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
-    }
-
-    /**
-     * @return True if the document is being loaded.
-     */
-    bool loading() const { return m_loading; }
-
-    /**
-     * @return True if the document is being storing.
-     */
-    bool storing() const { return m_storing; }
-
-    /**
-     * Request to load the document from the external file.
-     * @param uri The URI of the external file if load from a different file, or
-     * NULL if load from the current file.  The URI of the document will not
-     * change.
-     */
-    bool load(const char *uri, bool convertEncoding);
-
-    /**
-     * Request to save the document into the external file.
-     * @param uri The URI of the external file if save into a different file, or
-     * NULL if save into the current file.  The URI of the document will not
-     * change.
-     */
-    bool save(const char *uri, bool convertEncoding);
-
-    bool frozen() const { return m_frozen; }
-
-    /**
-     * Disallow the user to edit this document through the text views.
-     */
-    void freeze();
-
-    /**
-     * Allow the user to edit this document through the text views.
-     */
-    void unfreeze();
+    char *getText(int beginLine, int beginColumn,
+                  int endLine, int endColumn) const;
 
     /**
      * @param line The line number of the insertion position, starting from 0.
@@ -265,6 +247,7 @@ public:
      * @param text The text to be inserted.
      * @param length The number of the bytes to be inserted, or -1 if inserting
      * the text until '\0'.
+     * @return True iff successful.
      */
     bool insert(int line, int column, const char *text, int length);
 
@@ -277,11 +260,15 @@ public:
      * removed, starting from 0.
      * @param endColumn The column number of the exclusive last character to be
      * removed, the character index, starting from 0.
+     * @return True iff successful.
      */
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
-    void edit(const Edit &edit)
-    { edit.execute(*this); }
+    /**
+     * @return True iff successful.
+     */
+    bool edit(const Edit &edit)
+    { return edit.execute(*this); }
 
     void beginUserAction()
     { gtk_buffer_begin_user_action(m_gtkBuffer); }
@@ -299,9 +286,17 @@ public:
 
     bool redo();
 
-    void addEditor(Editor &editor);
+    bool frozen() const { return m_freezeCount; }
 
-    void removeEditor(Editor &editor);
+    /**
+     * Disallow the user to edit this document through the text views.
+     */
+    void freeze();
+
+    /**
+     * Allow the user to edit this document through the text views.
+     */
+    void unfreeze();
 
     boost::signals2::connection
     addClosedCallback(const Closed::slot_type &callback)
@@ -366,9 +361,24 @@ private:
         std::stack<Edit *> m_edits;
     };
 
+    // Functions called by the document manager.
     Document(const char *uri);
 
     ~Document();
+
+    /**
+     * Request to close the document.  If the document is being loaded, cancel
+     * the loading and discard the user edits, if any.  If it is being saved,
+     * wait for the completion of the saving.  If it is edited by the user, ask
+     * the user to save or discard the edits, or cancel closing it.  The
+     * document manager will get notified of the completion of the closing.
+     * @return True iff the closing is started.
+     */
+    bool close();
+
+    void addEditor(Editor &editor);
+
+    void removeEditor(Editor &editor);
 
     static gboolean onLoadedInMainThread(gpointer param);
 
@@ -417,11 +427,11 @@ private:
 
     std::string m_name;
 
+    bool m_closing;
+
     bool m_loading;
 
     bool m_saving;
-
-    bool m_frozen;
 
     bool m_undoing;
 
@@ -431,11 +441,6 @@ private:
      * The GTK+ text buffer.
      */
     GtkTextBuffer *m_buffer;
-
-    /**
-     * The editors that are editing this document.
-     */
-    std::vector<Editor *> m_editors;
 
     Revision m_revision;
 
@@ -452,6 +457,13 @@ private:
      * saving.  It may become negative if the user undoes edits.
      */
     int m_editCount;
+
+    /**
+     * The editors that are editing this document.
+     */
+    std::vector<Editor *> m_editors;
+
+    int m_freezeCount;
 
     ReferencePointer<FileSource> m_source;
     ReferencePointer<FileAst> m_ast;

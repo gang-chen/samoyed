@@ -42,9 +42,9 @@ public:
     Document *get(const char *uri);
 
     /**
-     * Load a file into a document and open an editor to edit it if the file is
-     * not opened.  Otherwise, retrieve the existing document and select an
-     * editor for it or open a new editor if requested.
+     * Create a document and load it, and create an editor to edit it, if the
+     * document is not opened.  Otherwise, retrieve the existing document and
+     * select an editor for it or open a new editor if requested.
      * @param line The line number of the initial cursor, starting from 0.
      * @param column The column number of the initial cursor, the character
      * index, starting from 0.
@@ -63,9 +63,9 @@ public:
 
     /**
      * Close an editor.  If this editor is the sole editor of the edited
-     * document and the document was changed, ask the user to save or discard
-     * the changes, or cancel closing the editor.
-     * @return True iff the editor is closed.
+     * document, close the document, which may be canceled by the user, and the
+     * editor.
+     * @return True iff the closing is started.
      */
     bool closeEditor(Editor *editor);
 

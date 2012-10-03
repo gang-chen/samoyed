@@ -26,10 +26,10 @@ class Document;
 
 /**
  * A file source represents the source code contents of a source file.  It is a
- * shared thread-safe resource.
+ * shared thread-safe internal resource.
  *
  * A file source is readable, but not writable.  Users can only request a file
- * source to update itself.  But actually a file source updates itself
+ * source to update itself.  Actually a file source updates itself
  * automatically.
  *
  * A file source is observable.  An observer can be added by registering a

@@ -183,6 +183,10 @@ Document::~Document()
     g_object_unref(m_buffer);
 }
 
+bool Document::close()
+{
+}
+
 gboolean Document::onFileReadInMainThread(gpointer param)
 {
     FileReadParam *p = static_cast<FileReadParam *>(param);
@@ -262,7 +266,7 @@ void Document::onFileWritten(Worker &worker)
                     NULL);
 }
 
-void Document::load(const char *uri, bool convertEncoding)
+bool Document::load(const char *uri, bool convertEncoding)
 {
     m_loading = true;
     freeze();
@@ -286,20 +290,48 @@ void Document::save(const char *uri, bool convertEncoding)
                                             this,
                                             _1),
                                 uri ? uri : uri(),
-                                convertEncoding,);
+                                convertEncoding);
     Application::instance()->scheduler()->schedule(*writer);
 }
 
-void Document::insert(int line, int column, const char* text, int length)
+char *Document::getText() const
 {
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_start_iter(m_gtkBuffer, &begin);
+    gtk_text_buffer_get_end_iter(m_gtkBuffer, &end);
+    return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
+}
+
+char *Document::getText(int beginLine, int beginColumn,
+                        int endLine, int endColumn) const
+{
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer,
+                                            &begin,
+                                            beginLine,
+                                            beginColumn);
+    gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer,
+                                            &end,
+                                            endLine,
+                                            endColumn);
+    return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
+}
+
+bool Document::insert(int line, int column, const char* text, int length)
+{
+    if (m_freezeCount)
+        return false;
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_line_offset(m_buffer, &iter, line, column);
     gtk_text_buffer_insert(m_buffer, &iter, text, length);
+    return true;
 }
 
-void Document::remove(int beginLine, int beginColumn,
+bool Document::remove(int beginLine, int beginColumn,
                       int endLine, int endColumn)
 {
+    if (m_freezeCount)
+        return false;
     GtkTextIter begin, end;
     gtk_text_buffer_get_iter_at_offset(m_buffer, &begin,
                                        beginLine, beginColumn);
