@@ -17,20 +17,22 @@ namespace
 
 struct FileReadParam
 {
-    FileReadParam(Document &document, TextFileReadWorker &reader):
+    FileReadParam(Samoyed::Document &document,
+                  Samoyed::TextFileReadWorker &reader):
         m_document(document), m_reader(reader)
     {}
-    Document &m_document;
-    TextFileReadWorker &m_reader;
+    Samoyed::Document &m_document;
+    Samoyed::TextFileReadWorker &m_reader;
 };
 
 struct FileWrittenParam
 {
-    FileWrittenParam(Document &document, TextFileWriteWorker &writer):
+    FileWrittenParam(Samoyed::Document &document,
+                     Samoyed::TextFileWriteWorker &writer):
         m_document(document), m_writer(writer)
     {}
-    Document &m_document;
-    TextFileWriteWorker &m_writer;
+    Samoyed::Document &m_document;
+    Samoyed::TextFileWriteWorker &m_writer;
 };
 
 const int DOCUMENT_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
@@ -101,14 +103,16 @@ Document::EditGroup::~EditGroup()
         delete (*i);
 }
 
-void Document::EditGroup::execute(Document &document) const
+bool Document::EditGroup::execute(Document &document) const
 {
-    document.beginUserAction();
+    if (!document.beginUserAction())
+        return false;
     for (std::vector<Edit *>::const_iterator i = m_edits.begin();
          i != m_edits.end();
          ++i)
         (*i)->execute(document);
     document.endUserAction();
+    return true;
 }
 
 void Document::EditStack::clear()
@@ -120,16 +124,18 @@ void Document::EditStack::clear()
     }
 }
 
-void Document::EditStack::execute(Document &document) const
+bool Document::EditStack::execute(Document &document) const
 {
     std::vector<Edit *> tmp(m_edits);
-    document.beginUserAction();
+    if (!document.beginUserAction())
+        return false;
     while (!tmp.empty())
     {
         tmp.top()->execute(document);
         tmp.pop();
     }
     document.endUserAction();
+    return true;
 }
 
 GtkTextTagTable* Document::s_sharedTagTable = NULL;
@@ -148,13 +154,15 @@ void Document::destroySharedData()
 Document::Document(const char* uri):
     m_uri(uri),
     m_name(basename(uri)),
+    m_closing(false),
     m_loading(false),
     m_saving(false),
-    m_frozen(false),
     m_undoing(false),
     m_redoing(false),
+
     m_superUndo(NULL),
-    m_editCount(0)
+    m_editCount(0),
+    m_freezeCount(0)
 {
     m_buffer = gtk_text_buffer_new(s_sharedTagTable);
     g_signal_connect(m_buffer,
@@ -168,7 +176,7 @@ Document::Document(const char* uri):
 
     m_source = Application::instance()->fileSourceManager()->get(uri);
     m_ast = Application::instance()->fileAstManager()->get(uri);
-    
+
     // Start the initial loading.
     load(NULL, true);
 }
@@ -340,10 +348,27 @@ bool Document::remove(int beginLine, int beginColumn,
     gtk_text_buffer_delete(m_buffer, &begin, &end);
 }
 
+
+bool Document::beginUserAction()
+{
+    if (m_freezeCount)
+        return false;
+    gtk_buffer_begin_user_action(m_buffer);
+    return true;
+}
+
+bool Document::endUserAction()
+{
+    if (m_freezeCount)
+        return false;
+    gtk_buffer_end_user_action(m_buffer);
+    return true;
+}
+
 void Document::addEditor(Editor& editor)
 {
     m_editors.push_back(&editor);
-    if (m_frozen)
+    if (m_freezeCount)
         editor.freeze();
 }
 

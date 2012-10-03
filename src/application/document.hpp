@@ -17,6 +17,7 @@ namespace Samoyed
 {
 
 class Editor;
+class TextFileReader;
 class FileSource;
 class FileAst;
 
@@ -98,7 +99,7 @@ public:
 
         virtual bool execute(Document &document) const
         {
-            bool document.insert(m_line, m_column, m_text.c_str(), -1);
+            return document.insert(m_line, m_column, m_text.c_str(), -1);
         }
 
         virtual bool merge(const Insertion &ins);
@@ -260,21 +261,25 @@ public:
      * removed, starting from 0.
      * @param endColumn The column number of the exclusive last character to be
      * removed, the character index, starting from 0.
-     * @return True iff successful.
+     * @return True iff successful, i.e., the document is not frozen.
      */
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
     /**
-     * @return True iff successful.
+     * @return True iff successful, i.e., the document is not frozen.
      */
     bool edit(const Edit &edit)
     { return edit.execute(*this); }
 
-    void beginUserAction()
-    { gtk_buffer_begin_user_action(m_gtkBuffer); }
+    /**
+     * @return True iff successful, i.e., the document is not frozen.
+     */
+    bool beginUserAction();
 
-    void endUserAction()
-    { gtk_buffer_end_user_action(m_gtkBuffer); }
+    /**
+     * @return True iff successful, i.e., the document is not frozen.
+     */
+    bool endUserAction();
 
     bool canUndo() const
     { return !m_undoHistory.empty() && !m_superUndo; }
@@ -464,6 +469,8 @@ private:
     std::vector<Editor *> m_editors;
 
     int m_freezeCount;
+
+    TextFileReadWorker *m_reader;
 
     ReferencePointer<FileSource> m_source;
     ReferencePointer<FileAst> m_ast;
