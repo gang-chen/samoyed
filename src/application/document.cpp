@@ -195,9 +195,9 @@ Document::~Document()
 
 bool Document::close()
 {
-    if (m_closing)
+    if (closing())
         return false;
-    if (m_loading)
+    if (loading())
     {
         // Cancel the loading and wait for the completion of the cancellation.
         assert(m_fileReader);
@@ -206,16 +206,37 @@ bool Document::close()
         m_closing = true;
         return true;
     }
-    if (m_saving)
+    if (saving())
     {
         // Wait for the completion of the saving.
         m_closing = true;
         return true;
     }
-    if (m_editCount)
+    if (changed())
     {
         // Ask the user.
-
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_NONE,
+            _("Document '%s' has unsaved changes. Save changes before closing?"),
+            name());
+        gtk_dialog_add_buttons(GTK_DIALOG(dialog),
+                               _("_Save changes and close"), GTK_RESPONSE_YES,
+                               _("_Discard changes and close"), GTK_RESPONSE_NO,
+                               _("_Cancel closing"), GTK_RESPONSE_CANCEL);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_CANCEL)
+            return false;
+        if (response == GTK_RESPONSE_YES)
+        {
+            save();
+            m_closing = true;
+            return true;
+        }
     }
     // Go ahead.
     Application::instance()->documentManager()->close(*this);
@@ -228,9 +249,12 @@ gboolean Document::onFileReadInMainThread(gpointer param)
     Document &doc = p->m_document;
     TextFileReader &reader = p->m_reader.reader();
 
-    if (!m_fileReader)
+    if (!doc.m_fileReader)
     {
         // The loading was canceled.
+        delete &reader;
+        delete p;
+        return FALSE;
     }
 
     // Copy contents in the reader's buffer to the document's buffer.
@@ -250,8 +274,11 @@ gboolean Document::onFileReadInMainThread(gpointer param)
     while (it.goToNextBulk());
 
     doc.m_revision = reader.revision();
+    if (doc.m_ioError)
+        g_error_free(doc.m_ioError);
     doc.m_ioError = reader.fetchError();
     doc.m_loading = false;
+    doc.m_fileReader = NULL;
     doc.unfreeze();
     doc.m_loaded(doc);
     doc.m_source->onDocumentLoaded(doc);
@@ -261,6 +288,22 @@ gboolean Document::onFileReadInMainThread(gpointer param)
     // If any error was encountered, report it.
     if (doc.m_ioError)
     {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to load document '%s': %s."),
+            name(), doc.m_ioError->message);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+    }
+
+    // If we are closing the document, notify the document manager.
+    if (doc->closing())
+    {
+        Application::instance()->documentManager()->close(*this);
+        return FALSE;
     }
 
     return FALSE;
@@ -308,7 +351,7 @@ void Document::onFileWritten(Worker &worker)
 
 bool Document::load(const char *uri, bool convertEncoding)
 {
-    if (m_closing || frozen())
+    if (closing() || frozen())
         return false;
     m_loading = true;
     freeze();

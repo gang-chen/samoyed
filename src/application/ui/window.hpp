@@ -32,6 +32,8 @@ public:
 
     Configuration configuration() const;
 
+    GtkWidget *gtkWidget() { return m_window; }
+
 private:
     static gboolean onDestroyEvent(GtkWidget *widget,
                                    GdkEvent *event,
@@ -44,8 +46,6 @@ private:
     Window();
 
     ~Window();
-
-    GtkWidget *gtkWidget() { return m_window; }
 
     bool create(const Configuration *config);
 

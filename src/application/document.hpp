@@ -181,8 +181,6 @@ public:
 
     const GError *ioError() const { return m_ioError; }
 
-    int editCount() const { return m_editCount; }
-
     /**
      * @return True iff the document is being closed.
      */
@@ -197,6 +195,8 @@ public:
      * @return True iff the document is being saved.
      */
     bool saving() const { return m_saving; }
+
+    bool changed() const { return m_editCount; }
 
     /**
      * Request to load the document from the external file.  The document cannot
