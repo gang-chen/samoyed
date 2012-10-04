@@ -159,10 +159,12 @@ Document::Document(const char* uri):
     m_saving(false),
     m_undoing(false),
     m_redoing(false),
-
+    m_buffer(NULL),
+    m_ioError(NULL),
     m_superUndo(NULL),
     m_editCount(0),
-    m_freezeCount(0)
+    m_freezeCount(0),
+    m_fileReader(NULL)
 {
     m_buffer = gtk_text_buffer_new(s_sharedTagTable);
     g_signal_connect(m_buffer,
@@ -175,10 +177,10 @@ Document::Document(const char* uri):
                      this);
 
     m_source = Application::instance()->fileSourceManager()->get(uri);
-    m_ast = Application::instance()->fileAstManager()->get(uri);
+    m_ast = Application::instance()->projectAstManager()->getFileAst(uri);
 
     // Start the initial loading.
-    load(NULL, true);
+    load();
 }
 
 Document::~Document()
@@ -193,6 +195,31 @@ Document::~Document()
 
 bool Document::close()
 {
+    if (m_closing)
+        return false;
+    if (m_loading)
+    {
+        // Cancel the loading and wait for the completion of the cancellation.
+        assert(m_fileReader);
+        m_fileReader->cancel();
+        m_fileReader = NULL;
+        m_closing = true;
+        return true;
+    }
+    if (m_saving)
+    {
+        // Wait for the completion of the saving.
+        m_closing = true;
+        return true;
+    }
+    if (m_editCount)
+    {
+        // Ask the user.
+
+    }
+    // Go ahead.
+    Application::instance()->documentManager()->close(*this);
+    return true;
 }
 
 gboolean Document::onFileReadInMainThread(gpointer param)
@@ -200,6 +227,11 @@ gboolean Document::onFileReadInMainThread(gpointer param)
     FileReadParam *p = static_cast<FileReadParam *>(param);
     Document &doc = p->m_document;
     TextFileReader &reader = p->m_reader.reader();
+
+    if (!m_fileReader)
+    {
+        // The loading was canceled.
+    }
 
     // Copy contents in the reader's buffer to the document's buffer.
     GtkTextBuffer *gtkBuffer = doc.m_buffer;
@@ -276,6 +308,8 @@ void Document::onFileWritten(Worker &worker)
 
 bool Document::load(const char *uri, bool convertEncoding)
 {
+    if (m_closing || frozen())
+        return false;
     m_loading = true;
     freeze();
     TextFileReadWorker *reader =
@@ -290,6 +324,8 @@ bool Document::load(const char *uri, bool convertEncoding)
 
 void Document::save(const char *uri, bool convertEncoding)
 {
+    if (m_closing || frozen())
+        return false;
     m_saving = true;
     freeze();
     TextFileWriteWorker *writer =
@@ -305,29 +341,29 @@ void Document::save(const char *uri, bool convertEncoding)
 char *Document::getText() const
 {
     GtkTextIter begin, end;
-    gtk_text_buffer_get_start_iter(m_gtkBuffer, &begin);
-    gtk_text_buffer_get_end_iter(m_gtkBuffer, &end);
-    return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
+    gtk_text_buffer_get_start_iter(m_buffer, &begin);
+    gtk_text_buffer_get_end_iter(m_buffer, &end);
+    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
 }
 
 char *Document::getText(int beginLine, int beginColumn,
                         int endLine, int endColumn) const
 {
     GtkTextIter begin, end;
-    gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer,
+    gtk_text_buffer_get_iter_at_line_offset(m_buffer,
                                             &begin,
                                             beginLine,
                                             beginColumn);
-    gtk_text_buffer_get_iter_at_line_offset(m_gtkBuffer,
+    gtk_text_buffer_get_iter_at_line_offset(m_buffer,
                                             &end,
                                             endLine,
                                             endColumn);
-    return gtk_text_buffer_get_text(m_gtkBuffer, &begin, &end, TRUE);
+    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
 }
 
 bool Document::insert(int line, int column, const char* text, int length)
 {
-    if (m_freezeCount)
+    if (!editable())
         return false;
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_line_offset(m_buffer, &iter, line, column);
@@ -338,8 +374,8 @@ bool Document::insert(int line, int column, const char* text, int length)
 bool Document::remove(int beginLine, int beginColumn,
                       int endLine, int endColumn)
 {
-    if (m_freezeCount)
-        return false;
+    if (!editable())
+       return false;
     GtkTextIter begin, end;
     gtk_text_buffer_get_iter_at_offset(m_buffer, &begin,
                                        beginLine, beginColumn);
@@ -351,22 +387,22 @@ bool Document::remove(int beginLine, int beginColumn,
 
 bool Document::beginUserAction()
 {
-    if (m_freezeCount)
+    if (!editable())
         return false;
     gtk_buffer_begin_user_action(m_buffer);
     return true;
 }
 
-bool Document::endUserAction()
+ool Docuent::endserAction()
 {
-    if (m_freezeCount)
+    if (!editable())
         return false;
     gtk_buffer_end_user_action(m_buffer);
     return true;
 }
 
 void Document::addEditor(Editor& editor)
-{
+
     m_editors.push_back(&editor);
     if (m_freezeCount)
         editor.freeze();

@@ -203,24 +203,18 @@ public:
      * be loaded if it is being closed, loaded or saved, or is frozen.  When
      * loading, the document is frozen.  The caller can get notified of the
      * completion of the loading by adding a callback.
-     * @param uri The URI of the external file if load from a different file, or
-     * NULL if load from the current file.  The URI of the document will not be
-     * changed.
      * @return True iff the loading is started.
      */
-    bool load(const char *uri, bool convertEncoding);
+    bool load();
 
     /**
      * Request to save the document into the external file.  The document cannot
      * be saved if it is being closed, loaded or saved, or is frozen.  When
      * saving, the document is frozen.  The caller can get notified of the
      * completion of the saving by adding a callback.
-     * @param uri The URI of the external file if save into a different file, or
-     * NULL if save into the current file.  The URI of the document will not be
-     * changed.
      * @return True iff the saving is started.
      */
-    bool save(const char *uri, bool convertEncoding);
+    bool save();
 
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
@@ -242,13 +236,19 @@ public:
                   int endLine, int endColumn) const;
 
     /**
+     * @return True iff the document can be edited.
+     */
+    bool editable() const
+    { return !m_closing && !frozen(); }
+
+    /**
      * @param line The line number of the insertion position, starting from 0.
      * @param column The column number of the insertion position, the
      * character index, starting from 0.
      * @param text The text to be inserted.
      * @param length The number of the bytes to be inserted, or -1 if inserting
      * the text until '\0'.
-     * @return True iff successful.
+     * @return True iff successful, i.e., the document can be edited.
      */
     bool insert(int line, int column, const char *text, int length);
 
@@ -261,45 +261,51 @@ public:
      * removed, starting from 0.
      * @param endColumn The column number of the exclusive last character to be
      * removed, the character index, starting from 0.
-     * @return True iff successful, i.e., the document is not frozen.
+     * @return True iff successful, i.e., the document can be edited.
      */
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
     /**
-     * @return True iff successful, i.e., the document is not frozen.
+     * @return True iff successful, i.e., the document can be edited.
      */
     bool edit(const Edit &edit)
     { return edit.execute(*this); }
 
     /**
-     * @return True iff successful, i.e., the document is not frozen.
+     * @return True iff successful, i.e., the document can be edited.
      */
     bool beginUserAction();
 
     /**
-     * @return True iff successful, i.e., the document is not frozen.
+     * @return True iff successful, i.e., the document can be edited.
      */
     bool endUserAction();
 
-    bool canUndo() const
+    bool undoable() const
     { return !m_undoHistory.empty() && !m_superUndo; }
 
-    bool canRedo() const
+    bool redoable() const
     { return !m_redoHistory.empty() && !m_superUndo; }
 
+    /**
+     * @return True iff successful, i.e., the document can be edited and undone.
+     */
     bool undo();
 
+    /**
+     * @return True iff successful, i.e., the document can be edited and redone.
+     */
     bool redo();
 
     bool frozen() const { return m_freezeCount; }
 
     /**
-     * Disallow the user to edit this document through the text views.
+     * Disallow the user to edit the document.
      */
     void freeze();
 
     /**
-     * Allow the user to edit this document through the text views.
+     * Allow the user to edit the document.
      */
     void unfreeze();
 
@@ -372,11 +378,15 @@ private:
     ~Document();
 
     /**
-     * Request to close the document.  If the document is being loaded, cancel
-     * the loading and discard the user edits, if any.  If it is being saved,
-     * wait for the completion of the saving.  If it is edited by the user, ask
-     * the user to save or discard the edits, or cancel closing it.  The
-     * document manager will get notified of the completion of the closing.
+     * Request to close the document.  Closing the document is cooperatively
+     * done by the document manager and the document itself.  This function gets
+     * the document ready for closing, and then the document manager destroys
+     * the editors and the document.  If the document is being loaded, cancel
+     * the loading and discard the user changes, if any.  If it is being saved,
+     * wait for the completion of the saving.  If it was changed by the user,
+     * ask the user whether we need to save or discard the changes, or cancel
+     * closing it.  The document manager will get notified when the document is
+     * ready for closing.
      * @return True iff the closing is started.
      */
     bool close();
@@ -470,7 +480,11 @@ private:
 
     int m_freezeCount;
 
-    TextFileReadWorker *m_reader;
+    /**
+     * The worker for reading the text file.  We record it so that we can
+     * cancel it later.
+     */
+    TextFileReadWorker *m_fileReader;
 
     ReferencePointer<FileSource> m_source;
     ReferencePointer<FileAst> m_ast;
