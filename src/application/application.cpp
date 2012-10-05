@@ -12,7 +12,6 @@
 #include <assert.h>
 #include <string>
 #include <locale>
-#include <algorithm>
 #ifdef ENABLE_NLS
 # include <libintl.h>
 #endif
@@ -47,6 +46,7 @@ Application::Application():
     m_fileSourceManager(NULL),
     m_fileAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
+    m_windows(NULL),
     m_currentWindow(NULL),
     m_switchingSession(false)
 {
@@ -306,7 +306,7 @@ Window *Application::createWindow(const Window::Configuration *config)
         delete window;
         return NULL;
     }
-    m_windows.push_back(window);
+    window->addToList(m_windows);
     if (!m_currentWindow)
         m_currentWindow = window;
     gtk_widget_show(window->gtkWidget());
@@ -316,12 +316,11 @@ Window *Application::createWindow(const Window::Configuration *config)
 bool Application::destroyWindow(Window &window)
 {
     // If this is the only one window, we quit the current session.
-    if (m_windows.size() == 1)
+    if (!m_windows.next())
     {
-        assert(m_windows.front() == &window);
+        assert(m_windows == &window);
         return quit();
     }
-
     return window.destroy();
 }
 
@@ -332,9 +331,9 @@ bool Application::destroyWindowOnly(Window &window)
 
 void Application::onWindowDestroyed(Window &window)
 {
-    std::remove(m_windows.begin(), m_windows.end(), &window);
+    window.removeFromList(m_windows);
     delete &window;
-    if (m_windows.empty())
+    if (!m_windows)
     {
         m_currentWindow = NULL;
 
@@ -347,7 +346,7 @@ void Application::onWindowDestroyed(Window &window)
         // Temporarily set the current window.  The window manager will choose
         // one as the current one, which is possibly not owned by this
         // application.
-        m_currentWindow = m_windows[0];
+        m_currentWindow = m_windows;
     }
 }
 

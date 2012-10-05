@@ -19,20 +19,26 @@ class Window
 public:
     struct Configuration
     {
-        int width;
-        int height;
-        int x;
-        int y;
-        bool fullScreen;
-        bool maximized;
-        bool toolbarVisible;
-        bool sidePanelVisible;
-        int sidePanelWidth;
+        int m_width;
+        int m_height;
+        int m_x;
+        int m_y;
+        bool m_fullScreen;
+        bool m_maximized;
+        bool m_toolbarVisible;
+        bool m_sidePanelVisible;
+        int m_sidePanelWidth;
     };
 
     Configuration configuration() const;
 
-    GtkWidget *gtkWidget() { return m_window; }
+    /**
+     * @return The underlying GTK+ widget.  Note that it is read-only.
+     */
+    GtkWidget *gtkWidget() const { return m_window; }
+
+    const Window *next() const { return m_next; }
+    const Window *previous() const { return m_previous; }
 
 private:
     static gboolean onDestroyEvent(GtkWidget *widget,
@@ -50,6 +56,10 @@ private:
     bool create(const Configuration *config);
 
     bool destroy();
+
+    void addToList(Window *&windows);
+
+    void removeFromList(Window *&windows);
 
     /**
      * The GTK+ window.
@@ -82,6 +92,12 @@ private:
      * The GTK+ actions that are sensitive when some files are opened.
      */
     GtkActionGroup *m_documentActions;
+
+    /**
+     * Doubly linked in the application.
+     */
+    Window *m_next;
+    Window *m_previous;
 
     friend class Application;
     friend class Actions;

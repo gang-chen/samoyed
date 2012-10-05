@@ -89,7 +89,7 @@ public:
 
     void setCurrentWindow(Window &window);
 
-    const std::vector<Window *> &windows() const { return m_windows; }
+    const Window *windows() const { return m_windows; }
 
     Window *createWindow(const Window::Configuration *config);
 
@@ -149,7 +149,7 @@ private:
     /**
      * The top-level windows.
      */
-    std::vector<Window *> m_windows;
+    Window *m_windows;
 
     Window *m_currentWindow;
 

@@ -9,7 +9,9 @@
 namespace Samoyed
 {
 
-Window::Window()
+Window::Window():
+    m_next(NULL),
+    m_previous(NULL)
 {
 }
 
@@ -83,6 +85,29 @@ bool Window::destroy()
 
     // Destroy the window.
     gtk_widget_destroy(m_window);
+}
+
+void Window::addToList(Window *&windows)
+{
+    assert(!m_previous);
+    assert(!m_next);
+    if (windows)
+        windows->m_previous = this;
+    else
+        windows = this;
+    m_next = windows;
+}
+
+void Window::removeFromList(Window *&windows)
+{
+    if (m_previous)
+        m_previous->m_next = m_next;
+    else
+        windows = m_next;
+    if (m_next)
+        m_next->m_previous = m_previous;
+    m_next = NULL;
+    m_previous = NULL;
 }
 
 gboolean Window::onDestroyEvent(GtkWidget *widget,
