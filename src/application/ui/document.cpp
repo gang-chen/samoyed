@@ -2,13 +2,15 @@
 // Copyright (C) 2012 Gang Chen.
 
 #include "document.hpp"
-#include "application.hpp"
-#include "utilities/utf8.hpp"
-#include "utilities/text-buffer.hpp"
-#include "utilities/text-file-reader.hpp"
-#include "utilities/text-file-writer.hpp"
-#include "utilities/worker.hpp"
-#include "utilities/scheduler.hpp"
+#include "../application.hpp"
+#include "../resources/file-source.hpp"
+#include "../resources/file-ast.hpp"
+#include "../utilities/utf8.hpp"
+#include "../utilities/text-buffer.hpp"
+#include "../utilities/text-file-reader.hpp"
+#include "../utilities/text-file-writer.hpp"
+#include "../utilities/worker.hpp"
+#include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <string.h>
 
@@ -364,7 +366,7 @@ void Document::onFileWritten(Worker &worker)
                     NULL);
 }
 
-bool Document::load(const char *uri, bool convertEncoding)
+bool Document::load()
 {
     if (closing() || frozen())
         return false;
@@ -375,25 +377,26 @@ bool Document::load(const char *uri, bool convertEncoding)
                                boost::bind(&Document::onFileRead,
                                            this,
                                            _1),
-                               uri ? uri : uri(),
-                               convertEncoding);
+                               uri());
     Application::instance()->scheduler()->schedule(*m_fileReader);
     return true;
 }
 
-bool Document::save(const char *uri, bool convertEncoding)
+bool Document::save()
 {
     if (m_closing || frozen())
         return false;
     m_saving = true;
     freeze();
+    char *text = getText();
     TextFileWriteWorker *writer =
         new TextFileWriteWorker(Worker::defaultPriorityInCurrentThread(),
                                 boost::bind(&Document::onFileWritten,
                                             this,
                                             _1),
-                                uri ? uri : uri(),
-                                convertEncoding);
+                                uri(),
+                                text);
+    g_free(text);
     Application::instance()->scheduler()->schedule(*writer);
     return true;
 }

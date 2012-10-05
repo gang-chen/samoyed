@@ -1,7 +1,14 @@
+# Backups
 *~
-*.[ao]
+
+# Objects and archives
+*.[oa]
+
+# Files created by IDEs
 .*/
 samoyed.*
+
+# Unit test builds
 src/application/utilities/buffer
 src/application/utilities/manager
 src/application/utilities/range

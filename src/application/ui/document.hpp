@@ -4,8 +4,8 @@
 #ifndef SMYD_DOCUMENT_HPP
 #define SMYD_DOCUMENT_HPP
 
-#include "utilities/revision.hpp"
-#include "utilities/manager.hpp"
+#include "../utilities/revision.hpp"
+#include "../utilities/manager.hpp"
 #include <string>
 #include <vector>
 #include <stack>

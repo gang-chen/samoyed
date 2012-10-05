@@ -2,13 +2,15 @@
 // Copyright (C) 2012 Gang Chen.
 
 #include "file-source.hpp"
-#include "application.hpp"
 #include "project-ast-manager.hpp"
-#include "utilities/scheduler.hpp"
-#include "utilities/text-buffer.hpp"
-#include "utilities/text-file-reader.hpp"
-#include "utilities/range.hpp"
-#include "utilities/change-hint.hpp"
+#include "../application.hpp"
+#include "../ui/document-manager.hpp"
+#include "../ui/document.hpp"
+#include "../utilities/scheduler.hpp"
+#include "../utilities/text-buffer.hpp"
+#include "../utilities/text-file-reader.hpp"
+#include "../utilities/range.hpp"
+#include "../utilities/change-hint.hpp"
 #include <assert.h>
 #include <string>
 #include <deque>
@@ -21,7 +23,7 @@ namespace Samoyed
 void FileSource::Loading::execute(FileSource &source)
 {
     TextFileReader reader;
-    reader.open(source.uri(), true);
+    reader.open(source.uri());
     reader.read();
     reader.close();
     source.beginWrite(false, NULL, NULL, NULL);

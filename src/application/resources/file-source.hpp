@@ -4,10 +4,10 @@
 #ifndef SMYD_FILE_SOURCE_HPP
 #define SMYD_FILE_SOURCE_HPP
 
-#include "utilities/managed.hpp"
-#include "utilities/manager.hpp"
-#include "utilities/revision.hpp"
-#include "utilities/worker.hpp"
+#include "../utilities/managed.hpp"
+#include "../utilities/manager.hpp"
+#include "../utilities/revision.hpp"
+#include "../utilities/worker.hpp"
 #include <string>
 #include <deque>
 #include <boost/signals2/dummy_mutex.hpp>

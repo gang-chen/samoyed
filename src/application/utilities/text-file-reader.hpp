@@ -6,7 +6,9 @@
 
 #include "revision.hpp"
 #include "worker.hpp"
+#include <string>
 #include <glib.h>
+#include <gio/gio.h>
 
 namespace Samoyed
 {
@@ -24,7 +26,7 @@ public:
 
     ~TextFileReader();
 
-    void open(const char *uri, bool convertEncoding);
+    void open(const char *uri);
 
     void read();
 
@@ -48,6 +50,16 @@ public:
     }
 
 private:
+    GFile *m_file;
+
+    GFileInputStream *m_fileStream;
+
+    GCharsetConverter *m_encodingConverter;
+
+    GInputStream *m_converterStream;
+
+    GInputStream *m_stream;
+
     TextBuffer *m_buffer;
 
     Revision m_revision;
@@ -66,15 +78,16 @@ public:
                        const char *uri,
                        bool convertEncoding):
         Worker(priority, callback),
-        m_uri(uri),
-        m_convertEncoding(convertEncoding)
+        m_uri(uri)
     {}
+
     TextFileReader &reader() { return m_reader; }
+
     virtual bool step();
     
 private:
     std::string m_uri;
-    bool m_convertEncoding;
+
     TextFileReader m_reader;
 };
 

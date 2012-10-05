@@ -6,7 +6,9 @@
 
 #include "revision.hpp"
 #include "worker.hpp"
+#include <string>
 #include <glib.h>
+#include <gio/gio.h>
 
 namespace Samoyed
 {
@@ -14,6 +16,8 @@ namespace Samoyed
 class TextBuffer;
 
 /**
+ * A text file writer converts text into the external character encoding and
+ * writes it to a file.
  */
 class TextFileWriter
 {
@@ -22,18 +26,11 @@ public:
 
     ~TextFileWriter();
 
-    void open(const char *uri, bool convertEncoding);
+    void open(const char *uri);
 
-    void read();
+    void write(const char *text);
 
     void close();
-
-    TextBuffer *fetchBuffer()
-    {
-        TextBuffer *buffer = m_buffer;
-        m_buffer = NULL;
-        return buffer;
-    }
 
     const Revision &revision() const
     { return m_revision; }
@@ -46,34 +43,36 @@ public:
     }
 
 private:
-    TextBuffer *m_buffer;
-
     Revision m_revision;
 
     GError *m_error;
 };
 
 /**
- * Worker wrapping a text file reader.
+ * Worker wrapping a text file writer.
  */
-class TextFileWriterWorker: public Worker
+class TextFileWriteWorker: public Worker
 {
 public:
-    TextFiledWorker(unsigned int priority,
-                       const Callback &callback,
-                       const char *uri,
-                       bool convertEncoding):
+    TextFileWriteWorker(unsigned int priority,
+                        const Callback &callback,
+                        const char *uri,
+                        const char *text):
         Worker(priority, callback),
         m_uri(uri),
-        m_convertEncoding(convertEncoding)
+        m_text(text)
     {}
-    TextFileReader &reader() { return m_reader; }
+
+    TextFileWriter &writer() { return m_writer; }
+
     virtual bool step();
     
 private:
     std::string m_uri;
-    bool m_convertEncoding;
-    TextFileReader m_reader;
+
+    std::string m_text;
+
+    TextFileWriter m_writer;
 };
 
 }
