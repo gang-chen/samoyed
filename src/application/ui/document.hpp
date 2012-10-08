@@ -481,7 +481,7 @@ private:
     int m_freezeCount;
 
     /**
-     * The worker for reading the text file.  We record it so that we can
+     * The worker for reading the text file.  We memorize it so that we can
      * cancel it later.
      */
     TextFileReadWorker *m_fileReader;
