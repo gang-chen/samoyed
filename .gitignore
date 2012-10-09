@@ -15,6 +15,7 @@ samoyed.*
 src/application/samoyed
 
 # Unit test builds.
+src/application/ui/splash-screen
 src/application/utilities/buffer
 src/application/utilities/manager
 src/application/utilities/range
@@ -23,4 +24,3 @@ src/application/utilities/signal
 src/application/utilities/text-buffer
 src/application/utilities/utf8
 src/application/utilities/worker
-src/application/ui/splash-screen
