@@ -1,14 +1,20 @@
-# Backups
+# Backup files produced by editors.
 *~
 
-# Objects and archives
-*.[oa]
-
-# Files created by IDEs
+# Files created by IDEs.
 .*/
 samoyed.*
 
-# Unit test builds
+# Files produced by autotools.
+
+# Object files, archives, shared libraries and programs produced by compilers.
+*.o
+*.a
+*.so
+*.so.*
+src/application/samoyed
+
+# Unit test builds.
 src/application/utilities/buffer
 src/application/utilities/manager
 src/application/utilities/range
