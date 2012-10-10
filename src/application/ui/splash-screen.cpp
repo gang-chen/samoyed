@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     char buffer[100];
     gtk_init(&argc, &argv);
     Samoyed::SplashScreen splash("Splash screen test",
-                                 "../../../images/splash-screen.png");
+                                 "../../../data/splash-screen.png");
     snprintf(buffer, sizeof(buffer),
              "Testing splash screen.  Finished %.2f.", progress);
     splash.setProgress(progress, buffer);
