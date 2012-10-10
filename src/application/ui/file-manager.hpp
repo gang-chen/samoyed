@@ -1,8 +1,8 @@
-// Document manager.
+// Manager of opened files.
 // Copyright (C) 2011 Gang Chen.
 
-#ifndef SMYD_DOCUMENT_MANAGER_HPP
-#define SMYD_DOCUMENT_MANAGER_HPP
+#ifndef SMYD_FILE_MANAGER_HPP
+#define SMYD_FILE_MANAGER_HPP
 
 #include "utilities/pointer-comparator.hpp"
 #include <utility>
@@ -41,19 +41,6 @@ public:
      */
     Document *get(const char *uri);
 
-    /**
-     * Create a document and load it, and create an editor to edit it, if the
-     * document is not opened.  Otherwise, retrieve the existing document and
-     * select an editor for it or open a new editor if requested.
-     * @param line The line number of the initial cursor, starting from 0.
-     * @param column The column number of the initial cursor, the character
-     * index, starting from 0.
-     * @param newEditor True if request to always open a new editor.
-     * @param editorContainer The editor group to contain the new editor, or 0
-     * if put the new editor into the current editor group.
-     * @param editorIndex The index of the new editor in the containing editor
-     * group, or -1 if put the new editor after the current editor.
-     */
     std::pair<Document *, Editor *> open(const char *uri,
                                          int line,
                                          int column,

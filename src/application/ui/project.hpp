@@ -1,4 +1,4 @@
-// Project.
+// Opened project.
 // Copyright (C) 2012 Gang Chen.
 
 #ifndef SMYD_PROJECT_HPP
@@ -7,17 +7,21 @@
 namespace Samoyed
 {
 
+class ProjectDevelopmentEnvironment;
+
 /**
- * A project is a collection of related resources on which the user is working.
- * It can be opened and closed by the user.  When opened, a project can be
- * accessed for resources, can be browsed and edited in the project explorer,
- * and can be built, debugged, etc.  It is a user interface object that can be
- * accessed in the main thread only.
+ * A project represents an opened Samoyed project, which is a collection of well
+ * organized resources.  Each opened physical project has one and only one
+ * project instance.  Each project has one and only one project development
+ * environment, where the user may modify the project.
  *
- * A project is actually a mirror of the project configuration.
+ * Projects are user interface objects that can be accessed in the main thread
+ * only.
  */
 class Project
 {
+private:
+    ProjectDevelopmentEnvironment *m_environment;
 };
 
 }

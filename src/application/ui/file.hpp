@@ -1,8 +1,8 @@
-// Document.
+// Opened file.
 // Copyright (C) 2012 Gang Chen.
 
-#ifndef SMYD_DOCUMENT_HPP
-#define SMYD_DOCUMENT_HPP
+#ifndef SMYD_FILE_HPP
+#define SMYD_FILE_HPP
 
 #include "../utilities/revision.hpp"
 #include "../utilities/manager.hpp"
@@ -16,36 +16,27 @@
 namespace Samoyed
 {
 
-class Editor;
+class FileEditor;
 class TextFileReader;
 class FileSource;
 class FileAst;
 
 /**
- * A document is the in-memory buffer for a file being edited by the user.  It
- * can be opened, loaded, edited, saved and closed by the user.  It is a user
- * interface object that can be accessed in the main thread only.
+ * A file represents an opened file.  It is the in-memory buffer for a file
+ * being edited by the user.  Each opened physical file has one and only one
+ * file instance.
  *
- * For a file, the document is the model while the editors are the views.
- * Basically, a document is a buffer implemented a GTK+ text buffer, and editors
- * are views implemented by GTK+ text views.  For a source file, we extend their
- * functionality further.  The document also models the abstract syntax tree
- * representation of the source file, and the editors not only display the text
- * but also performs syntax highlighting, code folding, etc. based on the
- * abstract syntax tree.
+ * Files are user interface objects that can be accessed in the main thread
+ * only.
  *
  * A document saves the editing history, supporting undo and redo.
- *
- * When a document is opened, it keeps a reference to the file source, and then
- * pushes user edits so as to let the file source update it and, if the file is
- * a source file, the related abstract syntax trees.
  */
 class Document
 {
 private:
-    typedef boost::signals2::signal<void (const Document &doc)> Closed;
-    typedef boost::signals2::signal<void (const Document &doc)> Loaded;
-    typedef boost::signals2::signal<void (const Document &doc)> Saved;
+    typedef boost::signals2::signal<void (const File &file)> Closed;
+    typedef boost::signals2::signal<void (const File &file)> Loaded;
+    typedef boost::signals2::signal<void (const File &file)> Saved;
     typedef boost::signals2::signal<void (const Document &doc,
                                           int line,
                                           int column,
