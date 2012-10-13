@@ -48,7 +48,7 @@ public:
 
     /**
      * Quit the application by quitting the current session.
-     * @return False if the user requests not to quit the application.
+     * @return True iff start to quit the application.
      */
     bool quit();
 
@@ -72,7 +72,7 @@ public:
     { return m_fileAstManager; }
 
     /**
-     * @return True, if we are in the main thread.  The main thread is the
+     * @return True iff we are in the main thread.  The main thread is the
      * thread where the application instance was created and started to run.
      * The GTK+ main event loop is in the main thread.
      */

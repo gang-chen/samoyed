@@ -4,6 +4,7 @@
 #ifndef SMYD_SOURCE_FILE_HPP
 #define SMYD_SOURCE_FILE_HPP
 
+#include "file.hpp"
 #include "../utilities/revision.hpp"
 #include "../utilities/manager.hpp"
 #include <string>
@@ -22,9 +23,7 @@ class FileSource;
 class FileAst;
 
 /**
- * A document is the in-memory buffer for a file being edited by the user.  It
- * can be opened, loaded, edited, saved and closed by the user.  It is a user
- * interface object that can be accessed in the main thread only.
+ * A source file represents an opened source file.
  *
  * For a file, the document is the model while the editors are the views.
  * Basically, a document is a buffer implemented a GTK+ text buffer, and editors
@@ -40,7 +39,7 @@ class FileAst;
  * pushes user edits so as to let the file source update it and, if the file is
  * a source file, the related abstract syntax trees.
  */
-class Document
+class SourceFile: public File
 {
 private:
     typedef boost::signals2::signal<void (const Document &doc)> Closed;

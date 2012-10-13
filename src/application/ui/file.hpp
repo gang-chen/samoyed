@@ -5,53 +5,30 @@
 #define SMYD_FILE_HPP
 
 #include "../utilities/revision.hpp"
-#include "../utilities/manager.hpp"
 #include <string>
 #include <vector>
 #include <stack>
 #include <boost/signals2/signal.hpp>
-#include <glib.h>
-#include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-class FileEditor;
-class TextFileReader;
-class FileSource;
-class FileAst;
+class Editor;
 
 /**
  * A file represents an opened file.  It is the in-memory buffer for a file
  * being edited by the user.  Each opened physical file has one and only one
- * file instance.
+ * file instance.  A file has one or more editors.  The file accepts each user
+ * edit from an editor, and broadcasts the edit to the other editors.
  *
  * Files are user interface objects that can be accessed in the main thread
  * only.
  *
- * A document saves the editing history, supporting undo and redo.
+ * A file saves the editing history, supporting undo and redo.
  */
-class Document
+class File
 {
-private:
-    typedef boost::signals2::signal<void (const File &file)> Closed;
-    typedef boost::signals2::signal<void (const File &file)> Loaded;
-    typedef boost::signals2::signal<void (const File &file)> Saved;
-    typedef boost::signals2::signal<void (const Document &doc,
-                                          int line,
-                                          int column,
-                                          const char *text,
-                                          int length)> TextInserted;
-    typedef boost::signals2::signal<void (const Document &doc,
-                                          int beginLine,
-                                          int beginColumn,
-                                          int endLine,
-                                          int endColumn)> TextRemoved;
-
 public:
-    class Insertion;
-    class Removal;
-
     class Edit
     {
     public:
@@ -60,92 +37,25 @@ public:
         /**
          * @return True iff successful.
          */
-        virtual bool execute(Document &document) const = 0;
+        virtual bool execute(File &file) const = 0;
 
         /**
-         * Merge this text edit with the edit that will be executed immediately
+         * Merge this edit with the edit that will be executed immediately
          * before this edit.
          */
-        virtual bool merge(const Insertion &ins) { return false; }
-        virtual bool merge(const Removal &rem) { return false; }
-    };
-
-    class Insertion: public Edit
-    {
-    public:
-        /**
-         * @param line The line number of the insertion position, starting from
-         * 0.
-         * @param column The column number of the insertion position, the
-         * character index, starting from 0.
-         * @param text The text to be inserted.
-         * @param length The number of the bytes to be inserted, or -1 if
-         * inserting the text until '\0'.
-         */
-        Insertion(int line, int column, const char *text, int length):
-            m_line(line),
-            m_column(column),
-            m_text(text, length)
-        {}
-
-        virtual bool execute(Document &document) const
-        {
-            return document.insert(m_line, m_column, m_text.c_str(), -1);
-        }
-
-        virtual bool merge(const Insertion &ins);
-
-    private:
-        int m_line;
-        int m_column;
-        std::string m_text;
-    };
-
-    class Removal: public Edit
-    {
-    public:
-        /**
-         * @param beginLine The line number of the first character to be
-         * removed, starting from 0.
-         * @param beginColumn The column number of the first character to be
-         * removed, the character index, starting from 0.
-         * @param endLine The line number of the exclusive last character to be
-         * removed, starting from 0.
-         * @param endColumn The column number of the exclusive last character to
-         * be removed, the character index, starting from 0.
-         */
-        Removal(int beginLine, int beginColumn, int endLine, int endColumn):
-            m_beginLine(beginLine),
-            m_beginColumn(beginColumn),
-            m_endLine(endLine),
-            m_endColumn(endColumn)
-        {}
-
-        virtual bool execute(Document &document) const
-        {
-            return document.remove(m_beginLine, m_beginColumn,
-                                   m_endLine, m_endColumn);
-        }
-
-        virtual bool merge(const Removal &rem);
-
-    private:
-        int m_beginLine;
-        int m_beginColumn;
-        int m_endLine;
-        int m_endColumn;
+        virtual bool merge(const Edit &edit) { return false; }
     };
 
     /**
-     * A group of text edits.  It is used to group a sequence of edits that will
-     * be executed together as one edit from the user's view.
+     * A group of edits.  It is used to group a sequence of edits that will be
+     * executed together as one edit from the user's view.
      */
     class EditGroup: public Edit
     {
     public:
         virtual ~EditGroup();
 
-        virtual bool execute(Document &document) const;
+        virtual bool execute(File &file) const;
 
         void add(Edit *edit) { m_edits.push_back(edit); }
 
@@ -155,14 +65,11 @@ public:
         std::vector<Edit *> m_edits;
     };
 
-    /**
-     * Create the data that will be shared by all the documents.  It is required
-     * that this function be called before any document is created.  This
-     * function creates a tag group.
-     */
-    static void createSharedData();
-
-    static void destroySharedData();
+    typedef boost::signals2::signal<void (const File &file)> Closed;
+    typedef boost::signals2::signal<void (const File &file)> Loaded;
+    typedef boost::signals2::signal<void (const File &file)> Saved;
+    typedef boost::signals2::signal<void (const File &file, const Edit &)>
+    	Edited;
 
     const char *uri() const { return m_uri.c_str(); }
 
@@ -173,102 +80,59 @@ public:
     const GError *ioError() const { return m_ioError; }
 
     /**
-     * @return True iff the document is being closed.
+     * @return True iff the file is being closed.
      */
     bool closing() const { return m_closing; }
 
     /**
-     * @return True iff the document is being loaded.
+     * @return True iff the file is being loaded.
      */
     bool loading() const { return m_loading; }
 
     /**
-     * @return True iff the document is being saved.
+     * @return True iff the file is being saved.
      */
     bool saving() const { return m_saving; }
 
-    bool changed() const { return m_editCount; }
+    bool edited() const { return m_editCount; }
 
     /**
-     * Request to load the document from the external file.  The document cannot
-     * be loaded if it is being closed, loaded or saved, or is frozen.  When
-     * loading, the document is frozen.  The caller can get notified of the
-     * completion of the loading by adding a callback.
+     * Request to load the file.  The file cannot be loaded if it is being
+     * closed, loaded or saved, or is frozen.  When loading, the file is frozen.
+     * The caller can get notified of the completion of the loading by adding a
+     * callback.
      * @return True iff the loading is started.
      */
     bool load();
 
     /**
-     * Request to save the document into the external file.  The document cannot
-     * be saved if it is being closed, loaded or saved, or is frozen.  When
-     * saving, the document is frozen.  The caller can get notified of the
-     * completion of the saving by adding a callback.
+     * Request to save the file.  The file cannot be saved if it is being
+     * closed, loaded or saved, or is frozen.  When saving, the file is frozen.
+     * The caller can get notified of the completion of the saving by adding a
+     * callback.
      * @return True iff the saving is started.
      */
     bool save();
 
     /**
-     * @return The whole text contents, in a memory chunk allocated by GTK+.
-     */
-    char *getText() const;
-
-    /**
-     * @param beginLine The line number of the first character to be returned,
-     * starting from 0.
-     * @param beginColumn The column number of the first character to be
-     * returned, the character index, starting from 0.
-     * @param endLine The line number of the exclusive last character to be
-     * returned, starting from 0.
-     * @param endColumn The column number of the exclusive last character to be
-     * returned, the character index, starting from 0.
-     * @return The text contents, in a memory chunk allocated by GTK+.
-     */
-    char *getText(int beginLine, int beginColumn,
-                  int endLine, int endColumn) const;
-
-    /**
-     * @return True iff the document can be edited.
+     * @return True iff the file can be edited.
      */
     bool editable() const
     { return !m_closing && !frozen(); }
 
     /**
-     * @param line The line number of the insertion position, starting from 0.
-     * @param column The column number of the insertion position, the
-     * character index, starting from 0.
-     * @param text The text to be inserted.
-     * @param length The number of the bytes to be inserted, or -1 if inserting
-     * the text until '\0'.
-     * @return True iff successful, i.e., the document can be edited.
-     */
-    bool insert(int line, int column, const char *text, int length);
-
-    /**
-     * @param beginLine The line number of the first character to be removed,
-     * starting from 0.
-     * @param beginColumn The column number of the first character to be
-     * removed, the character index, starting from 0.
-     * @param endLine The line number of the exclusive last character to be
-     * removed, starting from 0.
-     * @param endColumn The column number of the exclusive last character to be
-     * removed, the character index, starting from 0.
-     * @return True iff successful, i.e., the document can be edited.
-     */
-    bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
-
-    /**
-     * @return True iff successful, i.e., the document can be edited.
+     * @return True iff successful, i.e., the file can be edited.
      */
     bool edit(const Edit &edit)
     { return edit.execute(*this); }
 
     /**
-     * @return True iff successful, i.e., the document can be edited.
+     * @return True iff successful, i.e., the file can be edited.
      */
     bool beginUserAction();
 
     /**
-     * @return True iff successful, i.e., the document can be edited.
+     * @return True iff successful, i.e., the file can be edited.
      */
     bool endUserAction();
 
@@ -279,24 +143,24 @@ public:
     { return !m_redoHistory.empty() && !m_superUndo; }
 
     /**
-     * @return True iff successful, i.e., the document can be edited and undone.
+     * @return True iff successful, i.e., the file can be edited and undone.
      */
     bool undo();
 
     /**
-     * @return True iff successful, i.e., the document can be edited and redone.
+     * @return True iff successful, i.e., the file can be edited and redone.
      */
     bool redo();
 
     bool frozen() const { return m_freezeCount; }
 
     /**
-     * Disallow the user to edit the document.
+     * Disallow the user to edit the file.
      */
     void freeze();
 
     /**
-     * Allow the user to edit the document.
+     * Allow the user to edit the file.
      */
     void unfreeze();
 
@@ -322,7 +186,7 @@ public:
 
 private:
     /**
-     * A stack of text edits.
+     * A stack of edits.
      */
     class EditStack: public Edit
     {

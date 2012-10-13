@@ -10,7 +10,7 @@ namespace Samoyed
 {
 
 class ProjectConfiguration;
-class ProjectDevelopmentEnvironment;
+class Editor;
 
 /**
  * A project represents an opened Samoyed project, which is a collection of well
@@ -24,16 +24,16 @@ class ProjectDevelopmentEnvironment;
  *
  * The contents of a project are a project configuration.  The project is the
  * only writer of the project configuration.
- * 
- * A project has a project development environment, where the user can edit the
- * project.
  */
 class Project
 {
 private:
     ReferencePoint<ProjectConfiguration> m_config;
 
-    ProjectDevelopmentEnvironment *m_environment;
+    /**
+     * The editors editing files in this project.
+     */
+    Editor *m_editors;
 };
 
 }

@@ -26,8 +26,6 @@ public:
         bool m_fullScreen;
         bool m_maximized;
         bool m_toolbarVisible;
-        bool m_sidePanelVisible;
-        int m_sidePanelWidth;
     };
 
     Configuration configuration() const;
@@ -94,9 +92,13 @@ private:
     GtkActionGroup *m_documentActions;
 
     /**
-     * Doubly linked in the application.
+     * The next window in the application.
      */
     Window *m_next;
+
+    /**
+     * The previous window in the application.
+     */
     Window *m_previous;
 
     friend class Application;
