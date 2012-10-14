@@ -129,12 +129,12 @@ public:
     /**
      * @return True iff successful, i.e., the file can be edited.
      */
-    bool beginUserAction();
+    bool beginEditGroup();
 
     /**
      * @return True iff successful, i.e., the file can be edited.
      */
-    bool endUserAction();
+    bool endEditGroup();
 
     bool undoable() const
     { return !m_undoHistory.empty() && !m_superUndo; }
@@ -177,12 +177,8 @@ public:
     { return m_saved.connect(callback); }
 
     boost::signals2::connection
-    addTextInsertedCallback(const TextInserted::slot_type &callback)
-    { return m_textInserted.connect(callback); }
-
-    boost::signals2::connection
-    addTextRemovedCallback(const TextRemoved::slot_type &callback)
-    { return m_textRemoved.connect(callback); }
+    addEditedCallback(const Edited::slot_type &callback)
+    { return m_edited.connect(callback); }
 
 private:
     /**
@@ -193,7 +189,7 @@ private:
     public:
         virtual ~EditStack() { clear(); }
 
-        virtual bool execute(Document &document) const;
+        virtual bool execute(File &file) const;
 
         template<class EditT> bool push(EditT *edit, bool mergeable)
         {
@@ -227,21 +223,20 @@ private:
         std::stack<Edit *> m_edits;
     };
 
-    // Functions called by the document manager.
-    Document(const char *uri);
+    // Functions called by the file manager.
+    File(const char *uri);
 
-    ~Document();
+    ~File();
 
     /**
-     * Request to close the document.  Closing the document is cooperatively
-     * done by the document manager and the document itself.  This function gets
-     * the document ready for closing, and then the document manager destroys
-     * the editors and the document.  If the document is being loaded, cancel
-     * the loading and discard the user changes, if any.  If it is being saved,
-     * wait for the completion of the saving.  If it was changed by the user,
-     * ask the user whether we need to save or discard the changes, or cancel
-     * closing it.  The document manager will get notified when the document is
-     * ready for closing.
+     * Request to close the file.  Closing the file is cooperatively done by the
+     * file manager and the document itself.  This function gets the file ready
+     * for closing, and then the file manager destroys the editors and the
+     * document.  If the file is being loaded, cancel the loading and discard
+     * the user edits, if any.  If it is being saved, wait for the completion of
+     * the saving.  If it was edited by the user, ask the user whether we need
+     * to save or discard the edites, or cancel closing it.  The file manager
+     * will get notified when the file is ready for closing.
      * @return True iff the closing is started.
      */
     bool close();

@@ -27,6 +27,10 @@ class Editor;
  */
 class Project
 {
+public:
+    Editor &createEditor(const char *uri);
+    bool destroyEditor(Editor &editor);
+
 private:
     ReferencePoint<ProjectConfiguration> m_config;
 

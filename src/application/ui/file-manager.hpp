@@ -5,69 +5,33 @@
 #define SMYD_FILE_MANAGER_HPP
 
 #include "utilities/pointer-comparator.hpp"
-#include <utility>
+#include <map>
 #include <string>
 #include <boost/signals2/signal.hpp>
-#include <map>
 
 namespace Samoyed
 {
 
-class Document;
-class Editor;
-class EditorGroup;
+class File;
 
-class DocumentManager
+class FileManager
 {
-private:
-    typedef boost::signals2::signal<void (const Document &doc)> DocumentOpened;
-    typedef boost::signals2::signal<void (const Document &doc)> DocumentClosed;
-    typedef boost::signals2::signal<void (const Document &doc)> DocumentLoaded;
-    typedef boost::signals2::signal<void (const Document &doc)> DocumentSaved;
-    typedef boost::signals2::signal<void (const Document &doc,
-                                          int line,
-                                          int column,
-                                          const char *text,
-                                          int length)> DocumentTextInserted;
-    typedef boost::signals2::signal<void (const Document &doc,
-                                          int beginLine,
-                                          int beginColumn,
-                                          int endLine,
-                                          int endColumn)> DocumentTextRemoved;
-
 public:
-    /**
-     * Retrieve the opened document that is mapped to a file.
-     */
-    Document *get(const char *uri);
+    typedef boost::signals2::signal<void (const File &file)> FileOpened;
 
-    std::pair<Document *, Editor *> open(const char *uri,
-                                         int line,
-                                         int column,
-                                         bool newEditor,
-                                         EditorGroup *editorContainer,
-                                         int editorIndex);
+    File *get(const char *uri);
 
-    /**
-     * Close an editor.  If this editor is the sole editor of the edited
-     * document, close the document, which may be canceled by the user, and the
-     * editor.
-     * @return True iff the closing is started.
-     */
-    bool closeEditor(Editor *editor);
+    File &open(const char *uri);
+
+    void close(File &file);
 
 private:
-    typedef std::map<std::string *, Document *, PointerComparator<std::string> >
-	DocumentStore;
+    typedef std::map<std::string *, File *, PointerComparator<std::string> >
+    	FileStore;
 
-    DocumentStore m_documents;
+    FileStore m_files;
 
-    DocumentOpened m_docOpened;
-    DocumentClosed m_docClosed;
-    DocumentLoaded m_docLoaded;
-    DocumentSaved m_docSaved;
-    DocumentTextInserted m_docTextInserted;
-    DocumentTextRemoved m_docTextRemoved;
+    FileOpened m_fileOpened;
 };
 
 }

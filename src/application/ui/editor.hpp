@@ -12,9 +12,12 @@ class Project;
 class EditorGroup;
 
 /**
- * An editor is used to edit an opened file by the user.  An editor is related
- * to a project.  It may display the information specific to the project.  And
- * when the project is closed, the editor will also be closed.
+ * An editor is used to edit an opened file by the user.  An editor can be
+ * created for a file only in the context of a project.  Then the editor is
+ * related to the project and its behavior is affected by the project.  For
+ * instance, it may display the information specific to the project.  And when
+ * the project is closed, the editor will also be destroyed.  In this sense, the
+ * lifetime of the editor is managed by the related project.
  */
 class Editor
 {
@@ -37,6 +40,9 @@ private:
 
     EditorGroup *m_group;
     int m_index;
+
+    friend class Project;
+    friend class File;
 };
 
 }
