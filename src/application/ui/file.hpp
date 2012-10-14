@@ -223,7 +223,7 @@ private:
         std::stack<Edit *> m_edits;
     };
 
-    // Functions called by the file manager.
+    // Functions called by the .
     File(const char *uri);
 
     ~File();

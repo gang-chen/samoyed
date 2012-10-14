@@ -5,12 +5,15 @@
 #define SMYD_PROJECT_HPP
 
 #include "../utilities/manager.hpp"
+#include "../utilities/pointer-comparator.hpp"
+#include <map>
+#include <string>
 
 namespace Samoyed
 {
 
-class ProjectConfiguration;
 class Editor;
+class ProjectConfiguration;
 
 /**
  * A project represents an opened Samoyed project, which is a collection of well
@@ -28,16 +31,22 @@ class Editor;
 class Project
 {
 public:
+    Editor *getEditor(const char *uri);
     Editor &createEditor(const char *uri);
     bool destroyEditor(Editor &editor);
 
 private:
+    typedef std::map<std::string *, Editor *, PointerComparator<std::string> >
+	    EditorTable;
+
     ReferencePoint<ProjectConfiguration> m_config;
 
     /**
      * The editors editing files in this project.
      */
     Editor *m_editors;
+
+    EditorTable m_editorTable;
 };
 
 }

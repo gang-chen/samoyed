@@ -4,6 +4,8 @@
 #ifndef SMYD_APPLICATION_HPP
 #define SMYD_APPLICATION_HPP
 
+#include "utilities/pointer-comparator.hpp"
+#include <map>
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/thread/thread.hpp>
@@ -12,13 +14,16 @@
 namespace Samoyed
 {
 
-template<class> class Manager;
 class FileTypeRegistry;
 class SessionManager;
 class Scheduler;
-class DocumentManager;
+class File;
+class Project;
+template<class> class Manager;
 class FileSource;
-class FileAstManager;
+class ProjectConfiguration;
+class ProjectAst;
+class ProjectAstManager;
 class Window;
 
 /**
@@ -95,6 +100,18 @@ public:
 
     bool destroyWindow(Window &window);
 
+    Project *getProject(const char *uri);
+
+    Project &openProject(const char *uri);
+
+    void closeProject(Project &project);
+
+    File *findFile(const char *uri);
+
+    void addFile(const File &file);
+
+    void removeFile(const File &file);
+
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
 
@@ -108,6 +125,12 @@ public:
     { return m_userDirName.c_str(); }
 
 private:
+    typedef std::map<std::string *, File *, PointerComparator<std::string> >
+    	    FileTable;
+
+    typedef std::map<std::string *, Project*, PointerComparator<std::string> >
+	    ProjectTable;
+
     bool destroyWindowOnly(Window &window);
 
     void setSwitchingSession(bool sw) { m_switchingSession = true; }
