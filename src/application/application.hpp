@@ -15,14 +15,11 @@ namespace Samoyed
 {
 
 class FileTypeRegistry;
-class SessionManager;
 class Scheduler;
-class File;
 class Project;
+class File;
 template<class> class Manager;
 class FileSource;
-class ProjectConfiguration;
-class ProjectAst;
 class ProjectAstManager;
 class Window;
 
@@ -64,11 +61,7 @@ public:
 
     FileTypeRegistry *fileTypeRegistry() const { return m_fileTypeRegistry; }
 
-    SessionManager *sessionManager() const { return m_sessionManager; }
-
     Scheduler *scheduler() const { return m_scheduler; }
-
-    DocumentManager *documentManager() const { return m_documentManager; }
 
     Manager<FileSource> *fileSourceManager() const
     { return m_fileSourceManager; }
@@ -90,27 +83,23 @@ public:
     void setThreadWorker(Worker *worker)
     { m_threadWorker.reset(worker); }
 
+    Project *findProject(const char *uri);
+
+    Project &openProject(const char *uri);
+
+    void onProjectClosed(Project &project);
+
+    File *findFile(const char *uri);
+
+    File &openFile(const char *uri);
+
+    void onFileClosed(File &file);
+
     Window &currentWindow() const { return *m_currentWindow; }
 
     void setCurrentWindow(Window &window);
 
     const Window *windows() const { return m_windows; }
-
-    Window *createWindow(const Window::Configuration *config);
-
-    bool destroyWindow(Window &window);
-
-    Project *getProject(const char *uri);
-
-    Project &openProject(const char *uri);
-
-    void closeProject(Project &project);
-
-    File *findFile(const char *uri);
-
-    void addFile(const File &file);
-
-    void removeFile(const File &file);
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -124,16 +113,14 @@ public:
     const char *userDirectoryName() const
     { return m_userDirName.c_str(); }
 
-private:
-    typedef std::map<std::string *, File *, PointerComparator<std::string> >
-    	    FileTable;
+    void setSwitchingSession(bool sw) { m_switchingSession = sw; }
 
+private:
     typedef std::map<std::string *, Project*, PointerComparator<std::string> >
 	    ProjectTable;
 
-    bool destroyWindowOnly(Window &window);
-
-    void setSwitchingSession(bool sw) { m_switchingSession = true; }
+    typedef std::map<std::string *, File *, PointerComparator<std::string> >
+    	    FileTable;
 
     /**
      * If no window exists, quit the GTK+ main event loop.
@@ -151,15 +138,9 @@ private:
 
     int m_exitStatus;
 
-    Preferences *m_preferences;
-
     FileTypeRegistry *m_fileTypeRegistry;
 
-    SessionManager *m_sessionManager;
-
     Scheduler *m_scheduler;
-
-    DocumentManager *m_documentManager;
 
     Manager<FileSource> *m_fileSourceManager;
 
@@ -182,9 +163,6 @@ private:
     std::string m_userDirName;
 
     bool m_switchingSession;
-
-    friend class SessionManager;
-    friend class Window;
 };
 
 }
