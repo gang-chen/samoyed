@@ -7,42 +7,54 @@
 namespace Samoyed
 {
 
-class File;
 class Project;
+class File;
 class EditorGroup;
 
 /**
- * An editor is used to edit an opened file by the user.  An editor can be
- * created for a file only in the context of a project.  Then the editor is
- * related to the project and its behavior is affected by the project.  For
- * instance, it may display the information specific to the project.  And when
- * the project is closed, the editor will also be destroyed.  In this sense, the
- * lifetime of the editor is managed by the related project.
+ * An editor is used to edit an opened file in the context of an opend project.
  */
 class Editor
 {
+public:
+    Editor(Project &project, File &file);
+
+    virtual ~Editor();
+
+    void addToListInProject(Editor *&editors);
+    void removeFromListInProject(Editor *&editors);
+
+    Editor *nextInProject() const { return m_nextInProject; }
+    Editor *previousInProject() const { return m_previousInProject; }
+
+    void addToListInFile(Editor *&editors);
+    void removeFromListInFile(Editor *&editors);
+
+    Editor *nextInFile() const { return m_nextInFile; }
+    Editor *previousInFile() const { return m_previousInFile; }
+
+    void addToGroup(EditorGroup &group, int index);
+    void removeFromGroup();
+
 private:
     /**
-     * The file being edited.
+     * The project where the editor is.
      */
-    File *m_file;
-
-    Editor *m_nextInFile;
-    Editor *m_prevInFile;
-
-    /**
-     * The related project.
-     */
-    Project *m_project;
+    Project &m_project;
 
     Editor *m_nextInProject;
     Editor *m_prevInProject;
 
+    /**
+     * The file being edited.
+     */
+    File &m_file;
+
+    Editor *m_nextInFile;
+    Editor *m_prevInFile;
+
     EditorGroup *m_group;
     int m_index;
-
-    friend class Project;
-    friend class File;
 };
 
 }
