@@ -180,6 +180,11 @@ public:
     addEditedCallback(const Edited::slot_type &callback)
     { return m_edited.connect(callback); }
 
+protected:
+    File(const char *uri);
+
+    ~File();
+
 private:
     /**
      * A stack of edits.
@@ -222,11 +227,6 @@ private:
     private:
         std::stack<Edit *> m_edits;
     };
-
-    // Functions called by the .
-    File(const char *uri);
-
-    ~File();
 
     /**
      * Request to close the file.  Closing the file is cooperatively done by the

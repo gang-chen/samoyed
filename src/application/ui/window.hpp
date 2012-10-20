@@ -11,22 +11,24 @@ namespace Samoyed
 
 /**
  * A window represents a top-level window.
- *
- * Windows are managed by the application.
  */
 class Window
 {
 public:
     struct Configuration
     {
-        int m_width;
-        int m_height;
         int m_x;
         int m_y;
+        int m_width;
+        int m_height;
         bool m_fullScreen;
         bool m_maximized;
         bool m_toolbarVisible;
     };
+
+    static Window *create(const Configuration *config);
+
+    ~Window();
 
     Configuration configuration() const;
 
@@ -35,29 +37,12 @@ public:
      */
     GtkWidget *gtkWidget() const { return m_window; }
 
-    const Window *next() const { return m_next; }
-    const Window *previous() const { return m_previous; }
-
 private:
-    static gboolean onDestroyEvent(GtkWidget *widget,
-                                   GdkEvent *event,
-                                   gpointer window);
-    static void onDestroyed(GtkWidget *widget, gpointer window);
-    static gboolean onFocusIn(GtkWidget *widget,
-                              GdkEvent *event,
-                              gpointer window);
+    static gboolean onDeleteEvent(GtkWidget *widget,
+                                  GdkEvent *event,
+                                  gpointer);
 
     Window();
-
-    ~Window();
-
-    bool create(const Configuration *config);
-
-    bool destroy();
-
-    void addToList(Window *&windows);
-
-    void removeFromList(Window *&windows);
 
     /**
      * The GTK+ window.
@@ -84,25 +69,12 @@ private:
     /**
      * The GTK+ actions that are sensitive when some projects are opened.
      */
-    GtkActionGroup *m_projectActions;
+    GtkActionGroup *m_actionsForProjects;
 
     /**
      * The GTK+ actions that are sensitive when some files are opened.
      */
-    GtkActionGroup *m_documentActions;
-
-    /**
-     * The next window in the application.
-     */
-    Window *m_next;
-
-    /**
-     * The previous window in the application.
-     */
-    Window *m_previous;
-
-    friend class Application;
-    friend class Actions;
+    GtkActionGroup *m_actionsForFiles;
 };
 
 }

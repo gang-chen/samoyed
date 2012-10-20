@@ -6,8 +6,6 @@
 #endif
 #include "application.hpp"
 #include "utilities/manager.hpp"
-#include "session-manager.hpp"
-#include "document-manager.hpp"
 #include "utilities/signal.hpp"
 #include <assert.h>
 #include <string>
@@ -39,16 +37,16 @@ Application *Application::s_instance = NULL;
 
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
+    m_currentSession(NULL),
+    m_nextSession(NULL),
     m_fileTypeRegistry(NULL),
     m_sessionManager(NULL),
     m_scheduler(NULL),
-    m_documentManager(NULL),
     m_fileSourceManager(NULL),
-    m_fileAstManager(NULL),
+    m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
-    m_windows(NULL),
-    m_currentWindow(NULL),
-    m_switchingSession(false)
+    m_window(NULL),
+    m_quiting(false)
 {
     Signal::registerTerminationHandler(onTerminated);
     assert(!s_instance);
@@ -88,6 +86,10 @@ bool Application::startUp()
     }
 
     return true;
+}
+
+void Application::shutDown()
+{
 }
 
 int Application::run(int argc, char *argv[])
@@ -288,76 +290,62 @@ CLEAN_UP:
 
     // Enter the main event loop.
     gtk_main();
+
+    shutDown();
     return m_exitStatus;
 }
 
-bool Application::quit()
+void Application::quit()
 {
-    if (!m_sessionManager)
-        return true;
-    return m_sessionManager->quitSession();
-}
+    // Save the current session.
+    assert(m_currentSession);
+    m_currentSession->save();
 
-Window *Application::createWindow(const Window::Configuration *config)
-{
-    Window *window = new Window;
-    if (!window->create(config))
+    // Request to close all the opened projects.  If the user cancels closing a
+    // project, cancel quiting.
+    for (ProjectTable::iterator it = m_projects.begin();
+         it != m_projects.end();
+        )
     {
-        delete window;
-        return NULL;
+        if (!(it++)->second->close())
+            return;
     }
-    window->addToList(m_windows);
-    if (!m_currentWindow)
-        m_currentWindow = window;
-    gtk_widget_show(window->gtkWidget());
-    return window;
+
+    // Set the quiting flag so that we can continue quit the application when
+    // the projects are closed.
+    m_quiting = true;
 }
 
-bool Application::destroyWindow(Window &window)
+void Application::switchSession(Session &session)
 {
-    // If this is the only one window, we quit the current session.
-    if (!m_windows.next())
+    m_nextSession = &session;
+    quit();    
+}
+
+void Application::onProjectClosed()
+{
+    // Continue to quit the application if all the projects are closed.
+    if (m_quiting && m_projects.empty())
     {
-        assert(m_windows == &window);
-        return quit();
-    }
-    return window.destroy();
-}
+        m_quiting = false;
 
-bool Application::destroyWindowOnly(Window &window)
-{
-    return window.destroy();
-}
+        assert(m_window);
+        delete m_window;
+        m_window = NULL;
 
-void Application::onWindowDestroyed(Window &window)
-{
-    window.removeFromList(m_windows);
-    delete &window;
-    if (!m_windows)
-    {
-        m_currentWindow = NULL;
+        assert(m_currentSession);
+        delete m_currentSession;
+        m_currentSession = NULL;
 
-        // If we're switching to another session, do not quit the application.
-        if (!m_switchingSession)
+        if (m_nextSession)
+        {
+            m_nextSession->restore();
+            m_currentSession = m_nextSession;
+            m_nextSession = NULL;
+        }
+        else
             gtk_main_quit();
     }
-    else
-    {
-        // Temporarily set the current window.  The window manager will choose
-        // one as the current one, which is possibly not owned by this
-        // application.
-        m_currentWindow = m_windows;
-    }
-}
-
-void Application::setCurrentWindow(Window &window)
-{
-    gtk_window_present(GTK_WINDOW(window.gtkWidget()));
-}
-
-void Application::onWindowFocusIn(Window &window)
-{
-    m_currentWindow = &window;
 }
 
 }

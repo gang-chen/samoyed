@@ -14,6 +14,7 @@
 namespace Samoyed
 {
 
+class Session;
 class FileTypeRegistry;
 class Scheduler;
 class Project;
@@ -43,16 +44,19 @@ public:
      * loop.
      * @param argc The number of the command-line arguments.
      * @param argv The command-line arguments.
-     * @return EXIT_SUCCESS if successful, or EXIT_FAILURE otherwise.  The
-     * cause for the failure may be written in the log file, if enabled.
+     * @return EXIT_SUCCESS if successful, or EXIT_FAILURE otherwise.
      */
     int run(int argc, char *argv[]);
 
     /**
-     * Quit the application by quitting the current session.
-     * @return True iff start to quit the application.
+     * Request to uit the application.
      */
-    bool quit();
+    void quit();
+
+    /**
+     * Request to switch to a different session.
+     */
+    void switchSession(Session &session);
 
     /**
      * Get the sole application instance.
@@ -66,8 +70,8 @@ public:
     Manager<FileSource> *fileSourceManager() const
     { return m_fileSourceManager; }
 
-    FileAstManager *fileAstManager() const
-    { return m_fileAstManager; }
+    ProjectAstManager *projectAstManager() const
+    { return m_projectAstManager; }
 
     /**
      * @return True iff we are in the main thread.  The main thread is the
@@ -85,21 +89,19 @@ public:
 
     Project *findProject(const char *uri);
 
-    Project &openProject(const char *uri);
+    void addProject(Project &project);
 
-    void onProjectClosed(Project &project);
+    void removeProject(Project &project);
 
     File *findFile(const char *uri);
 
-    File &openFile(const char *uri);
+    void addFile(File &file);
 
-    void onFileClosed(File &file);
+    void removeFile(File &file);
 
-    Window &currentWindow() const { return *m_currentWindow; }
+    Window *window() const { return m_window; }
 
-    void setCurrentWindow(Window &window);
-
-    const Window *windows() const { return m_windows; }
+    void setWindow(Window *window) { m_window = window; }
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -115,6 +117,8 @@ public:
 
     void setSwitchingSession(bool sw) { m_switchingSession = sw; }
 
+    void onProjectClosed();
+
 private:
     typedef std::map<std::string *, Project*, PointerComparator<std::string> >
 	    ProjectTable;
@@ -122,14 +126,9 @@ private:
     typedef std::map<std::string *, File *, PointerComparator<std::string> >
     	    FileTable;
 
-    /**
-     * If no window exists, quit the GTK+ main event loop.
-     */
-    void onWindowDestroyed(Window &window);
-
-    void onWindowFocusIn(Window &window);
-
     bool startUp();
+
+    void shutDown();
 
     /**
      * The sole application instance.
@@ -138,31 +137,33 @@ private:
 
     int m_exitStatus;
 
+    Session *m_currentSession;
+    Session *m_nextSession;
+
     FileTypeRegistry *m_fileTypeRegistry;
 
     Scheduler *m_scheduler;
 
     Manager<FileSource> *m_fileSourceManager;
 
-    FileAstManager *m_fileAstManager;
+    ProjectAstManager *m_fileAstManager;
 
     boost::thread::id m_mainThreadId;
 
     boost::thread_specific_ptr<Worker> m_threadWorker;
 
-    /**
-     * The top-level windows.
-     */
-    Window *m_windows;
+    ProjectTable m_projects;
 
-    Window *m_currentWindow;
+    FileTable m_files;
+
+    Window *m_window;
+
+    bool m_quiting;
 
     std::string m_dataDirName;
     std::string m_librariesDirName;
     std::string m_localeDirName;
     std::string m_userDirName;
-
-    bool m_switchingSession;
 };
 
 }

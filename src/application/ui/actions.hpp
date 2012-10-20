@@ -4,11 +4,15 @@
 #ifndef SMYD_ACTIONS_HPP
 #define SMYD_ACTIONS_HPP
 
+#include <gtk/gtk.h>
+
 namespace Samoyed
 {
 
+class Window;
+
 /**
- * This is a helper class for class Window.  It defines and implements actions.
+ * This class defines and implements actions.
  */
 class Actions
 {
@@ -38,6 +42,8 @@ public:
         // Project menu.
         { "project-new", 0, N_("_New..."), 0,
           N_("Create a new project"), G_CALLBACK(newProject) },
+        { "project-open", 0, N_("_Open..."), 0,
+          N_("Open a project"), G_CALLBACK(openProject) },
 
         // Help menu.
         { "help-manual", 0, N_("_Manual"), "F1",
@@ -51,25 +57,25 @@ public:
     /**
      * The GTK+ actions that are sensitive when some projects are opened.
      */
-    static const GtkActionEntry* s_projectActionEntries[] =
+    static const GtkActionEntry* s_actionEntriesForProjects[] =
     {
     };
 
     /**
      * The GTK+ actions that are sensitive when some files are opened.
      */
-    static const GtkActionEntry* s_documentActionEntries[] =
+    static const GtkActionEntry* s_actionEntriesForFiles[] =
     {
     };
 
 private:
-    static void newSession(gpointer window);
+    static void newSession(GtkAction *, Window *);
 
-    static void switchSession(gpointer window);
+    static void switchSession(GtkAction *, Window *);
 
-    static void manageSession(gpointer window);
+    static void manageSessions(GtkAction *, Window *);
 
-    static void quitSession(gpointer window);
+    static void quitSession(GtkAction *, Window *);
 };
 
 }
