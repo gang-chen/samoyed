@@ -4,8 +4,8 @@
 #ifndef SMYD_PROJECT_HPP
 #define SMYD_PROJECT_HPP
 
+#include "../utilities/string-comparator.hpp"
 #include "../utilities/manager.hpp"
-#include "../utilities/pointer-comparator.hpp"
 #include <map>
 #include <string>
 
@@ -23,30 +23,31 @@ class ProjectConfiguration;
  * Projects are user interface objects that can be accessed in the main thread
  * only.
  *
- * Projects are managed by the project manager.
- *
  * The contents of a project are a project configuration.  The project is the
  * only writer of the project configuration.
  */
 class Project
 {
 public:
-    Editor *getEditor(const char *uri);
-    Editor &createEditor(const char *uri);
-    bool destroyEditor(Editor &editor);
+    Editor *findEditor(const char *uri);
+
+    void addEditor(Editor &editor);
+
+    void removeEditor(Editor &editor);
 
 private:
-    typedef std::map<std::string *, Editor *, PointerComparator<std::string> >
-	    EditorTable;
+    typedef std::map<const char *, Editor *, StringComparator> EditorTable;
+
+    const std::string m_uri;
+
+    const std::string m_name;
 
     ReferencePoint<ProjectConfiguration> m_config;
 
     /**
-     * The editors editing files in this project.
+     * The editors in the context of this project.
      */
-    Editor *m_editors;
-
-    EditorTable m_editorTable;
+    EditorTable m_editors;
 };
 
 }

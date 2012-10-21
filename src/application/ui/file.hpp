@@ -14,6 +14,7 @@ namespace Samoyed
 {
 
 class Editor;
+class Project;
 
 /**
  * A file represents an opened file.  It is the in-memory buffer for a file
@@ -29,6 +30,8 @@ class Editor;
 class File
 {
 public:
+    class EditPrimitive;
+
     class Edit
     {
     public:
@@ -43,7 +46,14 @@ public:
          * Merge this edit with the edit that will be executed immediately
          * before this edit.
          */
-        virtual bool merge(const Edit &edit) { return false; }
+        virtual bool merge(const EditPrimitive &edit) { return false; }
+    };
+
+    /**
+     * An edit primitive.
+     */
+    class EditPrimitive: public Edit
+    {
     };
 
     /**
@@ -65,11 +75,18 @@ public:
         std::vector<Edit *> m_edits;
     };
 
-    typedef boost::signals2::signal<void (const File &file)> Closed;
+    typedef boost::signals2::signal<void (const File &file)> Close;
     typedef boost::signals2::signal<void (const File &file)> Loaded;
     typedef boost::signals2::signal<void (const File &file)> Saved;
     typedef boost::signals2::signal<void (const File &file, const Edit &)>
     	Edited;
+
+    static std::pair<File *, Editor *> create(const char *uri,
+                                              Project &project);
+
+    virtual Editor *createEditor(Project &project) = 0;
+
+    bool onEditorClose(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
 
@@ -165,8 +182,8 @@ public:
     void unfreeze();
 
     boost::signals2::connection
-    addClosedCallback(const Closed::slot_type &callback)
-    { return m_closed.connect(callback); }
+    addCloseCallback(const Closed::slot_type &callback)
+    { return m_close.connect(callback); }
 
     boost::signals2::connection
     addLoadedCallback(const Loaded::slot_type &callback)
@@ -288,9 +305,9 @@ private:
      */
     static GtkTextTagTable *s_sharedTagTable;
 
-    std::string m_uri;
+    const std::string m_uri;
 
-    std::string m_name;
+    const std::string m_name;
 
     bool m_closing;
 
@@ -339,13 +356,10 @@ private:
     ReferencePointer<FileSource> m_source;
     ReferencePointer<FileAst> m_ast;
 
-    Closed m_closed;
+    Close m_close;
     Loaded m_loaded;
     Saved m_saved;
-    TextInserted m_textInserted;
-    TextRemoved m_textRemoved;
-
-    friend class DocumentManager;
+    Edited m_edited;
 };
 
 }

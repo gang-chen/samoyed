@@ -34,13 +34,13 @@ template<class> class WeakPointer;
  * @param Object The type of the managed objects.  It should be derived from
  * 'Managed<Key, Object>'.
  */
-template<class Object>
+template<class Object, class KeyComparator>
 class Manager: public boost::noncopyable
 {
 private:
     typedef typename Object::KeyT Key;
 
-    typedef std::set<Key *, PointerComparator<Key> > Store;
+    typedef std::map<Key, Object *, KeyComparator> Table;
 
 public:
     Manager(int cacheSize):
@@ -56,17 +56,17 @@ public:
      */
     void destroy()
     {
-        bool del = false;
+        bool done = false;
         {
             boost::mutex::scoped_lock lock(m_mutex);
             m_destroy = true; 
             // If no one holds any reference to objects, it is safe to destroy
             // the manager.
-            if (m_store.size() ==
+            if (m_table.size() ==
                 static_cast<typename Store::size_type>(m_nCachedObjects))
-                del = true;
+                done = true;
         }
-        if (del)
+        if (done)
             delete this;
     }
 
@@ -79,12 +79,11 @@ public:
     void iterate(boost::function<bool (Object &)> callback)
     {
         boost::mutex::scoped_lock lock(m_mutex);
-        for (typename Store::const_iterator it = m_store.begin(),
-                 endIt = m_store.end();
-             it != endIt;
+        for (typename Table::const_iterator it = m_table.begin(),
+             it != m_table.end();
              ++it)
         {
-            if (callback(*static_cast<Object *>(*it)))
+            if (callback((*it->second)))
                 break;
         }
     }
@@ -93,12 +92,11 @@ private:
     ~Manager()
     {
         // Delete all cached objects.
-        for (typename Store::const_iterator it = m_store.begin(),
-                 endIt = m_store.end();
-             it != endIt;
+        for (typename Table::const_iterator it = m_table.begin(),
+             it != m_table.end();
              ++it)
         {
-            Object *object = static_cast<Object *>(*it);
+            Object *object = it->second;
             assert(object->m_refCount == 0);
             delete object;
         }

@@ -20,14 +20,14 @@ template<class> class Manager;
  * @param Key The type of the lookup keys that uniquely identify objects.
  * @param Object The type of the actual managed objects.
  */
-template<class Key, class Object>
-class Managed: public Key
+template<class Key, class KeyHolder, class Object>
+class Managed
 {
 protected:
     Managed(const Key &key,
             unsigned long id,
             Manager<Object> &manager):
-        Key(key),
+        m_keyHolder(key),
         m_refCount(0),
         m_id(id),
         m_manager(manager),
@@ -39,11 +39,12 @@ protected:
     { assert(m_refCount == 0); }
 
     const Key &key() const
-    { return *this; }
+    { return m_keyHolder.get(); }
 
 private:
     typedef Key KeyT;
 
+    const KeyHolder m_keyHolder;
     int m_refCount;
     unsigned long m_id;
     Manager<Object> &m_manager;

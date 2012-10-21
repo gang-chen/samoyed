@@ -5,9 +5,14 @@
 # include <config.h>
 #endif
 #include "application.hpp"
+#include "session.hpp"
+#include "file-type-registry.hpp"
+#include "ui/project.hpp"
+#include "ui/file.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
 #include <assert.h>
+#include <utility>
 #include <string>
 #include <locale>
 #ifdef ENABLE_NLS
@@ -295,6 +300,31 @@ CLEAN_UP:
     return m_exitStatus;
 }
 
+void Application::continueQuit()
+{
+    assert(m_projects.empty());
+    assert(m_files.empty());
+
+    m_quiting = false;
+
+    assert(m_window);
+    delete m_window;
+    m_window = NULL;
+
+    assert(m_currentSession);
+    delete m_currentSession;
+    m_currentSession = NULL;
+
+    if (m_nextSession)
+    {
+        m_nextSession->restore();
+        m_currentSession = m_nextSession;
+        m_nextSession = NULL;
+    }
+    else
+        gtk_main_quit();
+}
+
 void Application::quit()
 {
     // Save the current session.
@@ -314,6 +344,9 @@ void Application::quit()
     // Set the quiting flag so that we can continue quit the application when
     // the projects are closed.
     m_quiting = true;
+
+    if (m_projects.empty())
+        continueQuit();
 }
 
 void Application::switchSession(Session &session)
@@ -326,26 +359,43 @@ void Application::onProjectClosed()
 {
     // Continue to quit the application if all the projects are closed.
     if (m_quiting && m_projects.empty())
-    {
-        m_quiting = false;
+        continueQuit();
+}
 
-        assert(m_window);
-        delete m_window;
-        m_window = NULL;
+Project *Application::findProject(const char *uri) const
+{
+    ProjectTable::const_iterator it = m_projects.find(uri);
+    if (it == m_projects.end())
+        return NULL;
+    return it->second;
+}
 
-        assert(m_currentSession);
-        delete m_currentSession;
-        m_currentSession = NULL;
+void Application::addProject(Project &project)
+{
+    m_projects.insert(std::make_pair(project.uri(), &project);
+}
 
-        if (m_nextSession)
-        {
-            m_nextSession->restore();
-            m_currentSession = m_nextSession;
-            m_nextSession = NULL;
-        }
-        else
-            gtk_main_quit();
-    }
+void Application::removeProject(Project &project)
+{
+    m_projects.erase(project.uri());
+}
+
+File *Application::findFile(const char *uri) const
+{
+    ProjectTable::const_iterator it = m_files.find(uri);
+    if (it == m_files.end())
+        return NULL;
+    return it->second;
+}
+
+void Application::addFile(File &file)
+{
+    m_files.insert(std::make_pair(file.uri(), &file));
+}
+
+void Application::removeFile(File &file)
+{
+    m_files.erase(file.uri());
 }
 
 }

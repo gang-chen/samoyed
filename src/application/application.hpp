@@ -4,7 +4,7 @@
 #ifndef SMYD_APPLICATION_HPP
 #define SMYD_APPLICATION_HPP
 
-#include "utilities/pointer-comparator.hpp"
+#include "utilities/string-comparator.hpp"
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
@@ -87,13 +87,13 @@ public:
     void setThreadWorker(Worker *worker)
     { m_threadWorker.reset(worker); }
 
-    Project *findProject(const char *uri);
+    Project *findProject(const char *uri) const;
 
     void addProject(Project &project);
 
     void removeProject(Project &project);
 
-    File *findFile(const char *uri);
+    File *findFile(const char *uri) const;
 
     void addFile(File &file);
 
@@ -115,20 +115,18 @@ public:
     const char *userDirectoryName() const
     { return m_userDirName.c_str(); }
 
-    void setSwitchingSession(bool sw) { m_switchingSession = sw; }
-
     void onProjectClosed();
 
 private:
-    typedef std::map<std::string *, Project*, PointerComparator<std::string> >
-	    ProjectTable;
+    typedef std::map<const char *, Project*, StringComparator> ProjectTable;
 
-    typedef std::map<std::string *, File *, PointerComparator<std::string> >
-    	    FileTable;
+    typedef std::map<const char *, File *, StringComparator> FileTable;
 
     bool startUp();
 
     void shutDown();
+
+    void continueQuit();
 
     /**
      * The sole application instance.
