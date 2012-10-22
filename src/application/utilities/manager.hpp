@@ -4,9 +4,9 @@
 #ifndef SMYD_MANAGER_HPP
 #define SMYD_MANAGER_HPP
 
-#include "pointer-comparator.hpp"
 #include <assert.h>
-#include <set>
+#include <utility>
+#include <map>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
@@ -34,12 +34,12 @@ template<class> class WeakPointer;
  * @param Object The type of the managed objects.  It should be derived from
  * 'Managed<Key, Object>'.
  */
-template<class Object, class KeyComparator>
+template<class Object>
 class Manager: public boost::noncopyable
 {
 private:
-    typedef typename Object::KeyT Key;
-
+    typedef typename Object::Key Key;
+    typedef typename Object::KeyComparator KeyComparator;
     typedef std::map<Key, Object *, KeyComparator> Table;
 
 public:
@@ -56,25 +56,25 @@ public:
      */
     void destroy()
     {
-        bool done = false;
+        bool del = false;
         {
             boost::mutex::scoped_lock lock(m_mutex);
             m_destroy = true; 
             // If no one holds any reference to objects, it is safe to destroy
             // the manager.
             if (m_table.size() ==
-                static_cast<typename Store::size_type>(m_nCachedObjects))
-                done = true;
+                static_cast<typename Table::size_type>(m_nCachedObjects))
+                del = true;
         }
-        if (done)
+        if (del)
             delete this;
     }
 
     ReferencePointer<Object> find(const Key &key);
 
-    ReferencePointer<Object> get(const Key &key);
+    ReferencePointer<Object> reference(const Key &key);
 
-    ReferencePointer<Object> get(const WeakPointer<Object> &weak);
+    ReferencePointer<Object> reference(const WeakPointer<Object> &weak);
 
     void iterate(boost::function<bool (Object &)> callback)
     {
@@ -83,7 +83,7 @@ public:
              it != m_table.end();
              ++it)
         {
-            if (callback((*it->second)))
+            if (callback(*(it->second)))
                 break;
         }
     }
@@ -123,7 +123,7 @@ private:
             else
                 m_mruCachedObject = object->m_prevCached;
             m_lruCachedObject = object->m_nextCached;
-            m_store.erase(object);
+            m_table.erase(object->key());
             delete object;
             --m_nCachedObjects;
         }
@@ -146,7 +146,7 @@ private:
                 // If no one holds any reference to objects, it is safe to
                 // destroy the manager.
                 if (m_destroy &&
-                    m_store.size() ==
+                    m_table.size() ==
                     static_cast<typename Store::size_type>(m_nCachedObjects))
                     del = true;
             }
@@ -166,7 +166,7 @@ private:
         }
     }
 
-    Store m_store;
+    Table m_table;
 
     /**
      * Used to assign unique ID's to objects.
