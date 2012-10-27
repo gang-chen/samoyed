@@ -11,6 +11,7 @@ g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -I/usr/include -lboost_thread\
 
 #include "manager.hpp"
 #include "managed.hpp"
+#include "misc.hpp"
 #include <stdio.h>
 #include <string>
 #include <boost/thread/thread.hpp>
@@ -30,17 +31,19 @@ const char *persons[10] =
     "Riemann"
 };
 
-class Person: public Samoyed::Managed<std::string, Person>
+class Person: public Samoyed::Managed<Person>
 {
 public:
-    const char *name() const { return c_str(); }
+    typedef Samoyed::ComparablePointer<const char *> Key;
+    typedef Samoyed::CastableString KeyHolder;
+    Key key() const { return m_name.c_str(); }
+    const char *name() const { return m_name.c_str(); }
 private:
-    Person(const std::string &name,
+    Person(const Key &name,
            unsigned long serialNumber,
            Samoyed::Manager<Person> &mgr):
-        Samoyed::Managed<std::string, Person>(name,
-                                              serialNumber,
-                                              mgr)
+        Samoyed::Managed<Person>(serialNumber, mgr),
+        m_name(name)
     {
         printf("Constructing %s\n", this->name());
     }
@@ -48,6 +51,7 @@ private:
     {
         printf("Destructing %s\n", name());
     }
+    std::string m_name;
     template<class> friend class Samoyed::Manager;
 };
 
@@ -66,7 +70,7 @@ struct ThreadProc
         for (int i = 0; i < m_times; ++i)
         {
             Samoyed::ReferencePointer<Person> p =
-                m_manager.get(persons[i % 10]);
+                m_manager.reference(persons[i % 10]);
             printf("Thread %d is holding a reference to %s\n", m_id, p->name());
             if (i == 1)
             {
@@ -90,13 +94,13 @@ struct ThreadProc
             t += boost::posix_time::seconds(m_sec);
             boost::thread::sleep(t);
 
-            p = m_manager.get(w1);
+            p = m_manager.reference(w1);
             if (p)
                 printf("Thread %d got %s\n", m_id, p->name());
-            p = m_manager.get(w2);
+            p = m_manager.reference(w2);
             if (p)
                 printf("Thread %d got %s\n", m_id, p->name());
-            p = m_manager.get(w3);
+            p = m_manager.reference(w3);
             if (p)
                 printf("Thread %d got %s\n", m_id, p->name());
         }

@@ -1,8 +1,9 @@
-// Document.
+// Opened file.
 // Copyright (C) 2012 Gang Chen.
 
-#include "document.hpp"
+#include "file.hpp"
 #include "../application.hpp"
+#include "../application.hpp/file-type-registry.hpp"
 #include "../resources/file-source.hpp"
 #include "../resources/file-ast.hpp"
 #include "../utilities/utf8.hpp"
@@ -140,23 +141,102 @@ bool Document::EditStack::execute(Document &document) const
     return true;
 }
 
-GtkTextTagTable* Document::s_sharedTagTable = NULL;
-
-void Document::createSharedData()
+std::pair<File *, Editor *> File::create(const char *uri, Project &project)
 {
-    s_sharedTagTable = gtk_text_tag_table_new();
-    gtk_text_tag_table_add();
+    assert(!Application::instance()->findFile(uri));
+    File *file = Application::instance()->fileTypeRegistry()->
+        getFileFactory(uri)(uri);
+    if (!file)
+        return std::make_pair(NULL, NULL);
+    Editor *editor = file->createEditor(project);
+    if (!editor)
+    {
+        delete file;
+        return std::make_pair(NULL, NULL);
+    }
+    return std::make_pair(file, editor);
 }
 
-void Document::destroySharedData()
+bool File::destroyEditor(Editor &editor)
 {
-    g_object_unref(s_sharedTagTable);
+    if (closing())
+        return false;
+    if (editor.next() || editor.previous())
+    {
+        delete *editor;
+        return true;
+    }
+    if (loading())
+    {
+        // Cancel the loading and wait for the completion of the cancellation.
+        assert(m_fileReader);
+        m_fileReader->cancel();
+        m_fileReader = NULL;
+        m_closing = true;
+        m_reopening = false;
+        return true;
+    }
+    if (saving())
+    {
+        // Wait for the completion of the saving.
+        m_closing = true;
+        m_reopening = false;
+        return true;
+    }
+    if (edited())
+    {
+        // Ask the user.
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_NONE,
+            _("File '%s' was edited. Save edits before closing?"),
+            name());
+        gtk_dialog_add_buttons(GTK_DIALOG(dialog),
+                               _("_Save edits and close"), GTK_RESPONSE_YES,
+                               _("_Discard edits and close"), GTK_RESPONSE_NO,
+                               _("_Cancel closing"), GTK_RESPONSE_CANCEL);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_CANCEL)
+            return false;
+        if (response == GTK_RESPONSE_YES)
+        {
+            save();
+            m_closing = true;
+            m_reopening = false;
+            return true;
+        }
+    }
+    // Go ahead.
+    editor.removeFromList(m_editors);
+    delete &editor;
+    delete this;
+    return true;
 }
 
-Document::Document(const char* uri):
+void File::onEditorCreated(Editor &editor)
+{
+    // If an editor is created for a file that is being closed, we can safely
+    // destroy the old editor that is waiting for the completion.
+    if (closing())
+    {
+        assert(!m_editors->next());
+        assert(!m_editors->previous());
+        delete m_editors;
+        m_closing = false;
+        m_reopening = true;
+    }
+    editor.addToList(m_editors);
+}
+
+File::File(const char *uri):
     m_uri(uri),
     m_name(basename(uri)),
     m_closing(false),
+    m_reopening(false),
     m_loading(false),
     m_saving(false),
     m_undoing(false),
@@ -183,92 +263,61 @@ Document::Document(const char* uri):
 
     // Start the initial loading.
     load();
+
+    Application::instance()->addFile(*this);
 }
 
-Document::~Document()
+File::~File()
 {
     assert(m_editors.empty());
 
+    Application::instance()->removeFile(*this);
     m_closed(*this);
     m_source->onDocumentClosed(*this);
 
     g_object_unref(m_buffer);
 }
 
-bool Document::close()
-{
-    if (closing())
-        return false;
-    if (loading())
-    {
-        // Cancel the loading and wait for the completion of the cancellation.
-        assert(m_fileReader);
-        m_fileReader->cancel();
-        m_fileReader = NULL;
-        m_closing = true;
-        return true;
-    }
-    if (saving())
-    {
-        // Wait for the completion of the saving.
-        m_closing = true;
-        return true;
-    }
-    if (changed())
-    {
-        // Ask the user.
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_NONE,
-            _("Document '%s' has unsaved changes. Save changes before closing?"),
-            name());
-        gtk_dialog_add_buttons(GTK_DIALOG(dialog),
-                               _("_Save changes and close"), GTK_RESPONSE_YES,
-                               _("_Discard changes and close"), GTK_RESPONSE_NO,
-                               _("_Cancel closing"), GTK_RESPONSE_CANCEL);
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_CANCEL)
-            return false;
-        if (response == GTK_RESPONSE_YES)
-        {
-            save();
-            m_closing = true;
-            return true;
-        }
-    }
-    // Go ahead.
-    Application::instance()->documentManager()->close(*this);
-    return true;
-}
-
-gboolean Document::onFileReadInMainThread(gpointer param)
+gboolean File::onFileReadInMainThread(gpointer param)
 {
     FileReadParam *p = static_cast<FileReadParam *>(param);
-    Document &doc = p->m_document;
+    File &file = p->m_file;
     TextFileReader &reader = p->m_reader.reader();
 
     assert(m_loading);
 
-    // If we are closing the document, notify the document manager.
-    if (doc.closing())
+    // If we are reopening the file, we need to reload it.
+    if (file.reopening())
     {
-        assert(!doc.m_fileReader);
-        doc.m_loading = false;
-        doc.unfreeze();
+        assert(!file.m_reader);
+        file.m_reopening = false;
+        file.unfreeze();
         delete &reader;
         delete p;
-        Application::instance()->documentManager()->close(*this);
+        load();
         return FALSE;
     }
 
-    assert(doc.m_fileReader == &reader);
+    // If we are closing the file, now we can finish it.
+    if (file.closing())
+    {
+        assert(!file.m_reader);
+        file.m_loading = false;
+        file.unfreeze();
+        delete &reader;
+        delete p;
+        assert(!m_editors->next());
+        assert(!m_editors->previous());
+        m_editors->removeFromList(m_editors);
+        delete &editor;
+        delete this;
+        return FALSE;
+    }
 
-    // Copy contents in the reader's buffer to the document's buffer.
-    GtkTextBuffer *gtkBuffer = doc.m_buffer;
+    assert(file.m_reader == &reader);
+
+    // Copy contents in the reader's buffer to the file's buffer.
+    GtkTextBuffer *gtkBuffer = file.m_buffer;
     TextBuffer *buffer = reader.buffer();
     GtkTextIter begin, end;
     gtk_text_buffer_get_start_iter(gtkBuffer, &begin);

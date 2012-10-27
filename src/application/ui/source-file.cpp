@@ -140,17 +140,21 @@ bool Document::EditStack::execute(Document &document) const
     return true;
 }
 
-GtkTextTagTable* Document::s_sharedTagTable = NULL;
-
-void Document::createSharedData()
+File *SourceFile::create(const char *uri)
 {
-    s_sharedTagTable = gtk_text_tag_table_new();
-    gtk_text_tag_table_add();
+    return new SourceFile(uri);
 }
 
-void Document::destroySharedData()
+void SourceFile::registerFileType()
 {
-    g_object_unref(s_sharedTagTable);
+    Application::instance()->fileTypeRegistry()->
+        registerFileFactory("text/x-csrc", create);
+    Application::instance()->fileTypeRegistry()->
+        registerFileFactory("text/x-chdr", create);
+    Application::instance()->fileTypeRegistry()->
+        registerFileFactory("text/x-c++src", create);
+    Application::instance()->fileTypeRegistry()->
+        registerFileFactory("text/x-c++hdr", create);
 }
 
 Document::Document(const char* uri):

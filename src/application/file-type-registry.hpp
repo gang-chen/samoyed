@@ -4,17 +4,28 @@
 #ifndef SMYD_FILE_TYPE_REGISTRY_HPP
 #define SMYD_FILE_TYPE_REGISTRY_HPP
 
+#include <map>
+#include <string>
+#include <boost/function.hpp>
+
 namespace Samoyed
 {
 
-class ParserFactory;
+class File;
 
 class FileTypeRegistry
 {
 public:
-    void registerFileType();
+    typedef boost::function<File *(const char *)> FileFactory;
 
-    ParserFactory *getParserFactory(const char *fileName) const;
+    void registerFileFactory(const char *mime, const FileFactory &factory);
+
+    const FileFactory &getParserFactory(const char *uri) const;
+
+private:
+    typedef std::map<std::string, FileFactory> FileFactoryTable;
+
+    FileFactoryTable m_fileFactories;
 };
 
 }

@@ -32,15 +32,14 @@ template<class> class WeakPointer;
  * to be deleted when all the managed objects are deleted.
  *
  * @param Object The type of the managed objects.  It should be derived from
- * 'Managed<Key, Object>'.
+ * 'Managed<Object>'.
  */
 template<class Object>
 class Manager: public boost::noncopyable
 {
 private:
     typedef typename Object::Key Key;
-    typedef typename Object::KeyComparator KeyComparator;
-    typedef std::map<Key, Object *, KeyComparator> Table;
+    typedef std::map<Key, Object *> Table;
 
 public:
     Manager(int cacheSize):
@@ -79,11 +78,11 @@ public:
     void iterate(boost::function<bool (Object &)> callback)
     {
         boost::mutex::scoped_lock lock(m_mutex);
-        for (typename Table::const_iterator it = m_table.begin(),
+        for (typename Table::const_iterator it = m_table.begin();
              it != m_table.end();
              ++it)
         {
-            if (callback(*(it->second)))
+            if (callback(*it->second))
                 break;
         }
     }
@@ -92,13 +91,12 @@ private:
     ~Manager()
     {
         // Delete all cached objects.
-        for (typename Table::const_iterator it = m_table.begin(),
+        for (typename Table::const_iterator it = m_table.begin();
              it != m_table.end();
              ++it)
         {
-            Object *object = it->second;
-            assert(object->m_refCount == 0);
-            delete object;
+            assert(it->second->m_refCount == 0);
+            delete it->second;
         }
     }
 
@@ -147,7 +145,7 @@ private:
                 // destroy the manager.
                 if (m_destroy &&
                     m_table.size() ==
-                    static_cast<typename Store::size_type>(m_nCachedObjects))
+                    static_cast<typename Table::size_type>(m_nCachedObjects))
                     del = true;
             }
         }
@@ -309,12 +307,12 @@ public:
     WeakPointer() {}
 
     WeakPointer(const Object *pointer):
-        m_key(*pointer),
+        m_keyHolder(pointer->key()),
         m_objectId(pointer->m_id)
     {}
 
     WeakPointer(const ReferencePointer<Object> &reference):
-        m_key(*reference.m_pointer),
+        m_keyHolder(reference.m_pointer->key()),
         m_objectId(reference->m_id)
     {}
 
@@ -329,7 +327,7 @@ public:
     }
 
 private:
-    typename Object::KeyT m_key;
+    typename Object::KeyHolder m_keyHolder;
 
     unsigned long m_objectId;
 
@@ -340,10 +338,10 @@ template<class Object>
 ReferencePointer<Object> Manager<Object>::find(const Key &key)
 {
     boost::mutex::scoped_lock lock(m_mutex);
-    typename Store::iterator it = m_store.find(const_cast<Key *>(&key));
-    if (it == m_store.end())
+    typename Table::iterator it = m_table.find(key);
+    if (it == m_table.end())
         return ReferencePointer<Object>(NULL, 0);
-    Object *object = static_cast<Object *>(*it);
+    Object *object = it->second;
     if (object->m_refCount == 0)
         return ReferencePointer<Object>(NULL, 0);
     ++object->m_refCount;
@@ -351,19 +349,19 @@ ReferencePointer<Object> Manager<Object>::find(const Key &key)
 }
 
 template<class Object>
-ReferencePointer<Object> Manager<Object>::get(const Key& key)
+ReferencePointer<Object> Manager<Object>::reference(const Key& key)
 {
     boost::mutex::scoped_lock lock(m_mutex);
-    typename Store::iterator it = m_store.find(const_cast<Key *>(&key));
+    typename Table::iterator it = m_table.find(key);
     Object *object;
-    if (it == m_store.end())
+    if (it == m_table.end())
     {
         object = new Object(key, m_serialNumber++, *this);
-        m_store.insert(object);
+        m_table.insert(std::make_pair(object->key(), object));
     }
     else
     {
-        object = static_cast<Object *>(*it);
+        object = it->second;
         if (object->m_refCount == 0)
         {
             if (object->m_nextCached)
@@ -383,10 +381,10 @@ ReferencePointer<Object> Manager<Object>::get(const Key& key)
     return ReferencePointer<Object>(object, 0);
 }
 
-template<class Object>
-ReferencePointer<Object> Manager<Object>::get(const WeakPointer<Object> &weak)
+template<class Object> ReferencePointer<Object>
+Manager<Object>::reference(const WeakPointer<Object> &weak)
 {
-    ReferencePointer<Object> r = find(weak.m_key);
+    ReferencePointer<Object> r = find(Key(weak.m_keyHolder));
     if (r)
     {
         if (r->m_id == weak.m_objectId)

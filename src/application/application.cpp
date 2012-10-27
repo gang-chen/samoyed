@@ -355,6 +355,16 @@ void Application::switchSession(Session &session)
     quit();    
 }
 
+void Application::cancelQuit()
+{
+    m_quiting = false;
+    if (m_nextSession)
+    {
+        delete m_nextSession;
+        m_nextSession = NULL;
+    }
+}
+
 void Application::onProjectClosed()
 {
     // Continue to quit the application if all the projects are closed.

@@ -7,8 +7,8 @@
 namespace Samoyed
 {
 
-class Project;
 class File;
+class Project;
 class EditorGroup;
 
 /**
@@ -17,41 +17,32 @@ class EditorGroup;
 class Editor
 {
 public:
-    Editor(Project &project, File &file);
+    Editor(File &file, Project &project);
 
     virtual ~Editor();
 
-    void addToListInProject(Editor *&editors);
-    void removeFromListInProject(Editor *&editors);
+    void addToList(Editor *&editors);
+    void removeFromList(Editor *&editors);
 
-    Editor *nextInProject() const { return m_nextInProject; }
-    Editor *previousInProject() const { return m_previousInProject; }
-
-    void addToListInFile(Editor *&editors);
-    void removeFromListInFile(Editor *&editors);
-
-    Editor *nextInFile() const { return m_nextInFile; }
-    Editor *previousInFile() const { return m_previousInFile; }
+    Editor *next() const { return m_next; }
+    Editor *previous() const { return m_previous; }
 
     void addToGroup(EditorGroup &group, int index);
     void removeFromGroup();
 
 private:
     /**
-     * The project where the editor is.
-     */
-    Project &m_project;
-
-    Editor *m_nextInProject;
-    Editor *m_prevInProject;
-
-    /**
      * The file being edited.
      */
     File &m_file;
 
-    Editor *m_nextInFile;
-    Editor *m_prevInFile;
+    Editor *m_next;
+    Editor *m_previous;
+
+    /**
+     * The project where the editor is.
+     */
+    Project &m_project;
 
     EditorGroup *m_group;
     int m_index;

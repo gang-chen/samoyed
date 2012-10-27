@@ -58,6 +58,8 @@ public:
      */
     void switchSession(Session &session);
 
+    void cancelQuit();
+
     /**
      * Get the sole application instance.
      */
@@ -118,9 +120,9 @@ public:
     void onProjectClosed();
 
 private:
-    typedef std::map<const char *, Project*, StringComparator> ProjectTable;
+    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
 
-    typedef std::map<const char *, File *, StringComparator> FileTable;
+    typedef std::map<ComparablePointer<const char *>, File *> FileTable;
 
     bool startUp();
 

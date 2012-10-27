@@ -36,7 +36,8 @@ public:
     void removeEditor(Editor &editor);
 
 private:
-    typedef std::map<const char *, Editor *, StringComparator> EditorTable;
+    typedef std::multi_map<ComparablePointer<const char *>, Editor *>
+        EditorTable;
 
     const std::string m_uri;
 

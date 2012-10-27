@@ -17,17 +17,14 @@ template<class> class Manager;
  * identifies a unique object in the manager.  The manager may either retrieve
  * the existing one or create a new one, if none.
  *
- * @param Key The type of the lookup keys that uniquely identify objects.
  * @param Object The type of the actual managed objects.
  */
-template<class Key, class KeyHolder, class Object>
+template<class Object>
 class Managed
 {
 protected:
-    Managed(const Key &key,
-            unsigned long id,
+    Managed(unsigned long id,
             Manager<Object> &manager):
-        m_keyHolder(key),
         m_refCount(0),
         m_id(id),
         m_manager(manager),
@@ -38,13 +35,7 @@ protected:
     ~Managed()
     { assert(m_refCount == 0); }
 
-    const Key &key() const
-    { return m_keyHolder.get(); }
-
 private:
-    typedef Key KeyT;
-
-    const KeyHolder m_keyHolder;
     int m_refCount;
     unsigned long m_id;
     Manager<Object> &m_manager;

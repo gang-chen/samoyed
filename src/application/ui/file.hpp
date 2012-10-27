@@ -5,6 +5,7 @@
 #define SMYD_FILE_HPP
 
 #include "../utilities/revision.hpp"
+#include <utility>
 #include <string>
 #include <vector>
 #include <stack>
@@ -86,7 +87,9 @@ public:
 
     virtual Editor *createEditor(Project &project) = 0;
 
-    bool onEditorClose(Editor &editor);
+    bool destroyEditor(Editor &editor);
+
+    void onEditorCreated(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
 
