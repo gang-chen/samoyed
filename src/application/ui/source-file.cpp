@@ -17,26 +17,6 @@
 namespace
 {
 
-struct FileReadParam
-{
-    FileReadParam(Samoyed::Document &document,
-                  Samoyed::TextFileReadWorker &reader):
-        m_document(document), m_reader(reader)
-    {}
-    Samoyed::Document &m_document;
-    Samoyed::TextFileReadWorker &m_reader;
-};
-
-struct FileWrittenParam
-{
-    FileWrittenParam(Samoyed::Document &document,
-                     Samoyed::TextFileWriteWorker &writer):
-        m_document(document), m_writer(writer)
-    {}
-    Samoyed::Document &m_document;
-    Samoyed::TextFileWriteWorker &m_writer;
-};
-
 const int DOCUMENT_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
 
 }
@@ -145,6 +125,11 @@ File *SourceFile::create(const char *uri)
     return new SourceFile(uri);
 }
 
+Editor *SourceFile::newEditor(Project &project)
+{
+    return new SourceEditor(*this, project);
+}
+
 void SourceFile::registerFileType()
 {
     Application::instance()->fileTypeRegistry()->
@@ -157,7 +142,7 @@ void SourceFile::registerFileType()
         registerFileFactory("text/x-c++hdr", create);
 }
 
-Document::Document(const char* uri):
+SourceFile::SourceFile(const char* uri):
     m_uri(uri),
     m_name(basename(uri)),
     m_closing(false),

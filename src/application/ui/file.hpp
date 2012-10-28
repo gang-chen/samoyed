@@ -5,6 +5,7 @@
 #define SMYD_FILE_HPP
 
 #include "../utilities/revision.hpp"
+#include "../utilities/worker.hpp"
 #include <utility>
 #include <string>
 #include <vector>
@@ -85,11 +86,9 @@ public:
     static std::pair<File *, Editor *> create(const char *uri,
                                               Project &project);
 
-    virtual Editor *createEditor(Project &project) = 0;
+    Editor *createEditor(Project &project);
 
     bool destroyEditor(Editor &editor);
-
-    void onEditorCreated(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
 
@@ -201,9 +200,29 @@ public:
     { return m_edited.connect(callback); }
 
 protected:
+    class Loader: public Worker
+    {
+    };
+
+    class Saver: public Worker
+    {
+    };
+
     File(const char *uri);
 
     ~File();
+
+    virtual Editor *newEditor(Project &project) = 0;
+
+    virtual Loader *createLoader(unsigned int priority,
+                                 const Worker::Callback &callback) = 0;
+
+    virtual Saver *createSaver(unsigned int priority,
+                               const Worker::Callback &callback) = 0;
+
+    virtual void onLoaded(Loader &loader) = 0;
+
+    virtual void onSaved(Saver &saver) = 0;
 
 private:
     /**
@@ -248,47 +267,15 @@ private:
         std::stack<Edit *> m_edits;
     };
 
-    /**
-     * Request to close the file.  Closing the file is cooperatively done by the
-     * file manager and the document itself.  This function gets the file ready
-     * for closing, and then the file manager destroys the editors and the
-     * document.  If the file is being loaded, cancel the loading and discard
-     * the user edits, if any.  If it is being saved, wait for the completion of
-     * the saving.  If it was edited by the user, ask the user whether we need
-     * to save or discard the edites, or cancel closing it.  The file manager
-     * will get notified when the file is ready for closing.
-     * @return True iff the closing is started.
-     */
-    bool close();
-
-    void addEditor(Editor &editor);
-
-    void removeEditor(Editor &editor);
+    void continueClosing();
 
     static gboolean onLoadedInMainThread(gpointer param);
 
     static gboolean onSavedInMainThread(gpointer param);
 
-    void onLoaded(Worker &worker);
+    void onLoadedBase(Worker &worker);
 
-    void onSaved(Worker &worker);
-
-    static void onTextInserted(GtkTextBuffer *buffer,
-                               GtkTextIter *position,
-                               gchar *text,
-                               gint length,
-                               gpointer document);
-
-    static void onTextRemoved(GtkTextBuffer *buffer,
-                              GtkTextIter *begin,
-                              GtkTextIter *end,
-                              gpointer document);
-
-    static void onUserActionBegun(GtkTextBuffer *buffer,
-                                  gpointer document);
-
-    static void onUserActionEnded(GtkTextBuffer *buffer,
-                                  gpointer document);
+    void onSavedBase(Worker &worker);
 
     template<class EditT> void saveUndo(EditT *undo)
     {

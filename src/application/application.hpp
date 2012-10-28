@@ -58,7 +58,7 @@ public:
      */
     void switchSession(Session &session);
 
-    void cancelQuit();
+    void cancelQuiting();
 
     /**
      * Get the sole application instance.
@@ -128,7 +128,7 @@ private:
 
     void shutDown();
 
-    void continueQuit();
+    void continueQuiting();
 
     /**
      * The sole application instance.
