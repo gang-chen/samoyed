@@ -2,12 +2,15 @@
 // Copyright (C) 2012 Gang Chen.
 
 #include "file.hpp"
+#include "editor.hpp"
 #include "../application.hpp"
 #include "../application.hpp/file-type-registry.hpp"
 #include "../utilities/worker.hpp"
 #include "../utilities/scheduler.hpp"
 #include <assert.h>
-#include <string.h>
+#include <utility>
+#include <string>
+#include <glib.h>
 
 namespace
 {
@@ -37,20 +40,20 @@ namespace Samoyed
 
 File::EditGroup::~EditGroup()
 {
-    for (std::vector<Edit *>::const_iterator i = m_edits.begin();
-         i != m_edits.end();
-         ++i)
-        delete (*i);
+    for (std::vector<EditPrimitive *>::const_iterator it = m_edits.begin();
+         it != m_edits.end();
+         ++it)
+        delete (*it);
 }
 
 bool File::EditGroup::execute(File &file) const
 {
     if (!file.beginUserAction())
         return false;
-    for (std::vector<Edit *>::const_iterator i = m_edits.begin();
-         i != m_edits.end();
-         ++i)
-        (*i)->execute(file);
+    for (std::vector<EditPrimitive *>::const_iterator it = m_edits.begin();
+         it != m_edits.end();
+         ++it)
+        (*it)->execute(file);
     file.endUserAction();
     return true;
 }
@@ -66,20 +69,20 @@ void File::EditStack::clear()
 
 bool File::EditStack::execute(File &file) const
 {
-    std::vector<Edit *> tmp(m_edits);
-    if (!file.beginUserAction())
+    std::vector<EditPrimitive *> tmp(m_edits);
+    if (!file.editable())
         return false;
     while (!tmp.empty())
     {
         tmp.top()->execute(file);
         tmp.pop();
     }
-    file.endUserAction();
     return true;
 }
 
 std::pair<File *, Editor *> File::create(const char *uri, Project &project)
 {
+    // Can't open an already opened file.
     assert(!Application::instance()->findFile(uri));
     File *file = Application::instance()->fileTypeRegistry()->
         getFileFactory(uri)(uri);
@@ -101,7 +104,7 @@ Editor *File::createEditor(Project &project)
         return NULL;
 
     // If an editor is created for a file that is being closed, we can safely
-    // destroy the old editor that is waiting for the completion.
+    // destroy the editor that is waiting for the completion of the closing.
     if (m_closing)
     {
         assert(!m_editors->next());
@@ -211,8 +214,12 @@ File::~File()
 {
     assert(m_editors.empty());
 
+    m_close(*this);
     Application::instance()->removeFile(*this);
-    m_closed(*this);
+
+    delete m_superUndo;
+    if (m_ioError)
+        g_error_free(m_ioError);
 }
 
 gboolean File::onLoadedInMainThread(gpointer param)
@@ -395,17 +402,18 @@ bool File::save()
 
 bool Document::beginUserAction()
 {
-    if (!editable())
+    if (!editable() || m_superUndo)
         return false;
-    gtk_buffer_begin_user_action(m_buffer);
+    m_superUndo = new EditGroup;
     return true;
 }
 
 ool Docuent::endserAction()
 {
-    if (!editable())
+    if (!editable() || !m_superUndo)
         return false;
-    gtk_buffer_end_user_action(m_buffer);
+    saveUndo(*m_superUndo);
+    m_superUndo = NULL;
     return true;
 }
 
