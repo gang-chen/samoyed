@@ -69,7 +69,7 @@ void File::EditStack::clear()
 
 bool File::EditStack::execute(File &file) const
 {
-    std::vector<EditPrimitive *> tmp(m_edits);
+    std::stack<Edit *> tmp(m_edits);
     if (!file.editable())
         return false;
     while (!tmp.empty())
@@ -265,6 +265,13 @@ gboolean File::onLoadedInMainThread(gpointer param)
     file.m_loader = NULL;
     file.unfreeze();
     file.m_editCount = 0;
+    file.m_undoHistory.clear();
+    file.m_redoHistory.clear();
+    if (file.m_superUndo)
+    {
+        delete file.m_superUndo;
+        file.m_superUndo = NULL;
+    }
     file.onLoaded(loader);
     file.m_loaded(file);
     delete &loader;
@@ -319,7 +326,8 @@ gboolean File::onSavedInMainThead(gpointer param)
                 GTK_BUTTONS_NONE,
                 _("Samoyed failed to save file '%s' before closing it: %s."),
                 name(), file.m_ioError->message);
-            gtk_dialog_add_buttons(GTK_DIALOG(dialog),
+            gtk_dialog_add_buttons(
+                GTK_DIALOG(dialog),
                 _("Try to _save the file again and close it"),
                 GTK_RESPONSE_YES,
                 _("_Discard the edits and close the file"),
@@ -376,10 +384,13 @@ void File::onSavedBase(Worker &worker)
                     NULL);
 }
 
-bool File::load()
+bool File::load(bool userRequest)
 {
     if (frozen())
         return false;
+    if (edited() && userRequest)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
     m_loading = true;
     freeze();
     m_loader = createLoader(Worker::defaultPriorityInCurrentThread(),
