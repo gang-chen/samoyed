@@ -42,7 +42,7 @@ public:
         /**
          * @return True iff successful.
          */
-        virtual bool execute(File &file) const = 0;
+        virtual bool execute(File &file, Editor *editor) const = 0;
 
         /**
          * Merge this edit with the edit that will be executed immediately
@@ -59,22 +59,31 @@ public:
     };
 
     /**
-     * A group of edits.  It is used to group a sequence of edits that will be
-     * executed together as one edit from the user's view.
+     * A group of edit primitives.  It is used to group a sequence of edit
+     * primitives that will be executed together as one edit from the user's
+     * view.
      */
     class EditGroup: public Edit
     {
     public:
         virtual ~EditGroup();
 
-        virtual bool execute(File &file) const;
+        virtual bool execute(File &file, Editor *editor) const;
 
-        void add(Edit *edit) { m_edits.push_back(edit); }
+        void add(EditPrimitive *edit) { m_edits.push_back(edit); }
 
         bool empty() const { return m_edits.empty(); }
 
     private:
-        std::vector<Edit *> m_edits;
+        std::vector<EditPrimitive *> m_edits;
+    };
+
+    class Loader: public Worker
+    {
+    };
+
+    class Saver: public Worker
+    {
     };
 
     typedef boost::signals2::signal<void (const File &file)> Close;
@@ -137,13 +146,16 @@ public:
      * @return True iff the file can be edited.
      */
     bool editable() const
-    { return !m_closing && !frozen(); }
+    { return !frozen(); }
 
     /**
      * @return True iff successful, i.e., the file can be edited.
      */
-    bool edit(const Edit &edit)
-    { return edit.execute(*this); }
+    bool edit(const Edit &edit, Editor *editor)
+    { return edit.execute(*this, editor); }
+
+    bool inEditGroup() const
+    { return m_superUndo; }
 
     /**
      * @return True iff successful, i.e., the file can be edited.
@@ -156,10 +168,10 @@ public:
     bool endEditGroup();
 
     bool undoable() const
-    { return !m_undoHistory.empty() && !m_superUndo; }
+    { return editable() && !m_undoHistory.empty() && !m_superUndo; }
 
     bool redoable() const
-    { return !m_redoHistory.empty() && !m_superUndo; }
+    { return editable() && !m_redoHistory.empty() && !m_superUndo; }
 
     /**
      * @return True iff successful, i.e., the file can be edited and undone.
@@ -171,7 +183,8 @@ public:
      */
     bool redo();
 
-    bool frozen() const { return m_freezeCount; }
+    bool frozen() const
+    { return m_freezeCount || m_internalFreezeCount; }
 
     /**
      * Disallow the user to edit the file.
@@ -200,14 +213,6 @@ public:
     { return m_edited.connect(callback); }
 
 protected:
-    class Loader: public Worker
-    {
-    };
-
-    class Saver: public Worker
-    {
-    };
-
     File(const char *uri);
 
     ~File();
@@ -228,28 +233,14 @@ private:
     /**
      * A stack of edits.
      */
-    class EditStack: public Edit
+    class EditStack
     {
     public:
-        virtual ~EditStack() { clear(); }
+        ~EditStack() { clear(); }
 
-        virtual bool execute(File &file) const;
+        void push(Edit *edit) { m_edits.push(edit); }
 
-        template<class EditT> bool push(EditT *edit, bool mergeable)
-        {
-            if (m_edits.empty() || !mergeable)
-            {
-                m_edits.push(edit);
-                return false;
-            }
-            if (m_edits.top()->merge(edit))
-            {
-                delete edit;
-                return true;
-            }
-            m_edits.push(edit);
-            return false;
-        }
+        bool mergePush(EditPrimitive *edit);
 
         Edit *top() const { return m_edits.top(); }
 
@@ -305,15 +296,6 @@ private:
 
     bool m_saving;
 
-    bool m_undoing;
-
-    bool m_redoing;
-
-    /**
-     * The GTK+ text buffer.
-     */
-    GtkTextBuffer *m_buffer;
-
     Revision m_revision;
 
     GError *m_ioError;
@@ -325,26 +307,20 @@ private:
     EditStack *m_superUndo;
 
     /**
-     * The number of text edits performed since the latest document loading or
-     * saving.  It may become negative if the user undoes edits.
+     * The number of edits performed since the latest loading or saving.  It may become negative if the user undoes edits.
      */
     int m_editCount;
 
     /**
-     * The editors that are editing this document.
+     * The editors that are editing this file.
      */
     Editor *m_editors;
 
     int m_freezeCount;
+    int m_internalFreezeCount;
 
-    /**
-     * The worker for reading the text file.  We memorize it so that we can
-     * cancel it later.
-     */
-    TextFileReadWorker *m_fileReader;
-
-    ReferencePointer<FileSource> m_source;
-    ReferencePointer<FileAst> m_ast;
+    // We memorize the file loader so that we can cancel it later.
+    Loader *m_loader;
 
     Close m_close;
     Loaded m_loaded;
