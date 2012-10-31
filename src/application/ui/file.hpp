@@ -1,4 +1,4 @@
-// Opened file.
+B// Opened file.
 // Copyright (C) 2012 Gang Chen.
 
 #ifndef SMYD_FILE_HPP
@@ -11,6 +11,7 @@
 #include <vector>
 #include <stack>
 #include <boost/signals2/signal.hpp>
+#include <glib.h>
 
 namespace Samoyed
 {
@@ -42,7 +43,7 @@ public:
         /**
          * @return True iff successful.
          */
-        virtual bool execute(File &file, Editor *editor) const = 0;
+        virtual void execute(File &file, Editor *editor) const = 0;
 
         /**
          * Merge this edit with the edit that will be executed immediately
@@ -68,7 +69,7 @@ public:
     public:
         virtual ~EditGroup();
 
-        virtual bool execute(File &file, Editor *editor) const;
+        virtual void execute(File &file, Editor *editor) const;
 
         void add(EditPrimitive *edit) { m_edits.push_back(edit); }
 
@@ -131,7 +132,7 @@ public:
      * callback.
      * @return True iff the loading is started.
      */
-    bool load();
+    bool load(bool force);
 
     /**
      * Request to save the file.  The file cannot be saved if it is being
@@ -148,11 +149,8 @@ public:
     bool editable() const
     { return !frozen(); }
 
-    /**
-     * @return True iff successful, i.e., the file can be edited.
-     */
-    bool edit(const Edit &edit, Editor *editor)
-    { return edit.execute(*this, editor); }
+    void edit(const Edit &edit, Editor *editor)
+    { edit.execute(*this, editor); }
 
     bool inEditGroup() const
     { return m_superUndo; }
@@ -160,12 +158,9 @@ public:
     /**
      * @return True iff successful, i.e., the file can be edited.
      */
-    bool beginEditGroup();
+    void beginEditGroup();
 
-    /**
-     * @return True iff successful, i.e., the file can be edited.
-     */
-    bool endEditGroup();
+    void endEditGroup();
 
     bool undoable() const
     { return editable() && !m_undoHistory.empty() && !m_superUndo; }
@@ -173,15 +168,9 @@ public:
     bool redoable() const
     { return editable() && !m_redoHistory.empty() && !m_superUndo; }
 
-    /**
-     * @return True iff successful, i.e., the file can be edited and undone.
-     */
-    bool undo();
+    void undo();
 
-    /**
-     * @return True iff successful, i.e., the file can be edited and redone.
-     */
-    bool redo();
+    void redo();
 
     bool frozen() const
     { return m_freezeCount || m_internalFreezeCount; }
@@ -233,10 +222,12 @@ private:
     /**
      * A stack of edits.
      */
-    class EditStack
+    class EditStack: public Edit
     {
     public:
-        ~EditStack() { clear(); }
+        virtual ~EditStack() { clear(); }
+
+        virtual void execute(File &file, Editor *editor);
 
         void push(Edit *edit) { m_edits.push(edit); }
 
@@ -281,11 +272,6 @@ private:
         }
     }
 
-    /**
-     * The tag table shared by all the GTK+ text buffers.
-     */
-    static GtkTextTagTable *s_sharedTagTable;
-
     const std::string m_uri;
 
     const std::string m_name;
@@ -307,7 +293,7 @@ private:
     EditStack *m_superUndo;
 
     /**
-     * The number of edits performed since the latest loading or saving.  It may become negative if the user undoes edits.
+     * The number of edits performed since the latest loading or saving.
      */
     int m_editCount;
 
