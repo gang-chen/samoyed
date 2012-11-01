@@ -46,38 +46,23 @@ File::EditGroup::~EditGroup()
         delete (*it);
 }
 
-bool File::EditGroup::execute(File &file) const
+void File::EditGroup::execute(File &file, Editor *editor) const
 {
-    if (!file.beginUserAction())
-        return false;
+    file.beginUserAction();
     for (std::vector<EditPrimitive *>::const_iterator it = m_edits.begin();
          it != m_edits.end();
          ++it)
-        (*it)->execute(file);
+        (*it)->execute(file, editor);
     file.endUserAction();
-    return true;
 }
 
-void File::EditStack::clear()
+void File::EditStack::~EditStack()
 {
     while (!m_edits.empty())
     {
         delete m_edits.top();
         m_edits.pop();
     }
-}
-
-bool File::EditStack::execute(File &file) const
-{
-    std::stack<Edit *> tmp(m_edits);
-    if (!file.editable())
-        return false;
-    while (!tmp.empty())
-    {
-        tmp.top()->execute(file);
-        tmp.pop();
-    }
-    return true;
 }
 
 std::pair<File *, Editor *> File::create(const char *uri, Project &project)
@@ -196,12 +181,11 @@ File::File(const char *uri):
     m_reopening(false),
     m_loading(false),
     m_saving(false),
-    m_undoing(false),
-    m_redoing(false),
     m_ioError(NULL),
     m_superUndo(NULL),
     m_editCount(0),
     m_freezeCount(0),
+    m_internalFreezeCount(0),
     m_loader(NULL)
 {
     Application::instance()->addFile(*this);
@@ -328,7 +312,7 @@ gboolean File::onSavedInMainThead(gpointer param)
                 name(), file.m_ioError->message);
             gtk_dialog_add_buttons(
                 GTK_DIALOG(dialog),
-                _("Try to _save the file again and close it"),
+                _("Retry to _save the file and close it"),
                 GTK_RESPONSE_YES,
                 _("_Discard the edits and close the file"),
                 GTK_RESPONSE_NO,
@@ -386,62 +370,95 @@ void File::onSavedBase(Worker &worker)
 
 bool File::load(bool userRequest)
 {
-    if (frozen())
-        return false;
+    assert(!frozen());
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_NONE,
+            _("File '%s' was edited. Loading it will discard the edits."),
+            name());
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+    }
     m_loading = true;
-    freeze();
+    freezeInternally();
     m_loader = createLoader(Worker::defaultPriorityInCurrentThread(),
                             boost::bind(&File::onLoadedBase, this, _1));
     Application::instance()->scheduler()->schedule(*m_loader);
     return true;
 }
 
-bool File::save()
+void File::save()
 {
-    if (frozen())
-        return false;
+    assert(!frozen());
     m_saving = true;
-    freeze();
+    freezeInternally();
     Saver *saver = createSaver(Worker::defaultPriorityInCurrentThread(),
                                boost::bind(&File::onSavedBase, this, _1));
     Application::instance()->scheduler()->schedule(*saver);
-    return true;
 }
 
-bool Document::beginUserAction()
+void File::saveUndo(EditPrimitive *edit)
 {
-    if (!editable() || m_superUndo)
-        return false;
+}
+
+void File::beginEditGroup()
+{
+    assert(editable() && !m_superUndo);
     m_superUndo = new EditGroup;
     return true;
 }
 
-ool Docuent::endserAction()
+void File::endEditGroup()
 {
-    if (!editable() || !m_superUndo)
-        return false;
-    saveUndo(*m_superUndo);
+    assert(editable() && m_superUndo);
+    EditGroup *group = new EditGroup;
+    while (!m_superUndo->empty())
+        group->add(m_superUndo->pop());
+    delete m_superUndo;
     m_superUndo = NULL;
     return true;
 }
 
-void Document::freeze()
+void File::freeze()
 {
     m_freezeCount++;
-    if (m_freezeCount == 1)
+    if (m_freezeCount + m_internalFreezeCount == 1)
     {
         for (Editor *editor = m_editors; editor; editor = editor->next())
             editor->freeze();
     }
 }
 
-void Document::unfreeze()
+void File::unfreeze()
 {
+    assert(m_freezeCount >= 1);
     m_freezeCount--;
-    if (m_freezeCount == 0)
+    if (m_freezeCount + m_internalFreezeCount == 0)
+    {
+        for (Editor *editor = m_editors; editor; editor = editor->next())
+            editor->unfreeze();
+    }
+}
+
+void File::freezeInternally()
+{
+    m_internalFreezeCount++;
+    if (m_freezeCount + m_internalFreezeCount == 1)
+    {
+        for (Editor *editor = m_editors; editor; editor = editor->next())
+            editor->freeze();
+    }
+}
+
+void File::unfreezeInternally()
+{
+    assert(m_internalFreezeCount >= 1);
+    m_internalFreezeCount--;
+    if (m_freezeCount + m_internalFreezeCount == 0)
     {
         for (Editor *editor = m_editors; editor; editor = editor->next())
             editor->unfreeze();
