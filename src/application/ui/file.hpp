@@ -1,4 +1,4 @@
-B// Opened file.
+// Opened file.
 // Copyright (C) 2012 Gang Chen.
 
 #ifndef SMYD_FILE_HPP
@@ -132,7 +132,7 @@ public:
      * callback.
      * @return True iff the loading is started.
      */
-    bool load(bool force);
+    bool load(bool userRequest);
 
     /**
      * Request to save the file.  The file cannot be saved if it is being
@@ -141,7 +141,7 @@ public:
      * callback.
      * @return True iff the saving is started.
      */
-    bool save();
+    bool save(bool userRequest);
 
     /**
      * @return True iff the file can be edited.
@@ -155,9 +155,6 @@ public:
     bool inEditGroup() const
     { return m_superUndo; }
 
-    /**
-     * @return True iff successful, i.e., the file can be edited.
-     */
     void beginEditGroup();
 
     void endEditGroup();
@@ -218,16 +215,16 @@ protected:
 
     virtual void onSaved(Saver &saver) = 0;
 
+    virtual PrimitiveEdit *edit(PrimitiveEdit *edit) = 0;
+
 private:
     /**
      * A stack of edits.
      */
-    class EditStack: public Edit
+    class EditStack
     {
     public:
-        virtual ~EditStack() { clear(); }
-
-        virtual void execute(File &file, Editor *editor);
+        ~EditStack();
 
         void push(Edit *edit) { m_edits.push(edit); }
 
@@ -235,21 +232,24 @@ private:
 
         Edit *top() const { return m_edits.top(); }
 
-        void pop()
+        Edit *pop()
         {
-            delete m_edits.top();
+            Edit *edit = m_edits.top();
             m_edits.pop();
+            return edit;
         }
 
         bool empty() const { return m_edits.empty(); }
-
-        void clear();
 
     private:
         std::stack<Edit *> m_edits;
     };
 
     void continueClosing();
+
+    void freezeInternally();
+
+    void unfreezeInternally();
 
     static gboolean onLoadedInMainThread(gpointer param);
 
@@ -258,19 +258,6 @@ private:
     void onLoadedBase(Worker &worker);
 
     void onSavedBase(Worker &worker);
-
-    template<class EditT> void saveUndo(EditT *undo)
-    {
-        if (m_undoing)
-            m_redoHistory.push(undo, false);
-        else if (m_redoing)
-            m_undoHistory.push(undo, false);
-        else
-        {
-            // If the edit count is zero, do not merge undoes.
-            m_undoHistory.push(undo, !m_editCount);
-        }
-    }
 
     const std::string m_uri;
 
