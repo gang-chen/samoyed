@@ -41,15 +41,15 @@ public:
         virtual ~Edit() {}
 
         /**
-         * @return True iff successful.
+         * @return The reverse edit.
          */
-        virtual void execute(File &file, Editor *editor) const = 0;
+        virtual Edit *execute(File &file, Editor *editor) const = 0;
 
         /**
          * Merge this edit with the edit that will be executed immediately
          * before this edit.
          */
-        virtual bool merge(const EditPrimitive &edit) { return false; }
+        virtual bool merge(const EditPrimitive *edit) { return false; }
     };
 
     /**
@@ -69,7 +69,7 @@ public:
     public:
         virtual ~EditGroup();
 
-        virtual void execute(File &file, Editor *editor) const;
+        virtual Edit *execute(File &file, Editor *editor) const;
 
         void add(EditPrimitive *edit) { m_edits.push_back(edit); }
 
@@ -77,6 +77,33 @@ public:
 
     private:
         std::vector<EditPrimitive *> m_edits;
+    };
+
+    /**
+     * A stack of edits.
+     */
+    class EditStack
+    {
+    public:
+        ~EditStack();
+
+        void push(Edit *edit) { m_edits.push(edit); }
+
+        bool mergePush(EditPrimitive *edit);
+
+        Edit *top() const { return m_edits.top(); }
+
+        Edit *pop()
+        {
+            Edit *edit = m_edits.top();
+            m_edits.pop();
+            return edit;
+        }
+
+        bool empty() const { return m_edits.empty(); }
+
+    private:
+        std::stack<Edit *> m_edits;
     };
 
     class Loader: public Worker
@@ -139,18 +166,14 @@ public:
      * closed, loaded or saved, or is frozen.  When saving, the file is frozen.
      * The caller can get notified of the completion of the saving by adding a
      * callback.
-     * @return True iff the saving is started.
      */
-    bool save(bool userRequest);
+    void save();
 
     /**
      * @return True iff the file can be edited.
      */
     bool editable() const
     { return !frozen(); }
-
-    void edit(const Edit &edit, Editor *editor)
-    { edit.execute(*this, editor); }
 
     bool inEditGroup() const
     { return m_superUndo; }
@@ -215,36 +238,9 @@ protected:
 
     virtual void onSaved(Saver &saver) = 0;
 
-    virtual PrimitiveEdit *edit(PrimitiveEdit *edit) = 0;
+    void onEdited(Edit &);
 
 private:
-    /**
-     * A stack of edits.
-     */
-    class EditStack
-    {
-    public:
-        ~EditStack();
-
-        void push(Edit *edit) { m_edits.push(edit); }
-
-        bool mergePush(EditPrimitive *edit);
-
-        Edit *top() const { return m_edits.top(); }
-
-        Edit *pop()
-        {
-            Edit *edit = m_edits.top();
-            m_edits.pop();
-            return edit;
-        }
-
-        bool empty() const { return m_edits.empty(); }
-
-    private:
-        std::stack<Edit *> m_edits;
-    };
-
     void continueClosing();
 
     void freezeInternally();
@@ -299,6 +295,11 @@ private:
     Loaded m_loaded;
     Saved m_saved;
     Edited m_edited;
+
+    friend class Edit;
+    friend class EditPrimitive;
+    friend class EditGroup;
+    friend class EditStack;
 };
 
 }

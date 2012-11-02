@@ -11,8 +11,6 @@
 #include <vector>
 #include <stack>
 #include <boost/signals2/signal.hpp>
-#include <glib.h>
-#include <gtk/gtk.h>
 
 namespace Samoyed
 {
@@ -42,9 +40,6 @@ class FileAst;
 class SourceFile: public File
 {
 private:
-    typedef boost::signals2::signal<void (const Document &doc)> Closed;
-    typedef boost::signals2::signal<void (const Document &doc)> Loaded;
-    typedef boost::signals2::signal<void (const Document &doc)> Saved;
     typedef boost::signals2::signal<void (const Document &doc,
                                           int line,
                                           int column,

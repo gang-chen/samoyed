@@ -485,4 +485,20 @@ void Document::removeEditor(Editor &editor)
     editor.removeFromList(m_editors);
 }
 
+// cooperate with file/editor/source-editor
+// 1. edit from editor
+// source-editor calls source-file.insert(editor1)
+//  source-file.insert(editor1) does insertion, gets undo, calls file.save-undo
+//   file.save-undo saves undo
+//  source-file.insert(editor1) calls file.on-edited(insertion1, editor1)
+//  file.on-edited(insertion1, editor1) calls editor.on-edited(insertion1) for
+// each editor != editor1
+//   source-editor.on-edited(insertion1) does insertion for itself
+// 2. edit from file
+// source-file.insert(NULL)
+// 3. undo
+// file gets undo, calls edit.execute()
+//  edit.execute calls source-file.insert-without-save-undo(NULL)
+//   does insertion and returns undo
+//  undo to redo
 }

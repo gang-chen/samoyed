@@ -46,7 +46,7 @@ File::EditGroup::~EditGroup()
         delete (*it);
 }
 
-void File::EditGroup::execute(File &file, Editor *editor) const
+Edit *File::EditGroup::execute(File &file, Editor *editor) const
 {
     file.beginUserAction();
     for (std::vector<EditPrimitive *>::const_iterator it = m_edits.begin();
@@ -149,13 +149,12 @@ bool File::destroyEditor(Editor &editor)
             GTK_BUTTONS_NONE,
             _("File '%s' was edited."),
             name());
-        gtk_dialog_add_buttons(GTK_DIALOG(dialog),
-                               _("_Save the file and close it"),
-                               GTK_RESPONSE_YES,
-                               _("_Discard the edits and close the file"),
-                               GTK_RESPONSE_NO,
-                               _("_Cancel closing the file"),
-                               GTK_RESPONSE_CANCEL);
+        gtk_dialog_add_buttons(
+            GTK_DIALOG(dialog),
+            _("_Save the file and close it"), GTK_RESPONSE_YES,
+            _("_Discard the edits and close the file"), GTK_RESPONSE_NO,
+            _("_Cancel closing the file"), GTK_RESPONSE_CANCEL,
+            NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -191,12 +190,13 @@ File::File(const char *uri):
     Application::instance()->addFile(*this);
 
     // Start the initial loading.
-    load();
+    load(false);
 }
 
 File::~File()
 {
     assert(m_editors.empty());
+    assert(!m_loader);
 
     m_close(*this);
     Application::instance()->removeFile(*this);
@@ -212,7 +212,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     File &file = p->m_file;
     Loader &loader = p->m_loader();
 
-    assert(m_loading);
+    assert(file.m_loading);
 
     // If we are reopening the file, we need to reload it.
     if (file.m_reopening)
@@ -220,10 +220,10 @@ gboolean File::onLoadedInMainThread(gpointer param)
         assert(!file.m_loader);
         file.m_reopening = false;
         file.m_loading = false;
-        file.unfreeze();
+        file.unfreezeInternally();
         delete &loader;
         delete p;
-        load();
+        load(false);
         return FALSE;
     }
 
@@ -232,7 +232,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     {
         assert(!file.m_reader);
         file.m_loading = false;
-        file.unfreeze();
+        file.unfreezeInternally();
         delete &reader;
         delete p;
         continueClosing();
@@ -240,14 +240,15 @@ gboolean File::onLoadedInMainThread(gpointer param)
     }
 
     assert(file.m_loader == &loader);
+    file.m_loading = false;
+    file.m_loader = NULL;
+    file.unfreezeInternally();
 
+    // Overwrite the contents with the loaded contents.
     file.m_revision = loader.revision();
     if (file.m_ioError)
         g_error_free(file.m_ioError);
     file.m_ioError = loader.fetchError();
-    file.m_loading = false;
-    file.m_loader = NULL;
-    file.unfreeze();
     file.m_editCount = 0;
     file.m_undoHistory.clear();
     file.m_redoHistory.clear();
@@ -269,7 +270,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load file '%s': %s."),
+            _("Samoyed failed to load file \"%s\"."),
             name(), file.m_ioError->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -284,23 +285,19 @@ gboolean File::onSavedInMainThead(gpointer param)
     File &file = p->m_file;
     Saver &saver = p->m_saver();
 
-    assert(m_saving);
-
-    file.m_revision = saver.revision();
-    if (file.m_ioError)
-        g_error_free(file.m_ioError);
-    file.m_ioError = saver.fetchError();
+    assert(file.m_saving);
     file.m_saving = false;
-    file.unfreeze();
-    file.m_editCount = 0;
-    file.onSaved(saver);
-    file.m_saved(file);
-    delete &saver;
-    delete p;
+    file.m_reopening = false;
+    file.unfreezeInternally();
 
     // If any error was encountered, report it.
-    if (file.m_ioError)
+    if (saver.error())
     {
+        file.onSaved(saver);
+        file.m_saved(file);
+        delete &saver;
+        delete p;
+
         if (m_closing)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
@@ -308,7 +305,7 @@ gboolean File::onSavedInMainThead(gpointer param)
                 GTK_DIALOG_MODEL,
                 GTK_MESSAGE_QUESTION,
                 GTK_BUTTONS_NONE,
-                _("Samoyed failed to save file '%s' before closing it: %s."),
+                _("Samoyed failed to save file \"%s\" before closing it."),
                 name(), file.m_ioError->message);
             gtk_dialog_add_buttons(
                 GTK_DIALOG(dialog),
@@ -336,7 +333,7 @@ gboolean File::onSavedInMainThead(gpointer param)
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to save file '%s': %s."),
+                _("Samoyed failed to save file \"%s\"."),
                 name(), file.m_ioError->message);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
@@ -344,11 +341,20 @@ gboolean File::onSavedInMainThead(gpointer param)
     }
     else
     {
+        file.m_revision = saver.revision();
+        if (file.m_ioError)
+            g_error_free(file.m_ioError);
+        file.m_ioError = NULL;
+        file.m_editCount = 0;
+        file.onSaved(saver);
+        file.m_saved(file);
+        delete &saver;
+        delete p;
+
         if (m_closing)
             continueClosing();
     }
 
-    m_reopening = false;
     return FALSE;
 }
 
@@ -370,7 +376,7 @@ void File::onSavedBase(Worker &worker)
 
 bool File::load(bool userRequest)
 {
-    assert(!frozen());
+    assert(!frozen() && !m_superUndo);
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -380,8 +386,16 @@ bool File::load(bool userRequest)
             GTK_BUTTONS_NONE,
             _("File '%s' was edited. Loading it will discard the edits."),
             name());
-        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_dialog_add_buttons(
+            GTK_DIALOG(dialog),
+            _("Discard the edits and load the file"), GTK_RESPONSE_YES,
+            _("_Cancel loading the file"), GTK_RESPONSE_NO,
+            NULL);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_NO)
+            return false;
     }
     m_loading = true;
     freezeInternally();
@@ -393,7 +407,7 @@ bool File::load(bool userRequest)
 
 void File::save()
 {
-    assert(!frozen());
+    assert(!frozen() && !m_superUndo);
     m_saving = true;
     freezeInternally();
     Saver *saver = createSaver(Worker::defaultPriorityInCurrentThread(),
@@ -403,6 +417,12 @@ void File::save()
 
 void File::saveUndo(EditPrimitive *edit)
 {
+}
+
+void File::undo()
+{
+    assert(undoable());
+
 }
 
 void File::beginEditGroup()
