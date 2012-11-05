@@ -38,31 +38,22 @@ struct SavedParam
 namespace Samoyed
 {
 
-File::EditGroup::~EditGroup()
+File::EditStack::~EditStack()
 {
-    for (std::vector<EditPrimitive *>::const_iterator it = m_edits.begin();
-         it != m_edits.end();
+    for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
+         it != m_edits.rend();
          ++it)
         delete (*it);
 }
 
-Edit *File::EditGroup::execute(File &file, Editor *editor) const
+Edit *File::EditStack::execute(File &file) const
 {
-    file.beginUserAction();
-    for (std::vector<EditPrimitive *>::const_iterator it = m_edits.begin();
-         it != m_edits.end();
+    EditStack *undo = new EditStack;
+    for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
+         it != m_edits.rend();
          ++it)
-        (*it)->execute(file, editor);
-    file.endUserAction();
-}
-
-void File::EditStack::~EditStack()
-{
-    while (!m_edits.empty())
-    {
-        delete m_edits.top();
-        m_edits.pop();
-    }
+        undo->push((*it)->execute(file));
+    return undo;
 }
 
 std::pair<File *, Editor *> File::create(const char *uri, Project &project)
@@ -113,16 +104,16 @@ void File::continueClosing()
 
 bool File::destroyEditor(Editor &editor)
 {
-    if (m_closing)
-    {
-        assert(m_editors == &editor);
-        return true;
-    }
+    // Can't destroy the editor waiting for the completion of the closing.
+    assert(!m_closing);
+
     if (editor.next() || editor.previous())
     {
         delete *editor;
         return true;
     }
+
+    // Need to close this file.
     m_reopening = false;
     if (m_loading)
     {
@@ -147,7 +138,7 @@ bool File::destroyEditor(Editor &editor)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
-            _("File '%s' was edited."),
+            _("File \"%s\" was edited."),
             name());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
@@ -417,12 +408,28 @@ void File::save()
 
 void File::saveUndo(EditPrimitive *edit)
 {
+    if (m_superUndo)
+        m_superUndo->mergePush(edit);
+    else
+        m_undoHistory.mergePush(edit);
 }
 
 void File::undo()
 {
     assert(undoable());
+    Edit *edit = m_undoHistory.top();
+    m_undoHistory.pop();
+    Edit *undo = edit->execute(*this);
+    m_redoHistory.push(undo);
+}
 
+void File::redo()
+{
+    assert(undoable());
+    Edit *edit = m_redoHistory.top();
+    m_rndoHistory.pop();
+    Edit *undo = edit->execute(*this);
+    m_redoHistory.push(undo);
 }
 
 void File::beginEditGroup()
@@ -435,10 +442,7 @@ void File::beginEditGroup()
 void File::endEditGroup()
 {
     assert(editable() && m_superUndo);
-    EditGroup *group = new EditGroup;
-    while (!m_superUndo->empty())
-        group->add(m_superUndo->pop());
-    delete m_superUndo;
+    m_undoHistory.push(m_superUndo);
     m_superUndo = NULL;
     return true;
 }
@@ -483,6 +487,16 @@ void File::unfreezeInternally()
         for (Editor *editor = m_editors; editor; editor = editor->next())
             editor->unfreeze();
     }
+}
+
+void File::onEdited(const EditPrimitive &edit, const Editor *committer)
+{
+    for (Editor *editor = m_editors; editor; editor = editor->next())
+    {
+        if (editor != committer)
+            editor->onEdited(edit);
+    }
+    m_edited(*this, edit);
 }
 
 }
