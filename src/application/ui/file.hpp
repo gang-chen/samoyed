@@ -68,20 +68,15 @@ public:
 
         virtual Edit *execute(File &file) const;
 
+        bool empty() const { return m_edits.empty(); }
+
+        Edit *top() const { return m_edits.back(); }
+
         void push(Edit *edit) { m_edits.push_back(edit); }
 
         bool mergePush(EditPrimitive *edit);
 
-        Edit *top() const { return m_edits.back(); }
-
-        Edit *pop()
-        {
-            Edit *edit = m_edits.back();
-            m_edits.pop_back();
-            return edit;
-        }
-
-        bool empty() const { return m_edits.empty(); }
+        void pop() { m_edits.pop_back(); }
 
     private:
         std::vector<Edit *> m_edits;
