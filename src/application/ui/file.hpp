@@ -9,7 +9,6 @@
 #include <utility>
 #include <string>
 #include <vector>
-#include <stack>
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
 
@@ -43,7 +42,7 @@ public:
         /**
          * @return The reverse edit.
          */
-        virtual Edit *execute(File &file, Editor *editor) const = 0;
+        virtual Edit *execute(File &file) const = 0;
 
         /**
          * Merge this edit with the edit that will be executed immediately
@@ -60,50 +59,32 @@ public:
     };
 
     /**
-     * A group of edit primitives.  It is used to group a sequence of edit
-     * primitives that will be executed together as one edit from the user's
-     * view.
-     */
-    class EditGroup: public Edit
-    {
-    public:
-        virtual ~EditGroup();
-
-        virtual Edit *execute(File &file, Editor *editor) const;
-
-        void add(EditPrimitive *edit) { m_edits.push_back(edit); }
-
-        bool empty() const { return m_edits.empty(); }
-
-    private:
-        std::vector<EditPrimitive *> m_edits;
-    };
-
-    /**
      * A stack of edits.
      */
-    class EditStack
+    class EditStack: public Edit
     {
     public:
-        ~EditStack();
+        virtual ~EditStack();
 
-        void push(Edit *edit) { m_edits.push(edit); }
+        virtual Edit *execute(File &file) const;
+
+        void push(Edit *edit) { m_edits.push_back(edit); }
 
         bool mergePush(EditPrimitive *edit);
 
-        Edit *top() const { return m_edits.top(); }
+        Edit *top() const { return m_edits.back(); }
 
         Edit *pop()
         {
-            Edit *edit = m_edits.top();
-            m_edits.pop();
+            Edit *edit = m_edits.back();
+            m_edits.pop_back();
             return edit;
         }
 
         bool empty() const { return m_edits.empty(); }
 
     private:
-        std::stack<Edit *> m_edits;
+        std::vector<Edit *> m_edits;
     };
 
     class Loader: public Worker
@@ -117,8 +98,8 @@ public:
     typedef boost::signals2::signal<void (const File &file)> Close;
     typedef boost::signals2::signal<void (const File &file)> Loaded;
     typedef boost::signals2::signal<void (const File &file)> Saved;
-    typedef boost::signals2::signal<void (const File &file, const Edit &)>
-    	Edited;
+    typedef boost::signals2::signal<void (const File &file,
+                                          const EditPrimitive &edit)> Edited;
 
     static std::pair<File *, Editor *> create(const char *uri,
                                               Project &project);
@@ -238,7 +219,9 @@ protected:
 
     virtual void onSaved(Saver &saver) = 0;
 
-    void onEdited(Edit &);
+    void onEdited(EditPrimitive &edit, Editor *committer);
+
+    void saveUndo(EditPrimitive *undo)
 
 private:
     void continueClosing();
@@ -295,11 +278,6 @@ private:
     Loaded m_loaded;
     Saved m_saved;
     Edited m_edited;
-
-    friend class Edit;
-    friend class EditPrimitive;
-    friend class EditGroup;
-    friend class EditStack;
 };
 
 }
