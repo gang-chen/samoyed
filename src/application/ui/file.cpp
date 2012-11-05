@@ -9,6 +9,7 @@
 #include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <utility>
+#include <vector>
 #include <string>
 #include <glib.h>
 #include <gtk/gtk.h>
@@ -390,7 +391,7 @@ bool File::load(bool userRequest)
             name());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
-            _("Discard the edits and load the file"), GTK_RESPONSE_YES,
+            _("_Discard the edits and load the file"), GTK_RESPONSE_YES,
             _("_Cancel loading the file"), GTK_RESPONSE_NO,
             NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
