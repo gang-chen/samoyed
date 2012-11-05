@@ -214,9 +214,9 @@ protected:
 
     virtual void onSaved(Saver &saver) = 0;
 
-    void onEdited(EditPrimitive &edit, Editor *committer);
+    void onEdited(const EditPrimitive &edit, const Editor *committer);
 
-    void saveUndo(EditPrimitive *undo)
+    void saveUndo(EditPrimitive *undo);
 
 private:
     void continueClosing();
