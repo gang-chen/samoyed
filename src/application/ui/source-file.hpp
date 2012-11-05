@@ -8,15 +8,11 @@
 #include "../utilities/revision.hpp"
 #include "../utilities/manager.hpp"
 #include <string>
-#include <vector>
-#include <stack>
-#include <boost/signals2/signal.hpp>
 
 namespace Samoyed
 {
 
 class SourceFileEditor;
-class TextFileReader;
 class FileSource;
 class FileAst;
 
@@ -31,46 +27,21 @@ class FileAst;
  * but also performs syntax highlighting, code folding, etc. based on the
  * abstract syntax tree.
  *
- * A document saves the editing history, supporting undo and redo.
- *
  * When a document is opened, it keeps a reference to the file source, and then
  * pushes user edits so as to let the file source update it and, if the file is
  * a source file, the related abstract syntax trees.
  */
 class SourceFile: public File
 {
-private:
-    typedef boost::signals2::signal<void (const Document &doc,
-                                          int line,
-                                          int column,
-                                          const char *text,
-                                          int length)> TextInserted;
-    typedef boost::signals2::signal<void (const Document &doc,
-                                          int beginLine,
-                                          int beginColumn,
-                                          int endLine,
-                                          int endColumn)> TextRemoved;
-
 public:
-    class Insertion;
-    class Removal;
-
-    class Edit
+    class TextEditPrimitive: public EditPrimitive
     {
     public:
-        virtual ~Edit() {}
+        virtual ~TextEditPrimitive() {}
 
-        /**
-         * @return True iff successful.
-         */
-        virtual bool execute(Document &document) const = 0;
+        virtual Edit *execute(File &file) const;
 
-        /**
-         * Merge this text edit with the edit that will be executed immediately
-         * before this edit.
-         */
-        virtual bool merge(const Insertion &ins) { return false; }
-        virtual bool merge(const Removal &rem) { return false; }
+        virtual bool merge(EditPrimitive *edit);
     };
 
     class Insertion: public Edit
@@ -140,27 +111,8 @@ public:
     };
 
     /**
-     * A group of text edits.  It is used to group a sequence of edits that will
-     * be executed together as one edit from the user's view.
-     */
-    class EditGroup: public Edit
-    {
-    public:
-        virtual ~EditGroup();
-
-        virtual bool execute(Document &document) const;
-
-        void add(Edit *edit) { m_edits.push_back(edit); }
-
-        bool empty() const { return m_edits.empty(); }
-
-    private:
-        std::vector<Edit *> m_edits;
-    };
-
-    /**
-     * Create the data that will be shared by all the documents.  It is required
-     * that this function be called before any document is created.  This
+     * Create the data that will be shared by all the source editors.  It is required
+     * that this function be called before any source editor is created.  This
      * function creates a tag group.
      */
     static void createSharedData();
