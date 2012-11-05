@@ -11,6 +11,7 @@
 #include <utility>
 #include <string>
 #include <glib.h>
+#include <gtk/gtk.h>
 
 namespace
 {
@@ -54,6 +55,16 @@ Edit *File::EditStack::execute(File &file) const
          ++it)
         undo->push((*it)->execute(file));
     return undo;
+}
+
+void File::EditStack::mergePush(EditPrimitive *edit)
+{
+    if (empty())
+        push(edit);
+    else if (top()->merge(edit))
+        delete edit;
+    else
+        push(edit);
 }
 
 std::pair<File *, Editor *> File::create(const char *uri, Project &project)
@@ -375,7 +386,7 @@ bool File::load(bool userRequest)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
-            _("File '%s' was edited. Loading it will discard the edits."),
+            _("File \"%s\" was edited. Loading it will discard the edits."),
             name());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
@@ -435,7 +446,7 @@ void File::redo()
 void File::beginEditGroup()
 {
     assert(editable() && !m_superUndo);
-    m_superUndo = new EditGroup;
+    m_superUndo = new EditStack;
     return true;
 }
 
