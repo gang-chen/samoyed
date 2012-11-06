@@ -12,39 +12,37 @@
 namespace Samoyed
 {
 
-class SourceFileEditor;
+class SourceEditor;
 class FileSource;
 class FileAst;
 
 /**
  * A source file represents an opened source file.
  *
- * For a file, the document is the model while the editors are the views.
- * Basically, a document is a buffer implemented a GTK+ text buffer, and editors
- * are views implemented by GTK+ text views.  For a source file, we extend their
- * functionality further.  The document also models the abstract syntax tree
- * representation of the source file, and the editors not only display the text
- * but also performs syntax highlighting, code folding, etc. based on the
- * abstract syntax tree.
- *
- * When a document is opened, it keeps a reference to the file source, and then
- * pushes user edits so as to let the file source update it and, if the file is
- * a source file, the related abstract syntax trees.
+ * When a source file is opened, it keeps a reference to the file source, and then
+ * pushes user edits to the file source to update it and the related abstract syntax trees.
  */
 class SourceFile: public File
 {
 public:
-    class TextEditPrimitive: public EditPrimitive
+    class EditPrimitive: public File::EditPrimitive
     {
     public:
-        virtual ~TextEditPrimitive() {}
+        enum Type
+        {
+            TYPE_INSERTION,
+            TYPE_REMOVAL
+        };
 
-        virtual Edit *execute(File &file) const;
+        EditPrimitive(Type type): m_type(type) {}
 
-        virtual bool merge(EditPrimitive *edit);
+        Type type() const { return m_type; }
+
+    private:
+        Type m_type;
     };
 
-    class Insertion: public Edit
+    class Insertion: public EditPrimitive
     {
     public:
         /**
@@ -57,17 +55,18 @@ public:
          * inserting the text until '\0'.
          */
         Insertion(int line, int column, const char *text, int length):
+            EditPrimitive(TYPE_INSERTION),
             m_line(line),
             m_column(column),
             m_text(text, length)
         {}
 
-        virtual bool execute(Document &document) const
+        virtual Edit *execute(File &file) const
         {
             return document.insert(m_line, m_column, m_text.c_str(), -1);
         }
 
-        virtual bool merge(const Insertion &ins);
+        virtual bool merge(File::EditPrimitive *edit);
 
     private:
         int m_line;
@@ -75,7 +74,7 @@ public:
         std::string m_text;
     };
 
-    class Removal: public Edit
+    class Removal: public EditPrimitive
     {
     public:
         /**
@@ -89,19 +88,20 @@ public:
          * be removed, the character index, starting from 0.
          */
         Removal(int beginLine, int beginColumn, int endLine, int endColumn):
+            EditPrimitive(TYPE_REMOVAL),
             m_beginLine(beginLine),
             m_beginColumn(beginColumn),
             m_endLine(endLine),
             m_endColumn(endColumn)
         {}
 
-        virtual bool execute(Document &document) const
+        virtual Edit *execute(File &file) const
         {
             return document.remove(m_beginLine, m_beginColumn,
                                    m_endLine, m_endColumn);
         }
 
-        virtual bool merge(const Removal &rem);
+        virtual bool merge(File::EditPrimitive *edit);
 
     private:
         int m_beginLine;
