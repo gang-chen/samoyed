@@ -4,49 +4,46 @@
 #ifndef SMYD_SESSION_HPP
 #define SMYD_SESSION_HPP
 
-#include "application.hpp"
-#include "session-manager.hpp"
-#include <time.h>
 #include <string>
-#include <set>
-#include <glib.h>
 
 namespace Samoyed
 {
 
 /**
  * A session can be restored so that the user can continue her work later.  The
- * state of a session, including the configuration of the top-level windows, the
+ * state of a session, including the configuration of the top-level window, the
  * opened projects and the opened files, is stored in an XML file.
  *
  * A session is locked when it is active in an instance of the application.  A
  * lock file is created when a session starts.  The lock file is removed when
  * the session quits.  The lock file records the process ID.  The lock file may
- * exist even after the session quits, probably due to an abnormal exit of the
- * process.
+ * exist if the session quits abnormally.
  *
- * A session can also be recovered from crashes or other abnormal process exits.
- * All the unsaved, modified files in a session are recorded and the modified
- * contents are saved in recovery files periodically.  When the session is
- * restored, these files can be recovered by overwriting them with the recovery
- * files.
+ * A session can also be recovered from an abnormal process exit.
+ * The URIs of all edited and unsaved files in a session are recorded and all performed
+ * edits are saved in replay files.  When the session is
+ * restored, these files can be recovered by replaying the edits saved in the replay files.
  *
  * The XML file, the lock file and the file recording the unsaved files for a
  * session are in a directory whose name is the session name.
  *
- * When a session is active, the lock file and the files for recovery exist.  If
- * the session quits normally, the lock file and the files for recovery will be
- * removed.  If the session quits abnormally, the files for recovery will be
+ * When a session is active, the lock file and the replay files exist.  If
+ * the session quits normally, the lock file and the replay files will be
+ * removed.  If the session quits abnormally, the replay files will be
  * kept, and the lock file will be left.  When the lock file exists, we need to
- * further check to see if the locking process exists or not, and if not, the
+ * further check to see if the locking process exiIts or not, and if not, the
  * lock file should be discarded.
  */
 class Session
 {
 public:
+    static bool ensureSessionsDirectoryExists();
+
+    static const char *lastSessionName();
+
     Session(const char *name);
 
-    bool loadMetaData();
+    const char *name() const { return m_name.c_str(); }
 
     /**
      * Create a new session and start it.
@@ -54,130 +51,42 @@ public:
     bool create();
 
     /**
-     * Restore this session.  If the session has unsaved, modified files, ask
-     * the user whether to recover the session or not.
+     * Restore this session.  If the session has edited and unsaved files, show
+     * their URIs and let the user decide whether to recover the files or not.
      */
     bool restore();
 
     bool save();
 
     /**
-     * Save and quit the current session.  Close all opened files, projects and
-     * windows.  This will eventually quit the application.
-     * @return False if the user requests not to quit the current session.
+     * Save and quit this session.  Close all opened files and projects.  This will eventually terminate the instance of the application.
+     * @return False iff the user requests not to quit this session.
      */
     bool quit();
 
-    bool addUnsavedFileName(const char *fileName);
-    bool removeUnsavedFileName(const char *fileName);
-
-    const char *name() const { return m_name.c_str(); }
-
-    /**
-     * @return The last saving time, or 0 if unknown.
-     */
-    time_t lastSavingTime() const { return m_lastSavingTime; }
-
-    /**
-     * @return The locking process ID, or 0 if unknown or unlocked.
-     */
-    int lockingProcessId() const { return m_lockingPid; }
+    void addUnsavedFileUri(const char *uri);
+    void removeUnsavedFileUri(const char *uri);
 
 private:
-    void makeDirectoryName(std::string &dirName) const;
-
-    void makeLockFileName(std::string &fileName) const
+    static void makeLockFileName(std::string &fileName) const
     { fileName += G_DIR_SEPARATOR_S "lock"; }
 
-    void makeUnsavedFilesFileName(std::string &fileName) const
+    static void makeUnsavedFilesFileName(std::string &fileName) const
     { fileName += G_DIR_SEPARATOR_S "unsaved-files"; }
 
-    void makeSessionFileName(std::string &fileName) const
+    static void makeSessionFileName(std::string &fileName) const
     { fileName += G_DIR_SEPARATOR_S "session.xml"; }
+
+    void makeDirectoryName(std::string &dirName) const;
 
     bool lock();
 
     bool unlock();
 
-    bool recover();
+    static std::string s_lastSessionName;
 
-    // Meta-data.
-    std::string m_name;
-    time_t m_lastSavingTime;
-    int m_lockingPid;
-};
-
-#include <vector>
-#include <string>
-
-/**
- * A session manager manages sessions.
- */
-class SessionManager
-{
-public:
-    SessionManager();
-
-    /**
-     * Create a new session and start it.  First quit the current session, if
-     * existing.
-     * @param sessionName The name of the new session, or NULL if to choose a
-     * unique name, e.g., "untitled1", "untitled2", ...
-     */
-    bool newSession(const char *sessionName);
-
-    /**
-     * Restore a saved session.  If the session has unsaved, modified files,
-     * ask the user whether to recover the session or not.  First quit the
-     * current session, if existing.
-     * @param sessionName The name of the session to be restored, or NULL if to
-     * restore the latest saved session.
-     */
-    bool restoreSession(const char *sessionName);
-
-    /**
-     * Restore a saved session.  If the session has unsaved, modified files,
-     * ask the user whether to recover the session or not.  First quit the
-     * current session, if existing.
-     * @param session The session to be restored.
-     */
-    bool restoreSession(Session *session);
-
-    /**
-     * Save and quit the current session.  Close all opened files, projects and
-     * windows.  This will eventually quit the application.
-     * @return False if the user requests not to quit the current session.
-     */
-    bool quitSession();
-
-    bool renameSession(const char *sessionName, const char *newSessionName);
-
-    bool renameSession(Session *session, const char *newSessionName);
-
-    bool removeSession(const char *sessionName);
-
-    bool removeSession(Session *session);
-
-    /**
-     * Show a dialog to let the user choose a session to restore or create a new
-     * session.  If failed, let the user choose again.
-     */
-    bool chooseSession();
-
-    /**
-     * Show a dialog to let the user edit sessions.
-     */
-    bool editSessions();
-
-    const char *sessionsDirectoryName() const
-    { return m_sessionsDirName.c_str(); }
-
-private:
-    bool readSessions(std::vector<Session *> &sessions);
-
-    std::string m_sessionsDirName;
-
-    Session *m_currentSession;
+    const std::string m_name;
+    bool m_locked;
 };
 
 }
