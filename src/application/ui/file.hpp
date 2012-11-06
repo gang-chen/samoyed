@@ -82,8 +82,9 @@ public:
         /**
          * @param edit The edit to be merged or pushed.  It will be owned by the
          * stack after merged or pushed.
+         * @return True iff the given edit is merged.
          */
-        void mergePush(EditPrimitive *edit);
+        bool mergePush(EditPrimitive *edit);
 
         void pop() { m_edits.pop_back(); }
 
