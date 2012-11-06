@@ -58,14 +58,20 @@ Edit *File::EditStack::execute(File &file) const
     return undo;
 }
 
-void File::EditStack::mergePush(EditPrimitive *edit)
+bool File::EditStack::mergePush(EditPrimitive *edit)
 {
     if (empty())
+    {
         push(edit);
-    else if (top()->merge(edit))
+        return false;
+    }
+    if (top()->merge(edit))
+    {
         delete edit;
-    else
-        push(edit);
+        return true;
+    }
+    push(edit);
+    return false;
 }
 
 std::pair<File *, Editor *> File::create(const char *uri, Project &project)
@@ -199,6 +205,7 @@ File::File(const char *uri):
 File::~File()
 {
     assert(m_editors.empty());
+    assert(!m_superUndo);
     assert(!m_loader);
 
     m_close(*this);
@@ -423,7 +430,10 @@ void File::saveUndo(EditPrimitive *edit)
     if (m_superUndo)
         m_superUndo->mergePush(edit);
     else
-        m_undoHistory.mergePush(edit);
+    {
+        if (!m_undoHistory.mergePush(edit))
+            ++m_editCount;
+    }
 }
 
 void File::undo()
@@ -456,6 +466,7 @@ void File::endEditGroup()
     assert(editable() && m_superUndo);
     m_undoHistory.push(m_superUndo);
     m_superUndo = NULL;
+    ++m_editCount;
     return true;
 }
 
