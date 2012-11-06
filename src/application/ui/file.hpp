@@ -7,8 +7,8 @@
 #include "../utilities/revision.hpp"
 #include "../utilities/worker.hpp"
 #include <utility>
-#include <string>
 #include <vector>
+#include <string>
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
 
@@ -47,6 +47,7 @@ public:
         /**
          * Merge this edit with the edit that will be executed immediately
          * before this edit.
+         * @return True iff the given edit is merged.
          */
         virtual bool merge(const EditPrimitive *edit) { return false; }
     };
@@ -72,9 +73,17 @@ public:
 
         Edit *top() const { return m_edits.back(); }
 
+        /**
+         * @param edit The edit to be pushed.  It will be owned by the stack
+         * after pushed.
+         */
         void push(Edit *edit) { m_edits.push_back(edit); }
 
-        bool mergePush(EditPrimitive *edit);
+        /**
+         * @param edit The edit to be merged or pushed.  It will be owned by the
+         * stack after merged or pushed.
+         */
+        void mergePush(EditPrimitive *edit);
 
         void pop() { m_edits.pop_back(); }
 
@@ -101,6 +110,9 @@ public:
 
     Editor *createEditor(Project &project);
 
+    /**
+     * @return False iff the user cancels destroying the editor.
+     */
     bool destroyEditor(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
@@ -126,6 +138,9 @@ public:
      */
     bool saving() const { return m_saving; }
 
+    /**
+     * @return True iff the file was edited.
+     */
     bool edited() const { return m_editCount; }
 
     /**
@@ -200,8 +215,9 @@ public:
 protected:
     File(const char *uri);
 
-    ~File();
+    virtual ~File();
 
+    // Functions implemented by subclasses and called by the base class.
     virtual Editor *newEditor(Project &project) = 0;
 
     virtual Loader *createLoader(unsigned int priority,
@@ -214,8 +230,14 @@ protected:
 
     virtual void onSaved(Saver &saver) = 0;
 
+    /**
+     * This function is called when a subclass performs an edit primitive.
+     */
     void onEdited(const EditPrimitive &edit, const Editor *committer);
 
+    /**
+     * Save the reverse edit of a newly committed edit primitive.
+     */
     void saveUndo(EditPrimitive *undo);
 
 private:
