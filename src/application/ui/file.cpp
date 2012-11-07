@@ -280,7 +280,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load file \"%s\"."),
+            _("Samoyed failed to load file \"%s\". %s."),
             name(), file.m_ioError->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -313,9 +313,9 @@ gboolean File::onSavedInMainThead(gpointer param)
             GtkWidget *dialog = gtk_message_dialog_new(
                 Application::instance()->window()->gtkWidget(),
                 GTK_DIALOG_MODEL,
-                GTK_MESSAGE_QUESTION,
+                GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_NONE,
-                _("Samoyed failed to save file \"%s\" before closing it."),
+                _("Samoyed failed to save file \"%s\" before closing it. %s."),
                 name(), file.m_ioError->message);
             gtk_dialog_add_buttons(
                 GTK_DIALOG(dialog),
@@ -343,7 +343,7 @@ gboolean File::onSavedInMainThead(gpointer param)
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to save file \"%s\"."),
+                _("Samoyed failed to save file \"%s\". %s."),
                 name(), file.m_ioError->message);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
