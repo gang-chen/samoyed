@@ -5,7 +5,6 @@
 #define SMYD_SOURCE_FILE_HPP
 
 #include "file.hpp"
-#include "../utilities/revision.hpp"
 #include "../utilities/manager.hpp"
 #include <string>
 
@@ -18,9 +17,8 @@ class FileSource;
 /**
  * A source file represents an opened source file.
  *
-                                                                                
  * When a source file is opened, it keeps a reference to the file source
- * resource, and then pushes user edits to the file source to update it and the
+ * resource, and pushes user edits to the file source to update it and the
  * related abstract syntax trees.
  */
 class SourceFile: public File
