@@ -2,6 +2,7 @@
 // Copyright (C) 2012 Gang Chen.
 
 #include "source-file.hpp"
+#include "source-editor.hpp"
 #include "../application.hpp"
 #include "../file-type-registry.hpp"
 #include "../resources/file-source.hpp"
@@ -31,8 +32,9 @@ Edit *SourceFile::Insertion::execute(File &file) const
 
 bool SourceFile::Insertion::merge(File::EditPrimitive *edit)
 {
-    if (static_cast<SourceFile::EditPrimitive *>(edit)->type != TYPE_INSERTION)
-        return bool;
+    if (static_cast<SourceFile::EditPrimitive *>(edit)->type() !=
+        TYPE_INSERTION)
+        return false;
     Insertion *inst = static_cast<Inertion *>(edit);
     if (m_line == ins->m_line && m_column == ins->m_column)
     {
@@ -74,7 +76,7 @@ bool SourceFile::Removal::merge(File::EditPrimitive *edit)
 {
     if (static_cast<SourceFile::EditPrimitive *>(edit)->type() != TYPE_REMOVAL)
         return false;
-    Removal *rem= static_cast<Removal *>(edit);
+    Removal *rem = static_cast<Removal *>(edit);
     if (m_beginLine == rem->m_beginLine)
     {
         if (m_beginColumn == rem->m_beginColumn &&
@@ -195,7 +197,7 @@ void SourceFile::onLoaded(File::Loader &loader)
     return FALSE;
 }
 
-gboolean Document::onFileWrittenInMainThead(gpointer param)
+void SourceFile::onSaved(File::Saver &saver);
 {
     FileWrittenParam *p = static_cast<FileWrittenParam *>(param);
     Document &doc = p->m_document;
