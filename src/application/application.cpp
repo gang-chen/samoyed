@@ -19,8 +19,9 @@
 # include <libintl.h>
 #endif
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <boost/thread/thread.hpp>
-#include <glib/glib.h>
+#include <glib.h>
 #include <gtk/gtk.h>
 
 namespace
@@ -51,7 +52,7 @@ Application::Application():
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
     m_window(NULL),
-    m_quiting(false)
+    m_quitting(false)
 {
     Signal::registerTerminationHandler(onTerminated);
     assert(!s_instance);
@@ -67,23 +68,22 @@ bool Application::startUp()
 {
     // Show the splash screen.
     std::string splashImage = m_dataDirectory +
-        G_DIR_SEPARATOR_S "images" G_DIR_SEPARATOR_S "splash-screen.png";
+        G_DIR_SEPARATOR_S "splash-screen.png";
     SplashScreen splash("Samoyed", splashImage.c_str());
     gtk_widget_show(splash.gtkWidget());
 
     // Check to see if the user directory exists.  If not, create it.
     if (!g_file_test(m_userDirName.c_str(), G_FILE_TEST_EXISTS))
     {
-        if (g_mkdir(m_userDirName.c_str(), getumask()))
+        if (g_mkdir(m_userDirName.c_str(), 0755))
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create directory '%s' to store sessions: "
-                  "%s."),
-                m_sessionsDirName.c_str(), g_strerror(errno));
+                _("Samoyed failed to create directory \"%s\". %s."),
+                m_userDirName.c_str(), g_strerror(errno));
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
             return false;
@@ -305,7 +305,7 @@ void Application::continueQuit()
     assert(m_projects.empty());
     assert(m_files.empty());
 
-    m_quiting = false;
+    m_quitting = false;
 
     assert(m_window);
     delete m_window;
@@ -332,7 +332,7 @@ void Application::quit()
     m_currentSession->save();
 
     // Request to close all the opened projects.  If the user cancels closing a
-    // project, cancel quiting.
+    // project, cancel quitting.
     for (ProjectTable::iterator it = m_projects.begin();
          it != m_projects.end();
         )
@@ -341,9 +341,9 @@ void Application::quit()
             return;
     }
 
-    // Set the quiting flag so that we can continue quit the application when
+    // Set the quitting flag so that we can continue quit the application when
     // the projects are closed.
-    m_quiting = true;
+    m_quitting = true;
 
     if (m_projects.empty())
         continueQuit();
@@ -357,7 +357,7 @@ void Application::switchSession(Session &session)
 
 void Application::cancelQuit()
 {
-    m_quiting = false;
+    m_quitting = false;
     if (m_nextSession)
     {
         delete m_nextSession;
@@ -368,7 +368,7 @@ void Application::cancelQuit()
 void Application::onProjectClosed()
 {
     // Continue to quit the application if all the projects are closed.
-    if (m_quiting && m_projects.empty())
+    if (m_quitting && m_projects.empty())
         continueQuit();
 }
 
