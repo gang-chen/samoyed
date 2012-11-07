@@ -11,7 +11,9 @@
 namespace Samoyed
 {
 
+class Editor;
 class SourceEditor;
+class Project;
 class FileSource;
 
 /**
