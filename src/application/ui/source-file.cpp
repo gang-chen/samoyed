@@ -1,41 +1,49 @@
 // Document.
 // Copyright (C) 2012 Gang Chen.
 
-#include "document.hpp"
+#include "source-file.hpp"
 #include "../application.hpp"
+#include "../file-type-registry.hpp"
 #include "../resources/file-source.hpp"
-#include "../resources/file-ast.hpp"
 #include "../utilities/utf8.hpp"
 #include "../utilities/text-buffer.hpp"
 #include "../utilities/text-file-reader.hpp"
 #include "../utilities/text-file-writer.hpp"
 #include "../utilities/worker.hpp"
-#include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <string.h>
 
 namespace
 {
 
-const int DOCUMENT_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
+const int SOURCE_FILE_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
 
 }
 
 namespace Samoyed
 {
 
-bool Document::Insertion::merge(const Insertion &ins)
+Edit *SourceFile::Insertion::execute(File &file) const
 {
-    if (m_line == ins.m_line && m_column == ins.m_column)
+    return static_cast<SourceFile &>(file).
+        insertOnly(m_line, m_column, m_text.c_str(), -1, NULL);
+}
+
+bool SourceFile::Insertion::merge(File::EditPrimitive *edit)
+{
+    if (static_cast<SourceFile::EditPrimitive *>(edit)->type != TYPE_INSERTION)
+        return bool;
+    Insertion *inst = static_cast<Inertion *>(edit);
+    if (m_line == ins->m_line && m_column == ins->m_column)
     {
-        m_text.append(ins.m_text);
+        m_text.append(ins->m_text);
         return true;
     }
-    if (ins.m_text.length() > DOCUMENT_INSERTION_MERGE_LENGTH_THRESHOLD)
+    if (ins->m_text.length() > SOURCE_FILE_INSERTION_MERGE_LENGTH_THRESHOLD)
         return false;
-    const char *cp = ins.m_text.c_str();
-    int line = ins.m_line;
-    int column = ins.m_column;
+    const char *cp = ins->m_text.c_str();
+    int line = ins->m_line;
+    int column = ins->m_column;
     while (cp)
     {
         if (cp == '\n')
@@ -48,76 +56,42 @@ bool Document::Insertion::merge(const Insertion &ins)
     }
     if (m_line == line && m_column == column)
     {
-        m_line = ins.m_line;
-        m_column = ins.m_column;
-        m_text.insert(0, ins.m_text);
+        m_line = ins->m_line;
+        m_column = ins->m_column;
+        m_text.insert(0, ins->m_text);
         return true;
     }
     return false;
 }
 
-bool Document::Removal::merge(const Removal &rem)
+Edit *SourceFile::Removal::execute(File &file) const
 {
-    if (m_beginLine == rem.m_beginLine)
+    return static_cast<SourceFile &>(file).
+        removeOnly(m_beginLine, m_beginColumn, m_endLine, m_endColumn, NULL);
+}
+
+bool SourceFile::Removal::merge(File::EditPrimitive *edit)
+{
+    if (static_cast<SourceFile::EditPrimitive *>(edit)->type() != TYPE_REMOVAL)
+        return false;
+    Removal *rem= static_cast<Removal *>(edit);
+    if (m_beginLine == rem->m_beginLine)
     {
-        if (m_beginColumn == rem.m_beginColumn &&
-            rem.m_beginLine == rem.m_endLine)
+        if (m_beginColumn == rem->m_beginColumn &&
+            rem.m_beginLine == rem->m_endLine)
         {
             if (m_beginLine == m_endLine)
-                m_endColumn += rem.m_endColumn - rem.m_beginColumn;
+                m_endColumn += rem->m_endColumn - rem->m_beginColumn;
             return true;
         }
-        if (m_beginLine == m_endLine && m_endColumn == rem.m_beginColumn)
+        if (m_beginLine == m_endLine && m_endColumn == rem->m_beginColumn)
         {
-            m_endLine = rem.m_endLine;
-            m_endColumn = rem.m_endColumn;
+            m_endLine = rem->m_endLine;
+            m_endColumn = rem->m_endColumn;
             return true;
         }
     }
     return false;
-}
-
-Document::EditGroup::~EditGroup()
-{
-    for (std::vector<Edit *>::const_iterator i = m_edits.begin();
-         i != m_edits.end();
-         ++i)
-        delete (*i);
-}
-
-bool Document::EditGroup::execute(Document &document) const
-{
-    if (!document.beginUserAction())
-        return false;
-    for (std::vector<Edit *>::const_iterator i = m_edits.begin();
-         i != m_edits.end();
-         ++i)
-        (*i)->execute(document);
-    document.endUserAction();
-    return true;
-}
-
-void Document::EditStack::clear()
-{
-    while (!m_edits.empty())
-    {
-        delete m_edits.top();
-        m_edits.pop();
-    }
-}
-
-bool Document::EditStack::execute(Document &document) const
-{
-    std::vector<Edit *> tmp(m_edits);
-    if (!document.beginUserAction())
-        return false;
-    while (!tmp.empty())
-    {
-        tmp.top()->execute(document);
-        tmp.pop();
-    }
-    document.endUserAction();
-    return true;
 }
 
 File *SourceFile::create(const char *uri)
@@ -143,98 +117,17 @@ void SourceFile::registerFileType()
 }
 
 SourceFile::SourceFile(const char* uri):
-    m_uri(uri),
-    m_name(basename(uri)),
-    m_closing(false),
-    m_loading(false),
-    m_saving(false),
-    m_undoing(false),
-    m_redoing(false),
-    m_buffer(NULL),
-    m_ioError(NULL),
-    m_superUndo(NULL),
-    m_editCount(0),
-    m_freezeCount(0),
-    m_fileReader(NULL)
+    File(uri)
 {
-    m_buffer = gtk_text_buffer_new(s_sharedTagTable);
-    g_signal_connect(m_buffer,
-                     "insert-text",
-                     G_CALLBACK(::onTextInserted),
-                     this);
-    g_signal_connect(m_buffer,
-                     "delete-range",
-                     G_CALLBACK(::onTextRemoved),
-                     this);
-
     m_source = Application::instance()->fileSourceManager()->get(uri);
-    m_ast = Application::instance()->projectAstManager()->getFileAst(uri);
-
-    // Start the initial loading.
-    load();
 }
 
-Document::~Document()
+SourceFile::~SourceFile()
 {
-    assert(m_editors.empty());
-
-    m_closed(*this);
-    m_source->onDocumentClosed(*this);
-
-    g_object_unref(m_buffer);
+    m_source->onFileClosed(*this);
 }
 
-bool Document::close()
-{
-    if (closing())
-        return false;
-    if (loading())
-    {
-        // Cancel the loading and wait for the completion of the cancellation.
-        assert(m_fileReader);
-        m_fileReader->cancel();
-        m_fileReader = NULL;
-        m_closing = true;
-        return true;
-    }
-    if (saving())
-    {
-        // Wait for the completion of the saving.
-        m_closing = true;
-        return true;
-    }
-    if (changed())
-    {
-        // Ask the user.
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_NONE,
-            _("Document '%s' has unsaved changes. Save changes before closing?"),
-            name());
-        gtk_dialog_add_buttons(GTK_DIALOG(dialog),
-                               _("_Save changes and close"), GTK_RESPONSE_YES,
-                               _("_Discard changes and close"), GTK_RESPONSE_NO,
-                               _("_Cancel closing"), GTK_RESPONSE_CANCEL);
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_CANCEL)
-            return false;
-        if (response == GTK_RESPONSE_YES)
-        {
-            save();
-            m_closing = true;
-            return true;
-        }
-    }
-    // Go ahead.
-    Application::instance()->documentManager()->close(*this);
-    return true;
-}
-
-gboolean Document::onFileReadInMainThread(gpointer param)
+void SourceFile::onLoaded(File::Loader &loader)
 {
     FileReadParam *p = static_cast<FileReadParam *>(param);
     Document &doc = p->m_document;
@@ -413,7 +306,7 @@ char *Document::getText(int beginLine, int beginColumn,
     return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
 }
 
-bool Document::insert(int line, int column, const char* text, int length)
+bool Document::insert(int line, int column, const char *text, int length)
 {
     if (!editable())
         return false;
