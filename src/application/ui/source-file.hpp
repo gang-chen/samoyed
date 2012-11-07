@@ -164,7 +164,17 @@ public:
                               SourceEditor *committer);
 
 protected:
+    SourceFile(const char *uri);
+
+    ~SourceFile();
+
     virtual Editor *newEditor();
+
+    virtual Loader *createLoader(unsigned int priority,
+                                 const Worker::Callback &callback);
+
+    virtual Saver *createSaver(unsigned int priority,
+                               const Worker::Callback &callback);
 
     virtual void onLoaded(File::Loader &loader);
 
