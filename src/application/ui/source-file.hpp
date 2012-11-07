@@ -166,7 +166,7 @@ protected:
 
     ~SourceFile();
 
-    virtual Editor *newEditor();
+    virtual Editor *newEditor(Project &project);
 
     virtual Loader *createLoader(unsigned int priority,
                                  const Worker::Callback &callback);
@@ -179,6 +179,8 @@ protected:
     virtual void onSaved(File::Saver &saver);
 
 private:
+    static File *create(const char *uri);
+
     ReferencePointer<FileSource> m_source;
 };
 
