@@ -4,13 +4,14 @@
 #ifndef SMYD_SPLASH_SCREEN_HPP
 #define SMYD_SPLASH_SCREEN_HPP
 
+#include <boost/utility.hpp>
 #include <gtk/gtk.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
 namespace Samoyed
 {
 
-class SplashScreen
+class SplashScreen: public boost::noncopyable
 {
 public:
     SplashScreen(const char *title, const char *imageFileName);
