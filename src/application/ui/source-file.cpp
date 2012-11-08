@@ -1,6 +1,9 @@
 // Document.
 // Copyright (C) 2012 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "source-file.hpp"
 #include "source-editor.hpp"
 #include "../application.hpp"
@@ -8,9 +11,8 @@
 #include "../resources/file-source.hpp"
 #include "../utilities/utf8.hpp"
 #include "../utilities/text-buffer.hpp"
-#include "../utilities/text-file-reader.hpp"
-#include "../utilities/text-file-writer.hpp"
-#include "../utilities/worker.hpp"
+#include "../utilities/text-file-loader.hpp"
+#include "../utilities/text-file-saver.hpp"
 #include <assert.h>
 #include <string.h>
 
@@ -129,27 +131,9 @@ SourceFile::~SourceFile()
     m_source->onFileClosed(*this);
 }
 
-void SourceFile::onLoaded(File::Loader &loader)
+void SourceFile::onLoaded(FileLoader &loader)
 {
-    FileReadParam *p = static_cast<FileReadParam *>(param);
-    Document &doc = p->m_document;
-    TextFileReader &reader = p->m_reader.reader();
-
-    assert(m_loading);
-
-    // If we are closing the document, notify the document manager.
-    if (doc.closing())
-    {
-        assert(!doc.m_fileReader);
-        doc.m_loading = false;
-        doc.unfreeze();
-        delete &reader;
-        delete p;
-        Application::instance()->documentManager()->close(*this);
-        return FALSE;
-    }
-
-    assert(doc.m_fileReader == &reader);
+    TextFileLoader &l = static_cast<TextFileLoader &>(loader);
 
     // Copy contents in the reader's buffer to the document's buffer.
     GtkTextBuffer *gtkBuffer = doc.m_buffer;
@@ -176,60 +160,12 @@ void SourceFile::onLoaded(File::Loader &loader)
     doc.unfreeze();
     doc.m_editCount = 0;
     doc.m_loaded(doc);
-    doc.m_source->onDocumentLoaded(doc);
-    delete &reader;
-    delete p;
-
-    // If any error was encountered, report it.
-    if (doc.m_ioError)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load document '%s': %s."),
-            name(), doc.m_ioError->message);
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-    }
-
-    return FALSE;
+    m_source->onFileLoaded(*this);
 }
 
-void SourceFile::onSaved(File::Saver &saver);
+void SourceFile::onSaved(FileSaver &saver);
 {
-    FileWrittenParam *p = static_cast<FileWrittenParam *>(param);
-    Document &doc = p->m_document;
-    TextFileWriter &writer = p->m_writer.writer();
-    assert(m_saving);
-    doc.m_revision = writer.revision();
-    if (doc.m_ioError)
-        g_error_free(doc.m_ioError);
-    doc.m_ioError = writer.fetchError();
-    doc.m_saving = false;
-    doc.unfreeze();
-    doc.m_editCount = 0;
-    doc.m_saved(doc);
-    doc.m_source->onDocumentSaved(doc);
-    delete &writer;
-    delete p;
-
-    // If any error was encountered, report it.
-    if (doc.m_ioError)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to save document '%s': %s."),
-            name(), doc.m_ioError->message);
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-    }
-
-    return FALSE;
+    m_source->onFileSaved(*this);
 }
 
 void Document::onFileRead(Worker &worker)
