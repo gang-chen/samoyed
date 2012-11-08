@@ -226,10 +226,10 @@ protected:
     virtual void onSaved(FileSaver &saver) = 0;
 
     /**
-     * This function is called by a subclass after it performs an edit
-     * primitive.
+     * This function is called by a subclass to dispatch an edit primitive to
+     * all editors.
      */
-    void onEdited(const EditPrimitive &edit, const Editor *committer);
+    void dispatchEdit(const EditPrimitive &edit, const Editor *committer);
 
     /**
      * This function is called by a subclass to save the reverse edit of a newly
