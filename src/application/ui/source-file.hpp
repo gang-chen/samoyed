@@ -104,6 +104,8 @@ public:
         int m_endColumn;
     };
 
+    static void registerFileType();
+
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
      */
