@@ -6,7 +6,10 @@ UNIT TEST BUILD
 g++ splash-screen.cpp -DSMYD_SPLASH_SCREEN_UNIT_TEST\
  `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o splash-screen
 */
- 
+
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "splash-screen.hpp"
 #include <gtk/gtk.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
@@ -122,7 +125,7 @@ int main(int argc, char *argv[])
     Samoyed::SplashScreen splash("Splash screen test",
                                  "../../../data/splash-screen.png");
     snprintf(buffer, sizeof(buffer),
-             "Testing splash screen.  Finished %.2f.", progress);
+             "Testing splash screen. Finished %.2f.", progress);
     splash.setProgress(progress, buffer);
     g_timeout_add(2000, addProgress, &splash);
     gtk_main();
