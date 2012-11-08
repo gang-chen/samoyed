@@ -1,6 +1,9 @@
 // Opened file.
 // Copyright (C) 2012 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "file.hpp"
 #include "editor.hpp"
 #include "../application.hpp"
@@ -9,6 +12,7 @@
 #include "../utilities/file-saver.hpp"
 #include "../utilities/scheduler.hpp"
 #include <assert.h>
+#include <string.h>
 #include <utility>
 #include <vector>
 #include <string>
@@ -369,7 +373,7 @@ gboolean File::onSavedInMainThead(gpointer param)
     return FALSE;
 }
 
-void File::onLoadedBase(Worker &worker)
+void File::onLoadedWrapper(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                     G_CALLBACK(onLoadedInMainThread),
@@ -377,7 +381,7 @@ void File::onLoadedBase(Worker &worker)
                     NULL);
 }
 
-void File::onSavedBase(Worker &worker)
+void File::onSavedWrapper(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                     G_CALLBACK(onSavedInMainThread),
@@ -411,7 +415,7 @@ bool File::load(bool userRequest)
     m_loading = true;
     freezeInternally();
     m_loader = createLoader(Worker::defaultPriorityInCurrentThread(),
-                            boost::bind(&File::onLoadedInBase, this, _1));
+                            boost::bind(&File::onLoadedWrapper, this, _1));
     Application::instance()->scheduler()->schedule(*m_loader);
     return true;
 }
@@ -422,7 +426,7 @@ void File::save()
     m_saving = true;
     freezeInternally();
     Saver *saver = createSaver(Worker::defaultPriorityInCurrentThread(),
-                               boost::bind(&File::onSavedInBase, this, _1));
+                               boost::bind(&File::onSavedWrapper, this, _1));
     Application::instance()->scheduler()->schedule(*saver);
 }
 
