@@ -5,7 +5,8 @@
 #include "editor.hpp"
 #include "../application.hpp"
 #include "../application.hpp/file-type-registry.hpp"
-#include "../utilities/worker.hpp"
+#include "../utilities/file-loader.hpp"
+#include "../utilities/file-saver.hpp"
 #include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <utility>
@@ -19,20 +20,20 @@ namespace
 
 struct LoadedParam
 {
-    LoadedParam(Samoyed::File &file, Samoyed::File::Loader &loader):
+    LoadedParam(Samoyed::File &file, Samoyed::FileLoader &loader):
         m_file(file), m_loader(loader)
     {}
     Samoyed::File &m_file;
-    Samoyed::File::Loader &m_loader;
+    Samoyed::FileLoader &m_loader;
 };
 
 struct SavedParam
 {
-    SavedParam(Samoyed::File &file, Samoyed::File::Saver &saver):
-        m_document(document), m_writer(writer)
+    SavedParam(Samoyed::File &file, Samoyed::FileSaver &saver):
+        m_file(file), m_saver(saver)
     {}
     Samoyed::File &m_file;
-    Samoyed::File::Saver &m_saver;
+    Samoyed::FileSaver &m_saver;
 };
 
 }
@@ -220,7 +221,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
 {
     LoadedParam *p = static_cast<LoadedParam *>(param);
     File &file = p->m_file;
-    Loader &loader = p->m_loader();
+    FileLoader &loader = p->m_loader();
 
     assert(file.m_loading);
 
@@ -293,7 +294,7 @@ gboolean File::onSavedInMainThead(gpointer param)
 {
     SavedParam *p = static_cast<SavedParam *>(param);
     File &file = p->m_file;
-    Saver &saver = p->m_saver();
+    FileSaver &saver = p->m_saver();
 
     assert(file.m_saving);
     file.m_saving = false;
@@ -372,7 +373,7 @@ void File::onLoadedBase(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                     G_CALLBACK(onLoadedInMainThread),
-                    new LoadedParam(*this, static_cast<Loader &>(worker)),
+                    new LoadedParam(*this, static_cast<FileLoader &>(worker)),
                     NULL);
 }
 
@@ -380,7 +381,7 @@ void File::onSavedBase(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                     G_CALLBACK(onSavedInMainThread),
-                    new SavedParam(*this, static_cast<Saver &>(worker)),
+                    new SavedParam(*this, static_cast<FileSaver &>(worker)),
                     NULL);
 }
 
@@ -410,7 +411,7 @@ bool File::load(bool userRequest)
     m_loading = true;
     freezeInternally();
     m_loader = createLoader(Worker::defaultPriorityInCurrentThread(),
-                            boost::bind(&File::onLoadedBase, this, _1));
+                            boost::bind(&File::onLoadedInBase, this, _1));
     Application::instance()->scheduler()->schedule(*m_loader);
     return true;
 }
@@ -421,7 +422,7 @@ void File::save()
     m_saving = true;
     freezeInternally();
     Saver *saver = createSaver(Worker::defaultPriorityInCurrentThread(),
-                               boost::bind(&File::onSavedBase, this, _1));
+                               boost::bind(&File::onSavedInBase, this, _1));
     Application::instance()->scheduler()->schedule(*saver);
 }
 
