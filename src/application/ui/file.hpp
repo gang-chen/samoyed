@@ -5,7 +5,6 @@
 #define SMYD_FILE_HPP
 
 #include "../utilities/revision.hpp"
-#include "../utilities/worker.hpp"
 #include <utility>
 #include <vector>
 #include <string>
@@ -17,6 +16,7 @@ namespace Samoyed
 
 class Editor;
 class Project;
+class FileLoader;
 
 /**
  * A file represents an opened file.  It is the in-memory buffer for a file
@@ -90,14 +90,6 @@ public:
 
     private:
         std::vector<Edit *> m_edits;
-    };
-
-    class Loader: public Worker
-    {
-    };
-
-    class Saver: public Worker
-    {
     };
 
     typedef boost::signals2::signal<void (const File &file)> Close;
@@ -221,15 +213,15 @@ protected:
     // Functions implemented by subclasses and called by the base class.
     virtual Editor *newEditor(Project &project) = 0;
 
-    virtual Loader *createLoader(unsigned int priority,
-                                 const Worker::Callback &callback) = 0;
+    virtual FileLoader *createLoader(unsigned int priority,
+                                     const Worker::Callback &callback) = 0;
 
-    virtual Saver *createSaver(unsigned int priority,
-                               const Worker::Callback &callback) = 0;
+    virtual FileSaver *createSaver(unsigned int priority,
+                                   const Worker::Callback &callback) = 0;
 
-    virtual void onLoaded(Loader &loader) = 0;
+    virtual void onLoaded(FileLoader &loader) = 0;
 
-    virtual void onSaved(Saver &saver) = 0;
+    virtual void onSaved(FileSaver &saver) = 0;
 
     /**
      * This function is called when a subclass performs an edit primitive.
@@ -290,7 +282,7 @@ private:
     int m_internalFreezeCount;
 
     // We memorize the file loader so that we can cancel it later.
-    Loader *m_loader;
+    FileLoader *m_loader;
 
     Close m_close;
     Loaded m_loaded;
