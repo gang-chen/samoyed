@@ -17,6 +17,7 @@ namespace Samoyed
 class Editor;
 class Project;
 class FileLoader;
+class FileSaver;
 
 /**
  * A file represents an opened file.  It is the in-memory buffer for a file
@@ -224,12 +225,14 @@ protected:
     virtual void onSaved(FileSaver &saver) = 0;
 
     /**
-     * This function is called when a subclass performs an edit primitive.
+     * This function is called by a subclass after it performs an edit
+     * primitive.
      */
     void onEdited(const EditPrimitive &edit, const Editor *committer);
 
     /**
-     * Save the reverse edit of a newly committed edit primitive.
+     * This function is called by a subclass to save the reverse edit of a newly
+     * committed edit primitive.
      */
     void saveUndo(EditPrimitive *undo);
 
@@ -244,9 +247,9 @@ private:
 
     static gboolean onSavedInMainThread(gpointer param);
 
-    void onLoadedBase(Worker &worker);
+    void onLoadedWrapper(Worker &worker);
 
-    void onSavedBase(Worker &worker);
+    void onSavedWrapper(Worker &worker);
 
     const std::string m_uri;
 
