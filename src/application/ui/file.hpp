@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <boost/utility.hpp>
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
 
@@ -30,7 +31,7 @@ class FileSaver;
  *
  * A file saves the editing history, supporting undo and redo.
  */
-class File
+class File: public boost::noncopyable
 {
 public:
     class EditPrimitive;
