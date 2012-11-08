@@ -104,14 +104,6 @@ public:
         int m_endColumn;
     };
 
-    class Loader: public File::Loader
-    {
-    };
-
-    class Saver: public File::Saver
-    {
-    };
-
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
      */
@@ -155,14 +147,6 @@ public:
     void remove(int beginLine, int beginColumn, int endLine, int endColumn,
                 SourceEditor *committer);
 
-    PrimitiveEdit *insertOnly(int line, int column,
-                              const char *text, int length,
-                              SourceEditor *committer);
-
-    PrimitiveEdit *removeOnly(int beginLine, int beginColumn,
-                              int endLine, int endColumn,
-                              SourceEditor *committer);
-
 protected:
     SourceFile(const char *uri);
 
@@ -170,18 +154,26 @@ protected:
 
     virtual Editor *newEditor(Project &project);
 
-    virtual Loader *createLoader(unsigned int priority,
-                                 const Worker::Callback &callback);
+    virtual FileLoader *createLoader(unsigned int priority,
+                                     const Worker::Callback &callback);
 
-    virtual Saver *createSaver(unsigned int priority,
-                               const Worker::Callback &callback);
+    virtual FileSaver *createSaver(unsigned int priority,
+                                   const Worker::Callback &callback);
 
-    virtual void onLoaded(File::Loader &loader);
+    virtual void onLoaded(FileLoader &loader);
 
-    virtual void onSaved(File::Saver &saver);
+    virtual void onSaved(FileSaver &saver);
 
 private:
     static File *create(const char *uri);
+
+    PrimitiveEdit *insertOnly(int line, int column,
+                              const char *text, int length,
+                              SourceEditor *committer);
+
+    PrimitiveEdit *removeOnly(int beginLine, int beginColumn,
+                              int endLine, int endColumn,
+                              SourceEditor *committer);
 
     ReferencePointer<FileSource> m_source;
 };
