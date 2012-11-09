@@ -191,6 +191,8 @@ public:
      */
     void unfreeze();
 
+    Editor *editors() const { return m_editors; }
+
     boost::signals2::connection
     addCloseCallback(const Closed::slot_type &callback)
     { return m_close.connect(callback); }
@@ -226,10 +228,10 @@ protected:
     virtual void onSaved(FileSaver &saver) = 0;
 
     /**
-     * This function is called by a subclass to dispatch an edit primitive to
-     * all editors.
+     * This function is called by a subclass to notify all editors except the
+     * committer and observers after edited.
      */
-    void dispatchEdit(const EditPrimitive &edit, const Editor *committer);
+    void onEdited(const EditPrimitive &edit, const Editor *committer);
 
     /**
      * This function is called by a subclass to save the reverse edit of a newly
