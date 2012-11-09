@@ -120,8 +120,14 @@ void File::continueClosing()
     assert(m_closing);
     assert(!m_editors->next());
     assert(!m_editors->previous());
-    m_editors->removeFromList(m_editors);
-    delete m_editors;
+
+    Editor *lastEditor = m_editors;
+    lastEditor->removeFromList(m_editors);
+    delete lastEditor;
+
+    // Notify the observers right before deleting the file so that the observers
+    // can access the intact concrete file.
+    m_close(*this);
     delete this;
 }
 
@@ -135,6 +141,8 @@ bool File::destroyEditor(Editor &editor)
         delete *editor;
         return true;
     }
+
+    assert(&editor == m_editors);
 
     // Need to close this file.
     m_reopening = false;
@@ -213,7 +221,6 @@ File::~File()
     assert(!m_superUndo);
     assert(!m_loader);
 
-    m_close(*this);
     Application::instance()->removeFile(*this);
 
     delete m_superUndo;
