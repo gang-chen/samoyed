@@ -9,6 +9,7 @@
 #include "../application.hpp"
 #include "../file-type-registry.hpp"
 #include "../resources/file-source.hpp"
+#include "../utilities/manager.hpp"
 #include "../utilities/utf8.hpp"
 #include "../utilities/text-buffer.hpp"
 #include "../utilities/text-file-loader.hpp"
@@ -98,6 +99,18 @@ bool SourceFile::Removal::merge(File::EditPrimitive *edit)
     return false;
 }
 
+Edit *SourceFile::TempInsertion::execute(File &file) const
+{
+    assert(0);
+    return NULL;
+}
+
+bool SourceFile::merge(File::EditPrimitive *edit)
+{
+    assert(0);
+    return false;
+}
+
 File *SourceFile::create(const char *uri)
 {
     return new SourceFile(uri);
@@ -133,34 +146,22 @@ SourceFile::~SourceFile()
 
 void SourceFile::onLoaded(FileLoader &loader)
 {
-    TextFileLoader &l = static_cast<TextFileLoader &>(loader);
+    TextFileLoader &ld = static_cast<TextFileLoader &>(loader);
 
-    // Copy contents in the reader's buffer to the document's buffer.
-    GtkTextBuffer *gtkBuffer = doc.m_buffer;
-    TextBuffer *buffer = reader.buffer();
-    GtkTextIter begin, end;
-    gtk_text_buffer_get_start_iter(gtkBuffer, &begin);
-    gtk_text_buffer_get_end_iter(gtkBuffer, &end);
-    gtk_text_buffer_delete(gtkBuffer, &begin, &end);
+    // Copy the contents in the loader's buffer to the editors.
+    TextBuffer *buffer = ld.fetchBuffer();
     TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
+    onEdited(Removal(0, 0, -1, -1), NULL);
     do
     {
         const char *begin, *end;
         if (it.getAtomsBulk(begin, end))
-            gtk_text_buffer_insert_at_cursor(gtkBuffer, begin, end - begin);
+            onEdited(TempInsertion(-1, -1, begin, end - begin), NULL);
     }
     while (it.goToNextBulk());
 
-    doc.m_revision = reader.revision();
-    if (doc.m_ioError)
-        g_error_free(doc.m_ioError);
-    doc.m_ioError = reader.fetchError();
-    doc.m_loading = false;
-    doc.m_fileReader = NULL;
-    doc.unfreeze();
-    doc.m_editCount = 0;
-    doc.m_loaded(doc);
-    m_source->onFileLoaded(*this);
+    // Pass the loader's buffer to the source, which will own the buffer.
+    m_source->onFileLoaded(*this, buffer);
 }
 
 void SourceFile::onSaved(FileSaver &saver);
@@ -168,168 +169,55 @@ void SourceFile::onSaved(FileSaver &saver);
     m_source->onFileSaved(*this);
 }
 
-void Document::onFileRead(Worker &worker)
+char *SourceFile::getText() const
 {
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(onFileReadInMainThread),
-                    new FileReadParam(*this,
-                        static_cast<TextFileReadWorker &>(worker)),
-                    NULL);
+    return static_cast<SourceEditor *>(editors())->getText();
 }
 
-void Document::onFileWritten(Worker &worker)
+char *SourceFile::getText(int beginLine, int beginColumn,
+                          int endLine, int endColumn) const
 {
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(onFileWrittenInMainThread),
-                    new FileWrittenParam(*this,
-                        static_cast<TextFileWriteWorker &>(worker)),
-                    NULL);
+    return static_cast<SourceEditor *>(editors())->
+        getText(beginLine, beginColumn, endLine, endColumn);
 }
 
-bool Document::load()
+void SourceFile::insert(int line, int column, const char *text, int length,
+                        SourceEditor *committer)
 {
-    if (closing() || frozen())
-        return false;
-    m_loading = true;
-    freeze();
-    m_fileReader =
-        new TextFileReadWorker(Worker::defaultPriorityInCurrentThread(),
-                               boost::bind(&Document::onFileRead,
-                                           this,
-                                           _1),
-                               uri());
-    Application::instance()->scheduler()->schedule(*m_fileReader);
-    return true;
+    Removal *undo = insertOnly(line, column, text, length, committer);
+    saveUndo(rem);
 }
 
-bool Document::save()
+void SourceFile::remove(int beginLine, int beginColumn,
+                        int endLine, int endColumn,
+                        SourceEditor *committer)
 {
-    if (m_closing || frozen())
-        return false;
-    m_saving = true;
-    freeze();
-    char *text = getText();
-    TextFileWriteWorker *writer =
-        new TextFileWriteWorker(Worker::defaultPriorityInCurrentThread(),
-                                boost::bind(&Document::onFileWritten,
-                                            this,
-                                            _1),
-                                uri(),
-                                text);
-    g_free(text);
-    Application::instance()->scheduler()->schedule(*writer);
-    return true;
+    Insertion *undo = removeOnly(beginLine, beginColumn,
+                                 endLine, endColumn,
+                                 committer);
+    saveUndo(undo);
 }
 
-char *Document::getText() const
+SourceFile::Removal *
+SourceFile::insertOnly(int line, int column, const char *text, int length,
+                       SourceEditor *committer)
 {
-    GtkTextIter begin, end;
-    gtk_text_buffer_get_start_iter(m_buffer, &begin);
-    gtk_text_buffer_get_end_iter(m_buffer, &end);
-    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
+    onEdited(TempInsertion(line, column, text, length), committer);
+    ///int endLine, endColumn;
+    ///static_cast<SourceEditor *>(editors())->getCursor(endLine, endColumn);
+    ///Removal *undo = new Removal(line, column, endLine, endColumn);
+    return undo;
 }
 
-char *Document::getText(int beginLine, int beginColumn,
-                        int endLine, int endColumn) const
+SourceFile::Insertion *
+SourceFile::removeOnly(int beginLine, int beginColumn,
+                       int endLine, int endColumn,
+                       SourceEditor *committer)
 {
-    GtkTextIter begin, end;
-    gtk_text_buffer_get_iter_at_line_offset(m_buffer,
-                                            &begin,
-                                            beginLine,
-                                            beginColumn);
-    gtk_text_buffer_get_iter_at_line_offset(m_buffer,
-                                            &end,
-                                            endLine,
-                                            endColumn);
-    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
+    char *removed = getText(beginLine, beginColumn, endLine, endColumn);
+    Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
+    onEdited(Removal(beginLine, beginColumn, endLine, endColumn), committer);
+    return undo;
 }
 
-bool Document::insert(int line, int column, const char *text, int length)
-{
-    if (!editable())
-        return false;
-    GtkTextIter iter;
-    gtk_text_buffer_get_iter_at_line_offset(m_buffer, &iter, line, column);
-    gtk_text_buffer_insert(m_buffer, &iter, text, length);
-    return true;
-}
-
-bool Document::remove(int beginLine, int beginColumn,
-                      int endLine, int endColumn)
-{
-    if (!editable())
-       return false;
-    GtkTextIter begin, end;
-    gtk_text_buffer_get_iter_at_offset(m_buffer, &begin,
-                                       beginLine, beginColumn);
-    gtk_text_buffer_get_iter_at_offset(m_buffer, &end,
-                                       endLine, endColumn);
-    gtk_text_buffer_delete(m_buffer, &begin, &end);
-}
-
-
-bool Document::beginUserAction()
-{
-    if (!editable())
-        return false;
-    gtk_buffer_begin_user_action(m_buffer);
-    return true;
-}
-
-ool Docuent::endserAction()
-{
-    if (!editable())
-        return false;
-    gtk_buffer_end_user_action(m_buffer);
-    return true;
-}
-
-void Document::freeze()
-{
-    m_freezeCount++;
-    if (m_freezeCount == 1)
-    {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
-            editor->freeze();
-    }
-}
-
-void Document::unfreeze()
-{
-    m_freezeCount--;
-    if (m_freezeCount == 0)
-    {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
-            editor->unfreeze();
-    }
-}
-
-void Document::addEditor(Editor &editor)
-{
-    editor.addToList(m_editors);
-    if (frozen())
-        editor.freeze();
-}
-
-void Document::removeEditor(Editor &editor)
-{
-    editor.removeFromList(m_editors);
-}
-
-// cooperate with file/editor/source-editor
-// 1. edit from editor
-// source-editor calls source-file.insert(editor1)
-//  source-file.insert(editor1) does insertion, gets undo, calls file.save-undo
-//   file.save-undo saves undo
-//  source-file.insert(editor1) calls file.on-edited(insertion1, editor1)
-//  file.on-edited(insertion1, editor1) calls editor.on-edited(insertion1) for
-// each editor != editor1
-//   source-editor.on-edited(insertion1) does insertion for itself
-// 2. edit from file
-// source-file.insert(NULL)
-// 3. undo
-// file gets undo, calls edit.execute()
-//  edit.execute calls source-file.insert-without-save-undo(NULL)
-//   does insertion and returns undo
-//  undo to redo
 }
