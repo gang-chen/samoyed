@@ -32,7 +32,8 @@ public:
         enum Type
         {
             TYPE_INSERTION,
-            TYPE_REMOVAL
+            TYPE_REMOVAL,
+            TYPE_TEMP_INSERTION
         };
 
         EditPrimitive(Type type): m_type(type) {}
@@ -66,6 +67,10 @@ public:
 
         virtual bool merge(File::EditPrimitive *edit);
 
+        int line() const { return m_line; }
+        int column() const { return m_column; }
+        const char *text() const { return m_text; }
+
     private:
         int m_line;
         int m_column;
@@ -97,11 +102,58 @@ public:
 
         virtual bool merge(File::EditPrimitive *edit);
 
+        int beginLine() const { return m_beginLine; }
+        int beginColumn() const { return m_columnColumn; }
+        int endLine() const { return m_endLine; }
+        int endColumn() const { return m_endColumn; }
+
     private:
         int m_beginLine;
         int m_beginColumn;
         int m_endLine;
         int m_endColumn;
+    };
+
+    /**
+     * A temporary insertion is different from an insertion in that it does not
+     * save a copy of the inserted text.  It is only used to carry the edit
+     * information when notifying the editors and observers.  It cannot be saved
+     * as an undo.
+     */
+    class TempInsertion: public EditPrimitive
+    {
+    public:
+        /**
+         * @param line The line number of the insertion position, starting from
+         * 0.
+         * @param column The column number of the insertion position, the
+         * character index, starting from 0.
+         * @param text The text to be inserted.
+         * @param length The number of the bytes to be inserted, or -1 if
+         * inserting the text until '\0'.
+         */
+        TempInsertion(int line, int column, const char *text, int length):
+            EditPrimitive(TYPE_TEMP_INSERTION),
+            m_line(line),
+            m_column(column),
+            m_text(text),
+            m_length(length)
+        {}
+
+        virtual Edit *execute(File &file) const;
+
+        virtual bool merge(File::EditPrimitive *edit);
+
+        int line() const { return m_line; }
+        int column() const { return m_column; }
+        const char *text() const { return m_text; }
+        int length() const { return m_length; }
+
+    private:
+        int m_line;
+        int m_column;
+        const char *m_text;
+        int m_length;
     };
 
     static void registerFileType();
