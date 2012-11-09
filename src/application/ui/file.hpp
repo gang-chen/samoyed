@@ -246,6 +246,12 @@ private:
 
     void unfreezeInternally();
 
+    void resetEditCount();
+
+    void increaseEditCount();
+
+    void decreaseEditCount();
+
     static gboolean onLoadedInMainThread(gpointer param);
 
     static gboolean onSavedInMainThread(gpointer param);
