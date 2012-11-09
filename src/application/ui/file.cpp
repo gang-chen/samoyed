@@ -271,7 +271,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     if (file.m_ioError)
         g_error_free(file.m_ioError);
     file.m_ioError = loader.fetchError();
-    file.m_editCount = 0;
+    file.resetEditCount();
     file.m_undoHistory.clear();
     file.m_redoHistory.clear();
     if (file.m_superUndo)
@@ -367,7 +367,7 @@ gboolean File::onSavedInMainThead(gpointer param)
         if (file.m_ioError)
             g_error_free(file.m_ioError);
         file.m_ioError = NULL;
-        file.m_editCount = 0;
+        file.resetEditCount();
         file.onSaved(saver);
         file.m_saved(file);
         delete &saver;
@@ -441,10 +441,16 @@ void File::saveUndo(EditPrimitive *edit)
 {
     if (m_superUndo)
         m_superUndo->mergePush(edit);
+    else if (m_editCount == 0)
+    {
+        // Do not merge this edit so that we can go back to the unedited state.
+        m_undoHistory.push(edit);
+        increaseEditCount();
+    }
     else
     {
         if (!m_undoHistory.mergePush(edit))
-            ++m_editCount;
+            increaseEditCount();
     }
 }
 
@@ -455,6 +461,7 @@ void File::undo()
     m_undoHistory.pop();
     Edit *undo = edit->execute(*this);
     m_redoHistory.push(undo);
+    decreaseEditCount();
 }
 
 void File::redo()
@@ -464,6 +471,7 @@ void File::redo()
     m_rndoHistory.pop();
     Edit *undo = edit->execute(*this);
     m_redoHistory.push(undo);
+    increaseEditCount();
 }
 
 void File::beginEditGroup()
@@ -478,7 +486,7 @@ void File::endEditGroup()
     assert(editable() && m_superUndo);
     m_undoHistory.push(m_superUndo);
     m_superUndo = NULL;
-    ++m_editCount;
+    increaseEditCount();
     return true;
 }
 
@@ -532,6 +540,36 @@ void File::onEdited(const EditPrimitive &edit, const Editor *committer)
             editor->onEdited(edit);
     }
     m_edited(*this, edit);
+}
+
+void File::resetEditCount()
+{
+    if (m_editCount != 0)
+    {
+        m_editCount = 0;
+        for (Editor *editor = m_editors; editor; editor = editor->next())
+            editor->onFileEditedStateChanged();
+    }
+}
+
+void File::increaseEditCount()
+{
+    m_editCount++;
+    if (m_editCount == 0 || m_editCount == 1)
+    {
+        for (Editor *editor = m_editors; editor; editor = editor->next())
+            editor->onFileEditedStateChanged();
+    }
+}
+
+void File::decreaseEditCount()
+{
+    m_editCount--;
+    if (m_editCount == -1 || m_editCount == 0)
+    {
+        for (Editor *editor = m_editors; editor; editor = editor->next())
+            editor->onFileEditedStateChanged();
+    }
 }
 
 }
