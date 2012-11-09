@@ -169,6 +169,16 @@ void SourceFile::onSaved(FileSaver &saver);
     m_source->onFileSaved(*this);
 }
 
+int SourceFile::characterCount() const
+{
+    return static_cast<SourceEditor *>(editors())->characterCount();
+}
+
+int SourceFile::lineCount() const
+{
+    return static_cast<SourceEditor *>(editors())->lineCount();
+}
+
 char *SourceFile::getText() const
 {
     return static_cast<SourceEditor *>(editors())->getText();
@@ -202,10 +212,26 @@ SourceFile::Removal *
 SourceFile::insertOnly(int line, int column, const char *text, int length,
                        SourceEditor *committer)
 {
+    int oldLineCount = lineCount();
     onEdited(TempInsertion(line, column, text, length), committer);
-    ///int endLine, endColumn;
-    ///static_cast<SourceEditor *>(editors())->getCursor(endLine, endColumn);
-    ///Removal *undo = new Removal(line, column, endLine, endColumn);
+    int newLineCount = lineCount();
+    int endLine, endColumn;
+    endLine = line + newLineCount - oldLineCount;
+    if (oldLineCount == newLineCoint)
+        endColumn = column + Utf8::countCharacters(text, length);
+    else
+    {
+        if (length == -1)
+            length = strlen(text);
+        const char *cp = text + length - 1;
+        endColumn = 0;
+        while (cp != '\n')
+        {
+            cp = Utf8::begin(cp - 1);
+            ++endColumn;
+        }
+    }
+    Removal *undo = new Removal(line, column, endLine, endColumn);
     return undo;
 }
 
