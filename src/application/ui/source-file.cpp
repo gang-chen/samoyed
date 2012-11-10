@@ -195,7 +195,7 @@ void SourceFile::insert(int line, int column, const char *text, int length,
                         SourceEditor *committer)
 {
     Removal *undo = insertOnly(line, column, text, length, committer);
-    saveUndo(rem);
+    saveUndo(undo);
 }
 
 void SourceFile::remove(int beginLine, int beginColumn,
@@ -232,6 +232,7 @@ SourceFile::insertOnly(int line, int column, const char *text, int length,
         }
     }
     Removal *undo = new Removal(line, column, endLine, endColumn);
+    m_source->onFileTextInserted(*this, line, column, text, length);
     return undo;
 }
 
@@ -243,6 +244,8 @@ SourceFile::removeOnly(int beginLine, int beginColumn,
     char *removed = getText(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
     onEdited(Removal(beginLine, beginColumn, endLine, endColumn), committer);
+    m_source->onFileTextRemoved(*this,
+                                beginLine, beginColumn, endLine, endColumn);
     return undo;
 }
 
