@@ -6,6 +6,9 @@ UNIT TEST BUILD
 g++ utf8.cpp -DSMYD_UTF8_UNIT_TEST -Werror -Wall -o utf8
 */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "utf8.hpp"
 
 #ifdef SMYD_UTF8_UNIT_TEST
@@ -63,6 +66,7 @@ int main()
     t = "\x01";
     assert(Samoyed::Utf8::length(t) == 1);
     assert(Samoyed::Utf8::begin(t) == t);
+    assert(Samoyed::Utf8::countCharacters(t, -1) == 1);
     assert(Samoyed::Utf8::validate(t, -1, v));
     assert(v == t + 1);
     assert(Samoyed::Utf8::validate(t, 1, v));
@@ -72,6 +76,7 @@ int main()
     assert(Samoyed::Utf8::length(t) == 2);
     assert(Samoyed::Utf8::begin(t) == t);
     assert(Samoyed::Utf8::begin(t + 1) == t);
+    assert(Samoyed::Utf8::countCharacters(t, 2) == 1);
     assert(Samoyed::Utf8::validate(t, -1, v));
     assert(v == t + 2);
     assert(Samoyed::Utf8::validate(t, 1, v));
@@ -85,6 +90,7 @@ int main()
     assert(Samoyed::Utf8::begin(t + 1) == t);
     assert(Samoyed::Utf8::begin(t + 2) == t);
     assert(Samoyed::Utf8::begin(t + 3) == t);
+    assert(Samoyed::Utf8::countCharacters(t, -1) == 1);
     assert(Samoyed::Utf8::validate(t, -1, v));
     assert(v == t + 4);
     assert(Samoyed::Utf8::validate(t, 1, v));
@@ -100,6 +106,7 @@ int main()
     assert(Samoyed::Utf8::length(t) == 4);
     assert(Samoyed::Utf8::begin(t) == t);
     assert(Samoyed::Utf8::begin(t + 1) == t);
+    assert(Samoyed::Utf8::countCharacters(t, 4) == 1);
     assert(!Samoyed::Utf8::validate(t, -1, v));
     assert(v == t);
     assert(Samoyed::Utf8::validate(t, 1, v));
@@ -118,6 +125,9 @@ int main()
     assert(Samoyed::Utf8::begin(t + 1) == t);
     assert(Samoyed::Utf8::begin(t + 2) == t + 2);
     assert(Samoyed::Utf8::begin(t + 3) == t + 2);
+    assert(Samoyed::Utf8::countCharacters(t, -1) == 2);
+    assert(Samoyed::Utf8::countCharacters(t, 2) = 1);
+    assert(Samoyed::Utf8::countCharacters(t + 2, -1) == 1);
     assert(!Samoyed::Utf8::validate(t, -1, v));
     assert(v == t + 2);
     assert(Samoyed::Utf8::validate(t, 1, v));
