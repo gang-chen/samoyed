@@ -76,7 +76,7 @@ inline int Utf8::countCharacters(const char *cp, int length)
     while (cp != end && *cp)
     {
         cp += length(cp);
-        n++;
+        ++n;
     }
     return n;
 }
