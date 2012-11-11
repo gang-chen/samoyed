@@ -126,7 +126,7 @@ int main()
     assert(Samoyed::Utf8::begin(t + 2) == t + 2);
     assert(Samoyed::Utf8::begin(t + 3) == t + 2);
     assert(Samoyed::Utf8::countCharacters(t, -1) == 2);
-    assert(Samoyed::Utf8::countCharacters(t, 2) = 1);
+    assert(Samoyed::Utf8::countCharacters(t, 2) == 1);
     assert(Samoyed::Utf8::countCharacters(t + 2, -1) == 1);
     assert(!Samoyed::Utf8::validate(t, -1, v));
     assert(v == t + 2);

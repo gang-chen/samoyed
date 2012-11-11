@@ -6,6 +6,9 @@ UNIT TEST BUILD
 g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "signal.hpp"
 #include <vector>
 #ifdef OS_WIN32

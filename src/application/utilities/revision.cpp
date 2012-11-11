@@ -7,6 +7,9 @@ g++ revision.cpp -DSMYD_REVISION_UNIT_TEST\
  `pkg-config --cflags --libs glib-2.0 gio-2.0` -Werror -Wall -o revision
 */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "revision.hpp"
 #ifdef SMYD_REVISION_UNIT_TEST
 # include <assert.h>

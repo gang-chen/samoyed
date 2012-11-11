@@ -1,6 +1,9 @@
 // Session.
 // Copyright (C) 2011 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "session.hpp"
 #include "session-manager.hpp"
 #include "application.hpp"

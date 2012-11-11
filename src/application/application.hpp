@@ -58,7 +58,7 @@ public:
      */
     void switchSession(Session &session);
 
-    void cancelQuiting();
+    void cancelQuitting();
 
     /**
      * Get the sole application instance.
@@ -128,7 +128,7 @@ private:
 
     void shutDown();
 
-    void continueQuiting();
+    void continueQuitting();
 
     /**
      * The sole application instance.
@@ -158,7 +158,7 @@ private:
 
     Window *m_window;
 
-    bool m_quiting;
+    bool m_quitting;
 
     std::string m_dataDirName;
     std::string m_librariesDirName;

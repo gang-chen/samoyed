@@ -5,7 +5,7 @@
 #define SMYD_FILE_SOURCE_HPP
 
 #include "../utilities/managed.hpp"
-#include "../utilities/manager.hpp"
+#include "../utilities/misc.hpp"
 #include "../utilities/revision.hpp"
 #include "../utilities/worker.hpp"
 #include <string>
@@ -22,46 +22,51 @@ namespace Samoyed
 class Range;
 class ChangeHint;
 class TextBuffer;
-class Document;
+class File;
 
 /**
  * A file source represents the source code contents of a source file.  It is a
- * shared thread-safe internal resource.
+ * shared thread-safe read-only resource.
  *
- * A file source is readable, but not writable.  Users can only request a file
- * source to update itself.  Actually a file source updates itself
- * automatically.
+ * The key of a file source is the URI of the file.  The scope of file sources
+ * is global.
  *
- * A file source is observable.  An observer can be added by registering a
- * callback to a file source.  The callback will be called after every change
- * on the file source occurs.
+ * When a file source is created, it will be loaded from the physical file
+ * automatically.  If the file is opened, it will be updated with user edits
+ * committed to the file automatically.
  */
-class FileSource: public Managed<std::string, FileSource>
+class FileSource: public Managed<FileSource>
 {
-private:
+public:
+    typedef ComparablePointer<const char *> Key;
+    typedef CastableString KeyHolder;
+    Key key() const { return m_uri.c_str(); }
+
     typedef
     boost::signals2::signal_type<void (const FileSource &source,
                                        const ChangeHint &changeHint),
         boost::signals2::keywords::mutex_type<boost::signals2::dummy_mutex> >::
         type Changed;
 
-public:
-    const char *uri() const { return key().c_str(); }
+    const char *uri() const { return m_uri.c_str(); }
 
     /**
      * Request to update the source by loading from the external file or the
-     * opened document.
+     * opened file.
      */
     void update();
 
     /**
-     * Lock the source for read.
+     * Begin a read transaction by locking the source for read.
      */
     bool beginRead(bool trying,
                    const TextBuffer *&buffer,
                    Revision *revision,
                    GError **error) const;
 
+    /**
+     * End a read transaction by unlocking the source.
+     */
     void endRead();
 
     /**
@@ -69,7 +74,7 @@ public:
      * observer has observed the source of revision zero.  Notify the observer
      * of a virtual change from revision zero to the current revision, so that
      * the observer can synchronize itself with the up-to-date source.
-     * @param callback The callback to be called after every change.
+     * @param callback The callback to be called after the source is changed.
      * @return The connection of the callback, which can be used to remove the
      * observer later.
      */
@@ -80,6 +85,24 @@ public:
      * @param connection The connection of the registered callback.
      */
     void removeObserver(const boost::signals2::connection &connection);
+
+    void onFileClose(const File &file);
+
+    void onFileLoaded(const File &file, TextBuffer *buffer);
+
+    void onFileSaved(const File &file);
+
+    void onFileTextInserted(const File &file,
+                            int line,
+                            int column,
+                            const char *text,
+                            int length);
+
+    void onFileTextRemoved(const File &file,
+                           int beginLine,
+                           int beginColumn,
+                           int endLine,
+                           int endColumn);
 
 private:
     /**
@@ -171,28 +194,21 @@ private:
     class Replacement: public Change
     {
     public:
-        /**
-         * @param text The new text contents, which should be freed by
-         * 'g_free()'.
-         */
-        Replacement(const Revision &revision, const GError *error, char *text):
+        Replacement(const Revision **revision,
+                    const GError *error,
+                    TextBuffer *buffer):
             m_revision(revision),
             m_error(g_error_copy(error)),
-            m_text(text)
+            m_buffer(buffer)
         {}
-        virtual ~Replacement()
-        {
-            if (m_error)
-                g_error_free(m_error);
-            g_free(m_text);
-        }
+        virtual ~Replacement();
         virtual bool incremental() const { return false; }
         virtual void execute(FileSource &source);
 
     private:
         Revision m_revision;
         GError *m_error;
-        char *m_text;
+        TextBuffer *m_buffer;
     };
 
     /**
@@ -213,14 +229,14 @@ private:
         ReferencePointer<FileSource> m_source;
     };
 
-    FileSource(const std::string &uri,
+    FileSource(const Key &uri,
                unsigned long serialNumber,
                Manager<FileSource> &mgr);
 
     ~FileSource();
 
     bool beginWrite(bool trying,
-                    TextBuffer *&buffer,
+                    TextBuffer **buffer,
                     Revision *revision,
                     GError **error);
 
@@ -236,24 +252,6 @@ private:
 
     void onChangeWorkerDone(Worker &worker);
 
-    void onDocumentClosed(const Document &document);
-
-    void onDocumentLoaded(const Document &document);
-
-    void onDocumentSaved(const Document &document);
-
-    void onDocumentTextInserted(const Document &document,
-                                int line,
-                                int column,
-                                const char *text,
-                                int length);
-
-    void onDocumentTextRemoved(const Document &document,
-                               int beginLine,
-                               int beginColumn,
-                               int endLine,
-                               int endColumn);
-
     static gboolean updateInMainThread(gpointer param);
 
     void setBuffer(TextBuffer *buffer)
@@ -262,11 +260,13 @@ private:
         m_buffer = buffer;
     }
 
-    TextBuffer *m_buffer;
+    const std::string m_uri;
 
     Revision m_revision;
 
     GError *m_error;
+
+    TextBuffer *m_buffer;
 
     mutable boost::shared_mutex m_dataMutex;
 
@@ -288,13 +288,6 @@ private:
     mutable boost::mutex m_changeWorkerMutex;
 
     template<class> friend class Manager;
-    friend class Document;
-    friend class Loading;
-    friend class RevisionChange;
-    friend class Insertion;
-    friend class Removal;
-    friend class Replacement;
-    friend class ChangeExecutionWorker;
 };
 
 }

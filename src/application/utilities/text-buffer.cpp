@@ -9,6 +9,9 @@ g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST -Werror -Wall -o\
 
 #ifdef SMYD_TEXT_BUFFER_UNIT_TEST
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "text-buffer.hpp"
 #include <assert.h>
 #include <string.h>

@@ -8,6 +8,9 @@ g++ range.cpp -DSMYD_RANGE_UNIT_TEST -Werror -Wall -o range
 
 #ifdef SMYD_RANGE_UNIT_TEST
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "range.hpp"
 #include <assert.h>
 

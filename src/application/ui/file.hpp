@@ -214,7 +214,7 @@ protected:
 
     virtual ~File();
 
-    // Functions implemented by subclasses and called by the base class.
+    // Functions implemented by derived classes and called by the base class.
     virtual Editor *newEditor(Project &project) = 0;
 
     virtual FileLoader *createLoader(unsigned int priority,
@@ -228,14 +228,14 @@ protected:
     virtual void onSaved(FileSaver &saver) = 0;
 
     /**
-     * This function is called by a subclass to notify all editors except the
-     * committer and observers after edited.
+     * This function is called by a derived class to notify all editors except
+     * the committer and observers after edited.
      */
     void onEdited(const EditPrimitive &edit, const Editor *committer);
 
     /**
-     * This function is called by a subclass to save the reverse edit of a newly
-     * committed edit primitive.
+     * This function is called by a derived class to save the reverse edit of a
+     * newly committed edit primitive.
      */
     void saveUndo(EditPrimitive *undo);
 

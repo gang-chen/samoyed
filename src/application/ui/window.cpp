@@ -1,9 +1,12 @@
 // Top-level window.
 // Copyright (C) 2011 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "window.hpp"
 #include "actions.hpp"
-#include <assert.h>
+#include "../application.hpp"
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -47,8 +50,8 @@ Window *Window::create(const Configuration *config)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load UI file '%s' to construct the user "
-              "interface: '%s'."),
+            _("Samoyed failed to load UI file \"%s\" to construct the user "
+              "interface. %s."),
             uiFile.c_str(), error->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -75,6 +78,7 @@ Window *Window::create(const Configuration *config)
 
     gtk_widget_show(w->m_window);
 
+    Application::instance()->setWindow(w);
     return w;
 }
 

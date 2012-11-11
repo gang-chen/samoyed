@@ -42,20 +42,21 @@ public:
 
     static const char *lastSessionName();
 
-    Session(const char *name);
+    ~Session();
 
     const char *name() const { return m_name.c_str(); }
 
     /**
      * Create a new session and start it.
      */
-    bool create();
+    bool create(const char *name);
 
     /**
-     * Restore this session.  If the session has edited and unsaved files, show
-     * their URIs and let the user decide whether to recover the files or not.
+     * Restore a saved session.  If the session has edited and unsaved files,
+     * show their URIs and let the user decide whether to recover the files or
+     * not.
      */
-    bool restore();
+    bool restore(const char *name);
 
     /**
      * Save this session.
@@ -66,14 +67,16 @@ public:
     void removeUnsavedFileUri(const char *uri);
 
 private:
-    static void makeLockFileName(std::string &fileName) const
+    static void makeLockFileName(std::string &fileName)
     { fileName += G_DIR_SEPARATOR_S "lock"; }
 
-    static void makeUnsavedFilesFileName(std::string &fileName) const
+    static void makeUnsavedFilesFileName(std::string &fileName)
     { fileName += G_DIR_SEPARATOR_S "unsaved-files"; }
 
-    static void makeSessionFileName(std::string &fileName) const
+    static void makeSessionFileName(std::string &fileName)
     { fileName += G_DIR_SEPARATOR_S "session.xml"; }
+
+    Session(const char *name);
 
     void makeDirectoryName(std::string &dirName) const;
 
@@ -84,7 +87,6 @@ private:
     static std::string s_lastSessionName;
 
     const std::string m_name;
-    bool m_locked;
 };
 
 }

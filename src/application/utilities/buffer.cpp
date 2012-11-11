@@ -8,6 +8,9 @@ g++ buffer.cpp -DSMYD_BUFFER_UNIT_TEST -Werror -Wall -o buffer
 
 #ifdef SMYD_BUFFER_UNIT_TEST
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "buffer.hpp"
 #include <assert.h>
 #include <string>

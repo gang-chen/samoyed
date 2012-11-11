@@ -83,8 +83,39 @@ std::pair<File *, Editor *> File::create(const char *uri, Project &project)
 {
     // Can't open an already opened file.
     assert(!Application::instance()->findFile(uri));
-    File *file = Application::instance()->fileTypeRegistry()->
-        getFileFactory(uri)(uri);
+    char *mimeType = FileTypeRegistry::getFileType(uri);
+    if (!mimeType)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open file \"%s\". Its MIME type is unknown."),
+            uri());
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return std::make_pair(NULL, NULL);
+    }
+    const FileTypeRegistry::FileFactory *factory =
+        Application::instance()->fileTypeRegistry()->getFileFactory(mimeType);
+    if (!factory)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open file \"%s\". Its MIME type \"%s\" is "
+              "unsupported."),
+            uri(), mimeType);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_free(mimeType);
+        return std::make_pair(NULL, NULL);
+    }
+    g_free(mimeType);
+    File *file = (*factory)(uri);
     if (!file)
         return std::make_pair(NULL, NULL);
     Editor *editor = file->createEditor(project);

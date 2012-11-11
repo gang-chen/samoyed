@@ -141,7 +141,7 @@ SourceFile::SourceFile(const char* uri):
 
 SourceFile::~SourceFile()
 {
-    m_source->onFileClosed(*this);
+    m_source->onFileClose(*this);
 }
 
 void SourceFile::onLoaded(FileLoader &loader)

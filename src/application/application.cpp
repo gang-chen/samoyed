@@ -300,7 +300,7 @@ CLEAN_UP:
     return m_exitStatus;
 }
 
-void Application::continueQuit()
+void Application::continueQuitting()
 {
     assert(m_projects.empty());
     assert(m_files.empty());
@@ -331,7 +331,7 @@ void Application::quit()
     assert(m_currentSession);
     m_currentSession->save();
 
-    // Request to close all the opened projects.  If the user cancels closing a
+    // Request to close all opened projects.  If the user cancels closing a
     // project, cancel quitting.
     for (ProjectTable::iterator it = m_projects.begin();
          it != m_projects.end();
@@ -341,12 +341,12 @@ void Application::quit()
             return;
     }
 
-    // Set the quitting flag so that we can continue quit the application when
-    // the projects are closed.
+    // Set the quitting flag so that we can continue quitting the application
+    // after all projects are closed.
     m_quitting = true;
 
     if (m_projects.empty())
-        continueQuit();
+        continueQuitting();
 }
 
 void Application::switchSession(Session &session)
@@ -355,7 +355,7 @@ void Application::switchSession(Session &session)
     quit();    
 }
 
-void Application::cancelQuit()
+void Application::cancelQuitting()
 {
     m_quitting = false;
     if (m_nextSession)
@@ -367,9 +367,9 @@ void Application::cancelQuit()
 
 void Application::onProjectClosed()
 {
-    // Continue to quit the application if all the projects are closed.
+    // Continue quitting the application if all projects are closed.
     if (m_quitting && m_projects.empty())
-        continueQuit();
+        continueQuitting();
 }
 
 Project *Application::findProject(const char *uri) const

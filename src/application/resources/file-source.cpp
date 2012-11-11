@@ -1,16 +1,18 @@
 // Source code in a source file.
 // Copyright (C) 2012 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "file-source.hpp"
 #include "project-ast-manager.hpp"
 #include "../application.hpp"
-#include "../ui/document-manager.hpp"
-#include "../ui/document.hpp"
-#include "../utilities/scheduler.hpp"
-#include "../utilities/text-buffer.hpp"
-#include "../utilities/text-file-reader.hpp"
+#include "../ui/file.hpp"
 #include "../utilities/range.hpp"
 #include "../utilities/change-hint.hpp"
+#include "../utilities/text-buffer.hpp"
+#include "../utilities/text-file-loader.hpp"
+#include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <string>
 #include <deque>
@@ -22,22 +24,21 @@ namespace Samoyed
 
 void FileSource::Loading::execute(FileSource &source)
 {
-    TextFileReader reader;
-    reader.open(source.uri());
-    reader.read();
-    reader.close();
+    TextFileLoader loader;
+    loader.open(source.uri());
+    loader.read();
+    loader.close();
     source.beginWrite(false, NULL, NULL, NULL);
-    TextBuffer *buffer = reader.fetchBuffer();
+    TextBuffer *buffer = loader.fetchBuffer();
     source.setBuffer(buffer);
-    source.endWrite(reader.revision(),
-                    reader.fetchError(),
+    source.endWrite(loader.revision(),
+                    loader.fetchError(),
                     Range(0, buffer->length()));
 }
 
 void FileSource::RevisionChange::execute(FileSource &source)
 {
-    if (!source.beginWrite(true, NULL, NULL, NULL))
-        return false;
+    source.beginWrite(false, NULL, NULL, NULL);
     source.endWrite(m_revision, m_error, Range());
     m_error = NULL;
 }
@@ -46,8 +47,7 @@ void FileSource::Insertion::execute(FileSource &source)
 {
     TextBuffer *buffer;
     GError *oldError;
-    if (!source.beginWrite(true, &buffer, NULL, &oldError))
-        return false;
+    source.beginWrite(false, &buffer, NULL, &oldError);
     buffer->setLineColumn(m_line, m_column);
     buffer->insert(m_text.c_str(), m_text.length(), -1, -1);
     source.endWrite(m_revision,
@@ -60,8 +60,7 @@ void FileSource::Removal::execute(FileSource &source)
 {
     TextBuffer *buffer;
     GError *oldError;
-    if (!source.beginWrite(true, &buffer, NULL, &oldError))
-        return false;
+    source.beginWrite(false, &buffer, NULL, &oldError);
     buffer->setLineColumn(m_beginLine, m_beginColumn);
     int endByteOffset;
     buffer->transformLineColumnToByteOffset(m_endLine,
@@ -73,16 +72,21 @@ void FileSource::Removal::execute(FileSource &source)
                     Range(buffer->cursor()));
 }
 
+FileSource::Replacement::~Replacement()
+{
+    delete m_buffer;
+    if (m_error)
+        g_error_free(m_error);
+}
+
 void FileSource::Replacement::execute(FileSource &source)
 {
-    TextBuffer *buffer;
-    if (!source.beginWrite(true, &buffer, NULL, NULL))
-        return false;
-    buffer->removeAll();
-    buffer->insert(m_text, strlen(m_text), -1, -1);
+    source.beginWrite(false, NULL, NULL, NULL);
+    source.setBuffer(m_buffer);
     source.endWrite(m_revision,
                     m_error,
-                    Range(0, buffer->length()));
+                    Range(0, m_buffer->length()));
+    m_buffer = NULL;
     m_error = NULL;
 }
 
@@ -92,10 +96,11 @@ bool FileSource::ChangeExecutionWorker::step()
     return true;
 }
 
-FileSource::FileSource(const std::string &uri,
+FileSource::FileSource(const Key &uri,
                        unsigned long serialNumber,
                        Manager<FileSource> &mgr):
-    Managed<std::string, FileSource>(uri, serialNumber, mgr),
+    Managed<FileSource>(serialNumber, mgr),
+    m_uri(uri),
     m_error(NULL),
     m_changeWorker(NULL)
 {
@@ -234,10 +239,10 @@ void FileSource::executePendingChanges()
         std::deque<Change *> changes;
         {
             boost::mutex::scoped_lock queueLock(m_changeQueueMutex);
+            if (m_changeQueue.empty())
+                return;
             changes.swap(m_changeQueue);
         }
-        if (changes.empty())
-            return;
         do
         {
             Change *c = changes.pop_front();
@@ -288,52 +293,52 @@ void FileSource::onChangeWorkerDone(Worker &worker)
     delete &worker;
 }
 
-void FileSource::onDocumentClosed(const Document &document)
+void FileSource::onFileClose(const File &file)
 {
-    if (document.changed() || m_revision.zero())
+    if (file.edited() || m_revision.zero())
     {
-        // If the document was changed but the changes were discarded, or the
-        // document wasn't loaded yet, reload the source from the external file.
-        // We need to keep the source up-to-date even if the source isn't used
-        // by any user because it may be cached.
+        // If the file was edited but the edits were discarded, or the file
+        // wasn't loaded yet, reload the source from the external file.  We need
+        // to keep the source up-to-date even if the source isn't used by any
+        // user because it may be cached.
         Loading *load = new Loading;
         requestChange(load);
     }
 }
 
-void FileSource::onDocumentLoaded(const Document &document)
+void FileSource::onFileLoaded(const File &file, TextBuffer *buffer)
 {
-    Replacement *rep = new Replacement(document.revision(),
-                                       document.ioError(),
-                                       document.getText());
+    Replacement *rep = new Replacement(file.revision(),
+                                       file.ioError(),
+                                       buffer);
     requestChange(rep);
 }
 
-void FileSource::onDocumentSaved(const Document &document)
+void FileSource::onFileSaved(const File &file)
 {
-    RevisionChange *revChange = new RevisionChange(document.revision(),
-                                                   document.ioError());
+    RevisionChange *revChange = new RevisionChange(file.revision(),
+                                                   file.ioError());
     requestChange(revChange);
 }
 
-void FileSource::onDocumentTextInserted(const Document &document,
-                                        int line,
-                                        int column,
-                                        const char *text,
-                                        int length)
+void FileSource::onFileTextInserted(const File &file,
+                                    int line,
+                                    int column,
+                                    const char *text,
+                                    int length)
 {
     Insertion *ins =
-        new Insertion(document.revision(), line, column, text, length);
+        new Insertion(file.revision(), line, column, text, length);
     requestChange(ins);
 }
 
-void FileSource::onDocumentTextRemoved(const Document &document,
-                                       int beginLine,
-                                       int beginColumn,
-                                       int endLine,
-                                       int endColumn)
+void FileSource::onFileTextRemoved(const File &file,
+                                   int beginLine,
+                                   int beginColumn,
+                                   int endLine,
+                                   int endColumn)
 {
-    Removal *rem = new Removal(document.revision(),
+    Removal *rem = new Removal(file.revision(),
                                beginLine,
                                beginColumn,
                                endLine,
@@ -349,23 +354,10 @@ gboolean FileSource::updateInMainThread(gpointer param)
         Application::instance()->fileSourceManager()->get(*wp);
     if (src)
     {
-        // Check to see if the file is opened for editing.  If so, copy the
-        // document to the source.  Otherwise, load the source from the external
-        // file.
-        DocumentManager *docMgr = Application::instance()->documentManager();
-        Document *doc = docMgr->get(uri());
-        if (doc)
-        {
-            // If we are closing, loading or saving the document, we can stop
-            // here because the source will be notified to update itself later.
-            // Otherwise, request to replace the source with the document.
-            if (!(doc->closing() || doc->loading() || doc->saving())
-            {
-                Replacement *rep = new Replacement(doc->getText());
-                requestChange(rep);
-            }
-        }
-        else
+        // Check to see if the file is opened.  If so, we can stop here because
+        // the file is responsible for updating the source.
+        File *file = Application::instance()->findFile(uri());
+        if (!file)
         {
             Loading *load = new Loading;
             requestChange(load);
@@ -378,7 +370,7 @@ gboolean FileSource::updateInMainThread(gpointer param)
 void FileSource::update()
 {
     // Delay the updating even if we are in the main thread so as to let the
-    // document, if newly created, register itself to the document manager.
+    // file, if newly created, register itself.
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                     G_CALLBACK(updateInMainThread),
                     new WeakPointer<FileSource>(this),

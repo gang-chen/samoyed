@@ -9,6 +9,9 @@ g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -I/usr/include -lboost_thread\
 
 #ifdef SMYD_MANAGER_UNIT_TEST
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "manager.hpp"
 #include "managed.hpp"
 #include "misc.hpp"

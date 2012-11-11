@@ -7,6 +7,9 @@ g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I.. -I../../../libs -I/usr/include\
  -lboost_thread -pthread -Werror -Wall -o worker
 */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "worker.hpp"
 #include "scheduler.hpp"
 #ifndef SMYD_WORKER_UNIT_TEST
