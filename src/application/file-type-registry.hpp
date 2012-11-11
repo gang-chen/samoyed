@@ -43,7 +43,7 @@ public:
             m_fileFactoryTable.find(std::string(mimeType));
         if (it != m_fileFactoryTable.end())
             return NULL;
-        return it->second;
+        return &it->second;
     }
 
 private:
