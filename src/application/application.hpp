@@ -4,7 +4,7 @@
 #ifndef SMYD_APPLICATION_HPP
 #define SMYD_APPLICATION_HPP
 
-#include "utilities/string-comparator.hpp"
+#include "utilities/misc.hpp"
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
@@ -152,9 +152,9 @@ private:
 
     boost::thread_specific_ptr<Worker> m_threadWorker;
 
-    ProjectTable m_projects;
+    ProjectTable m_projectTable;
 
-    FileTable m_files;
+    FileTable m_fileTable;
 
     Window *m_window;
 

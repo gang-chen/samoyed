@@ -90,6 +90,8 @@ bool Application::startUp()
         }
     }
 
+    // Create global objects.
+
     return true;
 }
 
@@ -134,7 +136,6 @@ int Application::run(int argc, char *argv[])
     char *sessionName = NULL;
     char *newSessionName = NULL;
     int chooseSession = 0;
-    char **fileNames = NULL;
     const GOptionEntry optionEntries[] =
     {
         {
@@ -177,14 +178,6 @@ int Application::run(int argc, char *argv[])
             NULL
         },
 
-        {
-            G_OPTION_REMAINING, '\0',
-            0, G_OPTION_ARG_FILENAME_ARRAY,
-            &fileNames,
-            NULL,
-            N_("[FILE...]")
-        },
-
         { NULL }
     };
     GError *error = NULL;
@@ -207,13 +200,13 @@ int Application::run(int argc, char *argv[])
     {
         if (newSessionName)
         {
-            g_printerr(_("Cannot set both option --session and "
+            g_printerr(_("Cannot set both option --session and option "
                          "--new-session.\n"));
             goto ERROR_OUT;
         }
         if (chooseSession)
         {
-            g_printerr(_("Cannot set both option --session and "
+            g_printerr(_("Cannot set both option --session and option "
                          "--choose-session.\n"));
             goto ERROR_OUT;
         }
@@ -222,7 +215,7 @@ int Application::run(int argc, char *argv[])
     {
         if (chooseSession)
         {
-            g_printerr(_("Cannot set both option --new-session and "
+            g_printerr(_("Cannot set both option --new-session and option "
                          "--choose-session.\n"));
             goto ERROR_OUT;
         }
@@ -238,44 +231,43 @@ int Application::run(int argc, char *argv[])
         goto ERROR_OUT;
 
     // New or restore a session.
-    if (sessionName)
+    if (sessionName || newSessionName || chooseSession)
     {
-        if (!m_sessionManager->restoreSession(sessionName) &&
-            !m_sessionManager->chooseSession())
-            goto ERROR_OUT;
-    }
-    else if (newSessionName)
-    {
-        if (!m_sessionManager->newSession(newSessionName) &&
-            !m_sessionManager->chooseSession())
-            goto ERROR_OUT;
-    }
-    else if (chooseSession)
-    {
-        if (!m_sessionManager->chooseSession())
-            goto ERROR_OUT;
-    }
-    else if (projectName)
-    {
-        if (!m_sessionManager->newSession(NULL))
-            goto ERROR_OUT;
-        m_projectManager->open(projectName);
-    }
-    else if (fileNames)
-    {
-        if (!m_sessionManager->newSession(NULL))
-            goto ERROR_OUT;
-        for (int i = 0; fileNames[i]; ++i)
+        for (;;)
         {
-            m_documentManager->open(fileNames[i], 0, 0, true, NULL, -1);
-            g_free(fileNames[i]);
+            if (sessionName)
+            {
+                if (Session::restore(sessionName))
+                    break;
+                g_free(sessionName);
+                sessionName = NULL;
+                chooseSession = 1;
+            }
+            else if (newSessionName)
+            {
+                if (Session::create(newSessionName))
+                    break;
+                g_free(newSessionName);
+                newSessionName = NULL;
+                chooseSession = 1;
+            }
+            if (chooseSession)
+            {
+                // Pop up a dialog to let the user choose which session to
+                // start.
+            }
         }
     }
     else
     {
-        if (!m_sessionManager->restoreSession(NULL) &&
-            !m_sessionManager->newSession(NULL))
-            goto ERROR_OUT;
+        // By default restore the last session.  And if none, start a new
+        // session.
+    }
+
+    if (projectName)
+    {
+        // Translate the project name into a URI.
+        Project::create(projectUri);
     }
 
     goto CLEAN_UP;
@@ -288,7 +280,6 @@ CLEAN_UP:
     g_free(newSessionName);
     g_free(sessionName);
     g_free(projectName);
-    g_strfreev(fileNames);
 
     if (m_exitStatus == EXIT_FAILURE)
         return m_exitStatus;
@@ -302,8 +293,8 @@ CLEAN_UP:
 
 void Application::continueQuitting()
 {
-    assert(m_projects.empty());
-    assert(m_files.empty());
+    assert(m_projectTable.empty());
+    assert(m_fileTable.empty());
 
     m_quitting = false;
 
@@ -333,8 +324,8 @@ void Application::quit()
 
     // Request to close all opened projects.  If the user cancels closing a
     // project, cancel quitting.
-    for (ProjectTable::iterator it = m_projects.begin();
-         it != m_projects.end();
+    for (ProjectTable::iterator it = m_projectTable.begin();
+         it != m_projectTable.end();
         )
     {
         if (!(it++)->second->close())
@@ -345,7 +336,7 @@ void Application::quit()
     // after all projects are closed.
     m_quitting = true;
 
-    if (m_projects.empty())
+    if (m_projectTable.empty())
         continueQuitting();
 }
 
@@ -368,44 +359,44 @@ void Application::cancelQuitting()
 void Application::onProjectClosed()
 {
     // Continue quitting the application if all projects are closed.
-    if (m_quitting && m_projects.empty())
+    if (m_quitting && m_projectTable.empty())
         continueQuitting();
 }
 
 Project *Application::findProject(const char *uri) const
 {
-    ProjectTable::const_iterator it = m_projects.find(uri);
-    if (it == m_projects.end())
+    ProjectTable::const_iterator it = m_projectTable.find(uri);
+    if (it == m_projectTable.end())
         return NULL;
     return it->second;
 }
 
 void Application::addProject(Project &project)
 {
-    m_projects.insert(std::make_pair(project.uri(), &project);
+    m_projectTable.insert(std::make_pair(project.uri(), &project);
 }
 
 void Application::removeProject(Project &project)
 {
-    m_projects.erase(project.uri());
+    m_projectTable.erase(project.uri());
 }
 
 File *Application::findFile(const char *uri) const
 {
-    ProjectTable::const_iterator it = m_files.find(uri);
-    if (it == m_files.end())
+    FileTable::const_iterator it = m_fileTable.find(uri);
+    if (it == m_fileTable.end())
         return NULL;
     return it->second;
 }
 
 void Application::addFile(File &file)
 {
-    m_files.insert(std::make_pair(file.uri(), &file));
+    m_fileTable.insert(std::make_pair(file.uri(), &file));
 }
 
 void Application::removeFile(File &file)
 {
-    m_files.erase(file.uri());
+    m_fileTable.erase(file.uri());
 }
 
 }

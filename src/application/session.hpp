@@ -49,14 +49,14 @@ public:
     /**
      * Create a new session and start it.
      */
-    bool create(const char *name);
+    static Session *create(const char *name);
 
     /**
      * Restore a saved session.  If the session has edited and unsaved files,
      * show their URIs and let the user decide whether to recover the files or
      * not.
      */
-    bool restore(const char *name);
+    static Session *restore(const char *name);
 
     /**
      * Save this session.
