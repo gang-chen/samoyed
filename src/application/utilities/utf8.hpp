@@ -20,14 +20,14 @@ public:
      * @param cp The beginning of a UTF-8 encoded character.
      * @return The number of the bytes composing the character.
      */
-    static inline int length(const char *cp);
+    static int length(const char *cp);
 
     /**
      * Get the beginning of a UTF-8 encoded character.
      * @param cp A pointer to any byte of a UTF-8 encoded character.
      * @return The beginning of the character.
      */ 
-    static inline const char* begin(const char *cp);
+    static const char* begin(const char *cp);
 
     /**
      * Validate a stream of UTF-8 encoded characters.
@@ -48,7 +48,7 @@ public:
      * @param length The number of the bytes to be validated, or -1 to validate
      * until a '\0'.
      */
-    static inline int countCharacters(const char *cp, int length);
+    static int countCharacters(const char *cp, int length);
 
 private:
     static const int LENGTH_TABLE[256];
