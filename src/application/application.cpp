@@ -230,41 +230,37 @@ int Application::run(int argc, char *argv[])
     if (!startUp())
         goto ERROR_OUT;
 
-    // New or restore a session.
-    if (sessionName || newSessionName || chooseSession)
-    {
-        for (;;)
-        {
-            if (sessionName)
-            {
-                if (Session::restore(sessionName))
-                    break;
-                g_free(sessionName);
-                sessionName = NULL;
-                chooseSession = 1;
-            }
-            else if (newSessionName)
-            {
-                if (Session::create(newSessionName))
-                    break;
-                g_free(newSessionName);
-                newSessionName = NULL;
-                chooseSession = 1;
-            }
-            if (chooseSession)
-            {
-                // Pop up a dialog to let the user choose which session to
-                // start.
-            }
-        }
-    }
-    else
+    // Start a session.
+    if (sessionName)
+        m_currentSession = Session::restore(sessionName);
+    else if (newSessionName)
+        m_currentSession = Session::create(newSessionName);
+    else if (!chooseSession)
     {
         // By default restore the last session.  And if none, start a new
         // session.
+        const char *lastSessionName = Session::lastSessionName();
+        if (lastSessionName)
+            m_currentSession = Session::restore(lastSessionName);
+    }
+    while (!m_currentSession)
+    {
+        // Pop up a dialog to let the user choose which session to start.
+        SessionChooserDialog *dialog = SessionChooserDialog::create();
+        dialog->run();
+        if (dialog->sessionName())
+            m_currentSession = Session::restore(dialog->sessionName());
+        else if (dialog->newSessionName())
+            m_currentSession = Session::create(dialog->newSessionName());
+        else
+        {
+            delete dialog;
+            break;
+        }
+        delete dialog;
     }
 
-    if (projectName)
+    if (m_currentSession && projectName)
     {
         // Translate the project name into a URI.
         Project::create(projectUri);
@@ -285,7 +281,8 @@ CLEAN_UP:
         return m_exitStatus;
 
     // Enter the main event loop.
-    gtk_main();
+    if (m_currentSession)
+        gtk_main();
 
     shutDown();
     return m_exitStatus;
