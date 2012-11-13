@@ -100,8 +100,7 @@ public:
     typedef boost::signals2::signal<void (const File &file,
                                           const EditPrimitive &edit)> Edited;
 
-    static std::pair<File *, Editor *> create(const char *uri,
-                                              Project &project);
+    static std::pair<File *, Editor *> open(const char *uri, Project &project);
 
     Editor *createEditor(Project &project);
 

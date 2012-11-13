@@ -7,6 +7,7 @@
 #include <utility>
 #include <map>
 #include <string>
+#include <boost/utility>
 #include <boost/function.hpp>
 #include <gio/gio.h>
 #include <glib.h>
@@ -16,13 +17,14 @@ namespace Samoyed
 
 class File;
 
-class FileTypeRegistry
+class FileTypeRegistry: public boost::noncopyable
 {
 public:
     typedef boost::function<File *(const char *)> FileFactory;
 
     static char *getFileType(const char *uri)
     {
+        // 'g_content_type_guess()' can handle the URI as a file name well.
         char *type = g_content_type_guess(uri, NULL, 0, NULL);
         if (!type)
             return NULL;

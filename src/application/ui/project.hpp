@@ -8,6 +8,7 @@
 #include "../utilities/manager.hpp"
 #include <map>
 #include <string>
+#include <boost/noncopyable>
 
 namespace Samoyed
 {
@@ -26,7 +27,7 @@ class ProjectConfiguration;
  * The contents of a project are a project configuration.  The project is the
  * only writer of the project configuration.
  */
-class Project
+class Project: public boost::noncopyable
 {
 public:
     Editor *findEditor(const char *uri);

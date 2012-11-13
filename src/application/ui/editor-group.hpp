@@ -4,6 +4,7 @@
 #ifndef SMYD_EDITOR_GROUP_HPP
 #define SMYD_EDITOR_GROUP_HPP
 
+#include <vector>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -16,9 +17,24 @@ class Editor;
  */
 class EditorGroup
 {
+public:
+    int editorCount() const { return m_editors.size(); }
+
+    Editor &editor(int i) const { return *m_editors[i]; }
+
+    void addEditor(Editor &editor);
+
+    void removeEditor(Editor &editor);
+
+    int currentEditorIndex() const { return m_currentEditorIndex; }
+
+    void setCurrentEditorIndex(int index) { m_currentEditorIndex = index; }
 private:
     GtkNotebook *m_notebook;
-    Editor *m_editors;
+
+    std::vector<Editor *> m_editors;
+
+    int m_currentEditorIndex;
 };
 
 }

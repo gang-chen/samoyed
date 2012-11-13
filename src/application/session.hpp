@@ -5,6 +5,7 @@
 #define SMYD_SESSION_HPP
 
 #include <string>
+#include <boost/utility>
 
 namespace Samoyed
 {
@@ -35,7 +36,7 @@ namespace Samoyed
  * see if the locking process exits or not, and if not, the lock file should be
  * discarded.
  */
-class Session
+class Session: public boost::noncopyable
 {
 public:
     static bool makeSessionsDirectory();

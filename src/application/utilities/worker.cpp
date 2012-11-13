@@ -192,6 +192,17 @@ CANCELED:
         m_callback(*this);
 }
 
+void Worker::runAll()
+{
+    {
+        ExecutionWrapper wrapper(*this);
+        while (!step())
+            ;
+    }
+    if (!m_callback.empty())
+        m_callback(*this);
+}
+
 void Worker::cancel()
 {
     {

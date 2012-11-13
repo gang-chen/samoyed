@@ -110,6 +110,12 @@ public:
     void operator()();
 
     /**
+     * Run until finished.  The worker cannot be canceled, blocked, updated or
+     * preempted.
+     */
+    void runAll();
+
+    /**
      * Request to cancel the worker.  The worker will be canceled immediately
      * if it was blocked.
      */

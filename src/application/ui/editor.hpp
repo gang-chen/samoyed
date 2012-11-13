@@ -21,14 +21,26 @@ public:
 
     virtual ~Editor();
 
-    void addToList(Editor *&editors);
-    void removeFromList(Editor *&editors);
-
     Editor *next() const { return m_next; }
     Editor *previous() const { return m_previous; }
 
-    void addToGroup(EditorGroup &group, int index);
-    void removeFromGroup();
+    void addToList(Editor *&editors);
+    void removeFromList(Editor *&editors);
+
+    EditorGroup *editorGroup() const { return m_editorGroup; }
+    int index() const { return m_index; }
+
+    void addToGroup(EditorGroup &group, int index)
+    {
+        m_group = group;
+        m_index = index;
+    }
+
+    void removeFromGroup()
+    {
+        m_group = NULL;
+        m_index = -1;
+    }
 
 private:
     /**

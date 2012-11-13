@@ -79,7 +79,7 @@ bool File::EditStack::mergePush(EditPrimitive *edit)
     return false;
 }
 
-std::pair<File *, Editor *> File::create(const char *uri, Project &project)
+std::pair<File *, Editor *> File::open(const char *uri, Project &project)
 {
     // Can't open an already opened file.
     assert(!Application::instance()->findFile(uri));

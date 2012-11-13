@@ -4,6 +4,7 @@
 #ifndef SMYD_WINDOW_HPP
 #define SMYD_WINDOW_HPP
 
+#include <boost/utility>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -12,7 +13,7 @@ namespace Samoyed
 /**
  * A window represents a top-level window.
  */
-class Window
+class Window: public boost::noncopyable
 {
 public:
     struct Configuration

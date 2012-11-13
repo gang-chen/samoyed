@@ -24,10 +24,10 @@ namespace Samoyed
 
 void FileSource::Loading::execute(FileSource &source)
 {
-    TextFileLoader loader;
-    loader.open(source.uri());
-    loader.read();
-    loader.close();
+    TextFileLoader loader(Worker::defaultPriorityInCurrentThread(),
+                          Worker::Callback(),
+                          source.uri());
+    loader.runAll();
     source.beginWrite(false, NULL, NULL, NULL);
     TextBuffer *buffer = loader.fetchBuffer();
     source.setBuffer(buffer);

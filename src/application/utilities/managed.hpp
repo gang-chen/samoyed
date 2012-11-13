@@ -4,6 +4,7 @@
 #ifndef SMYD_MANAGED_HPP
 #define SMYD_MANAGED_HPP
 
+#include <boost/utility>
 #include <assert.h>
 
 namespace Samoyed
@@ -20,7 +21,7 @@ template<class> class Manager;
  * @param Object The type of the actual managed objects.
  */
 template<class Object>
-class Managed
+class Managed: public boost::noncopyable
 {
 protected:
     Managed(unsigned long id,
