@@ -922,7 +922,7 @@ inline void makeSessionFileName(std::string &fileName)
 namespace Samoyed
 {
 
-bool Session::querySessionsInfo(std::vector<SessionInfo *> &sessionsInfo)
+bool Session::querySessionsInfo(std::vector<Information *> &sessionsInfo)
 {
     // List all sessions the sessions directory.
 
