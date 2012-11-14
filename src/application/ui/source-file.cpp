@@ -137,6 +137,7 @@ SourceFile::SourceFile(const char* uri):
     File(uri)
 {
     m_source = Application::instance()->fileSourceManager()->get(uri);
+    m_source->onFileOpen(*this);
 }
 
 SourceFile::~SourceFile()
