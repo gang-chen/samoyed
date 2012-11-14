@@ -31,9 +31,10 @@ class File;
  * The key of a file source is the URI of the file.  The scope of file sources
  * is global.
  *
- * When a file source is created, it will be loaded from the physical file
- * automatically.  If the file is opened, it will be updated with user edits
- * committed to the file automatically.
+ * When a file is opened, the file source will be also created and be
+ * automatically updated with user edits committed to the file.  In such a case,
+ * the file source is a mirror of the opened file, and cannot be loaded from the
+ * external file.
  */
 class FileSource: public Managed<FileSource>
 {
@@ -52,7 +53,8 @@ public:
 
     /**
      * Request to update the source by loading from the external file or the
-     * opened file.
+     * opened file.  The update will be done synchronously if we are in a
+     * background thread.
      */
     void update();
 
@@ -86,6 +88,8 @@ public:
      */
     void removeObserver(const boost::signals2::connection &connection);
 
+    void onFileOpen(const File &file);
+
     void onFileClose(const File &file);
 
     void onFileLoaded(const File &file, TextBuffer *buffer);
@@ -106,31 +110,31 @@ public:
 
 private:
     /**
-     * Change request.
+     * Write request.
      */
-    class Change
+    class Write
     {
     public:
-        virtual ~Change() {}
+        virtual ~Write() {}
         virtual bool incremental() const = 0;
         virtual void execute(FileSource &source) = 0;
     };
 
-    class Loading: public Change
+    class Loading: public Write
     {
     public:
         virtual bool incremental() const { return false; }
         virtual void execute(FileSource &source);
     };
 
-    class RevisionChange: public Change
+    class RevisionUpdate: public Write
     {
     public:
-        RevisionChange(const Revision &revision, const GError *error):
+        RevisionUpdate(const Revision &revision, const GError *error):
             m_revision(revision),
             m_error(g_error_copy(error))
         {}
-        virtual ~RevisionChange()
+        virtual ~RevisionUpdate()
         {
             if (m_error)
                 g_error_free(m_error);
@@ -143,7 +147,7 @@ private:
         GError *m_error;
     };
 
-    class Insertion: public Change
+    class Insertion: public Write
     {
     public:
         Insertion(const Revision &revision,
@@ -166,7 +170,7 @@ private:
         std::string m_text;
     };
 
-    class Removal: public Change
+    class Removal: public Write
     {
     public:
         Removal(const Revision &revision,
@@ -191,7 +195,7 @@ private:
         int m_endColumn;
     };
 
-    class Replacement: public Change
+    class Replacement: public Write
     {
     public:
         Replacement(const Revision **revision,
@@ -212,14 +216,14 @@ private:
     };
 
     /**
-     * Background worker that executes queued change requests.
+     * Background worker that executes queued write requests.
      */
-    class ChangeExecutionWorker: public Worker
+    class WriteExecutionWorker: public Worker
     {
     public:
-        ChangeExecutionWorker(unsigned int priority,
-                              const Callback &callback,
-                              FileSource &source):
+        WriteExecutionWorker(unsigned int priority,
+                             const Callback &callback,
+                             FileSource &source):
             Worker(priority, callback),
             m_source(&source)
         {}
@@ -244,15 +248,13 @@ private:
                   GError *error,
                   const Range &range);
 
-    void queueChange(Change *change);
+    void queueWrite(Writte *write);
 
-    void executeQueuedChanges();
+    void executeQueuedWrites();
 
-    void requestChange(Change *change);
+    void requestWrite(Write *write);
 
-    void onChangeWorkerDone(Worker &worker);
-
-    static gboolean updateInMainThread(gpointer param);
+    void onWriteWorkerDone(Worker &worker);
 
     void setBuffer(TextBuffer *buffer)
     {
@@ -274,18 +276,19 @@ private:
 
     mutable boost::mutex m_observerMutex;
 
-    /**
-     * Pending change request queue.
-     */
-    std::deque<Change *> m_changeQueue;
+    std::deque<Write *> m_writeQueue;
 
-    mutable boost::mutex m_changeQueueMutex;
+    mutable boost::mutex m_writeQueueMutex;
 
-    mutable boost::mutex m_changeExecutorMutex;
+    mutable boost::mutex m_writeExecutorMutex;
 
-    ChangeExecutionWorker *m_changeWorker;
+    WriteExecutionWorker *m_writeWorker;
 
-    mutable boost::mutex m_changeWorkerMutex;
+    mutable boost::mutex m_writeWorkerMutex;
+
+    const File *m_file;
+
+    mutable boost::mutex m_fileMutex;
 
     template<class> friend class Manager;
 };
