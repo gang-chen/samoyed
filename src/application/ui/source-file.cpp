@@ -1,4 +1,4 @@
-// Document.
+// Source file.
 // Copyright (C) 2012 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
