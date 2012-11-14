@@ -35,6 +35,10 @@ class Window;
 class Application: public boost::noncopyable
 {
 public:
+    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
+
+    typedef std::map<ComparablePointer<const char *>, File *> FileTable;
+
     Application();
 
     ~Application();
@@ -95,11 +99,15 @@ public:
 
     void removeProject(Project &project);
 
+    const ProjectTable &projectTable() const { return m_projectTable; }
+
     File *findFile(const char *uri) const;
 
     void addFile(File &file);
 
     void removeFile(File &file);
+
+    const FileTable &fileTable() const { return m_fileTable; }
 
     Window *window() const { return m_window; }
 
@@ -120,10 +128,6 @@ public:
     void onProjectClosed();
 
 private:
-    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
-
-    typedef std::map<ComparablePointer<const char *>, File *> FileTable;
-
     bool startUp();
 
     void shutDown();
