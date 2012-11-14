@@ -36,7 +36,7 @@ void FileSource::Loading::execute(FileSource &source)
                     Range(0, buffer->length()));
 }
 
-void FileSource::RevisionChange::execute(FileSource &source)
+void FileSource::RevisionUpdate::execute(FileSource &source)
 {
     source.beginWrite(false, NULL, NULL, NULL);
     source.endWrite(m_revision, m_error, Range());
@@ -90,9 +90,9 @@ void FileSource::Replacement::execute(FileSource &source)
     m_error = NULL;
 }
 
-bool FileSource::ChangeExecutionWorker::step()
+bool FileSource::WriteExecutionWorker::step()
 {
-    m_source->executeQueuedChanges();
+    m_source->executeQueuedWrites();
     return true;
 }
 
@@ -102,7 +102,8 @@ FileSource::FileSource(const Key &uri,
     Managed<FileSource>(serialNumber, mgr),
     m_uri(uri),
     m_error(NULL),
-    m_changeWorker(NULL)
+    m_writeWorker(NULL),
+    m_file(NULL)
 {
     m_buffer = new TextBuffer;
     update();
@@ -110,8 +111,9 @@ FileSource::FileSource(const Key &uri,
 
 FileSource::~FileSource()
 {
-    assert(m_changeQueue.empty());
-    assert(!m_changeWorker);
+    assert(m_writeQueue.empty());
+    assert(!m_writeWorker);
+    assert(!m_file);
     delete m_buffer;
     if (m_error)
         g_error_free(m_error);
@@ -217,84 +219,103 @@ void FileSource::endWrite(Revision &revision,
     m_observerMutex.unlock();
 }
 
-void FileSource::queueChange(Change *change)
+void FileSource::queueWrite(Write *write)
 {
-    boost::mutex::scoped_lock lock(m_changeQueueMutex);
-    if (!change->incremental())
+    boost::mutex::scoped_lock lock(m_writeQueueMutex);
+    if (!write->incremental())
     {
-        while (!m_changeQueue.empty())
+        while (!m_writeQueue.empty())
         {
-            Change *c = m_changeQueue.pop_front();
-            delete c;
+            Write *w = m_writeQueue.pop_front();
+            delete w;
         }
     }
-    m_changeQueue.push_back(change);
+    m_writeQueue.push_back(write);
 }
 
-void FileSource::executePendingChanges()
+void FileSource::executeQueuedWrites()
 {
-    boost::mutex::scoped_lock exeLock(m_changeExecutorMutex);
+    boost::mutex::scoped_lock exeLock(m_writeExecutorMutex);
     for (;;)
     {
-        std::deque<Change *> changes;
+        std::deque<Write *> writes;
         {
-            boost::mutex::scoped_lock queueLock(m_changeQueueMutex);
-            if (m_changeQueue.empty())
+            boost::mutex::scoped_lock queueLock(m_writeQueueMutex);
+            if (m_writeQueue.empty())
                 return;
-            changes.swap(m_changeQueue);
+            writes.swap(m_writeQueue);
         }
         do
         {
-            Change *c = changes.pop_front();
-            c->execute(*this);
-            delete c;
+            Write *w = writes.pop_front();
+            w->execute(*this);
+            delete w;
         }
-        while (!changes.empty());
+        while (!writes.empty());
     }
 }
 
-void FileSource::requestChange(Change *change)
+void FileSource::requestWrite(Write *write)
 {
-    assert(Application::instance()->inMainThread());
-    queueChange(change);
+    queueWrite(write);
 
-    // Since we are in the main thread, use a background worker to execute the
-    // change requests.
-    boost::mutex::scoped_lock workerLock(m_changeWorkerMutex);
-    if (!m_changeWorker)
+    if (Application::instance()->inMainThread())
     {
-        m_changeWorker = new
-            ChangeExecutionWorker(Worker::defaultPriorityInCurrentThread(),
-                                  boost::bind(&FileSource::onChangeWorkerDone,
-                                              this, _1),
-                                  *this);
-        Application::instance()->scheduler()->schedule(*m_changeWorker);
-    }
-}
-
-void FileSource::onChangeWorkerDone(Worker &worker)
-{
-    {
+        // If we are in the main thread, use a background worker to execute the
+        // queued write requests.
         boost::mutex::scoped_lock workerLock(m_changeWorkerMutex);
-        assert(&worker == &m_changeWorker);
-        boost::mutex::scoped_lock queueLock(m_changeQueueMutex);
-        if (!m_changeQueue.empty())
+        if (!m_writeWorker)
         {
-            // Some new change requests were queued.  Create a new background
-            // worker to execute them.
-            m_changeWorker = new ChangeExecutionWorker(
+            m_writeWorker = new ChangeExecutionWorker(
                 Worker::defaultPriorityInCurrentThread(),
-                boost::bind(&FileSource::onChangeWorkerDone, this, _1));
-            Application::instance()->scheduler()->schedule(*m_changeWorker);
+                boost::bind(&FileSource::onWriteWorkerDone, this, _1),
+                *this);
+            Application::instance()->scheduler()->schedule(*m_writeWorker);
+        }
+    }
+    else
+    {
+        // Execute the queued write requests in this background thread.
+        executeQueuedWrites();
+    }
+}
+
+void FileSource::onWriteWorkerDone(Worker &worker)
+{
+    {
+        boost::mutex::scoped_lock workerLock(m_writeWorkerMutex);
+        assert(&worker == &m_writeWorker);
+        boost::mutex::scoped_lock queueLock(m_writeQueueMutex);
+        if (!m_writeQueue.empty())
+        {
+            // Some new write requests were queued.  Create a new background
+            // worker to execute them.
+            m_writeWorker = new ChangeExecutionWorker(
+                Worker::defaultPriorityInCurrentThread(),
+                boost::bind(&FileSource::onWriteWorkerDone, this, _1),
+                *this);
+            Application::instance()->scheduler()->schedule(*m_writeWorker);
         }
         else
-            m_changeWorker = NULL;
+            m_writeWorker = NULL;
     }
     delete &worker;
 }
 
+void FileSource::onFileOpen(const File &file)
+{
+    boost::mutex::scoped_lock lock(m_fileMutex);
+    assert(!m_file);
+    m_file = &file;
+}
+
 void FileSource::onFileClose(const File &file)
 {
+    {
+        boost::mutex::scoped_lock lock(m_fileMutex);
+        assert(m_file == &file);
+        m_file = NULL;
+    }
     if (file.edited() || m_revision.zero())
     {
         // If the file was edited but the edits were discarded, or the file
@@ -302,7 +323,7 @@ void FileSource::onFileClose(const File &file)
         // to keep the source up-to-date even if the source isn't used by any
         // user because it may be cached.
         Loading *load = new Loading;
-        requestChange(load);
+        requestWrite(load);
     }
 }
 
@@ -311,14 +332,14 @@ void FileSource::onFileLoaded(const File &file, TextBuffer *buffer)
     Replacement *rep = new Replacement(file.revision(),
                                        file.ioError(),
                                        buffer);
-    requestChange(rep);
+    requestWrite(rep);
 }
 
 void FileSource::onFileSaved(const File &file)
 {
-    RevisionChange *revChange = new RevisionChange(file.revision(),
+    RevisionUpdate *revUpdate = new RevisionUpdate(file.revision(),
                                                    file.ioError());
-    requestChange(revChange);
+    requestWrite(revUpdate);
 }
 
 void FileSource::onFileTextInserted(const File &file,
@@ -329,7 +350,7 @@ void FileSource::onFileTextInserted(const File &file,
 {
     Insertion *ins =
         new Insertion(file.revision(), line, column, text, length);
-    requestChange(ins);
+    requestUpdate(ins);
 }
 
 void FileSource::onFileTextRemoved(const File &file,
@@ -343,38 +364,18 @@ void FileSource::onFileTextRemoved(const File &file,
                                beginColumn,
                                endLine,
                                endColumn);
-    requestChange(rem);
-}
-
-gboolean FileSource::updateInMainThread(gpointer param)
-{
-    WeakPointer<FileSource> *wp =
-        static_cast<WeakPointer<FileSource> *>(param);
-    ReferencePointer<FileSource> src =
-        Application::instance()->fileSourceManager()->get(*wp);
-    if (src)
-    {
-        // Check to see if the file is opened.  If so, we can stop here because
-        // the file is responsible for updating the source.
-        File *file = Application::instance()->findFile(uri());
-        if (!file)
-        {
-            Loading *load = new Loading;
-            requestChange(load);
-        }
-    }
-    delete wp;
-    return FALSE;
+    requestUpdate(rem);
 }
 
 void FileSource::update()
 {
-    // Delay the updating even if we are in the main thread so as to let the
-    // file, if newly created, register itself.
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(updateInMainThread),
-                    new WeakPointer<FileSource>(this),
-                    NULL);
+    boost::mutex::scoped_lock lock(m_fileMutex);
+    // Check to see if the file is opened.  If so, we can stop here because the
+    // the file is responsible for updating the source.
+    if (m_file)
+        return;
+    Loading *load = new Loading;
+    requestWrite(load);
 }
 
 }
