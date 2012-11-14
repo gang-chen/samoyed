@@ -5,6 +5,8 @@
 #define SMYD_SESSION_HPP
 
 #include <string>
+#include <vector>
+#include <sys/types.h>
 #include <boost/utility>
 
 namespace Samoyed
@@ -39,9 +41,20 @@ namespace Samoyed
 class Session: public boost::noncopyable
 {
 public:
+    struct Information
+    {
+        std::string m_name;
+        pid_t m_lockingProcessId;
+        bool m_lockedByThis;
+        bool m_lockedByOther;
+        bool m_hasUnsavedFile;
+    };
+
     static bool makeSessionsDirectory();
 
     static const char *lastSessionName();
+
+    static bool querySessionsInfo(std::vector<Information *> &sessionsInfo);
 
     ~Session();
 
@@ -68,18 +81,7 @@ public:
     void removeUnsavedFileUri(const char *uri);
 
 private:
-    static void makeLockFileName(std::string &fileName)
-    { fileName += G_DIR_SEPARATOR_S "lock"; }
-
-    static void makeUnsavedFilesFileName(std::string &fileName)
-    { fileName += G_DIR_SEPARATOR_S "unsaved-files"; }
-
-    static void makeSessionFileName(std::string &fileName)
-    { fileName += G_DIR_SEPARATOR_S "session.xml"; }
-
     Session(const char *name);
-
-    void makeDirectoryName(std::string &dirName) const;
 
     bool lock();
 
