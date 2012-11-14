@@ -22,6 +22,8 @@
 namespace
 {
 
+const int XML_INDENT_SIZE = 4;
+
 class ProjectRecord
 {
 public:
@@ -32,11 +34,11 @@ public:
         NULL,
         NULL
     };
-    static ProjectRecord *parse(const char *attrNames,
-                                const char *attrValues,
+    static ProjectRecord *parse(const char **attrNames,
+                                const char **attrValues,
                                 GError **error);
     static ProjectRecord *save(const Samoyed::Project &project);
-    bool restore() const;
+    Samoyed::Project *restore() const;
     bool write(FILE *file, int indentSize) const;
 
 private:
@@ -64,11 +66,11 @@ public:
         NULL,
         NULL
     };
-    static EditorRecord *parse(const char *attrNames,
-                               const char *attrValues,
+    static EditorRecord *parse(const char **attrNames,
+                               const char **attrValues,
                                GError **error);
     static EditorRecord *save(const Samoyed::Editor &editor);
-    void restore() const;
+    Samoyed::Editor *restore() const;
     bool write(FILE *file, int indentSize) const;
 
 private:
@@ -107,11 +109,11 @@ public:
         NULL,
         NULL
     };
-    static EditorGroupRecord *parse(const char *attrNames,
-                                    const char *attrValues,
+    static EditorGroupRecord *parse(const char **attrNames,
+                                    const char **attrValues,
                                     GError **error);
     static EditorGroupRecord *save(const Samoyed::EditorGroup &editorGroup);
-    bool restore() const;
+    Samoyed::EditorGroup *restore() const;
     bool write(FILE *file, int indentSize) const;
     ~EditorGroupRecord();
 
@@ -143,11 +145,11 @@ public:
         NULL,
         NULL
     };
-    static WindowRecord *parse(const char *attrNames,
-                               const char *attrValues,
+    static WindowRecord *parse(const char **attrNames,
+                               const char **attrValues,
                                GError **error);
     static WindowRecord *save(const Samoyed::Window &window);
-    bool restore() const;
+    Samoyed::Window *restore() const;
     bool write(FILE *file, int indentSize) const;
     ~WindowRecord();
 
@@ -155,7 +157,7 @@ private:
     WindowRecord(const Samoyed::Window::Configuration &config,
                  int currentEditorGroupIndex):
         m_configuration(config),
-        m_currentEditGroup(currentEditorGroupIndex)
+        m_currentEditGroupIndex(currentEditorGroupIndex)
     {}
     static void startElement(GMarkupParserContext *context,
                              const gchar *elemtName,
@@ -182,8 +184,8 @@ public:
         NULL,
         NULL
     };
-    static SessionRecord *parse(const char *attrNames,
-                                const char *attrValues,
+    static SessionRecord *parse(const char **attrNames,
+                                const char **attrValues,
                                 GError **error);
     static SessionRecord *save(const Samoyed::Session &session);
     bool restore() const;
@@ -216,13 +218,14 @@ bool indent(FILE *file, int indentSize)
     return true;
 }
 
-ProjectRecord *ProjectRecord::parse(const char *attrNames,
-                                    const char *attrValues)
+ProjectRecord *ProjectRecord::parse(const char **attrNames,
+                                    const char **attrValues,
+                                    GError **error)
 {
     const char *uri = NULL;
     for (; attrNames; ++attrNames, ++attrValues)
     {
-        if (strcmp(attrNames, "uri") == 0)
+        if (strcmp(*attrNames, "uri") == 0)
             uri = attrValues;
         else
         {
@@ -230,7 +233,7 @@ ProjectRecord *ProjectRecord::parse(const char *attrNames,
                         G_MARKUP_ERROR,
                         G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
                         _("Unknown attribute \"%s\""),
-                        attrNames);
+                        *attrNames);
             return NULL;
         }
     }
@@ -272,10 +275,10 @@ ProjectRecord *ProjectRecord::save(const Samoyed::Project &project)
     return new ProjectRecord(project.uri());
 }
 
-bool ProjectRecord::restore() const
+Samoyed::Project *ProjectRecord::restore() const
 {
     if (Samoyed::Application::instance()->findProject(m_uri.c_str()))
-        return false;
+        return NULL;
     return Samoyed::Project::open(m_uri.c_str());
 }
 
@@ -288,20 +291,21 @@ bool ProjectRecord::write(FILE *file, int indentSize) const
     return true;
 }
 
-EditorRecord *EditorRecord::parse(const char *attrName,
-                                  const char *attrValues)
+EditorRecord *EditorRecord::parse(const char **attrNames,
+                                  const char **attrValues,
+                                  GError **error)
 {
     const char *fileUri = NULL, *projectUri = NULL;
     int cursorLine = 0, cursorColumn = 0;
     for (; attrNames; ++attrNames, ++attrValues)
     {
-        if (strcmp(attrNames, "file-uri") == 0)
+        if (strcmp(*attrNames, "file-uri") == 0)
             fileUri = attrValues;
-        else if (strcmp(attrNames, "project-uri") == 0)
+        else if (strcmp(*attrNames, "project-uri") == 0)
             projectUri = attrValues;
-        else if (strcmp(attrName, "cursor-line") == 0)
+        else if (strcmp(*attrNames, "cursor-line") == 0)
             cursorLine = atoi(*attrValues);
-        else if (strcmp(attrName, "cursor-column") == 0)
+        else if (strcmp(*attrNames, "cursor-column") == 0)
             cursorColumn = atoi(*attrValues);
         else
         {
@@ -309,7 +313,7 @@ EditorRecord *EditorRecord::parse(const char *attrName,
                         G_MARKUP_ERROR,
                         G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
                         _("Unknown attribute \"%s\""),
-                        attrNames);
+                        *attrNames);
             return NULL;
         }
     }
@@ -361,7 +365,7 @@ EditorRecord *EditorRecord::save(const Samoyed::Editor &editor)
                             cursor.second);
 }
 
-bool EditorRecord::restore() const
+Samoyed::Editor *EditorRecord::restore() const
 {
     Samoyed::File *file = Samoyed::Application::instance()->
         findFind(m_fileUri.c_str());
@@ -369,7 +373,7 @@ bool EditorRecord::restore() const
         findProject(m_projectUri.c_str());
     Samoyed::Editor *editor;
     if (!project)
-        return false;
+        return NULL;
     if (file)
         return Samoyed::File::createEditor(project);
     return File::open(m_fileUri.c_str(), project).second;
@@ -393,22 +397,22 @@ bool EditorRecord::write(FILE *file, int indentSize) const
     return true;
 }
 
-EditorGroupRecord *EditorGroupRecord::parse(const char *attrNames,
-                                            const char *attrValues,
+EditorGroupRecord *EditorGroupRecord::parse(const char **attrNames,
+                                            const char **attrValues,
                                             GError **error)
 {
     int currentEditorIndex = 0;
     for (; attrNames; ++attrNames, ++attrValues)
     {
-        if (strcmp(attrNames, "current-editor") == 0)
-            currentEditorIndex = atoi(attrValues);
+        if (strcmp(*attrNames, "current-editor") == 0)
+            currentEditorIndex = atoi(*attrValues);
         else
         {
             g_set_error(error,
                         G_MARKUP_ERROR,
                         G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
                         _("Unknown attribute \"%s\""),
-                        attrName);
+                        *attrNames);
             return NULL;
         }
     }
@@ -460,20 +464,20 @@ EditorGroupRecord::save(const Samoyed::EditorGroup &editorGroup)
     return rec;
 }
 
-bool EditorGroupRecord::restore() const
+Samoyed::EditorGroup *EditorGroupRecord::restore() const
 {
-    EditorGroup *group = new EditorGroup;
+    Samoyed::EditorGroup *group = new Samoyed::EditorGroup;
     for (std::vector<EditorRecord *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
     {
-        Editor *editor = (*it)->restore();
+        Samoyed::Editor *editor = (*it)->restore();
         if (!editor)
         {
             delete group;
-            return false;
+            return NULL;
         }
-        group->addEditor(editor);
+        group->addEditor(*editor);
     }
     if (m_currentEditorIndex >= 0 &&
         m_currentEditorIndex < group->editorCount())
@@ -487,7 +491,7 @@ bool EditorGroupRecord::write(FILE *file, int indentSize) const
         return false;
     if (fprintf(file, "<editor-group>\n") < 0)
         return false;
-    indentSize += 4;
+    indentSize += XML_INDENT_SIZE;
     for (std::vector<EditorRecord *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
@@ -495,7 +499,7 @@ bool EditorGroupRecord::write(FILE *file, int indentSize) const
         if (!(*it)->write(file, indentSize))
             return false;
     }
-    indentSize -= 4;
+    indentSize -= XML_INDENT_SIZE;
     if (!indent(file, indentSize))
         return false;
     if (fprintf(file, "</editor-group>\n") < 0)
@@ -511,124 +515,229 @@ EditorGroupRecord::~EditorGroupRecord()
         delete *it;
 }
 
-void WindowInfo::startElement(GMarkupParserContext *context,
-                              const gchar *elemName,
-                              const gchar **attrNames,
-                              const gchar **attrValues,
-                              gpointer window,
-                              GError **error)
+WindowRecord *WindowRecord::parse(const char **attrNames,
+                                  const char **attrValues,
+                                  GError **error)
 {
-    WindowInfo *w = static_cast<WindowInfo *>(window);
+    Samoyed::Window::Configuration config;
+    int currentEditorGroupIndex = 0;
+    for (; attrNames; ++attrNames, ++attrValues)
+    {
+        if (strcmp(*attrNames, "x") == 0)
+            config.m_x = atoi(*attrValues);
+        else if (strcmp(*attrNames, "y") == 0)
+            config.m_y = atoi(*attrValues);
+        else if (strcmp(*attrNames, "width") == 0)
+            config.m_width = atoi(*attrValues);
+        else if (strcmp(*attrNames, "height") == 0)
+            config.m_height = atoi(*attrValues);
+        else if (strcmp(*attrNames, "full-screen") == 0)
+            config.m_fullScreen = atoi(*attrValues);
+        else if (strcmp(*attrNames, "maximized") == 0)
+            config.m_maximized = atoi(*attrValues)
+        else if (strcmp(*attrNames, "toolbar-visible") == 0)
+            config.m_toolbarVisible = atoi(*attrValues);
+        else if (strcmp(*attrNames, "current-editor-group") == 0)
+            currentEditorGroupIndex = atoi(*attrValues);
+        else
+        {
+            g_error_set(error,
+                        G_MARKUP_ERROR,
+                        G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
+                        _("Unknown attribute \"%s\""),
+                        *attrNames);
+            return NULL;
+        }
+    }
+    return new WindowRecord(config, currentEditorGroupIndex);
+}
+
+void WindowRecord::startElement(GMarkupParserContext *context,
+                                const gchar *elemName,
+                                const gchar **attrNames,
+                                const gchar **attrValues,
+                                gpointer window,
+                                GError **error)
+{
+    WindowRecord *w = static_cast<WindowRecord *>(window);
     if (strcmp(elemName, "editor-group") == 0)
     {
-        EditorGroupInfo *group = new EditorGroupInfo();
+        EditorGroupRecord *group =
+            EditorGroupRecord::parse(attrNames, attrValues, error);
+        if (!group)
+            return;
         w->m_editorGroups.push_back(group);
-        g_markup_parser_context_push(context, EditorGroupInfo::s_parser, group);
+        g_markup_parser_context_push(context,
+                                     EditorGroupRecord::s_parser,
+                                     group);
     }
     else
     {
         g_error_set(error,
                     G_MARKUP_ERROR,
                     G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                    _("Element 'editor-group' is expected but element '%s' was "
-                      "seen"),
+                    _("Unknown element \"%s\""),
                     elemName);
     }
 }
 
-void WindowIno::stopElement(GMarkupParserContext *context,
-                            const gchar *elemName,
-                            GError **error)
+void WindowRecord::stopElement(GMarkupParserContext *context,
+                               const gchar *elemName,
+                               GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-bool WindowInfo::write(FILE *file) const
+WindowRecord *WindowRecord::save(const Samoyed::Window &window)
 {
+    WindowRecord *rec =
+        new WindowRecord(window.currentEditorGroupIndex());
+    for (int i = 0; i < window.editorGroupCount(); ++i)
+        rec->m_editorGroups.push_back(
+            EditorGroupRecord::save(window.editorGroup(i)));
+    return rec;
+}
+
+Samoyed::Window *WindowRecord::restore() const
+{
+    if (Application::instance()->window())
+        return NULL;
+    Samoyed::Window *window = Samoyed::Window::create(&m_configuration);
+    for (std::vector<EditorGroupRecord *>::const_iterator it =
+            m_editorGroups.begin();
+         it != m_editorGroups.end();
+         ++it)
+    {
+        Samoyed::EditorGroup *group = (*it)->restore();
+        if (!group)
+        {
+            delete window;
+            return NULL;
+        }
+        window->addEditorGroup(*group);
+    }
+    if (m_currentEditorGroupIndex >= 0 &&
+        m_currentEditorGroupIndex < window->editorGroupCount())
+        window->setCurrentEditorGroupIndex(m_currentEditorGroupIndex);
+    return window;
+}
+
+bool WindowRecord::write(FILE *file, int indentSize) const
+{
+    if (!indent(file, indentSize))
+        return false;
     if (fprintf(file,
                 "<window"
-                " width=\"%d\""
-                " height=\"%d\""
                 " x=\"%d\""
                 " y=\"%d\""
+                " width=\"%d\""
+                " height=\"%d\""
                 " full-screen=\"%d\""
                 " maximized=\"%d\""
-                " toolbar-visible=\"%d\""
-                " side-panel-visible=\"%d\""
-                " side-panel-width=\"%d\">\n",
-                m_configuration.width,
-                m_configuration.height,
-                m_configuration.x,
-                m_configuration.y,
-                m_configuration.fullScreen,
-                m_configuration.maximized,
-                m_configuration.toolbarVisible,
-                m_configuration.sidePanelVisible,
-                m_configuration.sidePanelWidth) < 0)
+                " toolbar-visible=\"%d\">\n",
+                m_configuration.m_x,
+                m_configuration.m_y,
+                m_configuration.m_width,
+                m_configuration.m_height,
+                m_configuration.m_fullScreen,
+                m_configuration.m_maximized,
+                m_configuration.m_toolbarVisible) < 0)
         return false;
-    for (std::vector<EditorGroupInfo *>::const_iterator i =
+    indentSize += XML_INDENT_SIZE;
+    for (std::vector<EditorGroupRecord *>::const_iterator it =
             m_editorGroups.begin();
-         i != m_editorGroups.end();
-         ++i)
+         it != m_editorGroups.end();
+         ++it)
     {
-        if (!(*i)->write(file))
+        if (!(*it)->write(file, indentSize))
             return false;
     }
+    indentSize -= XML_INDENT_SIZE;
+    if (!indent(file, indentSize))
+        return false;
     if (fprintf(file, "</window>\n") < 0)
         return false;
     return true;
 }
 
-void WindowInfo::save(const Samoyed::Window &window)
+WindowRecord::~WindowRecord()
 {
-}
-
-void WindowInfo::restore() const
-{
-    Application::instance()->createWindow(&m_configuration);
-    for (std::vector<EditorGroupInfo *>::const_iterator i =
+    for (std::vector<EditorGroupRecord *>::const_iterator it =
             m_editorGroups.begin();
-         i != m_editorGroups.end();
-         ++i)
-        (*i)->restore();
+         it != m_editorGroups.end();
+         ++it)
+        delete *it;
 }
 
-void SessionInfo::startElement(GMarkupParserContext *context,
-                               const gchar *elemName,
-                               const gchar **attrNames,
-                               const gchar **attrValues,
-                               gpointer session,
-                               GError **error)
+SessionRecord *SessionRecord::parse(const char **attrNames,
+                                    const char **attrValues,
+                                    GError **error)
 {
-    SessionInfo *s = static_cast<SessionInfo *>(session);
-    if (strcmp(elemName, "window") == 0)
-    {
-        WindowInfo *window = new WindowInfo();
-        s->m_windows.push_back(window);
-        g_markup_parser_context_push(context, WindowInfo::s_parser, window);
-    }
-    else if (strcmp(elemName, "project") == 0)
-    {
-        ProjectInfo *project = new ProjectInfo();
-        s->m_projects.push_back(project);
-        g_markup_parser_context_push(context, ProjectInfo::s_parser, project);
-    }
-    else
+    if (attrNames)
     {
         g_error_set(error,
                     G_MARKUP_ERROR,
+                    G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
+                    _("Unknown attribute \"%s\""),
+                    *attrNames);
+        return NULL;
+    }
+    return new SessionRecord;
+}
+
+void SessionRecord::startElement(GMarkupParserContext *context,
+                                 const gchar *elemName,
+                                 const gchar **attrNames,
+                                 const gchar **attrValues,
+                                 gpointer session,
+                                 GError **error)
+{
+    SessionRecord *s = static_cast<SessionRecord *>(session);
+    if (strcmp(elemName, "project") == 0)
+    {
+        ProjectRecord *project = Project::parse(attrNames, attrValues, error);
+        if (!project)
+            return;
+        s->m_projects.push_back(project);
+        g_markup_parser_context_push(context, ProjectRecord:s_parser, project);
+    }
+    else if (strcmp(elemName, "window") == 0)
+    {
+        if (s->m_window)
+        {
+            g_set_error(error,
+                        G_MARKUP_ERROR,
+                        G_MARKUP_ERROR_UNKNOWN_ELEMENT,
+                        _("Multiple element \"window\""));
+            return;
+        }
+        WindowRecord *window =
+            WindowRecord::parse(attrNames, attrValues, error);
+        if (!window)
+            return;
+        s->m_window = window;
+        g_markup_parser_context_push(context, WindowRecord::s_parser, window);
+    }
+    else
+    {
+        g_set_error(error,
+                    G_MARKUP_ERROR,
                     G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                    "<window> or <project> is expected but <%s> is seen",
+                    _("Unknown element \"%s\""),
                     elemName);
     }
 }
 
-void SessionInfo::endElement(GMarkupParserContext *context,
-                             const gchar *elemName,
-                             gpointer session,
-                             GError **error)
+void SessionRecord::endElement(GMarkupParserContext *context,
+                               const gchar *elemName,
+                               gpointer session,
+                               GError **error)
 {
     g_markup_parser_context_pop(context);
+}
+
+SessionRecord *SessionRecord::save()
+{
 }
 
 bool SessionInfo::write(FILE *file) const
