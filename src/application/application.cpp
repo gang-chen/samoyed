@@ -18,8 +18,6 @@
 #ifdef ENABLE_NLS
 # include <libintl.h>
 #endif
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <boost/thread/thread.hpp>
 #include <glib.h>
 #include <gtk/gtk.h>
