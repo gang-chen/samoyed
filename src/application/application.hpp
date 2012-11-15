@@ -113,6 +113,8 @@ public:
 
     void setWindow(Window *window) { m_window = window; }
 
+    Session *session() const { return m_currentSession; }
+
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
 

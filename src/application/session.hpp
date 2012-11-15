@@ -13,48 +13,49 @@ namespace Samoyed
 {
 
 /**
- * A session can be restored so that the user can continue her work later.  The
- * state of a session, including the configuration of the top-level window, the
- * opened projects and the opened files, is stored in an XML file.
+ * A session can be saved and restored so that the user can quit the application
+ * and continue her work later.  The state of the session, including the
+ * configuration of the top-level window, the opened projects and the opened
+ * files, and the history of the session are stored in an XML file.
  *
  * A session is locked when it is active in an instance of the application.  A
- * lock file is created when a session starts.  The lock file is removed when
- * the session quits.  The lock file records the process ID.  The lock file may
- * exist after the session quits abnormally.
+ * lock file is created when the session starts.  The lock file is removed when
+ * the session ends.  The lock file records the process ID.
  *
  * A session can also be recovered from an abnormal process exit.  The URIs of
  * all edited and unsaved files in a session are recorded and all performed
  * edits are saved in replay files.  When the session is restored, these files
  * can be recovered by replaying the edits saved in the replay files.
-                                                                                
  *
  * The XML file, the lock file and the file recording the unsaved files for a
  * session are in a directory whose name is the session name.
- *
- * When a session is active, the lock file and the replay files exist.  If the
- * session quits normally, the lock file and the replay files will be removed.
- * If the session quits abnormally, the replay files will be kept, and the lock
- * file will be left.  When the lock file exists, we need to further check to
- * see if the locking process exits or not, and if not, the lock file should be
- * discarded.
  */
 class Session: public boost::noncopyable
 {
 public:
     struct Information
     {
+        Information(const char *name):
+            m_name(name),
+            m_lockingProcessId(0),
+            m_lockedByThis(false),
+            m_lockedByOther(false),
+            m_hasUnsavedFiles(false)
+        {}
         std::string m_name;
         pid_t m_lockingProcessId;
         bool m_lockedByThis;
         bool m_lockedByOther;
-        bool m_hasUnsavedFile;
+        bool m_hasUnsavedFiles;
     };
 
     static bool makeSessionsDirectory();
 
-    static const char *lastSessionName();
+    static void registerCrashHandler();
 
-    static bool querySessionsInfo(std::vector<Information *> &sessionsInfo);
+    static const char *lastSessionName() { return s_lastSessionName.c_str(); }
+
+    static bool querySessionsInfo(std::vector<Information> &sessionsInfo);
 
     ~Session();
 
@@ -73,7 +74,8 @@ public:
     static Session *restore(const char *name);
 
     /**
-     * Save this session.
+     * Save this session before quitting it.
+     * @return False iff the user cancels quitting the session.
      */
     bool save();
 
@@ -81,11 +83,9 @@ public:
     void removeUnsavedFileUri(const char *uri);
 
 private:
+    static void onCrashed(int signalNumber);
+
     Session(const char *name);
-
-    bool lock();
-
-    bool unlock();
 
     static std::string s_lastSessionName;
 

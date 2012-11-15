@@ -313,9 +313,11 @@ void Application::continueQuitting()
 
 void Application::quit()
 {
-    // Save the current session.
+    // Save the current session.  If the user cancels quitting the session,
+    // cancel quitting.
     assert(m_currentSession);
-    m_currentSession->save();
+    if (!m_currentSession->save())
+        return;
 
     // Request to close all opened projects.  If the user cancels closing a
     // project, cancel quitting.

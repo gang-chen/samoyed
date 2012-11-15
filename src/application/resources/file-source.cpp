@@ -48,6 +48,7 @@ void FileSource::Insertion::execute(FileSource &source)
     TextBuffer *buffer;
     GError *oldError;
     source.beginWrite(false, &buffer, NULL, &oldError);
+    assert(buffer);
     buffer->setLineColumn(m_line, m_column);
     buffer->insert(m_text.c_str(), m_text.length(), -1, -1);
     source.endWrite(m_revision,
@@ -61,6 +62,7 @@ void FileSource::Removal::execute(FileSource &source)
     TextBuffer *buffer;
     GError *oldError;
     source.beginWrite(false, &buffer, NULL, &oldError);
+    assert(buffer);
     buffer->setLineColumn(m_beginLine, m_beginColumn);
     int endByteOffset;
     buffer->transformLineColumnToByteOffset(m_endLine,
@@ -184,12 +186,7 @@ bool FileSource::beginWrite(bool trying,
         m_dataMutex.lock();
     }
     if (buffer)
-    {
-        // Create the text buffer lazily.
-        if (!m_buffer)
-            m_buffer = new TextBuffer;
         *buffer = m_buffer;
-    }
     if (revision)
         *revision = m_revision;
     if (error)

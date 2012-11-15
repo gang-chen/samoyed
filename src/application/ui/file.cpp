@@ -87,7 +87,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     if (!mimeType)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
+            Application::instance()->window()->gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -102,7 +102,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     if (!factory)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
+            Application::instance()->window()->gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -314,7 +314,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     if (file.m_ioError)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
+            Application::instance()->window()->gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -431,7 +431,7 @@ bool File::load(bool userRequest)
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
+            Application::instance()->window()->gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,

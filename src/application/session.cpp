@@ -11,9 +11,11 @@
 #include "ui/editor-group.hpp"
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
+#include "utilities/signal.hpp"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <string>
 #include <utility>
 #include <glib.h>
@@ -839,7 +841,7 @@ GMarkupParser parser =
     NULL
 };
 
-SessionRecord *load(const char *fileName, const char *sessionName)
+SessionRecord *readSessionFile(const char *fileName, const char *sessionName)
 {
     GError *error;
     char *text;
@@ -849,7 +851,8 @@ SessionRecord *load(const char *fileName, const char *sessionName)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
+            Application::instance()->window() ?
+            Application::instance()->window()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -876,7 +879,8 @@ SessionRecord *load(const char *fileName, const char *sessionName)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
+            Application::instance()->window() ?
+            Application::instance()->window()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -902,31 +906,112 @@ inline std::string sessionsDirectoryName()
     return dirName;
 }
 
-inline void makeLockFileName(std::string &fileName)
-{
-    fileName += G_DIR_SEPARATOR_S "lock";
-}
-
-inline void makeUnsavedFilesFileName(std::string &fileName)
-{
-    fileName += G_DIR_SEPARATOR_S "unsaved-files";
-}
-
-inline void makeSessionFileName(std::string &fileName)
-{
-    fileName += G_DIR_SEPARATOR_S "session.xml";
-}
-
 }
 
 namespace Samoyed
 {
 
-bool Session::querySessionsInfo(std::vector<Information *> &sessionsInfo)
+std::string Session::s_lastSessionName;
+
+bool Session::makeSessionsDirectory()
 {
+    std::string sessionsDirName = sessionsDirectoryName();
+    if (!g_file_test(sessionsDirName.c_str(), G_FILE_TEST_EXISTS))
+    {
+        if (g_mkdir(sessionsDirName.c_str(), 0755))
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to create directory \"%s\" to session "
+                  "information. %s."),
+                sessionsDirName.c_str(), g_strerror(errno));
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+    }
+    return true;
+}
+
+void Session::onCrashed(int signalNumber)
+{
+    // Remove the lock file.
+    Session *session = Application::instance()->session();
+    if (!session)
+        return;
+    unlockSession(*session);
+}
+
+void Session::registerCrashHandler()
+{
+    Signal::registerCrashHandler(onCrashed);
+}
+
+bool Session::querySessionsInfo(std::vector<Information> &sessionsInfo)
+{
+    GError *error = NULL;
+
     // List all sessions the sessions directory.
+    std::string sessionsDirName = sessionsDirectoryName();
+    GDir *dir = g_dir_open(sessionsDirName.c_str(), 0, &error);
+    if (error)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->window() ?
+            Application::instance()->window()->gtkWidget() : NULL,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open directory \"%s\" to read existing "
+              "sessions. %s."),
+            sessionsDirName.c_str(), error->message);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(error);
+        return false;
+    }
+    const char *sessionName;
+    while ((sessionName = g_dir_read_name(dir)))
+        sessionsInfo.push_back(Information(sessionName));
+    g_dir_close(dir);
 
     // For each session, query the information.
+    for (std::vector<Information>::const_iterator it = sessionsInfo.begin();
+         it != sessionsInfo.end();
+         ++it)
+    {
+        std::string sessionDirName = sessionsDirName + G_DIR_SEPARATOR_S +
+            it->m_name;
+        std::string lockFn = sessionDirName + "lock";
+        int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
+        if (lockFd == -1)
+        {
+            if (errno != ENOENT)
+            {
+                GtkWidget *dialog = gtk_message_dialog_new(
+                    Application::instance()->window() ?
+                    Application::instance()->window()->gtkWidget() : NULL,
+                    GTK_DIALOG_MODAL,
+                    GTK_MESSAGE_ERROR,
+                    GTK_BUTTONS_CLOSE,
+                    _("Samoyed failed to open lock file \"%s\". %s."),
+                    lockFn.c_str(), g_strerror(errno));
+                gtk_dialog_run(GTK_DIALOG(dialog));
+                gtk_widget_destroy(dialog);
+                return false;
+            }
+        }
+        else
+        {
+            char buffer[BUFSIZ];
+            int length = read(lockFd, buffer, sizeof(buffer) - 1);
+            if (length == -1)
+            {
+
+    }
 }
 
 Session::Session(const char *name):
