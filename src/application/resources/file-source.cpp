@@ -102,11 +102,10 @@ FileSource::FileSource(const Key &uri,
     Managed<FileSource>(serialNumber, mgr),
     m_uri(uri),
     m_error(NULL),
+    m_buffer(NULL),
     m_writeWorker(NULL),
     m_file(NULL)
 {
-    m_buffer = new TextBuffer;
-    update();
 }
 
 FileSource::~FileSource()
@@ -185,7 +184,12 @@ bool FileSource::beginWrite(bool trying,
         m_dataMutex.lock();
     }
     if (buffer)
+    {
+        // Create the text buffer lazily.
+        if (!m_buffer)
+            m_buffer = new TextBuffer;
         *buffer = m_buffer;
+    }
     if (revision)
         *revision = m_revision;
     if (error)
