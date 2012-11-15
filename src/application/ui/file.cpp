@@ -305,11 +305,6 @@ gboolean File::onLoadedInMainThread(gpointer param)
     file.resetEditCount();
     file.m_undoHistory.clear();
     file.m_redoHistory.clear();
-    if (file.m_superUndo)
-    {
-        delete file.m_superUndo;
-        file.m_superUndo = NULL;
-    }
     file.onLoaded(loader);
     file.m_loaded(file);
     delete &loader;
@@ -346,6 +341,9 @@ gboolean File::onSavedInMainThead(gpointer param)
     // If any error was encountered, report it.
     if (saver.error())
     {
+        if (file.m_ioError)
+            g_error_free(file.m_ioError);
+        file.m_ioError = saver.fetchError();
         file.onSaved(saver);
         file.m_saved(file);
         delete &saver;
