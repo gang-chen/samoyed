@@ -303,13 +303,6 @@ void FileSource::onWriteWorkerDone(Worker &worker)
     delete &worker;
 }
 
-void FileSource::onFileOpen(const File &file)
-{
-    boost::mutex::scoped_lock lock(m_fileMutex);
-    assert(!m_file);
-    m_file = &file;
-}
-
 void FileSource::onFileClose(const File &file)
 {
     {
@@ -330,6 +323,12 @@ void FileSource::onFileClose(const File &file)
 
 void FileSource::onFileLoaded(const File &file, TextBuffer *buffer)
 {
+    // Now the file becomes the only one who can update the source.
+    {
+        boost::mutex::scoped_lock lock(m_fileMutex);
+        assert(!m_file || m_file == &file);
+        m_file = &file;
+    }
     Replacement *rep = new Replacement(file.revision(),
                                        file.ioError(),
                                        buffer);
@@ -370,11 +369,13 @@ void FileSource::onFileTextRemoved(const File &file,
 
 void FileSource::update()
 {
-    boost::mutex::scoped_lock lock(m_fileMutex);
     // Check to see if the file is opened.  If so, we can stop here because the
     // the file is responsible for updating the source.
-    if (m_file)
-        return;
+    {
+        boost::mutex::scoped_lock lock(m_fileMutex);
+        if (m_file)
+            return;
+    }
     Loading *load = new Loading;
     requestWrite(load);
 }
