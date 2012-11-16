@@ -161,7 +161,7 @@ public:
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
      */
-    char *getText() const;
+    char *text() const;
 
     /**
      * @param beginLine The line number of the first character to be returned,
@@ -174,8 +174,8 @@ public:
      * returned, the character index, starting from 0.
      * @return The text contents, in a memory chunk allocated by GTK+.
      */
-    char *getText(int beginLine, int beginColumn,
-                  int endLine, int endColumn) const;
+    char *text(int beginLine, int beginColumn,
+               int endLine, int endColumn) const;
 
     /**
      * @param line The line number of the insertion position, starting from 0.
