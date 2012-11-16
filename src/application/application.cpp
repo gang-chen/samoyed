@@ -11,7 +11,7 @@
 #include "ui/file.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
-#include "ui/dialogs/
+#include "ui/dialogs/session-chooser-dialog.hpp"
 #include <assert.h>
 #include <utility>
 #include <string>
