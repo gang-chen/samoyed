@@ -137,7 +137,6 @@ SourceFile::SourceFile(const char* uri):
     File(uri)
 {
     m_source = Application::instance()->fileSourceManager()->get(uri);
-    m_source->onFileOpen(*this);
 }
 
 SourceFile::~SourceFile()
@@ -180,16 +179,16 @@ int SourceFile::lineCount() const
     return static_cast<SourceEditor *>(editors())->lineCount();
 }
 
-char *SourceFile::getText() const
+char *SourceFile::text() const
 {
-    return static_cast<SourceEditor *>(editors())->getText();
+    return static_cast<SourceEditor *>(editors())->text();
 }
 
-char *SourceFile::getText(int beginLine, int beginColumn,
-                          int endLine, int endColumn) const
+char *SourceFile::text(int beginLine, int beginColumn,
+                       int endLine, int endColumn) const
 {
     return static_cast<SourceEditor *>(editors())->
-        getText(beginLine, beginColumn, endLine, endColumn);
+        text(beginLine, beginColumn, endLine, endColumn);
 }
 
 void SourceFile::insert(int line, int column, const char *text, int length,
