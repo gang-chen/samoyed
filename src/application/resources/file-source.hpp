@@ -88,8 +88,6 @@ public:
      */
     void removeObserver(const boost::signals2::connection &connection);
 
-    void onFileOpen(const File &file);
-
     void onFileClose(const File &file);
 
     void onFileLoaded(const File &file, TextBuffer *buffer);
