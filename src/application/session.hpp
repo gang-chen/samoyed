@@ -14,9 +14,10 @@ namespace Samoyed
 
 /**
  * A session can be saved and restored so that the user can quit the application
- * and continue her work later.  The state of the session, including the
- * configuration of the top-level window, the opened projects and the opened
- * files, and the history of the session are stored in an XML file.
+ * and start the application to continue her work later.  The state of the
+ * session, including the configuration of the top-level window, the opened
+ * projects and the opened files, and the history of the session are stored in
+ * an XML file.
  *
  * A session is locked when it is active in an instance of the application.  A
  * lock file is created when the session starts.  The lock file is removed when
@@ -35,12 +36,16 @@ class Session: public boost::noncopyable
 public:
     struct Information
     {
-        Information(const char *name):
+        Information(const char *name,
+                    pid_t lockingPid,
+                    bool lockedByThis,
+                    bool lockedByOther,
+                    bool hasUnsavedFiles):
             m_name(name),
-            m_lockingProcessId(0),
-            m_lockedByThis(false),
-            m_lockedByOther(false),
-            m_hasUnsavedFiles(false)
+            m_lockingProcessId(lockingPid),
+            m_lockedByThis(lockedByThis),
+            m_lockedByOther(lockedByOther),
+            m_hasUnsavedFiles(hasUnsavedFiles)
         {}
         std::string m_name;
         pid_t m_lockingProcessId;
@@ -53,9 +58,11 @@ public:
 
     static void registerCrashHandler();
 
-    static const char *lastSessionName() { return s_lastSessionName.c_str(); }
+    static bool lastSessionName(std::string &name);
 
-    static bool querySessionsInfo(std::vector<Information> &sessionsInfo);
+    static bool allSessionNames(std::vector<std::string> &names);
+
+    static bool querySessionInfo(const char *name, Information &info);
 
     ~Session();
 
@@ -79,15 +86,13 @@ public:
      */
     bool save();
 
-    void addUnsavedFileUri(const char *uri);
-    void removeUnsavedFileUri(const char *uri);
+    bool addUnsavedFileUri(const char *uri);
+    bool removeUnsavedFileUri(const char *uri);
 
 private:
     static void onCrashed(int signalNumber);
 
     Session(const char *name);
-
-    static std::string s_lastSessionName;
 
     const std::string m_name;
 };
