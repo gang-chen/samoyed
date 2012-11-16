@@ -11,6 +11,7 @@
 #include "ui/file.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
+#include "ui/dialogs/
 #include <assert.h>
 #include <utility>
 #include <string>
@@ -237,9 +238,11 @@ int Application::run(int argc, char *argv[])
     {
         // By default restore the last session.  And if none, start a new
         // session.
-        const char *lastSessionName = Session::lastSessionName();
-        if (lastSessionName)
-            m_currentSession = Session::restore(lastSessionName);
+        std::string name;
+        if (Session::lastSessionName(name))
+            m_currentSession = Session::restore(name.c_str());
+        else
+            m_currentSession = Session::create(NULL);
     }
     while (!m_currentSession)
     {
