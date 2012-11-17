@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <sys/types.h>
 #include <boost/utility>
 
@@ -36,22 +37,10 @@ class Session: public boost::noncopyable
 public:
     struct Information
     {
-        Information(const char *name,
-                    pid_t lockingPid,
-                    bool lockedByThis,
-                    bool lockedByOther,
-                    bool hasUnsavedFiles):
-            m_name(name),
-            m_lockingProcessId(lockingPid),
-            m_lockedByThis(lockedByThis),
-            m_lockedByOther(lockedByOther),
-            m_hasUnsavedFiles(hasUnsavedFiles)
-        {}
-        std::string m_name;
         pid_t m_lockingProcessId;
         bool m_lockedByThis;
         bool m_lockedByOther;
-        bool m_hasUnsavedFiles;
+        std::set<std::string> m_unsavedFiles;
     };
 
     static bool makeSessionsDirectory();
@@ -70,6 +59,7 @@ public:
 
     /**
      * Create a new session and start it.
+     * @param name The new session name, or NULL to generate a unique name.
      */
     static Session *create(const char *name);
 
@@ -95,6 +85,8 @@ private:
     Session(const char *name);
 
     const std::string m_name;
+
+    std::set<std::string> m_unsavedFileUris;
 };
 
 }

@@ -53,8 +53,8 @@ public:
          * @param column The column number of the insertion position, the
          * character index, starting from 0.
          * @param text The text to be inserted.
-         * @param length The number of the bytes to be inserted, or -1 if
-         * inserting the text until '\0'.
+         * @param length The number of the bytes to be inserted, or -1 to insert
+         * the text until '\0'.
          */
         Insertion(int line, int column, const char *text, int length):
             EditPrimitive(TYPE_INSERTION),
@@ -129,8 +129,8 @@ public:
          * @param column The column number of the insertion position, the
          * character index, starting from 0.
          * @param text The text to be inserted.
-         * @param length The number of the bytes to be inserted, or -1 if
-         * inserting the text until '\0'.
+         * @param length The number of the bytes to be inserted, or -1 to insert
+         * the text until '\0'.
          */
         TempInsertion(int line, int column, const char *text, int length):
             EditPrimitive(TYPE_TEMP_INSERTION),
@@ -182,8 +182,8 @@ public:
      * @param column The column number of the insertion position, the
      * character index, starting from 0.
      * @param text The text to be inserted.
-     * @param length The number of the bytes to be inserted, or -1 if inserting
-     * the text until '\0'.
+     * @param length The number of the bytes to be inserted, or -1 to insert the
+     * text until '\0'.
      */
     void insert(int line, int column, const char *text, int length,
                 SourceEditor *committer);

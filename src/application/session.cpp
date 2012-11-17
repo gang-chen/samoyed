@@ -14,10 +14,11 @@
 #include "utilities/signal.hpp"
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 #include <errno.h>
+#include <string.h>
 #include <string>
 #include <utility>
+#include <unistd.h>
 #include <glib.h>
 #include <gtk/gtk.h>
 
@@ -26,7 +27,7 @@ namespace
 
 const int XML_INDENTATION_SIZE = 4;
 
-class ProjectRecord
+class XmlProject
 {
 public:
     static GMarkupParser s_parser =
@@ -36,15 +37,15 @@ public:
         NULL,
         NULL
     };
-    static ProjectRecord *parse(const char **attrNames,
-                                const char **attrValues,
-                                GError **error);
-    static ProjectRecord *save(const Samoyed::Project &project);
+    static XmlProject *parse(const char **attrNames,
+                             const char **attrValues,
+                             GError **error);
+    static XmlProject *save(const Samoyed::Project &project);
     Samoyed::Project *restore() const;
     bool write(FILE *file, int indentSize) const;
 
 private:
-    ProjectRecord(const char *uri): m_uri(uri) {}
+    XmlProject(const char *uri): m_uri(uri) {}
     static void startElement(GMarkupParserContext *context,
                              const gchar *elemtName,
                              const gchar **attrNames,
@@ -58,7 +59,7 @@ private:
     const std::string m_uri;
 };
 
-class EditorRecord
+class XmlEditor
 {
 public:
     static GMarkupParser s_parser =
@@ -68,18 +69,18 @@ public:
         NULL,
         NULL
     };
-    static EditorRecord *parse(const char **attrNames,
-                               const char **attrValues,
-                               GError **error);
-    static EditorRecord *save(const Samoyed::Editor &editor);
+    static XmlEditor *parse(const char **attrNames,
+                            const char **attrValues,
+                            GError **error);
+    static XmlEditor *save(const Samoyed::Editor &editor);
     Samoyed::Editor *restore() const;
     bool write(FILE *file, int indentSize) const;
 
 private:
-    EditorRecord(const char *fileUri,
-                 const char *projectUri,
-                 int lineNumber,
-                 int columnNumber):
+    XmlEditor(const char *fileUri,
+              const char *projectUri,
+              int lineNumber,
+              int columnNumber):
         m_fileUri(fileUri),
         m_projectUri(projectUri),
         m_cursorLine(cursorLine),
@@ -101,7 +102,7 @@ private:
     const int m_cursorColumn;
 };
 
-class EditorGroupRecord
+class XmlEditorGroup
 {
 public:
     static GMarkupParser s_parser =
@@ -111,16 +112,16 @@ public:
         NULL,
         NULL
     };
-    static EditorGroupRecord *parse(const char **attrNames,
-                                    const char **attrValues,
-                                    GError **error);
-    static EditorGroupRecord *save(const Samoyed::EditorGroup &editorGroup);
+    static XmlEditorGroup *parse(const char **attrNames,
+                                 const char **attrValues,
+                                 GError **error);
+    static XmlEditorGroup *save(const Samoyed::EditorGroup &editorGroup);
     Samoyed::EditorGroup *restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~EditorGroupRecord();
+    ~XmlEditorGroup();
 
 private:
-    EditorGroupRecord(int currentEditorIndex):
+    XmlEditorGroup(int currentEditorIndex):
         m_currentEditorIndex(currentEditorIndex)
     {}
     static void startElement(GMarkupParserContext *context,
@@ -134,10 +135,10 @@ private:
                            gpointer editorGroup,
                            GError **error);
     int m_currentEditorIndex;
-    std::vector<EditorRecord *> m_editors;
+    std::vector<XmlEditor *> m_editors;
 };
 
-class WindowRecord
+class XmlWindow
 {
 public:
     static GMarkupParser s_parser =
@@ -147,17 +148,17 @@ public:
         NULL,
         NULL
     };
-    static WindowRecord *parse(const char **attrNames,
-                               const char **attrValues,
-                               GError **error);
-    static WindowRecord *save(const Samoyed::Window &window);
+    static XmlWindow *parse(const char **attrNames,
+                            const char **attrValues,
+                            GError **error);
+    static XmlWindow *save(const Samoyed::Window &window);
     Samoyed::Window *restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~WindowRecord();
+    ~XmlWindow();
 
 private:
-    WindowRecord(const Samoyed::Window::Configuration &config,
-                 int currentEditorGroupIndex):
+    XmlWindow(const Samoyed::Window::Configuration &config,
+              int currentEditorGroupIndex):
         m_configuration(config),
         m_currentEditGroupIndex(currentEditorGroupIndex)
     {}
@@ -172,12 +173,12 @@ private:
                            gpointer window,
                            GError **error);
     Samoyed::Window::Configuration m_configuration;
-    std::vector<ProjectRecord *> m_projects;
+    std::vector<XmlProject *> m_projects;
     int m_currentEditGroupIndex;
-    std::vector<EditorGroupRecord *> m_editorGroups;
+    std::vector<XmlEditorGroup *> m_editorGroups;
 };
 
-class SessionRecord
+class XmlSession
 {
 public:
     static GMarkupParser s_parser =
@@ -187,16 +188,16 @@ public:
         NULL,
         NULL
     };
-    static SessionRecord *parse(const char **attrNames,
-                                const char **attrValues,
-                                GError **error);
-    static SessionRecord *save(const Samoyed::Session &session);
+    static XmlSession *parse(const char **attrNames,
+                             const char **attrValues,
+                             GError **error);
+    static XmlSession *save(const Samoyed::Session &session);
     bool restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~SessionRecord();
+    ~XmlSession();
 
 private:
-    SessionRecord(): m_window(NULL) {}
+    XmlSession(): m_window(NULL) {}
     static void startElement(GMarkupParserContext *context,
                              const gchar *elemtName,
                              const gchar **attrNames,
@@ -207,7 +208,7 @@ private:
                            const gchar *elemName,
                            gpointer session,
                            GError **error);
-    WindowRecord *m_window;
+    XmlWindow *m_window;
 };
 
 bool indent(FILE *file, int indentSize)
@@ -220,9 +221,9 @@ bool indent(FILE *file, int indentSize)
     return true;
 }
 
-ProjectRecord *ProjectRecord::parse(const char **attrNames,
-                                    const char **attrValues,
-                                    GError **error)
+XmlProject *XmlProject::parse(const char **attrNames,
+                              const char **attrValues,
+                              GError **error)
 {
     const char *uri = NULL;
     for (; attrNames; ++attrNames, ++attrValues)
@@ -247,15 +248,15 @@ ProjectRecord *ProjectRecord::parse(const char **attrNames,
                     _("Missing attribute \"uri\""));
         return NULL;
     }
-    return new ProjectRecord(uri);
+    return new XmlProject(uri);
 }
 
-void ProjectRecord::startElement(GMarkupParserContext *context,
-                                 const gchar *elemName,
-                                 const gchar **attrNames,
-                                 const gchar **attrValues,
-                                 gpointer project,
-                                 GError **error)
+void XmlProject::startElement(GMarkupParserContext *context,
+                              const gchar *elemName,
+                              const gchar **attrNames,
+                              const gchar **attrValues,
+                              gpointer project,
+                              GError **error)
 {
 
     g_set_error(error,
@@ -265,26 +266,26 @@ void ProjectRecord::startElement(GMarkupParserContext *context,
                 elemName);
 }
 
-void ProjectRecord::stopElement(GMarkupParserContext *context,
-                                const gchar *elemName,
-                                gpointer project,
-                                GError **error)
+void XmlProject::stopElement(GMarkupParserContext *context,
+                             const gchar *elemName,
+                             gpointer project,
+                             GError **error)
 {
 }
 
-ProjectRecord *ProjectRecord::save(const Samoyed::Project &project)
+XmlProject *XmlProject::save(const Samoyed::Project &project)
 {
-    return new ProjectRecord(project.uri());
+    return new XmlProject(project.uri());
 }
 
-Samoyed::Project *ProjectRecord::restore() const
+Samoyed::Project *XmlProject::restore() const
 {
     if (Samoyed::Application::instance()->findProject(m_uri.c_str()))
         return NULL;
     return Samoyed::Project::open(m_uri.c_str());
 }
 
-bool ProjectRecord::write(FILE *file, int indentSize) const
+bool XmlProject::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -293,9 +294,9 @@ bool ProjectRecord::write(FILE *file, int indentSize) const
     return true;
 }
 
-EditorRecord *EditorRecord::parse(const char **attrNames,
-                                  const char **attrValues,
-                                  GError **error)
+XmlEditor *XmlEditor::parse(const char **attrNames,
+                            const char **attrValues,
+                            GError **error)
 {
     const char *fileUri = NULL, *projectUri = NULL;
     int cursorLine = 0, cursorColumn = 0;
@@ -335,15 +336,15 @@ EditorRecord *EditorRecord::parse(const char **attrNames,
                     _("Missing attribute \"project-uri\""));
         return NULL;
     }
-    return new EditorRecord(fileUri, projectUri, cursorLine, cursorColumn);
+    return new XmlEditor(fileUri, projectUri, cursorLine, cursorColumn);
 }
 
-void EditorRecord::startElement(GMarkupParserContext *context,
-                                const gchar *elemName,
-                                const gchar **attrNames,
-                                const gchar **attrValues,
-                                gpointer editor,
-                                GError **error)
+void XmlEditor::startElement(GMarkupParserContext *context,
+                             const gchar *elemName,
+                             const gchar **attrNames,
+                             const gchar **attrValues,
+                             gpointer editor,
+                             GError **error)
 {
     g_set_error(error,
                 G_MARKUP_ERROR,
@@ -352,22 +353,22 @@ void EditorRecord::startElement(GMarkupParserContext *context,
                 elemName);
 }
 
-void EditorRecord::stopElement(GMarkupParserContext *context,
-                               const gchar *elemName,
-                               gpointer editor,
-                               GError **error)
+void XmlEditor::stopElement(GMarkupParserContext *context,
+                            const gchar *elemName,
+                            gpointer editor,
+                            GError **error)
 {
 }
 
-EditorRecord *EditorRecord::save(const Samoyed::Editor &editor)
+XmlEditor *XmlEditor::save(const Samoyed::Editor &editor)
 {
     std::pair<int, int> cursor = editor.cursor();
-    return new EditorRecord(editor.file().uri(),
-                            cursor.first,
-                            cursor.second);
+    return new XmlEditor(editor.file().uri(),
+                         cursor.first,
+                         cursor.second);
 }
 
-Samoyed::Editor *EditorRecord::restore() const
+Samoyed::Editor *XmlEditor::restore() const
 {
     Samoyed::Project *project = Samoyed::Application::instance()->
         findProject(m_projectUri.c_str());
@@ -380,7 +381,7 @@ Samoyed::Editor *EditorRecord::restore() const
     return File::open(m_fileUri.c_str(), *project).second;
 }
 
-bool EditorRecord::write(FILE *file, int indentSize) const
+bool XmlEditor::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -398,9 +399,9 @@ bool EditorRecord::write(FILE *file, int indentSize) const
     return true;
 }
 
-EditorGroupRecord *EditorGroupRecord::parse(const char **attrNames,
-                                            const char **attrValues,
-                                            GError **error)
+XmlEditorGroup *XmlEditorGroup::parse(const char **attrNames,
+                                      const char **attrValues,
+                                      GError **error)
 {
     int currentEditorIndex = 0;
     for (; attrNames; ++attrNames, ++attrValues)
@@ -417,25 +418,25 @@ EditorGroupRecord *EditorGroupRecord::parse(const char **attrNames,
             return NULL;
         }
     }
-    return new EditorGroupRecord(currentEditorIndex);
+    return new XmlEditorGroup(currentEditorIndex);
 }
 
-void EditorGroupRecord::startElement(GMarkupParserContext *context,
-                                     const gchar *elemName,
-                                     const gchar **attrNames,
-                                     const gchar **attrValues,
-                                     gpointer editorGroup,
-                                     GError **error)
+void XmlEditorGroup::startElement(GMarkupParserContext *context,
+                                  const gchar *elemName,
+                                  const gchar **attrNames,
+                                  const gchar **attrValues,
+                                  gpointer editorGroup,
+                                  GError **error)
 {
-    EditorGroupRecord *g = static_cast<EditorGroupRecord *>(editorGroup);
+    XmlEditorGroup *g = static_cast<XmlEditorGroup *>(editorGroup);
     if (strcmp(elemName, "editor") == 0)
     {
-        EditorRecord *editor =
-            EditorRecord::parse(attrNames, attrValues, error);
+        XmlEditor *editor =
+            XmlEditor::parse(attrNames, attrValues, error);
         if (!editor)
             return;
         g->m_editors.push_back(editor);
-        g_markup_parser_context_push(context, EditorRecord::s_parser, editor);
+        g_markup_parser_context_push(context, XmlEditor::s_parser, editor);
     }
     else
     {
@@ -447,28 +448,28 @@ void EditorGroupRecord::startElement(GMarkupParserContext *context,
     }
 }
 
-void EditorGroupRecord::stopElement(GMarkupParserContext *context,
-                                    const gchar *elemName,
-                                    gpointer editorGroup,
-                                    GError **error)
+void XmlEditorGroup::stopElement(GMarkupParserContext *context,
+                                 const gchar *elemName,
+                                 gpointer editorGroup,
+                                 GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-EditorGroupRecord *
-EditorGroupRecord::save(const Samoyed::EditorGroup &editorGroup)
+XmlEditorGroup *
+XmlEditorGroup::save(const Samoyed::EditorGroup &editorGroup)
 {
-    EditorGroupRecord *rec =
-        new EditorGroupRecord(editorGroup.currentEditorIndex());
+    XmlEditorGroup *rec =
+        new XmlEditorGroup(editorGroup.currentEditorIndex());
     for (int i = 0; i < editorGroup.editorCount(); ++i)
-        rec->m_editors.push_back(EditorRecord::save(editorGroup.editor(i)));
+        rec->m_editors.push_back(XmlEditor::save(editorGroup.editor(i)));
     return rec;
 }
 
-Samoyed::EditorGroup *EditorGroupRecord::restore() const
+Samoyed::EditorGroup *XmlEditorGroup::restore() const
 {
     Samoyed::EditorGroup *group = new Samoyed::EditorGroup;
-    for (std::vector<EditorRecord *>::const_iterator it = m_editors.begin();
+    for (std::vector<XmlEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
     {
@@ -486,14 +487,14 @@ Samoyed::EditorGroup *EditorGroupRecord::restore() const
     return group;
 }
 
-bool EditorGroupRecord::write(FILE *file, int indentSize) const
+bool XmlEditorGroup::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
     if (fprintf(file, "<editor-group>\n") < 0)
         return false;
     indentSize += XML_INDENTATION_SIZE;
-    for (std::vector<EditorRecord *>::const_iterator it = m_editors.begin();
+    for (std::vector<XmlEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
     {
@@ -508,17 +509,17 @@ bool EditorGroupRecord::write(FILE *file, int indentSize) const
     return true;
 }
 
-EditorGroupRecord::~EditorGroupRecord()
+XmlEditorGroup::~XmlEditorGroup()
 {
-    for (std::vector<EditorRecord *>::const_iterator it = m_editors.begin();
+    for (std::vector<XmlEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
         delete *it;
 }
 
-WindowRecord *WindowRecord::parse(const char **attrNames,
-                                  const char **attrValues,
-                                  GError **error)
+XmlWindow *XmlWindow::parse(const char **attrNames,
+                            const char **attrValues,
+                            GError **error)
 {
     Samoyed::Window::Configuration config;
     int currentEditorGroupIndex = 0;
@@ -550,34 +551,34 @@ WindowRecord *WindowRecord::parse(const char **attrNames,
             return NULL;
         }
     }
-    return new WindowRecord(config, currentEditorGroupIndex);
+    return new XmlWindow(config, currentEditorGroupIndex);
 }
 
-void WindowRecord::startElement(GMarkupParserContext *context,
-                                const gchar *elemName,
-                                const gchar **attrNames,
-                                const gchar **attrValues,
-                                gpointer window,
-                                GError **error)
+void XmlWindow::startElement(GMarkupParserContext *context,
+                             const gchar *elemName,
+                             const gchar **attrNames,
+                             const gchar **attrValues,
+                             gpointer window,
+                             GError **error)
 {
-    WindowRecord *w = static_cast<WindowRecord *>(window);
+    XmlWindow *w = static_cast<XmlWindow *>(window);
     if (strcmp(elemName, "project") == 0)
     {
-        ProjectRecord *project = Project::parse(attrNames, attrValues, error);
+        XmlProject *project = Project::parse(attrNames, attrValues, error);
         if (!project)
             return;
         w->m_projects.push_back(project);
-        g_markup_parser_context_push(context, ProjectRecord:s_parser, project);
+        g_markup_parser_context_push(context, XmlProject:s_parser, project);
     }
     else if (strcmp(elemName, "editor-group") == 0)
     {
-        EditorGroupRecord *group =
-            EditorGroupRecord::parse(attrNames, attrValues, error);
+        XmlEditorGroup *group =
+            XmlEditorGroup::parse(attrNames, attrValues, error);
         if (!group)
             return;
         w->m_editorGroups.push_back(group);
         g_markup_parser_context_push(context,
-                                     EditorGroupRecord::s_parser,
+                                     XmlEditorGroup::s_parser,
                                      group);
     }
     else
@@ -590,38 +591,38 @@ void WindowRecord::startElement(GMarkupParserContext *context,
     }
 }
 
-void WindowRecord::stopElement(GMarkupParserContext *context,
-                               const gchar *elemName,
-                               GError **error)
+void XmlWindow::stopElement(GMarkupParserContext *context,
+                            const gchar *elemName,
+                            GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-WindowRecord *WindowRecord::save(const Samoyed::Window &window)
+XmlWindow *XmlWindow::save(const Samoyed::Window &window)
 {
-    WindowRecord *rec =
-        new WindowRecord(window.currentEditorGroupIndex());
+    XmlWindow *rec =
+        new XmlWindow(window.currentEditorGroupIndex());
     const Samoyed::Application::ProjectTable &projects =
         Samoyed::Application::instance()->projectTable();
     for (Samoyed::Application::ProjectTable::const_iterator it =
             projects.begin();
          it != projects.end();
          ++it)
-        rec->m_projects.push_back(ProjectRecord::save(*it->second));
+        rec->m_projects.push_back(XmlProject::save(*it->second));
     for (int i = 0; i < window.editorGroupCount(); ++i)
         rec->m_editorGroups.push_back(
-            EditorGroupRecord::save(window.editorGroup(i)));
+            XmlEditorGroup::save(window.editorGroup(i)));
     return rec;
 }
 
-Samoyed::Window *WindowRecord::restore() const
+Samoyed::Window *XmlWindow::restore() const
 {
     if (Application::instance()->window())
         return NULL;
     Samoyed::Window *window = Samoyed::Window::create(&m_configuration);
     if (!window)
         return NULL;
-    for (std::vector<ProjectRecord *>::const_iterator it = m_projects.begin();
+    for (std::vector<XmlProject *>::const_iterator it = m_projects.begin();
          it != m_projects.end();
          ++it)
     {
@@ -632,7 +633,7 @@ Samoyed::Window *WindowRecord::restore() const
             return NULL;
         }
     }
-    for (std::vector<EditorGroupRecord *>::const_iterator it =
+    for (std::vector<XmlEditorGroup *>::const_iterator it =
             m_editorGroups.begin();
          it != m_editorGroups.end();
          ++it)
@@ -651,7 +652,7 @@ Samoyed::Window *WindowRecord::restore() const
     return window;
 }
 
-bool WindowRecord::write(FILE *file, int indentSize) const
+bool XmlWindow::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -673,15 +674,15 @@ bool WindowRecord::write(FILE *file, int indentSize) const
                 m_configuration.m_toolbarVisible) < 0)
         return false;
     indentSize += XML_INDENTATION_SIZE;
-    for (std::vector<ProjectRecord *>::const_iterator it = m_projects.begin();
+    for (std::vector<XmlProject *>::const_iterator it = m_projects.begin();
          it != m_projects.end();
          ++it)
     {
         if (!(*it)->write(file, indentSize))
             return false;
     }
-    for (std::vector<EditorGroupRecord *>::const_iterator it =
-            m_editorGroups.begin();
+    for (std::vector<XmlEditorGroup *>::const_iterator it =
+             m_editorGroups.begin();
          it != m_editorGroups.end();
          ++it)
     {
@@ -696,22 +697,22 @@ bool WindowRecord::write(FILE *file, int indentSize) const
     return true;
 }
 
-WindowRecord::~WindowRecord()
+XmlWindow::~XmlWindow()
 {
-    for (std::vector<ProjectRecord *>::const_iterator it = m_projects.begin();
+    for (std::vector<XmlProject *>::const_iterator it = m_projects.begin();
          it != m_projects.end();
          ++it)
         delete *it;
-    for (std::vector<EditorGroupRecord *>::const_iterator it =
+    for (std::vector<XmlEditorGroup *>::const_iterator it =
             m_editorGroups.begin();
          it != m_editorGroups.end();
          ++it)
         delete *it;
 }
 
-SessionRecord *SessionRecord::parse(const char **attrNames,
-                                    const char **attrValues,
-                                    GError **error)
+XmlSession *XmlSession::parse(const char **attrNames,
+                              const char **attrValues,
+                              GError **error)
 {
     if (attrNames)
     {
@@ -722,17 +723,17 @@ SessionRecord *SessionRecord::parse(const char **attrNames,
                     *attrNames);
         return NULL;
     }
-    return new SessionRecord;
+    return new XmlSession;
 }
 
-void SessionRecord::startElement(GMarkupParserContext *context,
-                                 const gchar *elemName,
-                                 const gchar **attrNames,
-                                 const gchar **attrValues,
-                                 gpointer session,
-                                 GError **error)
+void XmlSession::startElement(GMarkupParserContext *context,
+                              const gchar *elemName,
+                              const gchar **attrNames,
+                              const gchar **attrValues,
+                              gpointer session,
+                              GError **error)
 {
-    SessionRecord *s = static_cast<SessionRecord *>(session);
+    XmlSession *s = static_cast<XmlSession *>(session);
     if (strcmp(elemName, "window") == 0)
     {
         if (s->m_window)
@@ -743,12 +744,12 @@ void SessionRecord::startElement(GMarkupParserContext *context,
                         _("Multiple element \"window\""));
             return;
         }
-        WindowRecord *window =
-            WindowRecord::parse(attrNames, attrValues, error);
+        XmlWindow *window =
+            XmlWindow::parse(attrNames, attrValues, error);
         if (!window)
             return;
         s->m_window = window;
-        g_markup_parser_context_push(context, WindowRecord::s_parser, window);
+        g_markup_parser_context_push(context, XmlWindow::s_parser, window);
     }
     else
     {
@@ -760,30 +761,30 @@ void SessionRecord::startElement(GMarkupParserContext *context,
     }
 }
 
-void SessionRecord::endElement(GMarkupParserContext *context,
-                               const gchar *elemName,
-                               gpointer session,
-                               GError **error)
+void XmlSession::endElement(GMarkupParserContext *context,
+                            const gchar *elemName,
+                            gpointer session,
+                            GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-SessionRecord *SessionRecord::save()
+XmlSession *XmlSession::save()
 {
-    SessionRecord *rec = new SessionRecord;
-    rec->m_window = WindowRecord::save(
+    XmlSession *rec = new XmlSession;
+    rec->m_window = XmlWindow::save(
         *Samoyed::Application::instance()->window());
     return rec;
 }
 
-bool SessionRecord::restore() const
+bool XmlSession::restore() const
 {
     if (!m_window->restore())
         return false;
     return true;
 }
 
-bool SessionRecord::write(FILE *file, int indentSize) const
+bool XmlSession::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -841,7 +842,7 @@ GMarkupParser parser =
     NULL
 };
 
-SessionRecord *readSessionFile(const char *fileName, const char *sessionName)
+XmlSession *readSessionFile(const char *fileName, const char *sessionName)
 {
     GError *error;
     char *text;
@@ -865,7 +866,7 @@ SessionRecord *readSessionFile(const char *fileName, const char *sessionName)
         return NULL;
     }
 
-    SessionRecord *session = NULL;
+    XmlSession *session = NULL;
     GMarkupParseContext *context =
         g_markup_parse_context_new(&parser,
                                    G_MARKUP_PREFIX_ERROR_POSITION,
@@ -899,11 +900,178 @@ SessionRecord *readSessionFile(const char *fileName, const char *sessionName)
     return session;
 }
 
-inline std::string sessionsDirectoryName()
+bool writeLastSessionName(const char *name)
 {
-    std::string dirName = Application::instance()->userDirectoryName();
-    dirName += G_DIR_SEPARATOR_S "sessions";
-    return dirName;
+    std::string fileName(Application::instance()->userDirectoryName());
+    fileName += G_DIR_SEPARATOR_S "last-session";
+    int fd = g_open(fileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1)
+        return false;
+    if (write(fd, name, strlen(name)) == -1)
+    {
+        close(fd);
+        return false;
+    }
+    close(fd);
+    return true;
+}
+
+bool readUnsavedFileList(const char *fileName,
+                         const char *sessionName,
+                         std::set<std::string> &unsavedFiles)
+{
+    GError *error = NULL;
+    char *text;
+    int textLength;
+    g_file_get_contents(fileName, &text, &textLength, &error);
+    if (error)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->window() ?
+            Application::instance()->window()->gtkWidget() : NULL,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to read file \"%s\" to list unsaved files for "
+              "session \"%s\". %s."),
+            fileName, sessionName, error->message);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(error);
+        return false;
+    }
+
+    for (char *cp = strtok(text, " \t\r\n"); cp; cp = strtok(NULL, " \t\r\n"))
+        unsavedFiles.insert(cp);
+    g_free(text);
+    return true;
+}
+
+bool lockSession(const char *name)
+{
+    std::string lockFn(Application::instance()->userDirectoryName());
+    lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    lockFn += name;
+
+    int lockFd = g_open(lockFn.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if (lockFd == -1)
+    {
+        if (errno != EEXIST)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to create lock file \"%s\" to lock session "
+                  "\"%s\". %s."),
+                lockFn.c_str(), name, g_strerror(errno));
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+        }
+        // Read the locking process ID.
+        int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
+        if (lockFd == -1)
+        {
+            if (errno == ENOENT)
+            {
+                m_lockingPid = 0;
+                goto RETRY;
+            }
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to open lock file '%s': %s."),
+                lockFn.c_str(), g_strerror(errno));
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+
+        char buffer[100];
+        int length = read(lockFd, buffer, sizeof(buffer) - 1);
+        if (length == -1)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to read lock file '%s': %s."),
+                lockFn.c_str(), g_strerror(errno));
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            close(lockFd);
+            return false;
+        }
+        close(lockFd);
+        if (length == 0)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Lock file '%s' is empty. It is expected to record the "
+                  "locking process identifier of session '%s'."),
+                lockFn.c_str(), name());
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+        buffer[length] = '\0';
+        m_lockingPid = atoi(buffer);
+        if (m_lockingPid <= 0)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Lock file '%s' does not record a valid process identifier. "
+                  "It is expected to record the locking process identifier of "
+                  "session '%s'."),
+                lockFn.c_str(), name());
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+        return false;
+    }
+
+    char buffer[BUFSIZ];
+    int length = snprintf(buffer, BUFSIZ, "%d", getpid());
+    length = write(lockFd, buffer, length);
+    if (length == -1)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->window() ?
+            Application::instance()->window()->gtkWidget() : NULL,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to create lock file '%s' to lock session "
+              "'%s': %s."),
+            lockFn.c_str(), name(), g_strerror(errno));
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        close(lockFd);
+        // Remove the lock file.
+        g_unlink(lockFn.c_str());
+    }
+    close(lockFd);
+    return true;
+}
+
+void unlockSession(const char *name)
+{
+    std::string lockFn(Application::instance()->userDirectoryName());
+    lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    lockFn += name;
+    g_unlink(lockFn.c_str());
 }
 
 }
@@ -911,11 +1079,10 @@ inline std::string sessionsDirectoryName()
 namespace Samoyed
 {
 
-std::string Session::s_lastSessionName;
-
 bool Session::makeSessionsDirectory()
 {
-    std::string sessionsDirName = sessionsDirectoryName();
+    std::string sessionsDirName(Application::instance()->userDirectoryName());
+    sessionsDirName += G_DIR_SEPARATOR_S "sessions";
     if (!g_file_test(sessionsDirName.c_str(), G_FILE_TEST_EXISTS))
     {
         if (g_mkdir(sessionsDirName.c_str(), 0755))
@@ -938,11 +1105,12 @@ bool Session::makeSessionsDirectory()
 
 void Session::onCrashed(int signalNumber)
 {
-    // Remove the lock file.
+    // Remove the lock file and set the last session name.
     Session *session = Application::instance()->session();
     if (!session)
         return;
     unlockSession(*session);
+    writeLastSessionName(session->name());
 }
 
 void Session::registerCrashHandler()
@@ -950,12 +1118,30 @@ void Session::registerCrashHandler()
     Signal::registerCrashHandler(onCrashed);
 }
 
-bool Session::querySessionsInfo(std::vector<Information> &sessionsInfo)
+bool Session::lastSessionName(std::string &name)
 {
-    GError *error = NULL;
+    // Read file "last-session".
+    std::string fileName(Application::instance()->userDirectoryName());
+    fileName += G_DIR_SEPARATOR_S "last-session";
+    char *text;
+    int textLength;
+    if (!g_file_get_contents(fileName.c_str(), &text, &textLength, NULL))
+        return false;
+    if (textLength == 0)
+        return false;
+    name = text;
+    g_free(text);
+    return true;
+}
 
-    // List all sessions the sessions directory.
-    std::string sessionsDirName = sessionsDirectoryName();
+bool Session::allSessionNames(std::vector<std::string> &names)
+{
+    // Each sub-directory in directory "sessions" stores a session.  Its name is
+    // the session name.
+    std::string sessionsDirName(Application::instance()->userDirectoryName());
+    sessionsDirName += G_DIR_SEPARATOR_S "sessions";
+
+    GError *error = NULL;
     GDir *dir = g_dir_open(sessionsDirName.c_str(), 0, &error);
     if (error)
     {
@@ -965,7 +1151,7 @@ bool Session::querySessionsInfo(std::vector<Information> &sessionsInfo)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to open directory \"%s\" to read existing "
+            _("Samoyed failed to open directory \"%s\" to list existing "
               "sessions. %s."),
             sessionsDirName.c_str(), error->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -973,52 +1159,148 @@ bool Session::querySessionsInfo(std::vector<Information> &sessionsInfo)
         g_error_free(error);
         return false;
     }
-    const char *sessionName;
-    while ((sessionName = g_dir_read_name(dir)))
-        sessionsInfo.push_back(Information(sessionName));
-    g_dir_close(dir);
 
-    // For each session, query the information.
-    for (std::vector<Information>::const_iterator it = sessionsInfo.begin();
-         it != sessionsInfo.end();
-         ++it)
+    const char *sessionName;
+    while (sessionName = g_dir_read_name(dir))
     {
-        std::string sessionDirName = sessionsDirName + G_DIR_SEPARATOR_S +
-            it->m_name;
-        std::string lockFn = sessionDirName + "lock";
-        int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
-        if (lockFd == -1)
+        std::string sessionDirName = sessionsDirName + G_DIR_SEPARATOR_S;
+        sessionDirName += sessionName;
+        if (g_file_test(sessionDirName.c_str(), G_FILE_TEST_IS_DIR))
+            names.push_back(sessionName);
+    }
+    return true;
+}
+
+bool Session::querySessionInfo(const char *name, Information &info)
+{
+    GError *error = NULL;
+    std::string sessionDirName(Application::instance()->userDirectoryName());
+    sessionDirName += G_DIR_SEPARATOR_S "sessions";
+    sessionDirName += name;
+
+    // Check to see if the session is locked.
+    std::string lockFn = sessionDirName + G_DIR_SEPARATOR_S "lock";
+    int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
+    if (lockFd == -1)
+    {
+        if (errno != ENOENT)
         {
-            if (errno != ENOENT)
-            {
-                GtkWidget *dialog = gtk_message_dialog_new(
-                    Application::instance()->window() ?
-                    Application::instance()->window()->gtkWidget() : NULL,
-                    GTK_DIALOG_MODAL,
-                    GTK_MESSAGE_ERROR,
-                    GTK_BUTTONS_CLOSE,
-                    _("Samoyed failed to open lock file \"%s\". %s."),
-                    lockFn.c_str(), g_strerror(errno));
-                gtk_dialog_run(GTK_DIALOG(dialog));
-                gtk_widget_destroy(dialog);
-                return false;
-            }
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to open lock file \"%s\" for session \"%s\". "
+                  "%s."),
+                lockFn.c_str(), name, g_strerror(errno));
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+        info.m_lockingProcessId = -1;
+        info.m_lockedByThis = false;
+        info.m_lockedByOther = false;
+    }
+    else
+    {
+        char buffer[BUFSIZ];
+        int length = read(lockFd, buffer, sizeof(buffer) - 1);
+        if (length == -1)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to read lock file \"%s\" for session \"%s\". "
+                  "%s."),
+                lockFn.c_str(), name, g_strerror(errno));
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            close(lockFd);
+            return false;
+        }
+        close(lockFd);
+        if (length == 0)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Lock file \"%s\" for session \"%s\" is empty. It is "
+                  "expected to store the locking process identifier of "
+                  "session \"%s\"."),
+                lockFn.c_str(), name, name);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            close(lockFd);
+            return false;
+        }
+        buffer[length] = '\0';
+        info.m_lockingProcessId = atoi(buffer);
+        if (info.m_lockingProcessId < 0)
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Lock file \"%s\" for session \"%s\" does not store a valid "
+                  "process identifier. It is expected to store the locking "
+                  "process identifier of session \"%s\"."),
+                lockFn.c_str(), name, name);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+        if (info.m_lockingProcessId == getpid())
+        {
+            info.m_lockedByThis = true;
+            info.m_lockedByOther = false;
         }
         else
         {
-            char buffer[BUFSIZ];
-            int length = read(lockFd, buffer, sizeof(buffer) - 1);
-            if (length == -1)
-            {
-
+            info.m_lockedByThis = false;
+            info.m_lockedByOther = true;
+        }
     }
+
+    // If the session is locked, don't need the check of unsaved files.
+    if (info.m_lockedByThis || info.m_lockedByOther)
+    {
+        info.m_hasUnsavedFiles = false;
+        return true;
+    }
+
+    // Check to see if the session has any unsaved files.
+    std::string unsavedFn = sessionDirName + G_DIR_SEPARATOR_S "unsaved-files";
+    return readUnsavedFileList(unsavedFn.c_str(), info.m_unsavedFiles);
 }
 
 Session::Session(const char *name):
     m_name(name)
 {
+    lockSession(m_name.c_str());
 }
 
+Session::~Session()
+{
+    writeLastSessionName(m_name.c_str());
+    unlockSession(m_name.c_str());
+}
+
+Session *Session::create(const char *name)
+{
+    if (!name)
+        generateUniqueSessionName();
+}
+
+////////////////// old code...
 bool Session::loadMetaData()
 {
     m_lastSavingTime = 0;
