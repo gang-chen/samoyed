@@ -42,10 +42,8 @@ Application *Application::s_instance = NULL;
 
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
-    m_currentSession(NULL),
-    m_nextSession(NULL),
+    m_session(NULL),
     m_fileTypeRegistry(NULL),
-    m_sessionManager(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
     m_projectAstManager(NULL),
@@ -240,19 +238,19 @@ int Application::run(int argc, char *argv[])
         // session.
         std::string name;
         if (Session::lastSessionName(name))
-            m_currentSession = Session::restore(name.c_str());
+            m_session = Session::restore(name.c_str());
         else
-            m_currentSession = Session::create(NULL);
+            m_session = Session::create(NULL);
     }
-    while (!m_currentSession)
+    while (!m_session)
     {
         // Pop up a dialog to let the user choose which session to start.
         SessionChooserDialog *dialog = SessionChooserDialog::create();
         dialog->run();
         if (dialog->sessionName())
-            m_currentSession = Session::restore(dialog->sessionName());
+            m_session = Session::restore(dialog->sessionName());
         else if (dialog->newSessionName())
-            m_currentSession = Session::create(dialog->newSessionName());
+            m_session = Session::create(dialog->newSessionName());
         else
         {
             delete dialog;
@@ -261,7 +259,7 @@ int Application::run(int argc, char *argv[])
         delete dialog;
     }
 
-    if (m_currentSession && projectName)
+    if (m_session && projectName)
     {
         // Translate the project name into a URI.
         Project::create(projectUri);
@@ -282,7 +280,7 @@ CLEAN_UP:
         return m_exitStatus;
 
     // Enter the main event loop.
-    if (m_currentSession)
+    if (m_session)
         gtk_main();
 
     shutDown();
@@ -300,17 +298,33 @@ void Application::continueQuitting()
     delete m_window;
     m_window = NULL;
 
-    assert(m_currentSession);
-    delete m_currentSession;
-    m_currentSession = NULL;
+    assert(m_session);
+    delete m_session;
+    m_session = NULL;
 
-    if (m_nextSession)
+    if (!m_nextSessionName.empty())
     {
-        m_nextSession->restore();
-        m_currentSession = m_nextSession;
-        m_nextSession = NULL;
+        m_session = Session::restore(m_nextSessionName.c_str());
+        m_nextSessionName.clear();
+
+        while (!m_session)
+        {
+            // Pop up a dialog to let the user choose which session to start.
+            SessionChooserDialog *dialog = SessionChooserDialog::create();
+            dialog->run();
+            if (dialog->sessionName())
+                m_session = Session::restore(dialog->sessionName());
+            else if (dialog->newSessionName())
+                m_session = Session::create(dialog->newSessionName());
+            else
+            {
+                delete dialog;
+                break;
+            }
+            delete dialog;
+        }
     }
-    else
+    if (!m_session)
         gtk_main_quit();
 }
 
@@ -318,8 +332,8 @@ void Application::quit()
 {
     // Save the current session.  If the user cancels quitting the session,
     // cancel quitting.
-    assert(m_currentSession);
-    if (!m_currentSession->save())
+    assert(m_session);
+    if (!m_session->save())
         return;
 
     // Request to close all opened projects.  If the user cancels closing a
@@ -340,20 +354,17 @@ void Application::quit()
         continueQuitting();
 }
 
-void Application::switchSession(Session &session)
+void Application::switchSession(const char *sessionName)
 {
-    m_nextSession = &session;
-    quit();    
+    m_nextSessionName = sessionName;
+    quit();
 }
 
 void Application::cancelQuitting()
 {
     m_quitting = false;
-    if (m_nextSession)
-    {
-        delete m_nextSession;
-        m_nextSession = NULL;
-    }
+    if (m_nextSessionName)
+        m_nextSession.clear();
 }
 
 void Application::onProjectClosed()

@@ -113,7 +113,7 @@ public:
 
     void setWindow(Window *window) { m_window = window; }
 
-    Session *session() const { return m_currentSession; }
+    Session *session() const { return m_session; }
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -143,8 +143,8 @@ private:
 
     int m_exitStatus;
 
-    Session *m_currentSession;
-    Session *m_nextSession;
+    Session *m_session;
+    std::string m_nextSessionName;
 
     FileTypeRegistry *m_fileTypeRegistry;
 

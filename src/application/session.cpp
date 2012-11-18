@@ -11,6 +11,7 @@
 #include "ui/editor-group.hpp"
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
+#include "ui/tools/file-recoverer.hpp"
 #include "utilities/signal.hpp"
 #include <assert.h>
 #include <stdio.h>
@@ -19,6 +20,9 @@
 #include <string>
 #include <utility>
 #include <unistd.h>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <glib.h>
 #include <gtk/gtk.h>
 
@@ -27,7 +31,7 @@ namespace
 
 const int XML_INDENTATION_SIZE = 4;
 
-class XmlProject
+class XmlElementProject
 {
 public:
     static GMarkupParser s_parser =
@@ -37,15 +41,15 @@ public:
         NULL,
         NULL
     };
-    static XmlProject *parse(const char **attrNames,
-                             const char **attrValues,
-                             GError **error);
-    static XmlProject *save(const Samoyed::Project &project);
+    static XmlElementProject *parse(const char **attrNames,
+                                    const char **attrValues,
+                                    GError **error);
+    static XmlElementProject *save(const Samoyed::Project &project);
     Samoyed::Project *restore() const;
     bool write(FILE *file, int indentSize) const;
 
 private:
-    XmlProject(const char *uri): m_uri(uri) {}
+    XmlElementProject(const char *uri): m_uri(uri) {}
     static void startElement(GMarkupParserContext *context,
                              const gchar *elemtName,
                              const gchar **attrNames,
@@ -59,7 +63,7 @@ private:
     const std::string m_uri;
 };
 
-class XmlEditor
+class XmlElementEditor
 {
 public:
     static GMarkupParser s_parser =
@@ -69,18 +73,18 @@ public:
         NULL,
         NULL
     };
-    static XmlEditor *parse(const char **attrNames,
-                            const char **attrValues,
-                            GError **error);
-    static XmlEditor *save(const Samoyed::Editor &editor);
+    static XmlElementEditor *parse(const char **attrNames,
+                                   const char **attrValues,
+                                   GError **error);
+    static XmlElementEditor *save(const Samoyed::Editor &editor);
     Samoyed::Editor *restore() const;
     bool write(FILE *file, int indentSize) const;
 
 private:
-    XmlEditor(const char *fileUri,
-              const char *projectUri,
-              int lineNumber,
-              int columnNumber):
+    XmlElementEditor(const char *fileUri,
+                     const char *projectUri,
+                     int lineNumber,
+                     int columnNumber):
         m_fileUri(fileUri),
         m_projectUri(projectUri),
         m_cursorLine(cursorLine),
@@ -102,7 +106,7 @@ private:
     const int m_cursorColumn;
 };
 
-class XmlEditorGroup
+class XmlElementEditorGroup
 {
 public:
     static GMarkupParser s_parser =
@@ -112,16 +116,16 @@ public:
         NULL,
         NULL
     };
-    static XmlEditorGroup *parse(const char **attrNames,
-                                 const char **attrValues,
-                                 GError **error);
-    static XmlEditorGroup *save(const Samoyed::EditorGroup &editorGroup);
+    static XmlElementEditorGroup *parse(const char **attrNames,
+                                        const char **attrValues,
+                                        GError **error);
+    static XmlElementEditorGroup *save(const Samoyed::EditorGroup &editorGroup);
     Samoyed::EditorGroup *restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~XmlEditorGroup();
+    ~XmlElementEditorGroup();
 
 private:
-    XmlEditorGroup(int currentEditorIndex):
+    XmlElementEditorGroup(int currentEditorIndex):
         m_currentEditorIndex(currentEditorIndex)
     {}
     static void startElement(GMarkupParserContext *context,
@@ -135,10 +139,10 @@ private:
                            gpointer editorGroup,
                            GError **error);
     int m_currentEditorIndex;
-    std::vector<XmlEditor *> m_editors;
+    std::vector<XmlElementEditor *> m_editors;
 };
 
-class XmlWindow
+class XmlElementWindow
 {
 public:
     static GMarkupParser s_parser =
@@ -148,17 +152,17 @@ public:
         NULL,
         NULL
     };
-    static XmlWindow *parse(const char **attrNames,
-                            const char **attrValues,
-                            GError **error);
-    static XmlWindow *save(const Samoyed::Window &window);
+    static XmlElementWindow *parse(const char **attrNames,
+                                   const char **attrValues,
+                                   GError **error);
+    static XmlElementWindow *save(const Samoyed::Window &window);
     Samoyed::Window *restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~XmlWindow();
+    ~XmlElementWindow();
 
 private:
-    XmlWindow(const Samoyed::Window::Configuration &config,
-              int currentEditorGroupIndex):
+    XmlElementWindow(const Samoyed::Window::Configuration &config,
+                     int currentEditorGroupIndex):
         m_configuration(config),
         m_currentEditGroupIndex(currentEditorGroupIndex)
     {}
@@ -173,12 +177,12 @@ private:
                            gpointer window,
                            GError **error);
     Samoyed::Window::Configuration m_configuration;
-    std::vector<XmlProject *> m_projects;
+    std::vector<XmlElementProject *> m_projects;
     int m_currentEditGroupIndex;
-    std::vector<XmlEditorGroup *> m_editorGroups;
+    std::vector<XmlElementEditorGroup *> m_editorGroups;
 };
 
-class XmlSession
+class XmlElementSession
 {
 public:
     static GMarkupParser s_parser =
@@ -188,16 +192,16 @@ public:
         NULL,
         NULL
     };
-    static XmlSession *parse(const char **attrNames,
-                             const char **attrValues,
-                             GError **error);
-    static XmlSession *save(const Samoyed::Session &session);
+    static XmlElementSession *parse(const char **attrNames,
+                                    const char **attrValues,
+                                    GError **error);
+    static XmlElementSession *save(const Samoyed::Session &session);
     bool restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~XmlSession();
+    ~XmlElementSession();
 
 private:
-    XmlSession(): m_window(NULL) {}
+    XmlElementSession(): m_window(NULL) {}
     static void startElement(GMarkupParserContext *context,
                              const gchar *elemtName,
                              const gchar **attrNames,
@@ -208,7 +212,7 @@ private:
                            const gchar *elemName,
                            gpointer session,
                            GError **error);
-    XmlWindow *m_window;
+    XmlElementWindow *m_window;
 };
 
 bool indent(FILE *file, int indentSize)
@@ -221,9 +225,9 @@ bool indent(FILE *file, int indentSize)
     return true;
 }
 
-XmlProject *XmlProject::parse(const char **attrNames,
-                              const char **attrValues,
-                              GError **error)
+XmlElementProject *XmlElementProject::parse(const char **attrNames,
+                                            const char **attrValues,
+                                            GError **error)
 {
     const char *uri = NULL;
     for (; attrNames; ++attrNames, ++attrValues)
@@ -248,15 +252,15 @@ XmlProject *XmlProject::parse(const char **attrNames,
                     _("Missing attribute \"uri\""));
         return NULL;
     }
-    return new XmlProject(uri);
+    return new XmlElementProject(uri);
 }
 
-void XmlProject::startElement(GMarkupParserContext *context,
-                              const gchar *elemName,
-                              const gchar **attrNames,
-                              const gchar **attrValues,
-                              gpointer project,
-                              GError **error)
+void XmlElementProject::startElement(GMarkupParserContext *context,
+                                     const gchar *elemName,
+                                     const gchar **attrNames,
+                                     const gchar **attrValues,
+                                     gpointer project,
+                                     GError **error)
 {
 
     g_set_error(error,
@@ -266,26 +270,26 @@ void XmlProject::startElement(GMarkupParserContext *context,
                 elemName);
 }
 
-void XmlProject::stopElement(GMarkupParserContext *context,
-                             const gchar *elemName,
-                             gpointer project,
-                             GError **error)
+void XmlElementProject::stopElement(GMarkupParserContext *context,
+                                    const gchar *elemName,
+                                    gpointer project,
+                                    GError **error)
 {
 }
 
-XmlProject *XmlProject::save(const Samoyed::Project &project)
+XmlElementProject *XmlElementProject::save(const Samoyed::Project &project)
 {
-    return new XmlProject(project.uri());
+    return new XmlElementProject(project.uri());
 }
 
-Samoyed::Project *XmlProject::restore() const
+Samoyed::Project *XmlElementProject::restore() const
 {
     if (Samoyed::Application::instance()->findProject(m_uri.c_str()))
         return NULL;
     return Samoyed::Project::open(m_uri.c_str());
 }
 
-bool XmlProject::write(FILE *file, int indentSize) const
+bool XmlElementProject::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -294,9 +298,9 @@ bool XmlProject::write(FILE *file, int indentSize) const
     return true;
 }
 
-XmlEditor *XmlEditor::parse(const char **attrNames,
-                            const char **attrValues,
-                            GError **error)
+XmlElementEditor *XmlElementEditor::parse(const char **attrNames,
+                                          const char **attrValues,
+                                          GError **error)
 {
     const char *fileUri = NULL, *projectUri = NULL;
     int cursorLine = 0, cursorColumn = 0;
@@ -336,15 +340,15 @@ XmlEditor *XmlEditor::parse(const char **attrNames,
                     _("Missing attribute \"project-uri\""));
         return NULL;
     }
-    return new XmlEditor(fileUri, projectUri, cursorLine, cursorColumn);
+    return new XmlElementEditor(fileUri, projectUri, cursorLine, cursorColumn);
 }
 
-void XmlEditor::startElement(GMarkupParserContext *context,
-                             const gchar *elemName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer editor,
-                             GError **error)
+void XmlElementEditor::startElement(GMarkupParserContext *context,
+                                    const gchar *elemName,
+                                    const gchar **attrNames,
+                                    const gchar **attrValues,
+                                    gpointer editor,
+                                    GError **error)
 {
     g_set_error(error,
                 G_MARKUP_ERROR,
@@ -353,22 +357,22 @@ void XmlEditor::startElement(GMarkupParserContext *context,
                 elemName);
 }
 
-void XmlEditor::stopElement(GMarkupParserContext *context,
-                            const gchar *elemName,
-                            gpointer editor,
-                            GError **error)
+void XmlElementEditor::stopElement(GMarkupParserContext *context,
+                                   const gchar *elemName,
+                                   gpointer editor,
+                                   GError **error)
 {
 }
 
-XmlEditor *XmlEditor::save(const Samoyed::Editor &editor)
+XmlElementEditor *XmlElementEditor::save(const Samoyed::Editor &editor)
 {
     std::pair<int, int> cursor = editor.cursor();
-    return new XmlEditor(editor.file().uri(),
-                         cursor.first,
-                         cursor.second);
+    return new XmlElementEditor(editor.file().uri(),
+                                cursor.first,
+                                cursor.second);
 }
 
-Samoyed::Editor *XmlEditor::restore() const
+Samoyed::Editor *XmlElementEditor::restore() const
 {
     Samoyed::Project *project = Samoyed::Application::instance()->
         findProject(m_projectUri.c_str());
@@ -381,7 +385,7 @@ Samoyed::Editor *XmlEditor::restore() const
     return File::open(m_fileUri.c_str(), *project).second;
 }
 
-bool XmlEditor::write(FILE *file, int indentSize) const
+bool XmlElementEditor::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -399,9 +403,9 @@ bool XmlEditor::write(FILE *file, int indentSize) const
     return true;
 }
 
-XmlEditorGroup *XmlEditorGroup::parse(const char **attrNames,
-                                      const char **attrValues,
-                                      GError **error)
+XmlElementEditorGroup *XmlElementEditorGroup::parse(const char **attrNames,
+                                                    const char **attrValues,
+                                                    GError **error)
 {
     int currentEditorIndex = 0;
     for (; attrNames; ++attrNames, ++attrValues)
@@ -418,25 +422,28 @@ XmlEditorGroup *XmlEditorGroup::parse(const char **attrNames,
             return NULL;
         }
     }
-    return new XmlEditorGroup(currentEditorIndex);
+    return new XmlElementEditorGroup(currentEditorIndex);
 }
 
-void XmlEditorGroup::startElement(GMarkupParserContext *context,
-                                  const gchar *elemName,
-                                  const gchar **attrNames,
-                                  const gchar **attrValues,
-                                  gpointer editorGroup,
-                                  GError **error)
+void XmlElementEditorGroup::startElement(GMarkupParserContext *context,
+                                         const gchar *elemName,
+                                         const gchar **attrNames,
+                                         const gchar **attrValues,
+                                         gpointer editorGroup,
+                                         GError **error)
 {
-    XmlEditorGroup *g = static_cast<XmlEditorGroup *>(editorGroup);
+    XmlElementEditorGroup *g =
+        static_cast<XmlElementEditorGroup *>(editorGroup);
     if (strcmp(elemName, "editor") == 0)
     {
-        XmlEditor *editor =
-            XmlEditor::parse(attrNames, attrValues, error);
+        XmlElementEditor *editor =
+            XmlElementEditor::parse(attrNames, attrValues, error);
         if (!editor)
             return;
         g->m_editors.push_back(editor);
-        g_markup_parser_context_push(context, XmlEditor::s_parser, editor);
+        g_markup_parser_context_push(context,
+                                     XmlElementEditor::s_parser,
+                                     editor);
     }
     else
     {
@@ -448,38 +455,34 @@ void XmlEditorGroup::startElement(GMarkupParserContext *context,
     }
 }
 
-void XmlEditorGroup::stopElement(GMarkupParserContext *context,
-                                 const gchar *elemName,
-                                 gpointer editorGroup,
-                                 GError **error)
+void XmlElementEditorGroup::stopElement(GMarkupParserContext *context,
+                                        const gchar *elemName,
+                                        gpointer editorGroup,
+                                        GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-XmlEditorGroup *
-XmlEditorGroup::save(const Samoyed::EditorGroup &editorGroup)
+XmlElementEditorGroup *
+XmlElementEditorGroup::save(const Samoyed::EditorGroup &editorGroup)
 {
-    XmlEditorGroup *rec =
-        new XmlEditorGroup(editorGroup.currentEditorIndex());
+    XmlElementEditorGroup *rec =
+        new XmlElementEditorGroup(editorGroup.currentEditorIndex());
     for (int i = 0; i < editorGroup.editorCount(); ++i)
-        rec->m_editors.push_back(XmlEditor::save(editorGroup.editor(i)));
+        rec->m_editors.push_back(XmlElementEditor::save(editorGroup.editor(i)));
     return rec;
 }
 
-Samoyed::EditorGroup *XmlEditorGroup::restore() const
+Samoyed::EditorGroup *XmlElementEditorGroup::restore() const
 {
     Samoyed::EditorGroup *group = new Samoyed::EditorGroup;
-    for (std::vector<XmlEditor *>::const_iterator it = m_editors.begin();
+    for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
     {
         Samoyed::Editor *editor = (*it)->restore();
-        if (!editor)
-        {
-            delete group;
-            return NULL;
-        }
-        group->addEditor(*editor);
+        if (editor)
+            group->addEditor(*editor);
     }
     if (m_currentEditorIndex >= 0 &&
         m_currentEditorIndex < group->editorCount())
@@ -487,14 +490,14 @@ Samoyed::EditorGroup *XmlEditorGroup::restore() const
     return group;
 }
 
-bool XmlEditorGroup::write(FILE *file, int indentSize) const
+bool XmlElementEditorGroup::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
     if (fprintf(file, "<editor-group>\n") < 0)
         return false;
     indentSize += XML_INDENTATION_SIZE;
-    for (std::vector<XmlEditor *>::const_iterator it = m_editors.begin();
+    for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
     {
@@ -509,17 +512,17 @@ bool XmlEditorGroup::write(FILE *file, int indentSize) const
     return true;
 }
 
-XmlEditorGroup::~XmlEditorGroup()
+XmlElementEditorGroup::~XmlElementEditorGroup()
 {
-    for (std::vector<XmlEditor *>::const_iterator it = m_editors.begin();
+    for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
         delete *it;
 }
 
-XmlWindow *XmlWindow::parse(const char **attrNames,
-                            const char **attrValues,
-                            GError **error)
+XmlElementWindow *XmlElementWindow::parse(const char **attrNames,
+                                          const char **attrValues,
+                                          GError **error)
 {
     Samoyed::Window::Configuration config;
     int currentEditorGroupIndex = 0;
@@ -551,34 +554,37 @@ XmlWindow *XmlWindow::parse(const char **attrNames,
             return NULL;
         }
     }
-    return new XmlWindow(config, currentEditorGroupIndex);
+    return new XmlElementWindow(config, currentEditorGroupIndex);
 }
 
-void XmlWindow::startElement(GMarkupParserContext *context,
-                             const gchar *elemName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer window,
-                             GError **error)
+void XmlElementWindow::startElement(GMarkupParserContext *context,
+                                    const gchar *elemName,
+                                    const gchar **attrNames,
+                                    const gchar **attrValues,
+                                    gpointer window,
+                                    GError **error)
 {
-    XmlWindow *w = static_cast<XmlWindow *>(window);
+    XmlElementWindow *w = static_cast<XmlElementWindow *>(window);
     if (strcmp(elemName, "project") == 0)
     {
-        XmlProject *project = Project::parse(attrNames, attrValues, error);
+        XmlElementProject *project =
+            Project::parse(attrNames, attrValues, error);
         if (!project)
             return;
         w->m_projects.push_back(project);
-        g_markup_parser_context_push(context, XmlProject:s_parser, project);
+        g_markup_parser_context_push(context,
+                                     XmlElementProject:s_parser,
+                                     project);
     }
     else if (strcmp(elemName, "editor-group") == 0)
     {
-        XmlEditorGroup *group =
-            XmlEditorGroup::parse(attrNames, attrValues, error);
+        XmlElementEditorGroup *group =
+            XmlElementEditorGroup::parse(attrNames, attrValues, error);
         if (!group)
             return;
         w->m_editorGroups.push_back(group);
         g_markup_parser_context_push(context,
-                                     XmlEditorGroup::s_parser,
+                                     XmlElementEditorGroup::s_parser,
                                      group);
     }
     else
@@ -591,60 +597,50 @@ void XmlWindow::startElement(GMarkupParserContext *context,
     }
 }
 
-void XmlWindow::stopElement(GMarkupParserContext *context,
-                            const gchar *elemName,
-                            GError **error)
+void XmlElementWindow::stopElement(GMarkupParserContext *context,
+                                   const gchar *elemName,
+                                   GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-XmlWindow *XmlWindow::save(const Samoyed::Window &window)
+XmlElementWindow *XmlElementWindow::save(const Samoyed::Window &window)
 {
-    XmlWindow *rec =
-        new XmlWindow(window.currentEditorGroupIndex());
+    XmlElementWindow *rec =
+        new XmlElementWindow(window.currentEditorGroupIndex());
     const Samoyed::Application::ProjectTable &projects =
         Samoyed::Application::instance()->projectTable();
     for (Samoyed::Application::ProjectTable::const_iterator it =
             projects.begin();
          it != projects.end();
          ++it)
-        rec->m_projects.push_back(XmlProject::save(*it->second));
+        rec->m_projects.push_back(XmlElementProject::save(*it->second));
     for (int i = 0; i < window.editorGroupCount(); ++i)
         rec->m_editorGroups.push_back(
-            XmlEditorGroup::save(window.editorGroup(i)));
+            XmlElementEditorGroup::save(window.editorGroup(i)));
     return rec;
 }
 
-Samoyed::Window *XmlWindow::restore() const
+Samoyed::Window *XmlElementWindow::restore() const
 {
     if (Application::instance()->window())
         return NULL;
     Samoyed::Window *window = Samoyed::Window::create(&m_configuration);
     if (!window)
         return NULL;
-    for (std::vector<XmlProject *>::const_iterator it = m_projects.begin();
+    for (std::vector<XmlElementProject *>::const_iterator it =
+             m_projects.begin();
          it != m_projects.end();
          ++it)
-    {
-        Samoyed::Project *project = (*it)->restore();
-        if (!project)
-        {
-            delete window;
-            return NULL;
-        }
-    }
-    for (std::vector<XmlEditorGroup *>::const_iterator it =
+        (*it)->restore();
+    for (std::vector<XmlElementEditorGroup *>::const_iterator it =
             m_editorGroups.begin();
          it != m_editorGroups.end();
          ++it)
     {
         Samoyed::EditorGroup *group = (*it)->restore();
-        if (!group)
-        {
-            delete window;
-            return NULL;
-        }
-        window->addEditorGroup(*group);
+        if (group)
+            window->addEditorGroup(*group);
     }
     if (m_currentEditorGroupIndex >= 0 &&
         m_currentEditorGroupIndex < window->editorGroupCount())
@@ -652,7 +648,7 @@ Samoyed::Window *XmlWindow::restore() const
     return window;
 }
 
-bool XmlWindow::write(FILE *file, int indentSize) const
+bool XmlElementWindow::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -674,14 +670,15 @@ bool XmlWindow::write(FILE *file, int indentSize) const
                 m_configuration.m_toolbarVisible) < 0)
         return false;
     indentSize += XML_INDENTATION_SIZE;
-    for (std::vector<XmlProject *>::const_iterator it = m_projects.begin();
+    for (std::vector<XmlElementProject *>::const_iterator it =
+             m_projects.begin();
          it != m_projects.end();
          ++it)
     {
         if (!(*it)->write(file, indentSize))
             return false;
     }
-    for (std::vector<XmlEditorGroup *>::const_iterator it =
+    for (std::vector<XmlElementEditorGroup *>::const_iterator it =
              m_editorGroups.begin();
          it != m_editorGroups.end();
          ++it)
@@ -697,22 +694,23 @@ bool XmlWindow::write(FILE *file, int indentSize) const
     return true;
 }
 
-XmlWindow::~XmlWindow()
+XmlElementWindow::~XmlElementWindow()
 {
-    for (std::vector<XmlProject *>::const_iterator it = m_projects.begin();
+    for (std::vector<XmlElementProject *>::const_iterator it =
+             m_projects.begin();
          it != m_projects.end();
          ++it)
         delete *it;
-    for (std::vector<XmlEditorGroup *>::const_iterator it =
+    for (std::vector<XmlElementEditorGroup *>::const_iterator it =
             m_editorGroups.begin();
          it != m_editorGroups.end();
          ++it)
         delete *it;
 }
 
-XmlSession *XmlSession::parse(const char **attrNames,
-                              const char **attrValues,
-                              GError **error)
+XmlElementSession *XmlElementSession::parse(const char **attrNames,
+                                            const char **attrValues,
+                                            GError **error)
 {
     if (attrNames)
     {
@@ -723,17 +721,17 @@ XmlSession *XmlSession::parse(const char **attrNames,
                     *attrNames);
         return NULL;
     }
-    return new XmlSession;
+    return new XmlElementSession;
 }
 
-void XmlSession::startElement(GMarkupParserContext *context,
-                              const gchar *elemName,
-                              const gchar **attrNames,
-                              const gchar **attrValues,
-                              gpointer session,
-                              GError **error)
+void XmlElementSession::startElement(GMarkupParserContext *context,
+                                     const gchar *elemName,
+                                     const gchar **attrNames,
+                                     const gchar **attrValues,
+                                     gpointer session,
+                                     GError **error)
 {
-    XmlSession *s = static_cast<XmlSession *>(session);
+    XmlElementSession *s = static_cast<XmlElementSession *>(session);
     if (strcmp(elemName, "window") == 0)
     {
         if (s->m_window)
@@ -744,12 +742,14 @@ void XmlSession::startElement(GMarkupParserContext *context,
                         _("Multiple element \"window\""));
             return;
         }
-        XmlWindow *window =
-            XmlWindow::parse(attrNames, attrValues, error);
+        XmlElementWindow *window =
+            XmlElementWindow::parse(attrNames, attrValues, error);
         if (!window)
             return;
         s->m_window = window;
-        g_markup_parser_context_push(context, XmlWindow::s_parser, window);
+        g_markup_parser_context_push(context,
+                                     XmlElementWindow::s_parser,
+                                     window);
     }
     else
     {
@@ -761,30 +761,31 @@ void XmlSession::startElement(GMarkupParserContext *context,
     }
 }
 
-void XmlSession::endElement(GMarkupParserContext *context,
-                            const gchar *elemName,
-                            gpointer session,
-                            GError **error)
+void XmlElementSession::endElement(GMarkupParserContext *context,
+                                   const gchar *elemName,
+                                   gpointer session,
+                                   GError **error)
 {
     g_markup_parser_context_pop(context);
 }
 
-XmlSession *XmlSession::save()
+XmlElementSession *XmlElementSession::save()
 {
-    XmlSession *rec = new XmlSession;
-    rec->m_window = XmlWindow::save(
+    XmlElementSession *rec = new XmlElementSession;
+    assert(Samoyed::Application::instance()->window());
+    rec->m_window = XmlElementWindow::save(
         *Samoyed::Application::instance()->window());
     return rec;
 }
 
-bool XmlSession::restore() const
+bool XmlElementSession::restore() const
 {
     if (!m_window->restore())
         return false;
     return true;
 }
 
-bool XmlSession::write(FILE *file, int indentSize) const
+bool XmlElementSession::write(FILE *file, int indentSize) const
 {
     if (!indent(file, indentSize))
         return false;
@@ -814,7 +815,9 @@ void startElement(GMarkupParserContext *context,
         *spp = Session::parse(attrNames, attrValues, error);
         if (!*spp)
             return;
-        g_markup_parser_context_push(context, SessionInfo::s_parser, *spp);
+        g_markup_parser_context_push(context,
+                                     XmlElementSession::s_parser,
+                                     *spp);
     }
     else
     {
@@ -842,7 +845,9 @@ GMarkupParser parser =
     NULL
 };
 
-XmlSession *readSessionFile(const char *fileName, const char *sessionName)
+// Report the error.
+XmlElementSession *readSessionFile(const char *fileName,
+                                   const char *sessionName)
 {
     GError *error;
     char *text;
@@ -866,7 +871,7 @@ XmlSession *readSessionFile(const char *fileName, const char *sessionName)
         return NULL;
     }
 
-    XmlSession *session = NULL;
+    XmlElementSession *session = NULL;
     GMarkupParseContext *context =
         g_markup_parse_context_new(&parser,
                                    G_MARKUP_PREFIX_ERROR_POSITION,
@@ -900,6 +905,7 @@ XmlSession *readSessionFile(const char *fileName, const char *sessionName)
     return session;
 }
 
+// Don't report the error.
 bool writeLastSessionName(const char *name)
 {
     std::string fileName(Application::instance()->userDirectoryName());
@@ -912,13 +918,15 @@ bool writeLastSessionName(const char *name)
         close(fd);
         return false;
     }
-    close(fd);
+    if (close(fd))
+        return false;
     return true;
 }
 
-bool readUnsavedFileList(const char *fileName,
+// Report the error.
+bool readUnsavedFileUris(const char *fileName,
                          const char *sessionName,
-                         std::set<std::string> &unsavedFiles)
+                         std::set<std::string> &unsavedFileUris)
 {
     GError *error = NULL;
     char *text;
@@ -932,8 +940,8 @@ bool readUnsavedFileList(const char *fileName,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to read file \"%s\" to list unsaved files for "
-              "session \"%s\". %s."),
+            _("Samoyed failed to read file \"%s\" to list unsaved file URIs "
+              "for session \"%s\". %s."),
             fileName, sessionName, error->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -942,22 +950,29 @@ bool readUnsavedFileList(const char *fileName,
     }
 
     for (char *cp = strtok(text, " \t\r\n"); cp; cp = strtok(NULL, " \t\r\n"))
-        unsavedFiles.insert(cp);
+        unsavedFileUris.insert(cp);
     g_free(text);
     return true;
 }
 
+// Report the error.
 bool lockSession(const char *name)
 {
     std::string lockFn(Application::instance()->userDirectoryName());
     lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFn += name;
+    lockFn += G_DIR_SEPARATOR_S "lock";
 
-    int lockFd = g_open(lockFn.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
+    int lockFd;
+
+RETRY:
+    // Create the lock file.
+    lockFd = g_open(lockFn.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
     if (lockFd == -1)
     {
         if (errno != EEXIST)
         {
+            // The lock file doesn't exist but we can't create the lock file.
             GtkWidget *dialog = gtk_message_dialog_new(
                 Application::instance()->window() ?
                 Application::instance()->window()->gtkWidget() : NULL,
@@ -969,79 +984,74 @@ bool lockSession(const char *name)
                 lockFn.c_str(), name, g_strerror(errno));
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
+            return false;
         }
-        // Read the locking process ID.
-        int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
+
+        // Read the locking process ID.  Don't repot the error if the read is
+        // failed because another process may be writing the lock file.
+        pid_t lockingPid;
+        lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
         if (lockFd == -1)
         {
             if (errno == ENOENT)
-            {
-                m_lockingPid = 0;
+                // The lock file doesn't exist.  Retry to create it.
                 goto RETRY;
+            lockingPid = -1;
+        }
+        else
+        {
+            char buffer[BUFSIZ];
+            int length = read(fd, buffer, sizeof(buffer) - 1);
+            if (length <= 0)
+                lockingPid = -1;
+            else
+            {
+                buffer[length] = '\0';
+                lockingPid = atoi(buffer);
             }
+            close(lockFd);
+        }
+        if (lockingPid < 0)
+        {
+            // The session is being locked by another instance of the
+            // application.  But we can't read the process ID.
             GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to open lock file '%s': %s."),
-                lockFn.c_str(), g_strerror(errno));
+                _("Samoyed failed to start session \"%s\" because the session "
+                  "is being locked by another instance of Samoyed."),
+                name);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+        if (lockingPid != getpid())
+        {
+            // The session is being locked by another instance of the
+            // application.
+            GtkWidget *dialog = gtk_message_dialog_new(
+                Application::instance()->window() ?
+                Application::instance()->window()->gtkWidget() : NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to start session \"%s\" because the session "
+                  "is being locked by another instance of Samoyed, whose "
+                  "process ID is %d."),
+                name, lockingPid);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
             return false;
         }
 
-        char buffer[100];
-        int length = read(lockFd, buffer, sizeof(buffer) - 1);
-        if (length == -1)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to read lock file '%s': %s."),
-                lockFn.c_str(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            close(lockFd);
-            return false;
-        }
-        close(lockFd);
-        if (length == 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file '%s' is empty. It is expected to record the "
-                  "locking process identifier of session '%s'."),
-                lockFn.c_str(), name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        buffer[length] = '\0';
-        m_lockingPid = atoi(buffer);
-        if (m_lockingPid <= 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file '%s' does not record a valid process identifier. "
-                  "It is expected to record the locking process identifier of "
-                  "session '%s'."),
-                lockFn.c_str(), name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        return false;
+        // The session is being locked by this instance!
+        return true;
     }
 
+    // Write our process ID.
     char buffer[BUFSIZ];
     int length = snprintf(buffer, BUFSIZ, "%d", getpid());
     length = write(lockFd, buffer, length);
@@ -1053,25 +1063,88 @@ bool lockSession(const char *name)
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to create lock file '%s' to lock session "
-              "'%s': %s."),
+            _("Samoyed failed to create lock file \"%s\" to lock session "
+              "\"%s\". %s."),
             lockFn.c_str(), name(), g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         close(lockFd);
         // Remove the lock file.
         g_unlink(lockFn.c_str());
+        return false;
     }
-    close(lockFd);
+    if (close(lockFd))
+    {
+        g_unlink(lockFn.c_str());
+        return false;
+    }
     return true;
 }
 
-void unlockSession(const char *name)
+// Don't report the error.
+bool unlockSession(const char *name)
 {
+    // Remove the lock file.
     std::string lockFn(Application::instance()->userDirectoryName());
     lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFn += name;
-    g_unlink(lockFn.c_str());
+    lockFn += G_DIR_SEPARATOR_S "lock";
+    return !g_unlink(lockFn.c_str());
+}
+
+bool saveSession(const char *name, bool reportError)
+{
+    std::string sessionFn(Application::instance()->userDirectoryName());
+    sessionFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionFn += name;
+    sessionFn += G_DIR_SEPARATOR_S "session.xml";
+    FILE *sessionFp = g_fopen(sessionFn.c_str(), "w");
+    if (sessionFp)
+    {
+        XmlElementSession *session = XmlElementSession::save();
+        if (session->write(sessionFp, 0))
+        {
+            delete session;
+            if (!fclose(sessionFp))
+                return true;
+        }
+        else
+        {
+            delete session;
+            fclose(sessionFp);
+        }
+    }
+
+    if (reportError)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->window()->gtkWidget(),
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_NONE,
+            _("Samoyed failed to save the current session to file \"%s\". %s."),
+            sessionFn.c_str(), g_strerror(errno));
+        gtk_dialog_add_buttons(
+            GTK_DIALOG(dialog),
+            _("_Quit the session without saving it"), GTK_RESPONSE_YES,
+            _("_Cancel quitting the session"), GTK_RESPONSE_NO,
+            NULL);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_NO);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_NO)
+            return false;
+        // To continue quitting the session.
+        return true;
+    }
+    return false;
+}
+
+void generateUniqueSessionName(std::string &name)
+{
+    boost::uuids::uuid uuid(boost::uuids::random_generator()());
+    name = boost::uuids::to_string(uuid);
 }
 
 }
@@ -1079,6 +1152,7 @@ void unlockSession(const char *name)
 namespace Samoyed
 {
 
+// Report the error.
 bool Session::makeSessionsDirectory()
 {
     std::string sessionsDirName(Application::instance()->userDirectoryName());
@@ -1103,13 +1177,14 @@ bool Session::makeSessionsDirectory()
     return true;
 }
 
+// Don't report the error.
 void Session::onCrashed(int signalNumber)
 {
     // Remove the lock file and set the last session name.
     Session *session = Application::instance()->session();
     if (!session)
         return;
-    unlockSession(*session);
+    unlockSession(session->name());
     writeLastSessionName(session->name());
 }
 
@@ -1118,9 +1193,9 @@ void Session::registerCrashHandler()
     Signal::registerCrashHandler(onCrashed);
 }
 
+// Don't report the error.
 bool Session::lastSessionName(std::string &name)
 {
-    // Read file "last-session".
     std::string fileName(Application::instance()->userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
     char *text;
@@ -1134,6 +1209,7 @@ bool Session::lastSessionName(std::string &name)
     return true;
 }
 
+// Report the error.
 bool Session::allSessionNames(std::vector<std::string> &names)
 {
     // Each sub-directory in directory "sessions" stores a session.  Its name is
@@ -1163,7 +1239,7 @@ bool Session::allSessionNames(std::vector<std::string> &names)
     const char *sessionName;
     while (sessionName = g_dir_read_name(dir))
     {
-        std::string sessionDirName = sessionsDirName + G_DIR_SEPARATOR_S;
+        std::string sessionDirName(sessionsDirName + G_DIR_SEPARATOR_S);
         sessionDirName += sessionName;
         if (g_file_test(sessionDirName.c_str(), G_FILE_TEST_IS_DIR))
             names.push_back(sessionName);
@@ -1171,6 +1247,7 @@ bool Session::allSessionNames(std::vector<std::string> &names)
     return true;
 }
 
+// Don't report the error.
 bool Session::querySessionInfo(const char *name, Information &info)
 {
     GError *error = NULL;
@@ -1179,900 +1256,148 @@ bool Session::querySessionInfo(const char *name, Information &info)
     sessionDirName += name;
 
     // Check to see if the session is locked.
-    std::string lockFn = sessionDirName + G_DIR_SEPARATOR_S "lock";
-    int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
-    if (lockFd == -1)
-    {
-        if (errno != ENOENT)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to open lock file \"%s\" for session \"%s\". "
-                  "%s."),
-                lockFn.c_str(), name, g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        info.m_lockingProcessId = -1;
-        info.m_lockedByThis = false;
-        info.m_lockedByOther = false;
-    }
+    info.m_lockedByThis = false;
+    info.m_lockedByOther = false;
+    if (Application::instance()->session() &&
+        strcmp(Application::instance()->session()->name(), name) == 0)
+        info.m_lockedByThis = true;
     else
     {
-        char buffer[BUFSIZ];
-        int length = read(lockFd, buffer, sizeof(buffer) - 1);
-        if (length == -1)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to read lock file \"%s\" for session \"%s\". "
-                  "%s."),
-                lockFn.c_str(), name, g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            close(lockFd);
-            return false;
-        }
-        close(lockFd);
-        if (length == 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file \"%s\" for session \"%s\" is empty. It is "
-                  "expected to store the locking process identifier of "
-                  "session \"%s\"."),
-                lockFn.c_str(), name, name);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            close(lockFd);
-            return false;
-        }
-        buffer[length] = '\0';
-        info.m_lockingProcessId = atoi(buffer);
-        if (info.m_lockingProcessId < 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file \"%s\" for session \"%s\" does not store a valid "
-                  "process identifier. It is expected to store the locking "
-                  "process identifier of session \"%s\"."),
-                lockFn.c_str(), name, name);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        if (info.m_lockingProcessId == getpid())
-        {
-            info.m_lockedByThis = true;
-            info.m_lockedByOther = false;
-        }
-        else
-        {
-            info.m_lockedByThis = false;
+        std::string lockFn(sessionDirName + G_DIR_SEPARATOR_S "lock");
+        if (g_file_test(lockFn.c_str(), G_FILE_TEST_EXIST))
             info.m_lockedByOther = true;
-        }
     }
 
-    // If the session is locked, don't need the check of unsaved files.
+    // If the session is locked, don't need to check the unsaved files.
     if (info.m_lockedByThis || info.m_lockedByOther)
-    {
-        info.m_hasUnsavedFiles = false;
         return true;
-    }
 
     // Check to see if the session has any unsaved files.
-    std::string unsavedFn = sessionDirName + G_DIR_SEPARATOR_S "unsaved-files";
-    return readUnsavedFileList(unsavedFn.c_str(), info.m_unsavedFiles);
+    std::string unsavedFn(sessionDirName + G_DIR_SEPARATOR_S "unsaved-files");
+    return readUnsavedFileUris(unsavedFn.c_str(), name, info.m_unsavedFileUris);
 }
 
 Session::Session(const char *name):
     m_name(name)
 {
-    lockSession(m_name.c_str());
 }
 
 Session::~Session()
 {
-    writeLastSessionName(m_name.c_str());
     unlockSession(m_name.c_str());
+    writeLastSessionName(m_name.c_str());
 }
 
 Session *Session::create(const char *name)
 {
+    std::string generatedName;
     if (!name)
-        generateUniqueSessionName();
-}
+        generateUniqueSessionName(generatedName);
 
-////////////////// old code...
-bool Session::loadMetaData()
-{
-    m_lastSavingTime = 0;
-    m_lockingPid = 0;
-
-    std::string dirName;
-    makeDirectoryName(dirName);
-
-    // Query the last saving time.
-    GStatBuf sessionStat;
-    std::string sessionFn(dirName);
-    makeSessionFileName(sessionFn);
-    if (g_stat(sessionFn.c_str(), &sessionStat))
+    // Create the session directory.
+    std::string sessionDirName(Application::instance()->userDirectoryName());
+    sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionDirName += name ? name : generatedName.c_str();
+    if (g_mkdir(sessionDirName.c_str(), 0755))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
+            Application::instance()->window() ?
+            Application::instance()->window()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to query the attributes of session file '%s' to "
-              "learn when session '%s' was saved last time: %s."),
-            sessionFn.c_str(), name(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        return false;
-    }
-    m_lastSavingTime = sessionStat.st_mtime;
-
-    // Check to see if this session is being locked or not.
-    std::string lockFn(dirName);
-    makeLockFileName(lockFn);
-    int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
-    if (lockFd == -1)
-    {
-        if (errno == ENOENT)
-            m_lockingPid = 0;
-        else
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to open lock file '%s': %s."),
-                lockFn.c_str(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-    }
-    else
-    {
-        char buffer[100];
-        int length = read(lockFd, buffer, sizeof(buffer) - 1);
-        if (length == -1)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to read lock file '%s': %s."),
-                lockFn.c_str(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            close(lockFd);
-            return false;
-        }
-        close(lockFd);
-        if (length == 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file '%s' is empty. It is expected to record the "
-                  "locking process identifier of session '%s'."),
-                lockFn.c_str(), name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        buffer[length] = '\0';
-        m_lockingPid = atoi(buffer);
-        if (m_lockingPid <= 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file '%s' does not record a valid process identifier. "
-                  "It is expected to record the locking process identifier of "
-                  "session '%s'."),
-                lockFn.c_str(), name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool Session::lock()
-{
-    std::string lockFn;
-    makeDirectoryName(lockFn);
-    makeLockFileName(lockFn);
-    int lockFd;
-
-RETRY:
-    lockFd = g_open(lockFn.c_str(), O_WRONLY | O_CREAT | O_EXCL,
-                    S_IRUSR | S_IWUSR);
-    if (lockFd == -1)
-    {
-        if (errno != EEXIST)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create lock file '%s' to lock session "
-                  "'%s': %s."),
-                lockFn.c_str(), name(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-
-        // Read the locking process ID.
-        int lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
-        if (lockFd == -1)
-        {
-            if (errno == ENOENT)
-            {
-                m_lockingPid = 0;
-                goto RETRY;
-            }
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to open lock file '%s': %s."),
-                lockFn.c_str(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-
-        char buffer[100];
-        int length = read(lockFd, buffer, sizeof(buffer) - 1);
-        if (length == -1)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to read lock file '%s': %s."),
-                lockFn.c_str(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            close(lockFd);
-            return false;
-        }
-        close(lockFd);
-        if (length == 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file '%s' is empty. It is expected to record the "
-                  "locking process identifier of session '%s'."),
-                lockFn.c_str(), name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        buffer[length] = '\0';
-        m_lockingPid = atoi(buffer);
-        if (m_lockingPid <= 0)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Lock file '%s' does not record a valid process identifier. "
-                  "It is expected to record the locking process identifier of "
-                  "session '%s'."),
-                lockFn.c_str(), name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-
-        // We can't reliably determine whether the session is indeed being
-        // locked by that process.  Ask the user.
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_YES_NO,
-            _("Samoyed failed to create lock file '%s' to lock session '%s'. "
-              "It seems that the session is being locked by another instance "
-              "of Samoyed whose process identifier is %d. Please check to see "
-              "if the session is indeed being locked by that process. Is "
-              "session '%s' being locked by process %d?"),
-            lockFn.c_str(), name(), m_lockingPid, name(), m_lockingPid);
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_YES)
-        {
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_INFO,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed cannot lock session '%s' since it is already being "
-                  "locked by another instance of Samoyed. In order to lock the "
-                  "session, please quit it in that instance."),
-                name());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-
-        // Let the user confirm.
-        dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_YES_NO,
-            _("Please confirm that the session is not being locked by any "
-              "instance of Samoyed and you want this instance of Samoyed to "
-              "lock the session. Lock session '%s'?"),
-            name());
-        response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_NO)
-            return false;
-
-        // Overwrite the lock file.
-        lockFd = g_open(lockFn.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-        if (lockFd == -1)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create lock file '%s' to lock session "
-                  "'%s': %s."),
-                lockFn.c_str(), name(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-    }
-
-    // Write the process ID.
-    m_lockingPid = getpid();
-    char buffer[100];
-    int length = snprintf(buffer, 100, "%d\n", m_lockingPid);
-    length = write(lockFd, buffer, length);
-    if (length == -1)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to create lock file '%s' to lock session "
-              "'%s': %s."),
-            lockFn.c_str(), name(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        close(lockFd);
-        // Remove the lock file.
-        g_unlink(lockFn.c_str());
-        m_lockingPid = 0;
-        return false;
-    }
-    close(lockFd);
-    return true;
-}
-
-bool Session::unlock()
-{
-    std::string lockFn;
-    makeDirectoryName(lockFn);
-    makeLockFileName(lockFn);
-    if (g_unlink(lockFn.c_str()))
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to remove lock file '%s' to unlock session "
-              "'%s': %s."),
-            lockFn.c_str(), m_name.c_str(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        return false;
-    }
-    m_lockingPid = 0;
-    return true;
-}
-
-bool Session::create()
-{
-    time(&m_lastSavingTime);
-    m_lockingPid = 0;
-
-    // Create the session directory to hold the session information.
-    std::string dirName;
-    makeDirectoryName(dirName);
-    if (g_mkdir(dirName.c_str(),
-                I_SRUSR | I_SWUSR | I_SRGRP | I_SWGRP | I_SROTH))
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to create directory '%s' to store information on "
-              "session '%s': %s."),
-            dirName.c_str(), name(), g_strerror(errno));
+            _("Samoyed failed to create directory \"%s\" for session \"%s\". "
+              "%s."),
+            sessionDirName.c_str(),
+            name ? name : generatedName.c_str(),
+            g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return false;
     }
 
-    // Lock the session.
-    if (!lock())
+    // Lock it.
+    if (!lockSession(name ? name : generatedName.c_str()))
     {
-        g_rmdir(dirName.c_str());
+        g_unlink(sessionDirName.c_str());
         return false;
     }
 
-    // Create an empty window.
-    Application::instance()->createWindow(NULL);
+    // Start a new session.
+    Window::create(NULL);
+    assert(Application::instance()->window());
+    Session *session = new Session(name ? name : generatedName.c_str());
 
-    // Now save this session to create the session file.  Even if this session
-    // quits abnormally later, we can find the session file to get the last
-    // saving time and recover it.
-    save();
-    return true;
+    // Do an initial saving to create the session file.
+    saveSession(m_name.c_str(), false);
+
+    // Create the file to store the unsaved file URIs.
+    std::string unsavedFn(sessionDirName + G_DIR_SEPARATOR_S "unsaved-files");
+    int unsavedFd = g_open(unsavedFn.c_str(), O_WRONLY | O_CREAT, 0644);
+    if (unsavedFd != -1)
+        close(unsavedFd);
+
+    return session;
 }
 
-bool Session::recover()
+Session *Session::restore(const char *name)
 {
-    // Read the unsaved files.
-    std::string unsavedFilesFn;
-    makeDirectoryName(unsavedFilesFn);
-    makeUnsavedFilesFileName(unsavedFilesFn);
+    std::string sessionDirFn(Application::instance()->userDirectoryName());
+    sessionDirFn += G_DIR_SEPARATOR_S sessions G_DIR_SEPARATOR_S;
+    sessionDirFn += name;
 
-    char *text;
-    GError *error = NULL;
-    g_file_get_contents(unsavedFilesFn, &text, NULL, &error);
-    if (error)
-    {
-        if (error->code == G_FILE_ERROR_NOENT)
-            return true;
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to read file '%s' to recover session '%s': %s."),
-            unsavedFilesFn.c_str(), name());
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        g_error_free(error);
-        return false;
-    }
-
-    char *cp;
-    cp = strtok(text, "\n");
-    if (!cp)
-    {
-        g_free(text);
-        return true;
-    }
-
-    // Ask the user whether to recover the unsaved files or not.
-    GtkWidget *dialog = gtk_message_dialog_new(
-        NULL,
-        GTK_DIALOG_MODAL,
-        GTK_MESSAGE_QUESTION,
-        GTK_BUTTONS_YES_NO,
-        _("Last time session '%s' was terminated abnormally, leaving some "
-          "modified files unsaved. Recover these files?"),
-        name());
-    int response = gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
-    if (response == GTK_RESPONSE_NO)
-    {
-        g_free(text);
-        return true;
-    }
-
-    // Recover each unsaved file.
-    while (cp)
-    {
-        recover(cp);
-        cp = strtok(NULL, "\n");
-    }
-    g_free(text);
-    return true;
-}
-
-bool Session::restore()
-{
-    // Lock the session.
-    if (!lock())
-        return false;
-
-    // Read the stored information from the session file.
-    std::string sessionFn;
-    makeDirectoryName(sessionFn);
-    makeSessionFileName(sessionFn);
-    SessionInfo *session = load(sessionFn.c_str());
-    if (!session)
-    {
-        unlock();
-        return false;
-    }
+    // Read the session file.
+    std::string sessionFn(sessionDirName + G_DIR_SEPARATOR_S "session.xml");
+    XmlElementSession *s = readSessionFile(sessionFn.c_str(), name);
+    if (!s)
+        return NULL;
 
     // Restore the session.
-    session->restore();
-    delete session;
+    if (!s->restore())
+    {
+        delete s;
+        return NULL;
+    }
+    delete s;
 
-    // If no window is created due to whatever reasons, create a window.
-    if (!Application::instance()->currentWindow())
-        Application::instance()->createWindow(NULL);
+    // Make sure the top-level window is created.
+    if (!Application::instance()->window())
+        return NULL;
 
-    // Recover the session if needed.
-    recover();
-    return true;
+    Session *session = new Session(name);
+
+    // Check to see if the session has any unsaved files.
+    std::string unsavedFn(sessionDirName + G_DIR_SEPARATOR_S "unsaved-files");
+    if (readUnsavedFileUris(unsavedFn.c_str(),
+                            name,
+                            session->m_unsavedFileUris))
+    {
+        if (!session->m_unsavedFileUris.empty())
+        {
+            FileRecoverer *recoverer =
+                FileRecoverer::create(session->m_unsavedFileUris);
+            Application::instance()->window()->addTool(recoverer);
+        }
+    }
+
+    return session;
 }
 
 bool Session::save()
 {
-    // Save this session.
-    SessionInfo *session = new SessionInfo;
-    session->save();
-
-    // Write the session information to the session file.
-    std::string sessionFn;
-    makeDirectoryName(sessionFn);
-    makeSessionFileName(sessionFn);
-    FILE *sessionFile = g_fopen(sessionFn.c_str(), "w");
-    if (!sessionFile)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to open session file '%s' to save session '%s': "
-              "%s."),
-            sessionFn.c_str(), name(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        delete session;
-        return false;
-    }
-    if (!session->write(sessionFile))
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to save session '%s' into session file '%s': "
-              "%s."),
-            name(), sessionFn.c_str(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        fclose(sessionFile);
-        delete session;
-        return false;
-    }
-    fclose(sessionFile);
-    delete session;
-    return true;
+    return saveSession(m_name.c_str(), true);
 }
 
-bool Session::quit()
+void Session::addUnsavedFileUri(const char *uri)
 {
-    if (!save())
-    {
-        // Ask the user if she still wants to quit the session.
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_YES_NO,
-            _("Samoyed failed to save the current session. If you quit it, you "
-              "may be unable to restore it. Quit the current session?"));
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_NO)
-            return false;
-    }
-
-    // Close all opened projects.
-
-    // Close all windows.
-    const std::vector<Window *> windows = Application::instance()->windows();
-    for (std::vector<Window *>::const_iterator i = windows.begin();
-         i != windows.end();
-         ++i)
-    {
-        if (!Application::intance()->destroyWindowOnly(*i))
-            return false;
-    }
-
-    unlock();
-    return true;
+    if (!m_unsavedFileUris.insert(uri).second)
+        return;
 }
 
-}
-#include "session-manager.hpp"
-#include "session.hpp"
-#include "application.hpp"
-#include <assert.h>
-#include <stdio.h>
-#include <time.h>
-#include <string>
-#include <set>
-#include <vector>
-#include <algorithm>
-#include <glib.h>
-#include <gtk/gtk.h>
-
-namespace
+void Session::removeUnsavedFileUri(const char *uri)
 {
-
-bool compareSessions(const Samoyed::Session *a, const Samoyed::Session *b)
-{
-    if (a->lockingProcessId() != b->lockingProcessId())
-        return a->lockingProcessId() > b->lockingProcessId();
-    return difftime(a->lastSavingTime(), b->lastSavingTime()) < 0.;
-}
-
-}
-
-namespace Samoyed
-{
-
-SessionManager::SessionManager(): m_currentSession(NULL)
-{
-    m_sessionsDirName = Application::instance()->userDirectoryName();
-    m_sessionsDirName += G_DIR_SEPARATOR_S "sessions";
-}
-
-bool SessionManager::startUp()
-{
-    // Check to see if the sessions directory exists.  If not, create it.
-    if (!g_file_test(m_sessionsDirName.c_str(), G_FILE_TEST_EXISTS))
-    {
-        if (g_mkdir(m_sessionsDirName.c_str(),
-                    I_SRUSR | I_SWUSR | I_SRGRP | I_SWGRP | I_SROTH))
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create directory '%s' to store session "
-                  "information: %s."),
-                m_sessionsDirName.c_str(), g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool SessionManager::newSession(const char *sessionName)
-{
-    std::string sessionDirName;
-
-    if (m_currentSession)
-    {
-        Application::instance()->setSwitchingSession(true);
-        quitSession();
-        Application::instance()->setSwitchingSession(false);
-    }
-
-    if (!sessionName)
-    {
-        // Choose a nonexisting name for the new session.  Read out all the
-        // existing session names.
-        std::set<std::string> existingNames;
-        GError *error = NULL;
-        GDir *dir = g_dir_open(m_sessionsDirName.c_str(), 0, &error);
-        if (error)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to open directory '%s' to choose a "
-                  "nonexisting name for the new session: %s."),
-                m_sessionsDirName.c_str(), error->message);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            g_error_free(error);
-            return false;
-        }
-        const char *name;
-        while ((name = g_dir_read_name(dir)))
-            existingNames.insert(std::string(name));
-        g_dir_close(dir);
-
-        char buffer[100];
-        int i = 1;
-        sessionName = _("untitled1");
-        for (std::set<std::string>::const_iterator it =
-             existingNames.lower_bound(sessionName);
-             it != existingNames.end() && *it == sessionName;
-             ++it, ++i)
-        {
-            snprintf(buffer, sizeof(buffer), "%d", i);
-            sessionName = _("untitled");
-            sessionName += buffer;
-        }
-    }
-
-    m_currentSession = new Session(sessionName);
-    if (!m_currentSession->create())
-    {
-        delete m_currentSession;
-        m_currentSession = NULL;
-        return false;
-    }
-    return true;
-}
-
-bool SessionManager::readSessions(std::vector<Session *> &sessions)
-{
-    GError *error = NULL;
-    GDir *dir = g_dir_open(m_sessionsDirName.c_str(), 0, &error);
-    if (error)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to open directory '%s' to read the existing "
-              "sessions: %s."),
-            m_sessionsDirName.c_str(), error->message);
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        g_error_free(error);
-        return false;
-    }
-    const char *name;
-    while ((name = g_dir_read_name(dir)))
-    {
-        Session *session = new Session(name);
-        session->loadMetaData();
-        sessions.push_back(session);
-    }
-    g_dir_close(dir);
-    return true;
-}
-
-bool SessionManager::restoreSession(const char *sessionName)
-{
-    if (m_currentSession)
-    {
-        Application::instance()->setSwitchingSession(true);
-        quitSession();
-        Application::instance()->setSwitchingSession(false);
-    }
-
-    if (sessionName)
-        m_currentSession = new Session(sessionName);
-    else
-    {
-        // If no session name is given, find the latest saved session.
-        std::vectore<Session *> sessions;
-        if (!readSessions(sessions))
-            return false;
-        if (sessions.empty())
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed cannot find any session to restore. No session "
-                  "exists in directory '%s'."),
-                sessionDirectoryName());
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        std::sort(sessions.begin(), sessions.end(), compareSessions);
-        m_currentSession = sessions.back();
-        sessions.pop_back();
-        for (std::vector<Session *>::const_iterator i = sessions.begin();
-             i != sessions.end();
-             ++i)
-            delete *i;
-        if (m_currentSession->lockingProcessId())
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed cannot find any unlocked session to restore."));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            delete m_currentSession;
-            m_currentSession = NULL;
-            return false;
-        }
-    }
-
-    if (!m_currentSession->restore())
-    {
-        delete m_currentSession;
-        m_currentSession = NULL;
-        return false;
-    }
-    return true;
-}
-
-bool SessionManager::restoreSession(Session *session)
-{
-    assert(!session->lockedByOther());
-
-    if (m_currentSession)
-    {
-        Application::instance()->setSwitchingSession(true);
-        quitSession();
-        Application::instance()->setSwitchingSession(false);
-    }
-
-    if (!session->restore())
-        return false;
-    m_currentSession = new Session(*session);
-    return true;
-}
-
-bool SessionManager::quitSession()
-{
-    if (!m_currentSession)
-        return true;
-
-    if (!m_currentSession->quit())
-        return false;
-    delete m_currentSession;
-    m_currentSession = NULL;
-    return true;
+    if (!m_unsavedFileUris.erase(uri))
+        return;
 }
 
 }
