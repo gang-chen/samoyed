@@ -43,6 +43,7 @@ Application *Application::s_instance = NULL;
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
     m_session(NULL),
+    m_switchingSession(false),
     m_fileTypeRegistry(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
@@ -58,6 +59,9 @@ Application::Application():
 
 Application::~Application()
 {
+    assert(!m_session);
+    assert(!m_window);
+    delete m_fileTypeRegistry;
     s_instance = NULL;
 }
 
@@ -302,11 +306,9 @@ void Application::continueQuitting()
     delete m_session;
     m_session = NULL;
 
-    if (!m_nextSessionName.empty())
+    if (m_switchingSession)
     {
-        m_session = Session::restore(m_nextSessionName.c_str());
-        m_nextSessionName.clear();
-
+        m_switchingSession = false;
         while (!m_session)
         {
             // Pop up a dialog to let the user choose which session to start.
@@ -354,9 +356,10 @@ void Application::quit()
         continueQuitting();
 }
 
-void Application::switchSession(const char *sessionName)
+void Application::switchSession()
 {
-    m_nextSessionName = sessionName;
+    assert(!m_switchingSession);
+    m_switchingSession = true;
     quit();
 }
 
