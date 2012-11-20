@@ -60,7 +60,7 @@ public:
     /**
      * Request to switch to a different session.
      */
-    void switchSession(Session &session);
+    void switchSession();
 
     void cancelQuitting();
 
@@ -144,7 +144,7 @@ private:
     int m_exitStatus;
 
     Session *m_session;
-    std::string m_nextSessionName;
+    bool m_switchingSession;
 
     FileTypeRegistry *m_fileTypeRegistry;
 
