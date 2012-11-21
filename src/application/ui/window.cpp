@@ -6,6 +6,7 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
+#include "pane.hpp"
 #include "../application.hpp"
 #include <gtk/gtk.h>
 
@@ -13,6 +14,7 @@ namespace Samoyed
 {
 
 Window::Window():
+    m_pane(NULL),
     m_window(NULL),
     m_mainBox(NULL),
     m_menuBar(NULL),
@@ -46,7 +48,8 @@ Window *Window::create(const Configuration *config)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -74,30 +77,104 @@ Window *Window::create(const Configuration *config)
     g_signal_connect(w->m_window,
                      "delete-event",
                      G_CALLBACK(onDeleteEvent),
-                     NULL);
+                     this);
+    g_signal_connect(w->m_window,
+                     "destroy",
+                     G_CALLBACK(onDestroy),
+                     this);
+    g_signal_connect(w->m_window,
+                     "focus-in-event",
+                     G_CALLBACK(onFocusInEvent),
+                     this);
 
     gtk_widget_show(w->m_window);
 
-    Application::instance()->setWindow(w);
+    Application::instance()->addWindow(*w);
     return w;
 }
 
 Window::~Window()
 {
+    Application::instance()->removeWindow(*this);
+    delete m_pane;
     if (m_uiManager)
         g_object_unref(m_uiManager);
     if (m_window)
-        gtk_widget_destroy(m_window);
+    {
+        GtkWidget *w = m_window;
+        m_window = NULL;
+        gtk_widget_destroy(w);
+    }
 }
 
 gboolean Window::onDeleteEvent(GtkWidget *widget,
                                GdkEvent *event,
-                               gpointer)
+                               gpointer window)
 {
-    // Quiting the application will destroy the window if the user doesn't
-    // prevent it.
-    Application::instance()->quit();
-    return TRUE;
+    Window *w = static_cast<Window *>(window);
+
+    if (Application::instance()->mainWindow() == w)
+    {
+        // Closing the main window will quit the application.  Confirm it.
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_NONE,
+            _("Closing this window will quit Samoyed."));
+        gtk_dialog_add_buttons(
+            GTK_DIALOG(dialog),
+            _("_Quit"), GTK_RESPONSE_YES,
+            _("_Cancel"), GTK_RESPONSE_NO);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_NO);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_NO)
+            return TRUE;
+
+        // Quitting the application will destroy the window if the user doesn't
+        // prevent it.
+        Application::instance()->quit();
+        return TRUE;
+    }
+
+    // Request to close all editors.  If the user cancels closing an editor,
+    // cancel closing this window.
+    if (m_pane)
+        if (!m_pane->close())
+            return TRUE;
+    m_closing = true;
+    if (m_pane)
+        return TRUE;
+    return FALSE;
+}
+
+void Window::onDestroy(GtkWidget *widget, gpointer window)
+{
+    Window *w = static_cast<Window *>(window);
+    if (w->m_window)
+    {
+        assert(w->m_window == widget);
+        w->m_window = NULL;
+        delete w;
+    }
+}
+
+gboolean Window::onFocusInEvent(GtkWidget *widget,
+                                GdkEvent *event,
+                                gpointer window)
+{
+    Application::instance()->setCurrentWindow(static_cast<Window *>(window));
+    return FALSE;
+}
+
+void Window::setPane(Pane *pane)
+{
+    m_pane = pane;
+    if (m_closing && !m_pane)
+        delete this;
 }
 
 }

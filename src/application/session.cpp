@@ -20,9 +20,6 @@
 #include <string>
 #include <utility>
 #include <unistd.h>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <glib.h>
 #include <gtk/gtk.h>
 
@@ -142,6 +139,43 @@ private:
     std::vector<XmlElementEditor *> m_editors;
 };
 
+class XmlElementPane
+{
+public:
+    static GMarkupParser s_parser =
+    {
+        startElement,
+        endElement,
+        NULL,
+        NULL
+    };
+    static XmlElementPane *parse(const char **attrNames,
+                                 const char **attrValues,
+                                 GError **error);
+    static XmlElementPane *save(const Samoyed::Pane &pane);
+    Samoyed::Pane *restore() const;
+    bool write(FILE *file, int indentSize) const;
+    ~XmlElementPane();
+
+private:
+    XmlElementPane(char oriental): m_oriental(oriental) {}
+    static void startElement(GMarkupParserContext *context,
+                             const gchar *elemtName,
+                             const gchar **attrNames,
+                             const gchar **attrValues,
+                             gpointer editorGroup,
+                             GError **error);
+    static void endElement(GMarkupParserContext *context,
+                           const gchar *elemName,
+                           gpointer editorGroup,
+                           GError **error);
+    char m_oriental;
+    Samoyed::Pane::ContentType m_contentType;
+    void *m_content;
+    XmlElementPane *m_left;
+    XmlElementPane *m_right;
+};
+
 class XmlElementWindow
 {
 public:
@@ -177,7 +211,6 @@ private:
                            gpointer window,
                            GError **error);
     Samoyed::Window::Configuration m_configuration;
-    std::vector<XmlElementProject *> m_projects;
     int m_currentEditGroupIndex;
     std::vector<XmlElementEditorGroup *> m_editorGroups;
 };
@@ -212,7 +245,8 @@ private:
                            const gchar *elemName,
                            gpointer session,
                            GError **error);
-    XmlElementWindow *m_window;
+    std::vector<XmlElementProject *> m_projects;
+    std::vector<XmlElementWindow *> m_windows;
 };
 
 bool indent(FILE *file, int indentSize)
@@ -528,7 +562,9 @@ XmlElementWindow *XmlElementWindow::parse(const char **attrNames,
     int currentEditorGroupIndex = 0;
     for (; attrNames; ++attrNames, ++attrValues)
     {
-        if (strcmp(*attrNames, "x") == 0)
+        if (strcmp(*attrNames, "screen-index") == 0)
+            config.m_screenIndex = atoi(*attrValues);
+        else if (strcmp(*attrNames, "x") == 0)
             config.m_x = atoi(*attrValues);
         else if (strcmp(*attrNames, "y") == 0)
             config.m_y = atoi(*attrValues);
@@ -608,13 +644,6 @@ XmlElementWindow *XmlElementWindow::save(const Samoyed::Window &window)
 {
     XmlElementWindow *rec =
         new XmlElementWindow(window.currentEditorGroupIndex());
-    const Samoyed::Application::ProjectTable &projects =
-        Samoyed::Application::instance()->projectTable();
-    for (Samoyed::Application::ProjectTable::const_iterator it =
-            projects.begin();
-         it != projects.end();
-         ++it)
-        rec->m_projects.push_back(XmlElementProject::save(*it->second));
     for (int i = 0; i < window.editorGroupCount(); ++i)
         rec->m_editorGroups.push_back(
             XmlElementEditorGroup::save(window.editorGroup(i)));
@@ -654,6 +683,7 @@ bool XmlElementWindow::write(FILE *file, int indentSize) const
         return false;
     if (fprintf(file,
                 "<window"
+                " screen-index\"%d\""
                 " x=\"%d\""
                 " y=\"%d\""
                 " width=\"%d\""
@@ -661,6 +691,7 @@ bool XmlElementWindow::write(FILE *file, int indentSize) const
                 " full-screen=\"%d\""
                 " maximized=\"%d\""
                 " toolbar-visible=\"%d\">\n",
+                m_configuration.m_screenIndex,
                 m_configuration.m_x,
                 m_configuration.m_y,
                 m_configuration.m_width,
@@ -734,14 +765,6 @@ void XmlElementSession::startElement(GMarkupParserContext *context,
     XmlElementSession *s = static_cast<XmlElementSession *>(session);
     if (strcmp(elemName, "window") == 0)
     {
-        if (s->m_window)
-        {
-            g_set_error(error,
-                        G_MARKUP_ERROR,
-                        G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                        _("Multiple element \"window\""));
-            return;
-        }
         XmlElementWindow *window =
             XmlElementWindow::parse(attrNames, attrValues, error);
         if (!window)
@@ -857,8 +880,8 @@ XmlElementSession *readSessionFile(const char *fileName,
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window() ?
-            Application::instance()->window()->gtkWidget() : NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -885,8 +908,8 @@ XmlElementSession *readSessionFile(const char *fileName,
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window() ?
-            Application::instance()->window()->gtkWidget() : NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -934,9 +957,14 @@ bool readUnsavedFileUris(const char *fileName,
     g_file_get_contents(fileName, &text, &textLength, &error);
     if (error)
     {
+        if (error->code == G_IO_ERROR_NOT_FOUND)
+        {
+            g_error_free(error);
+            return true;
+        }
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window() ?
-            Application::instance()->window()->gtkWidget() : NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -974,8 +1002,8 @@ RETRY:
         {
             // The lock file doesn't exist but we can't create the lock file.
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
+                Application::instance()->currentWindow() ?
+                Application::instance()->currentWindow()->gtkWidget() : NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -1016,8 +1044,8 @@ RETRY:
             // The session is being locked by another instance of the
             // application.  But we can't read the process ID.
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
+                Application::instance()->currentWindow() ?
+                Application::instance()->currentWindow()->gtkWidget() : NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -1033,8 +1061,8 @@ RETRY:
             // The session is being locked by another instance of the
             // application.
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
+                Application::instance()->currentWindow() ?
+                Application::instance()->currentWindow()->gtkWidget() : NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -1058,8 +1086,8 @@ RETRY:
     if (length == -1)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window() ?
-            Application::instance()->window()->gtkWidget() : NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -1118,7 +1146,7 @@ bool saveSession(const char *name, bool reportError)
     if (reportError)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window()->gtkWidget(),
+            Application::instance()->currentWindow()->gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_NONE,
@@ -1141,12 +1169,6 @@ bool saveSession(const char *name, bool reportError)
     return false;
 }
 
-void generateUniqueSessionName(std::string &name)
-{
-    boost::uuids::uuid uuid(boost::uuids::random_generator()());
-    name = boost::uuids::to_string(uuid);
-}
-
 }
 
 namespace Samoyed
@@ -1162,8 +1184,8 @@ bool Session::makeSessionsDirectory()
         if (g_mkdir(sessionsDirName.c_str(), 0755))
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window() ?
-                Application::instance()->window()->gtkWidget() : NULL,
+                Application::instance()->currentWindow() ?
+                Application::instance()->currentWindow()->gtkWidget() : NULL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
                 _("Samoyed failed to create directory \"%s\" to session "
@@ -1222,8 +1244,8 @@ bool Session::allSessionNames(std::vector<std::string> &names)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window() ?
-            Application::instance()->window()->gtkWidget() : NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -1290,52 +1312,37 @@ Session::~Session()
 
 Session *Session::create(const char *name)
 {
-    std::string generatedName;
-    if (!name)
-        generateUniqueSessionName(generatedName);
-
     // Create the session directory.
     std::string sessionDirName(Application::instance()->userDirectoryName());
     sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    sessionDirName += name ? name : generatedName.c_str();
+    sessionDirName += name;
     if (g_mkdir(sessionDirName.c_str(), 0755))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window() ?
-            Application::instance()->window()->gtkWidget() : NULL,
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to create directory \"%s\" for session \"%s\". "
               "%s."),
-            sessionDirName.c_str(),
-            name ? name : generatedName.c_str(),
-            g_strerror(errno));
+            sessionDirName.c_str(), name, g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return false;
     }
 
     // Lock it.
-    if (!lockSession(name ? name : generatedName.c_str()))
+    if (!lockSession(name))
     {
         g_unlink(sessionDirName.c_str());
         return false;
     }
 
     // Start a new session.
-    Window::create(NULL);
-    assert(Application::instance()->window());
-    Session *session = new Session(name ? name : generatedName.c_str());
-
-    // Do an initial saving to create the session file.
-    saveSession(m_name.c_str(), false);
-
-    // Create the file to store the unsaved file URIs.
-    std::string unsavedFn(sessionDirName + G_DIR_SEPARATOR_S "unsaved-files");
-    int unsavedFd = g_open(unsavedFn.c_str(), O_WRONLY | O_CREAT, 0644);
-    if (unsavedFd != -1)
-        close(unsavedFd);
+    if (!Window::create(NULL))
+        return NULL;
+    Session *session = new Session(name);
 
     return session;
 }
@@ -1360,9 +1367,10 @@ Session *Session::restore(const char *name)
     }
     delete s;
 
-    // Make sure the top-level window is created.
-    if (!Application::instance()->window())
-        return NULL;
+    // Make sure the main window is created.
+    if (!Application::instance()->mainWindow())
+        if (!Window::create(NULL))
+            return NULL;
 
     Session *session = new Session(name);
 

@@ -5,6 +5,7 @@
 #define SMYD_EDITOR_GROUP_HPP
 
 #include <vector>
+#include <boost/utility>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -15,7 +16,7 @@ class Editor;
 /**
  * A editor group is actually a GTK+ notebook containing editors.
  */
-class EditorGroup
+class EditorGroup: public boost::noncopyable
 {
 public:
     int editorCount() const { return m_editors.size(); }
@@ -29,6 +30,7 @@ public:
     int currentEditorIndex() const { return m_currentEditorIndex; }
 
     void setCurrentEditorIndex(int index) { m_currentEditorIndex = index; }
+
 private:
     GtkNotebook *m_notebook;
 

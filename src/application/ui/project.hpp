@@ -4,6 +4,7 @@
 #ifndef SMYD_PROJECT_HPP
 #define SMYD_PROJECT_HPP
 
+#include "../utilities/misc.hpp"
 #include "../utilities/string-comparator.hpp"
 #include "../utilities/manager.hpp"
 #include <map>
@@ -31,10 +32,14 @@ class Project: public boost::noncopyable
 {
 public:
     Editor *findEditor(const char *uri);
+    const Editor *findEditor(const char *uri) const;
 
     void addEditor(Editor &editor);
 
     void removeEditor(Editor &editor);
+
+    Editor *editors() { return m_firstEditor; }
+    const Editor *editors() const { return m_firstEditor; }
 
 private:
     typedef std::multi_map<ComparablePointer<const char *>, Editor *>
@@ -49,7 +54,11 @@ private:
     /**
      * The editors in the context of this project.
      */
-    EditorTable m_editors;
+    Editor *m_firstEditor;
+    Editor *m_lastEditor;
+    EditorTable m_editorTable;
+
+    SMYD_DEFINE_DOUBLY_LINKED(Project)
 };
 
 }

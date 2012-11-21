@@ -4,6 +4,8 @@
 #ifndef SMYD_EDITOR_HPP
 #define SMYD_EDITOR_HPP
 
+#include "../utilities/misc.hpp"
+
 namespace Samoyed
 {
 
@@ -20,12 +22,6 @@ public:
     Editor(File &file, Project &project);
 
     virtual ~Editor();
-
-    Editor *next() const { return m_next; }
-    Editor *previous() const { return m_previous; }
-
-    void addToList(Editor *&editors);
-    void removeFromList(Editor *&editors);
 
     EditorGroup *editorGroup() const { return m_editorGroup; }
     int index() const { return m_index; }
@@ -48,9 +44,6 @@ private:
      */
     File &m_file;
 
-    Editor *m_next;
-    Editor *m_previous;
-
     /**
      * The project where the editor is.
      */
@@ -58,6 +51,9 @@ private:
 
     EditorGroup *m_group;
     int m_index;
+
+    SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, File)
+    SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, Project)
 };
 
 }

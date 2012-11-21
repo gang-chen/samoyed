@@ -4,11 +4,14 @@
 #ifndef SMYD_WINDOW_HPP
 #define SMYD_WINDOW_HPP
 
+#include "../utilities/misc.hpp"
 #include <boost/utility>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
+
+class Pane;
 
 /**
  * A window represents a top-level window.
@@ -18,6 +21,7 @@ class Window: public boost::noncopyable
 public:
     struct Configuration
     {
+        int m_screenIndex;
         int m_x;
         int m_y;
         int m_width;
@@ -33,6 +37,11 @@ public:
 
     Configuration configuration() const;
 
+    Pane *pane() { return m_pane; }
+    const Pane *pane() const { return m_pane; }
+
+    void setPane(Pane *pane);
+
     /**
      * @return The underlying GTK+ widget.  Note that it is read-only.
      */
@@ -41,9 +50,17 @@ public:
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
-                                  gpointer);
+                                  gpointer window);
+    static void onDestroy(GtkWidget *widget, gpointer window);
+    static gboolean onFocusInEvent(GtkWidget *widget,
+                                   GdkEvent *event,
+                                   gpointer window);
 
     Window();
+
+    Pane *m_pane;
+
+    bool m_closing;
 
     /**
      * The GTK+ window.
@@ -76,6 +93,8 @@ private:
      * The GTK+ actions that are sensitive when some files are opened.
      */
     GtkActionGroup *m_actionsForFiles;
+
+    SMYD_DEFINE_DOUBLY_LINKED(Window)
 };
 
 }

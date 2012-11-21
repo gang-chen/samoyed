@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <set>
-#include <sys/types.h>
 #include <boost/utility>
 
 namespace Samoyed
@@ -16,7 +15,7 @@ namespace Samoyed
 /**
  * A session can be saved and restored so that the user can quit the application
  * and start the application to continue her work later.  The state of the
- * session, including the configuration of the top-level window, the opened
+ * session, including the configuration of the top-level windows, the opened
  * projects and the opened files, and the history of the session are stored in
  * an XML file.
  *
@@ -37,7 +36,7 @@ namespace Samoyed
  * The session directory: USER/sessions/SESSION.
  * The session file: USER/sessions/SESSION/session.xml.
  * The session lock file: USER/sessions/SESSION/lock.
- * The unsaved file URIs in a session is stored in
+ * The unsaved file URIs in a session are stored in
  * USER/sessions/SESSION/unsaved-files.
  */
 class Session: public boost::noncopyable
@@ -66,7 +65,6 @@ public:
 
     /**
      * Create a new session and start it.
-     * @param name The new session name, or NULL to generate a unique name.
      */
     static Session *create(const char *name);
 

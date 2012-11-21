@@ -11,7 +11,6 @@
 #include "ui/file.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
-#include "ui/dialogs/entry-dialog.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
 #include <assert.h>
 #include <utility>
@@ -51,9 +50,13 @@ Application::Application():
     m_fileSourceManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
-    m_windows(NULL),
+    m_firstProject(NULL),
+    m_lastProject(NULL),
+    m_firstFile(NULL),
+    m_lastFile(NULL),
+    m_firstWindow(NULL),
+    m_lastWindow(NULL),
     m_currentWindow(NULL),
-    m_mainWindow(NULL),
     m_quitting(false)
 {
     Signal::registerTerminationHandler(onTerminated);
@@ -64,7 +67,12 @@ Application::Application():
 Application::~Application()
 {
     assert(!m_session);
-    assert(!m_windows);
+    assert(!m_firstProject);
+    assert(!m_lastProject);
+    assert(!m_firstFile);
+    assert(!m_lastFile);
+    assert(!m_firstWindow);
+    assert(!m_lastWindow);
     assert(!m_currentWindow);
     assert(!m_mainWindow);
     delete m_fileTypeRegistry;
@@ -238,33 +246,46 @@ int Application::run(int argc, char *argv[])
         goto ERROR_OUT;
 
     // Start a session.
+    bool choose;
     if (sessionName)
     {
-        GError *error = NULL;
-        m_session = Session::restore(sessionName, &error);
-        if (error)
-        {
-        }
+        m_session = Session::restore(sessionName);
+        choose = false;
     }
     else if (newSessionName)
-        m_session = Session::create(newSessionName);
-    else if (!chooseSession)
     {
-        // By default restore the last session.  And if none, let the user
-        // choose one.
+        m_session = Session::create(newSessionName);
+        choose = true;
+    }
+    else if (chooseSession)
+        choose = true;
+    else
+    {
+        // By default restore the last session.
         std::string name;
         if (Session::lastSessionName(name))
+        {
             m_session = Session::restore(name.c_str());
+            choose = true;
+        }
+        else
+            choose = false;
     }
     while (!m_session)
     {
         // Pop up a dialog to let the user choose which session to start.
-        SessionChooserDialog *dialog = SessionChooserDialog::create();
+        SessionChooserDialog *dialog = SessionChooserDialog::create(choose);
         dialog->run();
         if (dialog->sessionName())
+        {
             m_session = Session::restore(dialog->sessionName());
+            choose = true;
+        }
         else if (dialog->newSessionName())
+        {
             m_session = Session::create(dialog->newSessionName());
+            choose = false;
+        }
         else
         {
             delete dialog;
@@ -303,34 +324,41 @@ CLEAN_UP:
 
 void Application::continueQuitting()
 {
-    assert(m_projectTable.empty());
-    assert(m_fileTable.empty());
+    assert(!m_firstProject);
+    assert(!m_lastProject);
+    assert(!m_firstFile);
+    assert(!m_lastFile);
 
     m_quitting = false;
-
-    assert(m_window);
-    delete m_window;
-    m_window = NULL;
 
     assert(m_session);
     delete m_session;
     m_session = NULL;
 
+    bool choose;
     if (m_creatingSession)
-    {
-    }
+        choose = false;
     if (m_switchingSession)
+        choose = true;
+    if (m_creatingSession || m_switchingSession)
     {
+        m_creatingSession = false;
         m_switchingSession = false;
         while (!m_session)
         {
             // Pop up a dialog to let the user choose which session to start.
-            SessionChooserDialog *dialog = SessionChooserDialog::create();
+            SessionChooserDialog *dialog = SessionChooserDialog::create(choose);
             dialog->run();
             if (dialog->sessionName())
+            {
                 m_session = Session::restore(dialog->sessionName());
+                choose = true;
+            }
             else if (dialog->newSessionName())
+            {
                 m_session = Session::create(dialog->newSessionName());
+                choose = false;
+            }
             else
             {
                 delete dialog;
@@ -353,11 +381,10 @@ void Application::quit()
 
     // Request to close all opened projects.  If the user cancels closing a
     // project, cancel quitting.
-    for (ProjectTable::iterator it = m_projectTable.begin();
-         it != m_projectTable.end();
-        )
+    for (Project *project = m_firstProject, *next; project; project = next)
     {
-        if (!(it++)->second->close())
+        next = project->next();
+        if (!project->close())
             return;
     }
 
@@ -365,7 +392,7 @@ void Application::quit()
     // after all projects are closed.
     m_quitting = true;
 
-    if (m_projectTable.empty())
+    if (!m_firstProject)
         continueQuitting();
 }
 
@@ -386,11 +413,19 @@ void Application::cancelQuitting()
 void Application::onProjectClosed()
 {
     // Continue quitting the application if all projects are closed.
-    if (m_quitting && m_projectTable.empty())
+    if (m_quitting && !m_firstProject)
         continueQuitting();
 }
 
-Project *Application::findProject(const char *uri) const
+Project *Application::findProject(const char *uri)
+{
+    ProjectTable::const_iterator it = m_projectTable.find(uri);
+    if (it == m_projectTable.end())
+        return NULL;
+    return it->second;
+}
+
+const Project *Application::findProject(const char *uri) const
 {
     ProjectTable::const_iterator it = m_projectTable.find(uri);
     if (it == m_projectTable.end())
@@ -400,15 +435,25 @@ Project *Application::findProject(const char *uri) const
 
 void Application::addProject(Project &project)
 {
-    m_projectTable.insert(std::make_pair(project.uri(), &project);
+    m_projectTable.insert(std::make_pair(project.uri(), &project));
+    project.addToList(m_firstProject, m_lastProject);
 }
 
 void Application::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
+    project.removeFromList(m_firstProject, m_lastProject);
 }
 
-File *Application::findFile(const char *uri) const
+File *Application::findFile(const char *uri)
+{
+    FileTable::const_iterator it = m_fileTable.find(uri);
+    if (it == m_fileTable.end())
+        return NULL;
+    return it->second;
+}
+
+const File *Application::findFile(const char *uri) const
 {
     FileTable::const_iterator it = m_fileTable.find(uri);
     if (it == m_fileTable.end())
@@ -419,11 +464,25 @@ File *Application::findFile(const char *uri) const
 void Application::addFile(File &file)
 {
     m_fileTable.insert(std::make_pair(file.uri(), &file));
+    file.addToList(m_firstFile, m_lastFile);
 }
 
 void Application::removeFile(File &file)
 {
     m_fileTable.erase(file.uri());
+    file.removeFromList(m_firstFile, m_lastFile);
+}
+
+void Window::addWindow(Window &window)
+{
+    window.addToList(m_firstWindow, m_lastWindow);
+}
+
+void Window::removeWindow(Window &window)
+{
+    window.removeFromList(m_firstWindow, m_lastWindow);
+    if (&window == m_currentWindow)
+        m_currentWindow = NULL;
 }
 
 }

@@ -35,10 +35,6 @@ class Window;
 class Application: public boost::noncopyable
 {
 public:
-    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
-
-    typedef std::map<ComparablePointer<const char *>, File *> FileTable;
-
     Application();
 
     ~Application();
@@ -98,35 +94,41 @@ public:
     void setThreadWorker(Worker *worker)
     { m_threadWorker.reset(worker); }
 
-    Project *findProject(const char *uri) const;
+    Project *findProject(const char *uri);
+    const Project *findProject(const char *uri) const;
 
     void addProject(Project &project);
 
     void removeProject(Project &project);
 
-    const ProjectTable &projectTable() const { return m_projectTable; }
+    Project *projects() { return m_firstProject; }
+    const Project *projects() const { return m_firstProject; }
 
-    File *findFile(const char *uri) const;
+    File *findFile(const char *uri);
+    const File *findFile(const char *uri) const;
 
     void addFile(File &file);
 
     void removeFile(File &file);
 
-    const FileTable &fileTable() const { return m_fileTable; }
+    File *files() { return m_firstFile; }
+    const File *files() const { return m_firstFile; }
 
-    void addWindow(Window *window) { window->addToList(m_windows); }
+    void addWindow(Window &window);
 
-    void removeWindow(Window *window) { window->removeFromList(m_windows); }
+    void removeWindow(Window &window);
 
     Window *currentWindow() const { return m_currentWindow; }
 
     void setCurrentWindow(Window *window) { m_currentWindow = window; }
 
-    Window *mainWindow() const { return m_mainWindow; }
+    /**
+     * The first window is the main window.
+     */
+    Window *mainWindow() const { return *m_firstWindow; }
 
-    void setMainWindow(Window *window) { m_mainWindow = window; }
-
-    Window *windows() const { return m_windows; }
+    Window *windows() { return m_firstWindow; }
+    const Window *windows() const { return m_firstWindow; }
 
     Session *session() const { return m_session; }
 
@@ -145,6 +147,10 @@ public:
     void onProjectClosed();
 
 private:
+    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
+
+    typedef std::map<ComparablePointer<const char *>, File *> FileTable;
+
     bool startUp();
 
     void shutDown();
@@ -178,9 +184,9 @@ private:
 
     FileTable m_fileTable;
 
-    Window *m_windows;
+    Window *m_firstWindow;
+    Window *m_lastWindow;
     Window *m_currentWindow;
-    Window *m_mainWindow;
 
     bool m_quitting;
 

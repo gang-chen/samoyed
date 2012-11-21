@@ -87,7 +87,8 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     if (!mimeType)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window()->gtkWidget(),
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -102,7 +103,8 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     if (!factory)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window()->gtkWidget(),
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -137,23 +139,23 @@ Editor *File::createEditor(Project &project)
     // destroy the editor that is waiting for the completion of the closing.
     if (m_closing)
     {
-        assert(!m_editors->next());
-        assert(!m_editors->previous());
-        delete m_editors;
+        Editor *oldEditor = m_firstEditor;
+        assert(m_firstEditor == m_lastEditor);
+        oldEditor->removeFromListInFile(m_firstEditor, m_lastEditor);
+        delete oldEditor;
         m_closing = false;
         m_reopening = true;
     }
-    editor->addToList(m_editors);
+    editor->addToListInFile(m_firstEditor, m_lastEditor);
 }
 
 void File::continueClosing()
 {
     assert(m_closing);
-    assert(!m_editors->next());
-    assert(!m_editors->previous());
+    assert(m_firstEditor == m_lastEditor);
 
-    Editor *lastEditor = m_editors;
-    lastEditor->removeFromList(m_editors);
+    Editor *lastEditor = m_firstEditor;
+    lastEditor->removeFromListInFile(m_firstEditor, m_lastEditor);
     delete lastEditor;
 
     // Notify the observers right before deleting the file so that the observers
@@ -167,13 +169,15 @@ bool File::destroyEditor(Editor &editor)
     // Can't destroy the editor waiting for the completion of the closing.
     assert(!m_closing);
 
-    if (editor.next() || editor.previous())
+    if (editor.nextInFile() || editor.previousInFile())
     {
-        delete *editor;
+        editor.removeFromListInFile(m_firstEditor, m_lastEditor);
+        delete &editor;
         return true;
     }
 
-    assert(&editor == m_editors);
+    assert(&editor == m_firstEditor);
+    assert(&editor == m_lastEditor);
 
     // Need to close this file.
     m_reopening = false;
@@ -196,7 +200,8 @@ bool File::destroyEditor(Editor &editor)
     {
         // Ask the user.
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window()->gtkWidget(),
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -236,6 +241,8 @@ File::File(const char *uri):
     m_ioError(NULL),
     m_superUndo(NULL),
     m_editCount(0),
+    m_firstEditor(NULL),
+    m_lastEditor(NULL),
     m_freezeCount(0),
     m_internalFreezeCount(0),
     m_loader(NULL)
@@ -248,7 +255,7 @@ File::File(const char *uri):
 
 File::~File()
 {
-    assert(m_editors.empty());
+    assert(m_firstEditor == NULL);
     assert(!m_superUndo);
     assert(!m_loader);
 
@@ -314,7 +321,8 @@ gboolean File::onLoadedInMainThread(gpointer param)
     if (file.m_ioError)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window()->gtkWidget(),
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -352,7 +360,8 @@ gboolean File::onSavedInMainThead(gpointer param)
         if (m_closing)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window()->gtkWidget(),
+                Application::instance()->currentWindow() ?
+                Application::instance()->currentWindow()->gtkWidget() : NULL,
                 GTK_DIALOG_MODEL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_NONE,
@@ -380,7 +389,8 @@ gboolean File::onSavedInMainThead(gpointer param)
         else
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->window()->gtkWidget(),
+                Application::instance()->currentWindow() ?
+                Application::instance()->currentWindow()->gtkWidget() : NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -431,7 +441,8 @@ bool File::load(bool userRequest)
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->window()->gtkWidget(),
+            Application::instance()->currentWindow() ?
+            Application::instance()->currentWindow()->gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -524,7 +535,9 @@ void File::freeze()
     m_freezeCount++;
     if (m_freezeCount + m_internalFreezeCount == 1)
     {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->freeze();
     }
 }
@@ -535,7 +548,9 @@ void File::unfreeze()
     m_freezeCount--;
     if (m_freezeCount + m_internalFreezeCount == 0)
     {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->unfreeze();
     }
 }
@@ -545,7 +560,9 @@ void File::freezeInternally()
     m_internalFreezeCount++;
     if (m_freezeCount + m_internalFreezeCount == 1)
     {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->freeze();
     }
 }
@@ -556,14 +573,16 @@ void File::unfreezeInternally()
     m_internalFreezeCount--;
     if (m_freezeCount + m_internalFreezeCount == 0)
     {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->unfreeze();
     }
 }
 
 void File::onEdited(const EditPrimitive &edit, const Editor *committer)
 {
-    for (Editor *editor = m_editors; editor; editor = editor->next())
+    for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
     {
         if (editor != committer)
             editor->onEdited(edit);
@@ -576,7 +595,9 @@ void File::resetEditCount()
     if (m_editCount != 0)
     {
         m_editCount = 0;
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->onFileEditedStateChanged();
     }
 }
@@ -586,7 +607,9 @@ void File::increaseEditCount()
     m_editCount++;
     if (m_editCount == 0 || m_editCount == 1)
     {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->onFileEditedStateChanged();
     }
 }
@@ -596,7 +619,9 @@ void File::decreaseEditCount()
     m_editCount--;
     if (m_editCount == -1 || m_editCount == 0)
     {
-        for (Editor *editor = m_editors; editor; editor = editor->next())
+        for (Editor *editor = m_firstEditor;
+             editor;
+             editor = editor->nextInFile())
             editor->onFileEditedStateChanged();
     }
 }

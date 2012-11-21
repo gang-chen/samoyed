@@ -4,6 +4,7 @@
 #ifndef SMYD_FILE_HPP
 #define SMYD_FILE_HPP
 
+#include "../utilities/misc.hpp"
 #include "../utilities/revision.hpp"
 #include <utility>
 #include <vector>
@@ -287,7 +288,8 @@ private:
     /**
      * The editors that are editing this file.
      */
-    Editor *m_editors;
+    Editor *m_firstEditor;
+    Editor *m_lastEditor;
 
     int m_freezeCount;
     int m_internalFreezeCount;
@@ -299,6 +301,8 @@ private:
     Loaded m_loaded;
     Saved m_saved;
     Edited m_edited;
+
+    SMYD_DEFINE_DOUBLY_LINKED(File)
 };
 
 }
