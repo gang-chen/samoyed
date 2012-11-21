@@ -11,6 +11,7 @@
 #include "ui/file.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
+#include "ui/dialogs/entry-dialog.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
 #include <assert.h>
 #include <utility>
@@ -43,13 +44,16 @@ Application *Application::s_instance = NULL;
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
     m_session(NULL),
+    m_creatingSession(false),
     m_switchingSession(false),
     m_fileTypeRegistry(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
-    m_window(NULL),
+    m_windows(NULL),
+    m_currentWindow(NULL),
+    m_mainWindow(NULL),
     m_quitting(false)
 {
     Signal::registerTerminationHandler(onTerminated);
@@ -60,7 +64,9 @@ Application::Application():
 Application::~Application()
 {
     assert(!m_session);
-    assert(!m_window);
+    assert(!m_windows);
+    assert(!m_currentWindow);
+    assert(!m_mainWindow);
     delete m_fileTypeRegistry;
     s_instance = NULL;
 }
@@ -233,18 +239,22 @@ int Application::run(int argc, char *argv[])
 
     // Start a session.
     if (sessionName)
-        m_currentSession = Session::restore(sessionName);
+    {
+        GError *error = NULL;
+        m_session = Session::restore(sessionName, &error);
+        if (error)
+        {
+        }
+    }
     else if (newSessionName)
-        m_currentSession = Session::create(newSessionName);
+        m_session = Session::create(newSessionName);
     else if (!chooseSession)
     {
-        // By default restore the last session.  And if none, start a new
-        // session.
+        // By default restore the last session.  And if none, let the user
+        // choose one.
         std::string name;
         if (Session::lastSessionName(name))
             m_session = Session::restore(name.c_str());
-        else
-            m_session = Session::create(NULL);
     }
     while (!m_session)
     {
@@ -306,6 +316,9 @@ void Application::continueQuitting()
     delete m_session;
     m_session = NULL;
 
+    if (m_creatingSession)
+    {
+    }
     if (m_switchingSession)
     {
         m_switchingSession = false;
