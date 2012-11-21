@@ -58,6 +58,11 @@ public:
     void quit();
 
     /**
+     * Request to start a new session.
+     */
+    void createSession();
+
+    /**
      * Request to switch to a different session.
      */
     void switchSession();
@@ -109,9 +114,19 @@ public:
 
     const FileTable &fileTable() const { return m_fileTable; }
 
-    Window *window() const { return m_window; }
+    void addWindow(Window *window) { window->addToList(m_windows); }
 
-    void setWindow(Window *window) { m_window = window; }
+    void removeWindow(Window *window) { window->removeFromList(m_windows); }
+
+    Window *currentWindow() const { return m_currentWindow; }
+
+    void setCurrentWindow(Window *window) { m_currentWindow = window; }
+
+    Window *mainWindow() const { return m_mainWindow; }
+
+    void setMainWindow(Window *window) { m_mainWindow = window; }
+
+    Window *windows() const { return m_windows; }
 
     Session *session() const { return m_session; }
 
@@ -144,6 +159,7 @@ private:
     int m_exitStatus;
 
     Session *m_session;
+    bool m_creatingSession;
     bool m_switchingSession;
 
     FileTypeRegistry *m_fileTypeRegistry;
@@ -162,7 +178,9 @@ private:
 
     FileTable m_fileTable;
 
-    Window *m_window;
+    Window *m_windows;
+    Window *m_currentWindow;
+    Window *m_mainWindow;
 
     bool m_quitting;
 
