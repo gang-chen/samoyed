@@ -24,7 +24,6 @@ private:
 
     GtkWidget *m_window;
     GtkWidget *m_progressBar;
-    GtkImage *m_image;
 };
 
 }
