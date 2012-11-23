@@ -5,13 +5,13 @@
 #define SMYD_WINDOW_HPP
 
 #include "../utilities/misc.hpp"
-#include <boost/utility>
+#include <boost/utility.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-class Pane;
+class SplitPane;
 
 /**
  * A window represents a top-level window.
@@ -37,8 +37,8 @@ public:
 
     Configuration configuration() const;
 
-    Pane *pane() { return m_pane; }
-    const Pane *pane() const { return m_pane; }
+    PaneBase *pane() { return m_pane; }
+    const PaneBase *pane() const { return m_pane; }
 
     void setPane(Pane *pane);
 
@@ -58,7 +58,7 @@ private:
 
     Window();
 
-    Pane *m_pane;
+    PaneBase *m_pane;
 
     bool m_closing;
 

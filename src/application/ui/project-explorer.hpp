@@ -4,12 +4,12 @@
 #ifndef SMYD_PROJECT_EXPLORER_HPP
 #define SMYD_PROJECT_EXPLORER_HPP
 
-#include <boost/utility>
+#include "pane.hpp"
 
 namespace Samoyed
 {
 
-class ProjectExplorer: public boost::noncopyable
+class ProjectExplorer: public Pane
 {
 };
 

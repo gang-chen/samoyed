@@ -488,7 +488,7 @@ void Window::removeWindow(Window &window)
 {
     window.removeFromList(m_firstWindow, m_lastWindow);
     if (&window == m_currentWindow)
-        m_currentWindow = NULL;
+        m_currentWindow = m_firstWindow;
 }
 
 }

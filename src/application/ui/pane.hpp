@@ -22,9 +22,13 @@ public:
 
     static Pane *create(Type type);
 
+    Pane(Type type): m_type(type) {}
+    virtual ~Pane();
+
     SplitPane *split(Type type);
 
-    ~Pane();
+    virtual Pane *currentPane() { return this; }
+    virtual const Pane *currentPane() const { return this; }
 
     Pane *leftNeighbor() const;
     Pane *rightNeighbor() const;
@@ -32,9 +36,7 @@ public:
     Pane *lowerNeighbor() const;
 
 private:
-    Pane();
-
-    SplitPane *m_parent;
+    Type m_type;
 };
 
 }

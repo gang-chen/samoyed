@@ -172,6 +172,16 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 
 void Window::setPane(Pane *pane)
 {
+    // Remove the old pane from this window, which may destroy it.
+    if (m_pane)
+    {
+    }
+
+    // Add the new pane to this window.
+    if (pane)
+    {
+    }
+
     m_pane = pane;
     if (m_closing && !m_pane)
         delete this;

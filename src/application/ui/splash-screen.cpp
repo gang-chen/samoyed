@@ -23,7 +23,7 @@ SplashScreen::SplashScreen(const char *title, const char *imageFileName)
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    GtkImage *image = gtk_image_new_from_file(imageFileName);
+    GtkWidget *image = gtk_image_new_from_file(imageFileName);
     m_progressBar = gtk_progress_bar_new();
     gtk_window_set_decorated(GTK_WINDOW(m_window), FALSE);
     gtk_window_set_position(GTK_WINDOW(m_window), GTK_WIN_POS_CENTER);

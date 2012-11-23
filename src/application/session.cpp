@@ -11,7 +11,7 @@
 #include "ui/editor-group.hpp"
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
-#include "ui/tools/file-recoverer.hpp"
+#include "ui/file-recoverer.hpp"
 #include "utilities/signal.hpp"
 #include <assert.h>
 #include <stdio.h>
@@ -139,7 +139,7 @@ private:
     std::vector<XmlElementEditor *> m_editors;
 };
 
-class XmlElementPane
+class XmlElementSplitPane
 {
 public:
     static GMarkupParser s_parser =
@@ -149,16 +149,18 @@ public:
         NULL,
         NULL
     };
-    static XmlElementPane *parse(const char **attrNames,
-                                 const char **attrValues,
-                                 GError **error);
-    static XmlElementPane *save(const Samoyed::Pane &pane);
-    Samoyed::Pane *restore() const;
+    static XmlElementSplitPane *parse(const char **attrNames,
+                                      const char **attrValues,
+                                      GError **error);
+    static XmlElementSplitPane *save(const Samoyed::SplitPane &split);
+    Samoyed::SplitPane *restore() const;
     bool write(FILE *file, int indentSize) const;
-    ~XmlElementPane();
+    ~XmlElementSplitPane();
 
 private:
-    XmlElementPane(char oriental): m_oriental(oriental) {}
+    XmlElementSplitPane(Samoyed::SplitPane::Orientation orienation):
+        m_orientation(orientation)
+    {}
     static void startElement(GMarkupParserContext *context,
                              const gchar *elemtName,
                              const gchar **attrNames,
@@ -169,9 +171,7 @@ private:
                            const gchar *elemName,
                            gpointer editorGroup,
                            GError **error);
-    char m_oriental;
-    Samoyed::Pane::ContentType m_contentType;
-    void *m_content;
+    Samoyed::SplitPane::Orientation m_orientation;
     XmlElementPane *m_left;
     XmlElementPane *m_right;
 };
@@ -500,11 +500,11 @@ void XmlElementEditorGroup::stopElement(GMarkupParserContext *context,
 XmlElementEditorGroup *
 XmlElementEditorGroup::save(const Samoyed::EditorGroup &editorGroup)
 {
-    XmlElementEditorGroup *rec =
+    XmlElementEditorGroup *g =
         new XmlElementEditorGroup(editorGroup.currentEditorIndex());
     for (int i = 0; i < editorGroup.editorCount(); ++i)
-        rec->m_editors.push_back(XmlElementEditor::save(editorGroup.editor(i)));
-    return rec;
+        g->m_editors.push_back(XmlElementEditor::save(editorGroup.editor(i)));
+    return g;
 }
 
 Samoyed::EditorGroup *XmlElementEditorGroup::restore() const
@@ -642,10 +642,10 @@ void XmlElementWindow::stopElement(GMarkupParserContext *context,
 
 XmlElementWindow *XmlElementWindow::save(const Samoyed::Window &window)
 {
-    XmlElementWindow *rec =
+    XmlElementWindow *w =
         new XmlElementWindow(window.currentEditorGroupIndex());
     for (int i = 0; i < window.editorGroupCount(); ++i)
-        rec->m_editorGroups.push_back(
+        w->m_editorGroups.push_back(
             XmlElementEditorGroup::save(window.editorGroup(i)));
     return rec;
 }
@@ -794,16 +794,23 @@ void XmlElementSession::endElement(GMarkupParserContext *context,
 
 XmlElementSession *XmlElementSession::save()
 {
-    XmlElementSession *rec = new XmlElementSession;
-    assert(Samoyed::Application::instance()->window());
-    rec->m_window = XmlElementWindow::save(
-        *Samoyed::Application::instance()->window());
-    return rec;
+    XmlElementSession *session = new XmlElementSession;
+    assert(Samoyed::Application::instance()->mainWindow());
+    for (Samoyed::Window *window = Samoyed::Application::instance()->windows();
+         window;
+         window = window->next())
+        session->m_windows.push_back(XmlElementWindow::save(*window));
+    for (Samoyed::Project *project =
+             Samoyed::Application::instance()->projects();
+         project;
+         project = project->next())
+        session->m_projects.push_back(XmlElementProject::save(*project));
+    return session;
 }
 
 bool XmlElementSession::restore() const
 {
-    if (!m_window->restore())
+    if (!m_windows[0]->restore())
         return false;
     return true;
 }
