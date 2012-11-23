@@ -4,38 +4,37 @@
 #ifndef SMYD_PANE_HPP
 #define SMYD_PANE_HPP
 
-#include <boost/utility>
-#include <gtk/gtk.h>
+#include "pane-base.hpp"
 
 namespace Samoyed
 {
 
-class Window;
+class SplitPane;
 
-/**
- * A pane is a container.  Panes are organized in a binary tree.
- */
-class Pane: public boost::noncopyable
+class Pane: public PaneBase
 {
 public:
-    enum ContentType
+    enum Type
     {
-        EDITOR_GROUP,
-        PROJECT_EXPLORER
+        TYPE_EDITOR_GROUP,
+        TYPE_PROJECT_EXPLORER
     };
 
+    static Pane *create(Type type);
+
+    SplitPane *split(Type type);
+
+    ~Pane();
+
+    Pane *leftNeighbor() const;
+    Pane *rightNeighbor() const;
+    Pane *upperNeighbor() const;
+    Pane *lowerNeighbor() const;
+
 private:
-    ContentType m_contentType;
-    void *m_content;
+    Pane();
 
-    Pane *m_left;
-    Pane *m_right;
-
-    Pane *m_parent;
-
-    Window *m_window;
-
-    GtkWidget *m_paned;
+    SplitPane *m_parent;
 };
 
 }
