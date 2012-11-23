@@ -6,7 +6,6 @@
 
 #include <boost/utility.hpp>
 #include <gtk/gtk.h>
-#include <gdk-pixbuf/gdk-pixbuf.h>
 
 namespace Samoyed
 {
@@ -19,16 +18,13 @@ public:
     void setProgress(double progress, const char *message);
 
 private:
-    static gboolean drawImage(GtkWidget *widget,
-                              cairo_t *cr,
-                              gpointer splash);
     static gboolean onDestroyEvent(GtkWidget *widget,
                                    GdkEvent *event,
                                    gpointer data);
 
     GtkWidget *m_window;
     GtkWidget *m_progressBar;
-    GdkPixbuf *m_image;
+    GtkImage *m_image;
 };
 
 }
