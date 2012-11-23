@@ -147,7 +147,6 @@ int Application::run(int argc, char *argv[])
 
     // Initialize GTK+ and parse command line options.
     int showVersion = 0;
-    char *projectName = NULL;
     char *sessionName = NULL;
     char *newSessionName = NULL;
     int chooseSession = 0;
@@ -159,14 +158,6 @@ int Application::run(int argc, char *argv[])
             &showVersion,
             N_("Show the version"),
             NULL
-        },
-
-        {
-            "project", 'p',
-            0, G_OPTION_ARG_STRING,
-            &projectName,
-            N_("Open project PROJECT"),
-            N_("PROJECT")
         },
 
         {
@@ -294,12 +285,6 @@ int Application::run(int argc, char *argv[])
         delete dialog;
     }
 
-    if (m_session && projectName)
-    {
-        // Translate the project name into a URI.
-        Project::create(projectUri);
-    }
-
     goto CLEAN_UP;
 
 ERROR_OUT:
@@ -309,7 +294,6 @@ CLEAN_UP:
     g_option_context_free(optionContext);
     g_free(newSessionName);
     g_free(sessionName);
-    g_free(projectName);
 
     if (m_exitStatus == EXIT_FAILURE)
         return m_exitStatus;
@@ -331,6 +315,12 @@ void Application::continueQuitting()
 
     m_quitting = false;
 
+    assert(m_firstWindow);
+    for (Window *window = lastWindow, *prev; window; window = prev)
+    {
+        prev = window->previous();
+        delete window;
+    }
     assert(m_session);
     delete m_session;
     m_session = NULL;
@@ -396,8 +386,19 @@ void Application::quit()
         continueQuitting();
 }
 
+void Application::createSession()
+{
+    assert(!m_quitting);
+    assert(!m_creatingSession);
+    assert(!m_switchingSession);
+    m_creatingSession = true;
+    quit();
+}
+
 void Application::switchSession()
 {
+    assert(!m_quitting);
+    assert(!m_creatingSession);
     assert(!m_switchingSession);
     m_switchingSession = true;
     quit();
@@ -405,9 +406,10 @@ void Application::switchSession()
 
 void Application::cancelQuitting()
 {
+    assert(m_quitting);
     m_quitting = false;
-    if (m_nextSessionName)
-        m_nextSession.clear();
+    m_creatingSession = false;
+    m_switchingSession = false;
 }
 
 void Application::onProjectClosed()
@@ -476,6 +478,8 @@ void Application::removeFile(File &file)
 void Window::addWindow(Window &window)
 {
     window.addToList(m_firstWindow, m_lastWindow);
+    if (!m_currentWindow)
+        m_currentWindow = &window;
 }
 
 void Window::removeWindow(Window &window)
