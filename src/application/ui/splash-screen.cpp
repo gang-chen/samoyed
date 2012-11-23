@@ -34,9 +34,9 @@ SplashScreen::SplashScreen(const char *title, const char *imageFileName)
     gtk_box_pack_start(GTK_BOX(box), image, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(box), m_progressBar, FALSE, FALSE, 0);
     g_signal_connect(m_window,
-                     "destroy-event",
-                     G_CALLBACK(onDestroyEvent),
-                     NULL);
+                     "delete-event",
+                     G_CALLBACK(onDeleteEvent),
+                     this);
     gtk_widget_show_all(m_window);
 }
 
@@ -51,11 +51,11 @@ void SplashScreen::setProgress(double progress, const char *message)
     gtk_progress_bar_set_text(GTK_PROGRESS_BAR(m_progressBar), message);
 }
 
-gboolean SplashScreen::onDestroyEvent(GtkWidget *widget,
-                                      GdkEvent *event,
-                                      gpointer data)
+gboolean SplashScreen::onDeleteEvent(GtkWidget *widget,
+                                     GdkEvent *event,
+                                     gpointer window)
 {
-    // Disable destroying the splash screen.
+    // Disable closing the splash screen.
     return TRUE;
 }
 
