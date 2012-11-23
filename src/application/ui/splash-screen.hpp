@@ -18,9 +18,9 @@ public:
     void setProgress(double progress, const char *message);
 
 private:
-    static gboolean onDestroyEvent(GtkWidget *widget,
-                                   GdkEvent *event,
-                                   gpointer data);
+    static gboolean onDeleteEvent(GtkWidget *widget,
+                                  GdkEvent *event,
+                                  gpointer window);
 
     GtkWidget *m_window;
     GtkWidget *m_progressBar;
