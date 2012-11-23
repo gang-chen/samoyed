@@ -66,16 +66,6 @@ Application::Application():
 
 Application::~Application()
 {
-    assert(!m_session);
-    assert(!m_firstProject);
-    assert(!m_lastProject);
-    assert(!m_firstFile);
-    assert(!m_lastFile);
-    assert(!m_firstWindow);
-    assert(!m_lastWindow);
-    assert(!m_currentWindow);
-    assert(!m_mainWindow);
-    delete m_fileTypeRegistry;
     s_instance = NULL;
 }
 
@@ -112,6 +102,18 @@ bool Application::startUp()
 
 void Application::shutDown()
 {
+    assert(!m_session);
+    assert(!m_creatingSession);
+    assert(!m_switchingSession);
+    assert(!m_firstProject);
+    assert(!m_lastProject);
+    assert(!m_firstFile);
+    assert(!m_lastFile);
+    assert(!m_firstWindow);
+    assert(!m_lastWindow);
+    assert(!m_currentWindow);
+    assert(!m_quitting);
+    delete m_fileTypeRegistry;
 }
 
 int Application::run(int argc, char *argv[])
