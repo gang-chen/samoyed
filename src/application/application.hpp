@@ -48,6 +48,8 @@ public:
      */
     int run(int argc, char *argv[]);
 
+    bool quitting() const { return m_quitting; }
+
     /**
      * Request to uit the application.
      */
