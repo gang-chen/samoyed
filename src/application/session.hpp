@@ -53,8 +53,6 @@ public:
 
     static bool allSessionNames(std::vector<std::string> &names);
 
-    ~Session();
-
     const char *name() const { return m_name.c_str(); }
 
     /**
@@ -137,6 +135,7 @@ private:
         onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param);
 
     Session(const char *name);
+    ~Session();
 
     void queueUnsavedFileListRequest(UnsavedFileListRequest *request);
     void executeQueuedUnsavedFileListRequests();
