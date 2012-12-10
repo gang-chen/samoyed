@@ -1383,15 +1383,6 @@ void Session::executeQueuedUnsavedFileListRequests()
     }
 }
 
-
-
-void Session::destroy()
-{
-    m_destroy = true;
-    if (!m_unsavedFileListRequestWorker)
-        delete this;
-}
-
 // Report the error.
 bool Session::makeSessionsDirectory()
 {
@@ -1497,6 +1488,13 @@ Session::~Session()
 {
     unlockSession(m_name.c_str());
     writeLastSessionName(m_name.c_str());
+}
+
+void Session::destroy()
+{
+    m_destroy = true;
+    if (!m_unsavedFileListRequestWorker)
+        delete this;
 }
 
 Session *Session::create(const char *name)
