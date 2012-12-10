@@ -13,536 +13,441 @@
 #include "ui/file.hpp"
 #include "ui/file-recoverer.hpp"
 #include "utilities/signal.hpp"
+#include "utilities/scheduler.hpp"
 #include <assert.h>
-#include <stdio.h>
 #include <errno.h>
-#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
+#include <vector>
 #include <utility>
 #include <unistd.h>
 #include <glib.h>
 #include <gtk/gtk.h>
+#include <libxml/xmlerror.h>
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 namespace
 {
 
-const int XML_INDENTATION_SIZE = 4;
+const char *DELIMITERS = " \t\n\r";
 
-class XmlElementProject
+struct UnsavedFileListReadParam
 {
-public:
-    static GMarkupParser s_parser =
+    Samoyed::Session &m_session;
+    std::set<std::string> m_unsavedFileUris;
+    UnsavedFileListReadParam(Samoyed::Session &session,
+                             std::set<std::string> &unsavedFileListUris):
+        m_session(session)
     {
-        startElement,
-        endElement,
-        NULL,
-        NULL
-    };
-    static XmlElementProject *parse(const char **attrNames,
-                                    const char **attrValues,
-                                    GError **error);
-    static XmlElementProject *save(const Samoyed::Project &project);
-    Samoyed::Project *restore() const;
-    bool write(FILE *file, int indentSize) const;
-
-private:
-    XmlElementProject(const char *uri): m_uri(uri) {}
-    static void startElement(GMarkupParserContext *context,
-                             const gchar *elemtName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer project,
-                             GError **error);
-    static void endElement(GMarkupParserContext *context,
-                           const gchar *elemName,
-                           gpointer project,
-                           GError **error);
-    const std::string m_uri;
+        m_unsavedFileUris.swap(unsavedFileListUris);
+    }
 };
+
+// The XML parser aborts only when a fatal error is found, ignoring unrecognized
+// elements.
 
 class XmlElementEditor
 {
 public:
-    static GMarkupParser s_parser =
-    {
-        startElement,
-        endElement,
-        NULL,
-        NULL
-    };
-    static XmlElementEditor *parse(const char **attrNames,
-                                   const char **attrValues,
-                                   GError **error);
+    static XmlElementEditor *read(xmlDocPtr doc,
+                                  xmlNodePtr node,
+                                  std::string &error);
+    xmlNodePtr write() const;
+
     static XmlElementEditor *save(const Samoyed::Editor &editor);
-    Samoyed::Editor *restore() const;
-    bool write(FILE *file, int indentSize) const;
+    bool restore(RestorePhase phase, Samoyed::Editor *&editor) const;
 
 private:
-    XmlElementEditor(const char *fileUri,
-                     const char *projectUri,
-                     int lineNumber,
-                     int columnNumber):
-        m_fileUri(fileUri),
-        m_projectUri(projectUri),
-        m_cursorLine(cursorLine),
-        m_cursorColumn(cursorColumn)
-    {}
-    static void startElement(GMarkupParserContext *context,
-                             const gchar *elemtName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer editor,
-                             GError **error);
-    static void endElement(GMarkupParserContext *context,
-                           const gchar *elemName,
-                           gpointer editor,
-                           GError **error);
+    XmlElementEditor(): m_cursorLine(0), m_cursorColumn(0) {}
+
     const std::string m_fileUri;
     const std::string m_projectUri;
     const int m_cursorLine;
     const int m_cursorColumn;
 };
 
-class XmlElementEditorGroup
+class XmlElementPaneBase
 {
 public:
-    static GMarkupParser s_parser =
-    {
-        startElement,
-        endElement,
-        NULL,
-        NULL
-    };
-    static XmlElementEditorGroup *parse(const char **attrNames,
-                                        const char **attrValues,
-                                        GError **error);
-    static XmlElementEditorGroup *save(const Samoyed::EditorGroup &editorGroup);
-    Samoyed::EditorGroup *restore() const;
-    bool write(FILE *file, int indentSize) const;
-    ~XmlElementEditorGroup();
-
-private:
-    XmlElementEditorGroup(int currentEditorIndex):
-        m_currentEditorIndex(currentEditorIndex)
-    {}
-    static void startElement(GMarkupParserContext *context,
-                             const gchar *elemtName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer editorGroup,
-                             GError **error);
-    static void endElement(GMarkupParserContext *context,
-                           const gchar *elemName,
-                           gpointer editorGroup,
-                           GError **error);
-    int m_currentEditorIndex;
-    std::vector<XmlElementEditor *> m_editors;
+    virtual ~XmlElementPaneBase() {}
+    virtual xmlNodePtr write() const = 0;
+    virtual bool restore(RestorePhase phase,
+                         Samoyed::PaneBase *&pane) const = 0;
 };
 
-class XmlElementSplitPane
+class XmlElementProjectExplorer: public XmlElementPaneBase
 {
 public:
-    static GMarkupParser s_parser =
-    {
-        startElement,
-        endElement,
-        NULL,
-        NULL
-    };
-    static XmlElementSplitPane *parse(const char **attrNames,
-                                      const char **attrValues,
-                                      GError **error);
-    static XmlElementSplitPane *save(const Samoyed::SplitPane &split);
-    Samoyed::SplitPane *restore() const;
-    bool write(FILE *file, int indentSize) const;
-    ~XmlElementSplitPane();
+    static XmlElementProjectExplorer *read(xmlDocPtr doc,
+                                           xmlNodePtr node,
+                                           std::string &error);
+    virtual xmlNodePtr write() const;
+
+    static XmlElementProjectExplorer *
+        save(const Samoyed::ProjectExplorer &projectExplorer);
+    virtual bool restore(RestorePhase phase,
+                         Samoyed::PaneBase *&porjectExplorer) const;
 
 private:
-    XmlElementSplitPane(Samoyed::SplitPane::Orientation orienation):
-        m_orientation(orientation)
-    {}
-    static void startElement(GMarkupParserContext *context,
-                             const gchar *elemtName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer editorGroup,
-                             GError **error);
-    static void endElement(GMarkupParserContext *context,
-                           const gchar *elemName,
-                           gpointer editorGroup,
-                           GError **error);
+    XmlElementProjectExplorer() {}
+
+    std::vector<std::string> m_projectUris;
+};
+
+class XmlElementEditorGroup: public XmlElementPaneBase
+{
+public:
+    virtual ~XmlElementEditorGroup();
+
+    static XmlElementEditorGroup *read(xmlNodePtr node);
+    virtual xmlNodePtr write() const;
+
+    static XmlElementEditorGroup *save(const Samoyed::EditorGroup &editorGroup);
+    virtual bool restore(RestorePhase phase,
+                         Samoyed::PaneBase *&editorGroup) const;
+
+private:
+    XmlElementEditorGroup(): m_currentEditorIndex(0) {}
+
+    std::vector<XmlElementEditor *> m_editors;
+    int m_currentEditorIndex;
+};
+
+class XmlElementSplitPane: public XmlElementPaneBase
+{
+public:
+    virtual ~XmlElementSplitPane();
+
+    static XmlElementBasePane *read(xmlNodePtr node, bool inMainWindowRoot);
+    virtual xmlNodePtr write() const;
+
+    static XmlElementSplitPane *save(const Samoyed::SplitPane &split);
+    virtual bool restore(RestorePhase phase,
+                         Samoyed::PaneBase *&splitPane) const;
+
+private:
+    XmlElementSplitPane():
+        m_orientation(Samoyed::SplitPane::ORIENTATION_HORIZONTAL)
+    {
+        m_children[0] = NULL;
+        m_children[1] = NULL;
+    }
+
     Samoyed::SplitPane::Orientation m_orientation;
-    XmlElementPane *m_left;
-    XmlElementPane *m_right;
+    int m_position;
+    XmlElementPaneBase *m_children[2];
 };
 
 class XmlElementWindow
 {
 public:
-    static GMarkupParser s_parser =
-    {
-        startElement,
-        endElement,
-        NULL,
-        NULL
-    };
-    static XmlElementWindow *parse(const char **attrNames,
-                                   const char **attrValues,
-                                   GError **error);
-    static XmlElementWindow *save(const Samoyed::Window &window);
-    Samoyed::Window *restore() const;
-    bool write(FILE *file, int indentSize) const;
     ~XmlElementWindow();
 
+    static XmlElementWindow *read(xmlNodePtr node, bool isMainWindow);
+    xmlNodePtr write() const;
+
+    static XmlElementWindow *save(const Samoyed::Window &window);
+    bool restore(RestorePhase phase, Samoyed::Window *&window) const;
+
 private:
-    XmlElementWindow(const Samoyed::Window::Configuration &config,
-                     int currentEditorGroupIndex):
-        m_configuration(config),
-        m_currentEditGroupIndex(currentEditorGroupIndex)
-    {}
-    static void startElement(GMarkupParserContext *context,
-                             const gchar *elemtName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer window,
-                             GError **error);
-    static void endElement(GMarkupParserContext *context,
-                           const gchar *elemName,
-                           gpointer window,
-                           GError **error);
+    XmlElementWindow(): m_content(NULL) {}
+
     Samoyed::Window::Configuration m_configuration;
-    int m_currentEditGroupIndex;
-    std::vector<XmlElementEditorGroup *> m_editorGroups;
+    XmlElementPaneBase *m_content;
 };
 
 class XmlElementSession
 {
 public:
-    static GMarkupParser s_parser =
-    {
-        startElement,
-        endElement,
-        NULL,
-        NULL
-    };
-    static XmlElementSession *parse(const char **attrNames,
-                                    const char **attrValues,
-                                    GError **error);
-    static XmlElementSession *save(const Samoyed::Session &session);
-    bool restore() const;
-    bool write(FILE *file, int indentSize) const;
     ~XmlElementSession();
 
+    static XmlElementSession *read(xmlNodePtr node);
+    xmlNodePtr write() const;
+
+    static XmlElementSession *save();
+    bool restore() const;
+
 private:
-    XmlElementSession(): m_window(NULL) {}
-    static void startElement(GMarkupParserContext *context,
-                             const gchar *elemtName,
-                             const gchar **attrNames,
-                             const gchar **attrValues,
-                             gpointer session,
-                             GError **error);
-    static void endElement(GMarkupParserContext *context,
-                           const gchar *elemName,
-                           gpointer session,
-                           GError **error);
-    std::vector<XmlElementProject *> m_projects;
+    XmlElementSession() {}
+
     std::vector<XmlElementWindow *> m_windows;
 };
 
-bool indent(FILE *file, int indentSize)
+XmlElementEditor *XmlElementEditor::read(xmlDocPtr doc,
+                                         xmlNodePtr node,
+                                         std::string &error)
 {
-    for (; indentSize; --indentSize)
+    char buffer[BUFSIZ];
+    xmlChar *value;
+    XmlElementEditor *editor = new XmlElementEditor;
+    for (xmlNodePtr child = node->children; child; child = child->next)
     {
-        if (fputc(' ', file) == EOF)
-            return false;
-    }
-    return true;
-}
-
-XmlElementProject *XmlElementProject::parse(const char **attrNames,
-                                            const char **attrValues,
-                                            GError **error)
-{
-    const char *uri = NULL;
-    for (; attrNames; ++attrNames, ++attrValues)
-    {
-        if (strcmp(*attrNames, "uri") == 0)
-            uri = *attrValues;
-        else
+        if (xmlStrcmp(child->name,
+                      static_cast<const xmlChar *>("file-uri")) == 0)
         {
-            g_set_error(error,
-                        G_MARKUP_ERROR,
-                        G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
-                        _("Unknown attribute \"%s\""),
-                        *attrNames);
-            return NULL;
+            value = xmlNodeListGetString(doc, child->children, 1);
+            editor->m_fileUri = static_cast<char *>(value);
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("project-uri"))
+                 == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            editor->m_projectUri = static_cast<char *>(value);
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("cursor-line"))
+                 == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            editor->mcursorLine = atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("cursor-column"))
+                 == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            editor->m_cursorColumn = atoi(static_cast<char *>(value));
+            xmlFree(value);
         }
     }
-    if (!uri)
+    if (editor->m_fileUri.empty())
     {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_MISSING_ATTRIBUTE,
-                    _("Missing attribute \"uri\""));
+        delete editor;
+        snprintf(buffer, sizeof(buffer),
+                 _("File %s, line %d: No file URI is specified for the "
+                   "editor.\n"),
+                 doc->name, node->line);
+        error += buffer;
         return NULL;
     }
-    return new XmlElementProject(uri);
-}
-
-void XmlElementProject::startElement(GMarkupParserContext *context,
-                                     const gchar *elemName,
-                                     const gchar **attrNames,
-                                     const gchar **attrValues,
-                                     gpointer project,
-                                     GError **error)
-{
-
-    g_set_error(error,
-                G_MARKUP_ERROR,
-                G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                _("Unknown element \"%s\""),
-                elemName);
-}
-
-void XmlElementProject::stopElement(GMarkupParserContext *context,
-                                    const gchar *elemName,
-                                    gpointer project,
-                                    GError **error)
-{
-}
-
-XmlElementProject *XmlElementProject::save(const Samoyed::Project &project)
-{
-    return new XmlElementProject(project.uri());
-}
-
-Samoyed::Project *XmlElementProject::restore() const
-{
-    if (Samoyed::Application::instance()->findProject(m_uri.c_str()))
-        return NULL;
-    return Samoyed::Project::open(m_uri.c_str());
-}
-
-bool XmlElementProject::write(FILE *file, int indentSize) const
-{
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file, "<project uri=\"%s\"/>\n", m_uri.c_str()) < 0)
-        return false;
-    return true;
-}
-
-XmlElementEditor *XmlElementEditor::parse(const char **attrNames,
-                                          const char **attrValues,
-                                          GError **error)
-{
-    const char *fileUri = NULL, *projectUri = NULL;
-    int cursorLine = 0, cursorColumn = 0;
-    for (; attrNames; ++attrNames, ++attrValues)
+    if (editor->m_projectUri.empty())
     {
-        if (strcmp(*attrNames, "file-uri") == 0)
-            fileUri = *attrValues;
-        else if (strcmp(*attrNames, "project-uri") == 0)
-            projectUri = *attrValues;
-        else if (strcmp(*attrNames, "cursor-line") == 0)
-            cursorLine = atoi(*attrValues);
-        else if (strcmp(*attrNames, "cursor-column") == 0)
-            cursorColumn = atoi(*attrValues);
-        else
-        {
-            g_set_error(error,
-                        G_MARKUP_ERROR,
-                        G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
-                        _("Unknown attribute \"%s\""),
-                        *attrNames);
-            return NULL;
-        }
-    }
-    if (!fileUri)
-    {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_MISSING_ATTRIBUTE,
-                    _("Missing attribute \"file-uri\""));
+        delete editor;
+        snprintf(buffer, sizeof(buffer),
+                 _("File %s, line %d: No project URI is specified for the "
+                   "editor.\n"),
+                 doc->name, node->line);
+        error += buffer;
         return NULL;
     }
-    if (!projectUri)
-    {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_MISSING_ATTRIBUTE,
-                    _("Missing attribute \"project-uri\""));
-        return NULL;
-    }
-    return new XmlElementEditor(fileUri, projectUri, cursorLine, cursorColumn);
+    return editor;
 }
 
-void XmlElementEditor::startElement(GMarkupParserContext *context,
-                                    const gchar *elemName,
-                                    const gchar **attrNames,
-                                    const gchar **attrValues,
-                                    gpointer editor,
-                                    GError **error)
+xmlNodePtr XmlElementEditor::write() const
 {
-    g_set_error(error,
-                G_MARKUP_ERROR,
-                G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                _("Unknown element \"%s\""),
-                elemName);
-}
-
-void XmlElementEditor::stopElement(GMarkupParserContext *context,
-                                   const gchar *elemName,
-                                   gpointer editor,
-                                   GError **error)
-{
+    char buffer[BUFSIZ];
+    xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("editor"));
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("file-uri"),
+                    static_cast<const xmlChar *>(m_fileUri.c_str()));
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("project-uri"),
+                    static_cast<const xmlChar *>(m_projectUri.c_str()));
+    snprintf(buffer, sizeof(buffer), "%d", m_cursorLine);
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("cursor-line"),
+                    static_cast<const xmlChar *>(buffer));
+    snprintf(buffer, sizeof(buffer), "%d", m_cursorColumn);
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("cursor-column"),
+                    static_cast<const xmlChar *>(buffer));
+    return node;
 }
 
 XmlElementEditor *XmlElementEditor::save(const Samoyed::Editor &editor)
 {
     std::pair<int, int> cursor = editor.cursor();
     return new XmlElementEditor(editor.file().uri(),
+                                editor.project().uri(),
                                 cursor.first,
                                 cursor.second);
 }
 
-Samoyed::Editor *XmlElementEditor::restore() const
+bool XmlElementEditor::restore(RestorePhase phase,
+                               Samoyed::Editor *&editor) const
 {
-    Samoyed::Project *project = Samoyed::Application::instance()->
-        findProject(m_projectUri.c_str());
+    if (phase != RESTORE_EDITORS)
+        return true;
+    assert(!editor);
+    Samoyed::Project *project = Samoyed::Application::instance().
+        projectExplorer().findProject(m_projectUri.c_str());
     if (!project)
-        return NULL;
-    Samoyed::File *file = Samoyed::Application::instance()->
-        findFind(m_fileUri.c_str());
+        return false;
+    Samoyed::File *file = Samoyed::Application::instance().
+        findFile(m_fileUri.c_str());
     if (file)
-        return file->createEditor(project);
-    return File::open(m_fileUri.c_str(), *project).second;
-}
-
-bool XmlElementEditor::write(FILE *file, int indentSize) const
-{
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file,
-                "<editor"
-                " file-uri=\"%s\""
-                " project-uri=\"%s\""
-                " cursor-line=\"%d\""
-                " cursor-column=\"%d\"/>",
-                m_fileUri.c_str(),
-                m_projectUri.c_str(),
-                m_cursorLine,
-                m_cursorColumn) < 0)
-        return false;
+        editor = file->createEditor(project);
+    editor = Samoyed::File::open(m_fileUri.c_str(), *project).second;
     return true;
 }
 
-XmlElementEditorGroup *XmlElementEditorGroup::parse(const char **attrNames,
-                                                    const char **attrValues,
-                                                    GError **error)
+XmlElementProjectExplorer *
+XmlElementProjectExplorer::read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::string &error)
 {
-    int currentEditorIndex = 0;
-    for (; attrNames; ++attrNames, ++attrValues)
+    xmlChar *value;
+    XmlElementProjectExplorer *projectExplorer = new XmlElementProjectExplorer;
+    for (xmlNodePtr child = node->children; child; child = child->next)
     {
-        if (strcmp(*attrNames, "current-editor") == 0)
-            currentEditorIndex = atoi(*attrValues);
-        else
+        if (xmlStrcmp(child->name,
+                      static_cast<const xmlChar *>("project-uri")) == 0)
         {
-            g_set_error(error,
-                        G_MARKUP_ERROR,
-                        G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
-                        _("Unknown attribute \"%s\""),
-                        *attrNames);
-            return NULL;
+            value = xmlNodeListGetString(doc, child->children, 1);
+            projectExplorer->m_projectUris.push_back(
+                static_cast<char *>(value));
+            xmlFree(value);
         }
     }
-    return new XmlElementEditorGroup(currentEditorIndex);
+    return projectExplorer;
 }
 
-void XmlElementEditorGroup::startElement(GMarkupParserContext *context,
-                                         const gchar *elemName,
-                                         const gchar **attrNames,
-                                         const gchar **attrValues,
-                                         gpointer editorGroup,
-                                         GError **error)
+xmlNodePtr XmlElementProjectExplorer::write() const
 {
-    XmlElementEditorGroup *g =
-        static_cast<XmlElementEditorGroup *>(editorGroup);
-    if (strcmp(elemName, "editor") == 0)
-    {
-        XmlElementEditor *editor =
-            XmlElementEditor::parse(attrNames, attrValues, error);
-        if (!editor)
-            return;
-        g->m_editors.push_back(editor);
-        g_markup_parser_context_push(context,
-                                     XmlElementEditor::s_parser,
-                                     editor);
-    }
-    else
-    {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                    _("Unknown element \"%s\""),
-                    elemName);
-    }
+    xmlNodePtr node =
+        xmlNewNode(NULL, static_cast<const xmlChar *>("project-explorer"));
+    for (std::vector<std::string>::const_iterator it =
+             m_projectExplorers.begin();
+         it != m_projectExplorers.end();
+         ++it)
+        xmlNewTextChild(node, NULL,
+                        static_cast<const xmlChar *>("project-uri"),
+                        static_cast<const xmlChar *>(it->c_str()));
+    return node;
 }
 
-void XmlElementEditorGroup::stopElement(GMarkupParserContext *context,
-                                        const gchar *elemName,
-                                        gpointer editorGroup,
-                                        GError **error)
+XmlElementProjectExplorer *
+XmlElementProjectExplorer::save(const Samoyed::ProjectExplorer &projectExplorer)
 {
-    g_markup_parser_context_pop(context);
+    XmlElementProjectExplorer *pe = new XmlElementProjectExplorer;
+    for (Samoyed::Project *project = projectExplorer.projects();
+         project;
+         project = project->next())
+        pe->m_projectUris.push_back(project->uri());
+    return pe;
+}
+
+bool
+XmlElementProjectExplorer::restore(RestorePhase phase,
+                                   Samoyed::PaneBase *&projectExplorer) const
+{
+    switch (phase)
+    {
+    case RESTORE_PANES:
+        assert(!projectExplorer);
+        projectExplorer = new Samoyed::ProjectExplorer;
+        return projectExplorer;
+    case RESTORE_PROJECTS:
+        for (std::vector<std::string>::const_iterator it =
+                 m_projectUris.begin();
+             it != m_projects.end();
+             ++it)
+        {
+            if (!projectExplorer->findProject(it->c_str()))
+                new Samoyed::Project(it->c_str());
+        }
+        break;
+    }
+    return true;
+}
+
+XmlElementEditorGroup *XmlElementEditorGroup::read(xmlDocPtr doc,
+                                                   xmlNodePtr node,
+                                                   std::string &error)
+{
+    xmlChar *value;
+    XmlElementEditorGroup *editorGroup = new XmlElementEditorGroup;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (xmlStrcmp(child->name,
+                      static_cast<const xmlChar *>("editor")) == 0)
+        {
+            XmlElementEditor *editor =
+                XmlElementEditor::read(doc, child, error);
+            if (editor)
+                editorGroup->m_editors.push_back(editor);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("current-editor")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            editorGroup->m_currentEditorIndex =
+                atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+    }
+    return editorGroup;
+}
+
+xmlNodePtr XmlElementEditorGroup::write() const
+{
+    char buffer[BUFSIZ];
+    xmlNodePtr node =
+        xmlNewNode(NULL, static_cast<const xmlChar *>("editor-group"));
+    for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
+         it != m_editors.end();
+         ++it)
+        xmlAddChild(node, (*it)->write());
+    snprintf(buffer, sizeof(buffer), "%d", m_currentEditorIndex);
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("current-editor-index"),
+                    static_cast<const xmlChar *>(buffer));
+    return node;
 }
 
 XmlElementEditorGroup *
 XmlElementEditorGroup::save(const Samoyed::EditorGroup &editorGroup)
 {
-    XmlElementEditorGroup *g =
+    XmlElementEditorGroup *eg =
         new XmlElementEditorGroup(editorGroup.currentEditorIndex());
     for (int i = 0; i < editorGroup.editorCount(); ++i)
-        g->m_editors.push_back(XmlElementEditor::save(editorGroup.editor(i)));
-    return g;
+        eg->m_editors.push_back(XmlElementEditor::save(editorGroup.editor(i)));
+    return eg;
 }
 
-Samoyed::EditorGroup *XmlElementEditorGroup::restore() const
+bool XmlElementEditorGroup::restore(RestorePhase phase,
+                                    Samoyed::PaneBase *&editorGroup) const
 {
-    Samoyed::EditorGroup *group = new Samoyed::EditorGroup;
-    for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
-         it != m_editors.end();
-         ++it)
+    switch (phase)
     {
-        Samoyed::Editor *editor = (*it)->restore();
-        if (editor)
-            group->addEditor(*editor);
-    }
-    if (m_currentEditorIndex >= 0 &&
-        m_currentEditorIndex < group->editorCount())
-        group->setCurrentEditorIndex(m_currentEditorIndex);
-    return group;
-}
-
-bool XmlElementEditorGroup::write(FILE *file, int indentSize) const
-{
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file, "<editor-group>\n") < 0)
-        return false;
-    indentSize += XML_INDENTATION_SIZE;
-    for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
-         it != m_editors.end();
-         ++it)
+    case RESTORE_PANES:
+        assert(!editorGroup);
+        editorGroup = new Samoyed::EditorGroup;
+        break;
+    case RESTORE_EDITORS:
     {
-        if (!(*it)->write(file, indentSize))
-            return false;
+        int currentEditorIndex = m_currentEditorIndex;
+        for (std::vector<XmlElementEditor *>::const_iterator it =
+                 m_editors.begin();
+             it != m_editors.end();
+             ++it)
+        {
+            Samoyed::Editor *editor = NULL;
+            (*it)->restore(phase, editor);
+            if (editor)
+                static_cast<Samoyed::EditorGroup *>(editorGroup)->
+                    addEditor(*editor);
+            else
+            {
+                // Silently skip the editor we failed to restore.  Also correct
+                // the index.
+                if (it - m_editors.begin() < m_currentEditorIndex)
+                    --currentEditorIndex;
+            }
+        }
+        if (currentEditorIndex >= 0 &&
+            currentEditorIndex < group->editorCount())
+            static_cast<Samoyed:EditorGroup *>(editorGroup)->
+                setCurrentEditorIndex(currentEditorIndex);
+        break;
     }
-    indentSize -= XML_INDENTATION_SIZE;
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file, "</editor-group>\n") < 0)
-        return false;
     return true;
 }
 
@@ -554,391 +459,635 @@ XmlElementEditorGroup::~XmlElementEditorGroup()
         delete *it;
 }
 
-XmlElementWindow *XmlElementWindow::parse(const char **attrNames,
-                                          const char **attrValues,
-                                          GError **error)
+XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
+                                              xmlNodePtr node,
+                                              std::string &error,
+                                              bool inMainWindowRoot)
 {
-    Samoyed::Window::Configuration config;
-    int currentEditorGroupIndex = 0;
-    for (; attrNames; ++attrNames, ++attrValues)
+    char buffer[BUFSIZ];
+    xmlChar *value;
+    XmlElementSplitPane *splitPane = new XmlElementSplitPane;
+    for (xmlNodePtr child = node->children; child; child->next)
     {
-        if (strcmp(*attrNames, "screen-index") == 0)
-            config.m_screenIndex = atoi(*attrValues);
-        else if (strcmp(*attrNames, "x") == 0)
-            config.m_x = atoi(*attrValues);
-        else if (strcmp(*attrNames, "y") == 0)
-            config.m_y = atoi(*attrValues);
-        else if (strcmp(*attrNames, "width") == 0)
-            config.m_width = atoi(*attrValues);
-        else if (strcmp(*attrNames, "height") == 0)
-            config.m_height = atoi(*attrValues);
-        else if (strcmp(*attrNames, "full-screen") == 0)
-            config.m_fullScreen = atoi(*attrValues);
-        else if (strcmp(*attrNames, "maximized") == 0)
-            config.m_maximized = atoi(*attrValues)
-        else if (strcmp(*attrNames, "toolbar-visible") == 0)
-            config.m_toolbarVisible = atoi(*attrValues);
-        else if (strcmp(*attrNames, "current-editor-group") == 0)
-            currentEditorGroupIndex = atoi(*attrValues);
-        else
+        if (xmlStrcmp(child->name,
+                      static_cast<const xmlChar *>("orientation")) == 0)
         {
-            g_set_error(error,
-                        G_MARKUP_ERROR,
-                        G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
-                        _("Unknown attribute \"%s\""),
-                        *attrNames);
-            return NULL;
+            value = xmlNodeListGetString(doc, child->children, 1);
+            if (xmlStrcmp(value,
+                          static_cast<const xmlChar *>("horizontal")) == 0)
+                splitPane->m_orientation =
+                    Samoyed::SplitPane::ORIENTATION_HORIZONTAL;
+            else if (xmlStrcmp(value,
+                               static_cast<const xmlChar *>("vertical")) == 0)
+                splitPane->orientation =
+                    Samoyed::SplitPane::ORIENTATION_VERTICAL;
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("project-explorer"))
+                 == 0)
+        {
+            if (splitPane->m_children[0] && splitPane->m_children[1])
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: More than two panes contained by "
+                           "the split pane.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else if (!inMainWindowRoot)
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: A project explorer contained by "
+                           "the auxilliary window.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else if (splitPane->m_children[0])
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: A project explorer in the right "
+                           "or bottom half of the main window.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else
+            {
+                XmlElementProjectExplorer *projectExplorer =
+                    XmlElementProjectExplorer::read(doc, child, error);
+                assert(projectExplorer);
+                splitPane->m_children[0] = projectExplorer;
+            }
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("editor-group"))
+                 == 0)
+        {
+            if (splitPane->m_children[0] && splitPane->m_children[1])
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: More than two panes contained by "
+                           "the split pane.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else if (!inMainWindowRoot)
+            {
+                XmlElementEditorGroup *editorGroup =
+                    XmlElementEditorGroup::read(doc, child, error);
+                assert(editorGroup);
+                if (splitPane->m_children[0])
+                    splitPane->m_children[1] = editorGroup;
+                else
+                    splitPane->m_children[0] = editorGroup;
+            }
+            else if (splitPane->m_children[0])
+            {
+                XmlElementEditorGroup *editorGroup =
+                    XmlElementEditorGroup::read(doc, child, error);
+                assert(editorGroup);
+                splitPane->m_children[1] = editorGroup;
+            }
+            else
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: An editor group in the left or "
+                           "top half of the main window.\n"
+                         doc->name, child->line);
+                error += buffer;
+            }
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("split-pane"))
+                 == 0)
+        {
+            if (splitPane->m_children[0] && splitPane->m_children[1])
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: More than two panes contained by "
+                           "the split pane.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else if (!inMainWindowRoot)
+            {
+                XmlElementBasePane *pane =
+                    XmlElementSplitPane::read(doc, child, error, false);
+                if (pane)
+                {
+                    if (splitPane->m_children[0])
+                        splitPane->m_children[1] = pane;
+                    else
+                        splitPane->m_children[0] = pane;
+                }
+            }
+            else if (splitPane->m_children[0])
+            {
+                XmlElementEditorGroup *editorGroup =
+                    XmlElementEditorGroup::read(doc, child, error);
+                assert(editorGroup);
+                splitPane->m_children[1] = editorGroup;
+            }
+            else
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: A split pane in the left or top "
+                           "half of the main window.\n"
+                         doc->name, child->line);
+                error += buffer;
+            }
         }
     }
-    return new XmlElementWindow(config, currentEditorGroupIndex);
+    if (splitPane->m_children[0] && splitPane->m_children[1])
+        return splitPane;
+    if (splitPane->m_children[0])
+    {
+        XmlElementBasePane *child = splitPane->m_children[0];
+        delete splitPane;
+        snprintf(buffer, sizeof(buffer),
+                 _("File %s, line %d: Only one pane contained by the split "
+                   "pane.\n"),
+                 doc->name, node->line);
+        error += buffer;
+        return child;
+    }
+    delete splitPane;
+    snprintf(buffer, sizeof(buffer),
+             _("File %s, line %d: No pane contained by the split pane.\n"),
+             doc->name, node->line);
+    error += buffer;
+    return NULL;
 }
 
-void XmlElementWindow::startElement(GMarkupParserContext *context,
-                                    const gchar *elemName,
-                                    const gchar **attrNames,
-                                    const gchar **attrValues,
-                                    gpointer window,
-                                    GError **error)
+xmlNodePtr XmlElementSplitPane::write() const
 {
-    XmlElementWindow *w = static_cast<XmlElementWindow *>(window);
-    if (strcmp(elemName, "project") == 0)
-    {
-        XmlElementProject *project =
-            Project::parse(attrNames, attrValues, error);
-        if (!project)
-            return;
-        w->m_projects.push_back(project);
-        g_markup_parser_context_push(context,
-                                     XmlElementProject:s_parser,
-                                     project);
-    }
-    else if (strcmp(elemName, "editor-group") == 0)
-    {
-        XmlElementEditorGroup *group =
-            XmlElementEditorGroup::parse(attrNames, attrValues, error);
-        if (!group)
-            return;
-        w->m_editorGroups.push_back(group);
-        g_markup_parser_context_push(context,
-                                     XmlElementEditorGroup::s_parser,
-                                     group);
-    }
-    else
-    {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                    _("Unknown element \"%s\""),
-                    elemName);
-    }
+    xmlNodePtr node = xmlNewNode(NULL,
+                                 static_cast<const xmlChar *>("split-pane"));
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("orientation"),
+                    m_orientation ==
+                    Samoyed::SplitPane::ORIENTATION_HORIZONTAL ?
+                    static_cast<const xmlChar *>("horizontal") :
+                    static_cast<const xmlChar *>("vertical"));
+    xmlAddChild(node, m_children[0]->write());
+    xmlAddChild(node, m_children[1]->write());
+    return node;
 }
 
-void XmlElementWindow::stopElement(GMarkupParserContext *context,
-                                   const gchar *elemName,
-                                   GError **error)
+XmlElementSplitPane *
+XmlElementSplitPane::save(const Samoyed::SplitPane &splitPane)
 {
-    g_markup_parser_context_pop(context);
+    XmlElementSplitPane *sp =
+        new XmlElementSplitPane(splitPane.orientation());
+    if (splitPane.child(0).type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
+        sp->m_children[0] = XmlElementProjectExplorer::save(
+            static_cast<const Samoyed::ProjectExplorer &>(splitPane.child(0)));
+    else if (splitPane.child(0).type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
+        sp->m_children[0] = XmlElementEditorGroup::save(
+            static_cast<const Samoyed::EditorGroup &>(splitPane.child(0)));
+    else if (splitPane.child(0).type() == Samoyed::Pane::TYPE_SPLIT_PANE)
+        sp->m_children[0] = XmlElementSplitPane::save(
+            static_cast<const Samoyed::SplitPane &>(splitPane.child(0)));
+    if (splitPane.child(1).type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
+        sp->m_children[1] = XmlElementProjectExplorer::save(
+            static_cast<const Samoyed::ProjectExplorer &>(splitPane.child(1)));
+    else if (splitPane.child(1).type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
+        sp->m_children[1] = XmlElementEditorGroup::save(
+            static_cast<const Samoyed::EditorGroup &>(splitPane.child(1)));
+    else if (splitPane.child(1).type() == Samoyed::Pane::TYPE_SPLIT_PANE)
+        sp->m_children[1] = XmlElementSplitPane::save(
+            static_cast<const Samoyed::SplitPane &>(splitPane.child(1)));
+    return sp;
+}
+
+bool XmlElementSplitPane::restore(RestorePhase phase,
+                                  Samoyed::PaneBase *&splitPane) const
+{
+    if (phase == RESTORE_PANES)
+    {
+        assert(!splitPane);
+        Samoyed::PaneBase *child1 = NULL;
+        Samoyed::PaneBase *dhild2 = NULL;
+        m_children[0].restore(phase, child1);
+        m_children[1].restore(phase, child2);
+        if (child1)
+        {
+            if (child2)
+            {
+                splitPane =
+                    new Samoyed::SplitPane(m_orientation, *child1, *child2);
+                return true;
+            }
+            else
+            {
+                // Ignore the failure.
+                splitPane = child1;
+                return true;
+            }
+        }
+        else
+        {
+            if (child2)
+            {
+                // Ignore the failure.
+                splitPane = child2;
+                return true;
+            }
+            else
+                return false;
+        }
+
+    }
+    return m_children[0].restore(phase,
+                                 *static_cast<Samoyed::SplitPane *>(splitPane)->
+                                     child(0)) &&
+           m_children[1].restore(phase,
+                                 *static_cast<Samoyed::SplitPane *>(splitPane)->
+                                     child(1));
+}
+
+XmlElementSplitPane::~XmlElementSplitPane()
+{
+    delete m_children[0];
+    delete m_children[1];
+}
+
+XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
+                                         xmlNodePtr node,
+                                         std::string &error,
+                                         bool isMainWindow)
+{
+    char buffer[BUFSIZ];
+    xmlChar *value;
+    XmlElementWindow *window = new XmlElementWindow;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (xmlStrcmp(child->name,
+                      static_cast<const xmlChar *>("screen-index")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            window->m_configuration.m_screenIndex =
+                atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("x")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            window->m_configuration.m_x = atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("y")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            window->m_configuration.m_y = atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("width")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            window->m_configuration.m_width = atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("height")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            window->m_configuration.m_height = atoi(static_cast<char *>(value));
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("full-screen")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            if (xmlStrcmp(value,
+                          static_cast<const xmlChar *>("yes")) == 0)
+                window->m_configuration.m_fullScreen = true;
+            else
+                window->m_configuration.m_fullScreen = false;
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("maximized")) == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            if (xmlStrcmp(value,
+                          static_cast<const xmlChar *>("yes")) == 0)
+                window->m_configuration.m_maximized = true;
+            else
+                window->m_configuration.m_maximized = false;
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("toolbar-visible"))
+                 == 0)
+        {
+            value = xmlNodeListGetString(doc, child->children, 1);
+            if (xmlStrcmp(value,
+                          static_cast<const xmlChar *>("yes")) == 0)
+                window->m_configuration.m_toolbarVisible = true;
+            else
+                window->m_configuration.m_toolbarVisible = false;
+            xmlFree(value);
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("project-explorer"))
+                 == 0)
+        {
+            if (window->m_content)
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: More than one panes or split "
+                           "panes contained by the window.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: A project explorer contained in "
+                           "the window as the root.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("editor-group"))
+                 == 0)
+        {
+            if (window->m_content)
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: More than one panes or split "
+                           "panes contained by the window.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else if (isMainWindow)
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: An editor group contained in the "
+                           "main window as the root.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else
+            {
+                XmlElementEditorGroup *editorGroup =
+                    XmlElementEditorGroup::read(doc, child, error);
+                assert(editorGroup);
+                window->m_content = editorGroup;
+            }
+        }
+        else if (xmlStrcmp(child->name,
+                           static_cast<const xmlChar *>("split-pane"))
+                 == 0)
+        {
+            if (window->m_content)
+            {
+                snprintf(buffer, sizeof(buffer),
+                         _("File %s, line %d: More than one panes or split "
+                           "panes contained by the window.\n"),
+                         doc->name, child->line);
+                error += buffer;
+            }
+            else
+            {
+                XmlElementBasePane *pane =
+                    XmlElementSplitPane::read(doc, child, error, isMainWindow);
+                if (pane)
+                    window->m_content = pane;
+            }
+        }
+    }
+    if (!m_content)
+    {
+        delete window;
+        snprintf(buffer, sizeof(buffer),
+                 _("File %s, line %d: No pane or split pane contained by the "
+                   "window.\n"),
+                 doc->name, node->line);
+        error += buffer;
+        return NULL;
+    }
+    return window;
+}
+
+xmlNodePtr XmlElementWindow::write() const
+{
+    char buffer[BUFSIZ];
+    xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("window"));
+    snprintf(buffer, sizeof(buffer), "%d", m_configuration.m_screenIndex);
+    xmlNewTextChild(node, NULL,
+                    static_cast<const xmlChar *>("screen-index"),
+                    static_cast<const xmlChar *>(buffer));
+
+
 }
 
 XmlElementWindow *XmlElementWindow::save(const Samoyed::Window &window)
 {
-    XmlElementWindow *w =
-        new XmlElementWindow(window.currentEditorGroupIndex());
-    for (int i = 0; i < window.editorGroupCount(); ++i)
-        w->m_editorGroups.push_back(
-            XmlElementEditorGroup::save(window.editorGroup(i)));
-    return rec;
+    XmlElementWindow *w = new XmlElementWindow;
+    if (window.pane().type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
+        w->m_content = XmlElementProjectExplorer::save(
+            static_cast<const Samoyed::ProjectExplorer &>(window.pane()));
+    else if (window.pane.type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
+        w->m_content = XmlElementEditorGroup::save(
+            static_cast<const Samoyed::EditorGroup &>(window.pane()));
+    else if (window.pane.type() == Samoyed::Pane::TYPE_SPLIT_PANE)
+        w->m_content = XmlElementSplitPane::save(
+            static_cast<const Samoyed::SplitPane &>(window.pane()));
+    return w;
 }
 
-Samoyed::Window *XmlElementWindow::restore() const
+bool XmlElementWindow::restore(RestorePhase phase,
+                               Samoyed::Window *&window) const
 {
-    if (Application::instance()->window())
-        return NULL;
-    Samoyed::Window *window = Samoyed::Window::create(&m_configuration);
-    if (!window)
-        return NULL;
-    for (std::vector<XmlElementProject *>::const_iterator it =
-             m_projects.begin();
-         it != m_projects.end();
-         ++it)
-        (*it)->restore();
-    for (std::vector<XmlElementEditorGroup *>::const_iterator it =
-            m_editorGroups.begin();
-         it != m_editorGroups.end();
-         ++it)
+    if (phase == RESTORE_PANES)
     {
-        Samoyed::EditorGroup *group = (*it)->restore();
-        if (group)
-            window->addEditorGroup(*group);
+        assert(!window);
+        Samoyed::PaneBase *content = NULL;
+        // Ignore the possible failure.
+        m_content->restore(phase, content);
+        window = new Samoyed::Window::create(m_configuration, content);
+        return true;
     }
-    if (m_currentEditorGroupIndex >= 0 &&
-        m_currentEditorGroupIndex < window->editorGroupCount())
-        window->setCurrentEditorGroupIndex(m_currentEditorGroupIndex);
-    return window;
-}
-
-bool XmlElementWindow::write(FILE *file, int indentSize) const
-{
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file,
-                "<window"
-                " screen-index\"%d\""
-                " x=\"%d\""
-                " y=\"%d\""
-                " width=\"%d\""
-                " height=\"%d\""
-                " full-screen=\"%d\""
-                " maximized=\"%d\""
-                " toolbar-visible=\"%d\">\n",
-                m_configuration.m_screenIndex,
-                m_configuration.m_x,
-                m_configuration.m_y,
-                m_configuration.m_width,
-                m_configuration.m_height,
-                m_configuration.m_fullScreen,
-                m_configuration.m_maximized,
-                m_configuration.m_toolbarVisible) < 0)
-        return false;
-    indentSize += XML_INDENTATION_SIZE;
-    for (std::vector<XmlElementProject *>::const_iterator it =
-             m_projects.begin();
-         it != m_projects.end();
-         ++it)
-    {
-        if (!(*it)->write(file, indentSize))
-            return false;
-    }
-    for (std::vector<XmlElementEditorGroup *>::const_iterator it =
-             m_editorGroups.begin();
-         it != m_editorGroups.end();
-         ++it)
-    {
-        if (!(*it)->write(file, indentSize))
-            return false;
-    }
-    indentSize -= XML_INDENTATION_SIZE;
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file, "</window>\n") < 0)
-        return false;
-    return true;
+    return m_content->restore(phase, &window->content());
 }
 
 XmlElementWindow::~XmlElementWindow()
 {
-    for (std::vector<XmlElementProject *>::const_iterator it =
-             m_projects.begin();
-         it != m_projects.end();
-         ++it)
-        delete *it;
-    for (std::vector<XmlElementEditorGroup *>::const_iterator it =
-            m_editorGroups.begin();
-         it != m_editorGroups.end();
-         ++it)
-        delete *it;
+    delete m_content;
 }
 
-XmlElementSession *XmlElementSession::parse(const char **attrNames,
-                                            const char **attrValues,
-                                            GError **error)
+XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
+                                           xmlNodePtr node,
+                                           std::string &error)
 {
-    if (attrNames)
+    char buffer[BUFSIZ];
+    XmlElementSession *session = new XmlElementSession;
+    for (xmlNodePtr child = node->children; child; child->next)
     {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_UNKNOWN_ATTRIBUTE,
-                    _("Unknown attribute \"%s\""),
-                    *attrNames);
+        if (xmlStrcmp(child->name,
+                      static_cast<xmlChar *>("window")) == 0)
+        {
+            bool isMainWindow = m_windows.empty();
+            XmlElementWindow *window =
+                XmlElementWindow::read(doc, child, error, isMainWindow);
+            if (window)
+                session->m_windows.push_back(window);
+        }
+    }
+    if (session->m_windows.empty())
+    {
+        delete session;
+        snprintf(buffer, sizeof(buffer),
+                 _("File %s, line %d: No window in the session.\n"),
+                 doc->name, node->line);
+        error += buffer;
         return NULL;
     }
-    return new XmlElementSession;
+    return session;
 }
 
-void XmlElementSession::startElement(GMarkupParserContext *context,
-                                     const gchar *elemName,
-                                     const gchar **attrNames,
-                                     const gchar **attrValues,
-                                     gpointer session,
-                                     GError **error)
+xmlNodePtr XmlElementSession::write() const
 {
-    XmlElementSession *s = static_cast<XmlElementSession *>(session);
-    if (strcmp(elemName, "window") == 0)
-    {
-        XmlElementWindow *window =
-            XmlElementWindow::parse(attrNames, attrValues, error);
-        if (!window)
-            return;
-        s->m_window = window;
-        g_markup_parser_context_push(context,
-                                     XmlElementWindow::s_parser,
-                                     window);
-    }
-    else
-    {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                    _("Unknown element \"%s\""),
-                    elemName);
-    }
-}
-
-void XmlElementSession::endElement(GMarkupParserContext *context,
-                                   const gchar *elemName,
-                                   gpointer session,
-                                   GError **error)
-{
-    g_markup_parser_context_pop(context);
+    xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("session"));
+    for (std::vectore<XmlElementWindow *>::const_iterator it =
+             m_windows.begin();
+         it != m_windows.end();
+         ++it)
+        xmlAddChild(node, (*it)->write());
 }
 
 XmlElementSession *XmlElementSession::save()
 {
     XmlElementSession *session = new XmlElementSession;
-    assert(Samoyed::Application::instance()->mainWindow());
-    for (Samoyed::Window *window = Samoyed::Application::instance()->windows();
+    for (Samoyed::Window *window = Samoyed::Application::instance().windows();
          window;
          window = window->next())
         session->m_windows.push_back(XmlElementWindow::save(*window));
-    for (Samoyed::Project *project =
-             Samoyed::Application::instance()->projects();
-         project;
-         project = project->next())
-        session->m_projects.push_back(XmlElementProject::save(*project));
     return session;
 }
 
 bool XmlElementSession::restore() const
 {
-    if (!m_windows[0]->restore())
-        return false;
+    std::vector<Samoyed::Window *> windows(m_windows.size(), NULL);
+    std::vector<XmlElementWindow *>::const_iterator it1;
+    std::vector<Samoyed::Window *>::iterator it2;
+    for (it1 = m_windows.begin(), it2 = windows.begin();
+         it1 != m_windows.end();
+         ++it1, ++it2)
+    {
+        (*it1)->restore(RESTORE_PANES, *it2);
+        assert(*it2);
+    }
+    for (it1 = m_windows.begin(), it2 = windows.begin();
+         it != windows.end();
+         ++it1, ++it2)
+        (*it1)->restore(RESTORE_PROJECTS, *it2);
+    for (it1 = m_windows.begin(), it2 = windows.begin();
+         it != windows.end();
+         ++it1, ++it2)
+        (*it1)->restore(RESTORE_EDITORS, *it2);
     return true;
 }
 
-bool XmlElementSession::write(FILE *file, int indentSize) const
+XmlElementSession::~XmlElementSession()
 {
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file, "<session>\n") < 0)
-        return false;
-    indentSize += XML_INDENTATION_SIZE;
-    if (!m_window->write(file, indentSize))
-        return false;
-    indentSize -= XML_INDENTATION_SIZE;
-    if (!indent(file, indentSize))
-        return false;
-    if (fprintf(file, "</session>\n") < 0
-        return false;
-    return true;
+    for (std::vectore<XmlElementWindow *>::const_iterator it =
+             m_windows.begin();
+         it != m_windows.end();
+         ++it)
+        delete *it;
 }
-
-void startElement(GMarkupParserContext *context,
-                  const gchar *elemName,
-                  const gchar **attrNames,
-                  const gchar **attrValues,
-                  gpointer sessionHolder,
-                  GError **error)
-{
-    Session **spp = static_cast<Session **>(sessionHolder);
-    if (strcmp(elemName, "session") == 0)
-    {
-        *spp = Session::parse(attrNames, attrValues, error);
-        if (!*spp)
-            return;
-        g_markup_parser_context_push(context,
-                                     XmlElementSession::s_parser,
-                                     *spp);
-    }
-    else
-    {
-        g_set_error(error,
-                    G_MARKUP_ERROR,
-                    G_MARKUP_ERROR_UNKNOWN_ELEMENT,
-                    _("Unknown element \"%s\""),
-                    elemName);
-    }
-}
-
-void endElement(GMarkupParserContext *context,
-                const gchar *elemName,
-                gpointer session,
-                GError **error)
-{
-    g_markup_parser_context_pop(context);
-}
-
-GMarkupParser parser =
-{
-    startElement,
-    endElement,
-    NULL,
-    NULL
-};
 
 // Report the error.
 XmlElementSession *readSessionFile(const char *fileName,
                                    const char *sessionName)
 {
-    GError *error;
-    char *text;
-    int textLength;
-    error = NULL;
-    g_file_get_contents(fileName, &text, &textLength, &error);
-    if (error)
+    xmlDocPtr doc = xmlParseFile(fileName);
+    if (!doc)
     {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to read session file \"%s\" to restore session "
-              "\"%s\": %s."),
-            fileName, sessionName, error->message);
+        GtkWidget *dialog;
+        xmlErrorPtr error = xmlGetLastError();
+        if (error)
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to parse session file \"%s\" to restore "
+                  "session \"%s\". %s."),
+                fileName, sessionName, error->message);
+        else
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to parse session file \"%s\" to restore "
+                  "session \"%s\"."),
+                fileName, sessionName);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        g_error_free(error);
         return NULL;
     }
 
-    XmlElementSession *session = NULL;
-    GMarkupParseContext *context =
-        g_markup_parse_context_new(&parser,
-                                   G_MARKUP_PREFIX_ERROR_POSITION,
-                                   &session,
-                                   NULL);
-    error = NULL;
-    if (g_markup_parser_context_parse(context, text, textLength, &error))
-        g_markup_parser_context_end_parse(context, &error);
-    g_markup_parser_context_free(context);
-    g_free(text);
-    if (error)
+    xmlNodePtr node = xmlDocGetRootElement(doc);
+    if (!node)
     {
+        xmlFreeDoc(doc);
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to parse session file \"%s\" to restore session "
-              "\"%s\": %s."),
-            fileName, sessionName, error->message);
+            _("Samoyed failed to restore session \"%s\". Session file \"%s\" "
+              "is empty."),
+            sessionName, fileName);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        g_error_free(error);
-        if (session)
-        {
-            delete session;
-            session = NULL;
-        }
+        return NULL;
     }
+
+    std::string error;
+    XmlElementSession *session = XmlElementSession::read(doc, node, error);
+    xmlFreeDoc(doc);
+    if (!session)
+    {
+        GtkWidget *dialog;
+        if (error.empty())
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to construct session \"%s\" from session "
+                  "file \"%s\"."),
+                sessionName, fileName);
+        else
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to construct session \"%s\" from session "
+                  "file \"%s\". %s."),
+                sessionName, fileName, error.c_str());
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+    }
+
     return session;
 }
 
 // Don't report the error.
 bool writeLastSessionName(const char *name)
 {
-    std::string fileName(Application::instance()->userDirectoryName());
+    std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
     int fd = g_open(fileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd == -1)
@@ -954,46 +1103,9 @@ bool writeLastSessionName(const char *name)
 }
 
 // Report the error.
-bool readUnsavedFileUris(const char *fileName,
-                         const char *sessionName,
-                         std::set<std::string> &unsavedFileUris)
-{
-    GError *error = NULL;
-    char *text;
-    int textLength;
-    g_file_get_contents(fileName, &text, &textLength, &error);
-    if (error)
-    {
-        if (error->code == G_IO_ERROR_NOT_FOUND)
-        {
-            g_error_free(error);
-            return true;
-        }
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to read file \"%s\" to list unsaved file URIs "
-              "for session \"%s\". %s."),
-            fileName, sessionName, error->message);
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        g_error_free(error);
-        return false;
-    }
-
-    for (char *cp = strtok(text, " \t\r\n"); cp; cp = strtok(NULL, " \t\r\n"))
-        unsavedFileUris.insert(cp);
-    g_free(text);
-    return true;
-}
-
-// Report the error.
 bool lockSession(const char *name)
 {
-    std::string lockFn(Application::instance()->userDirectoryName());
+    std::string lockFn(Application::instance().userDirectoryName());
     lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFn += name;
     lockFn += G_DIR_SEPARATOR_S "lock";
@@ -1009,8 +1121,7 @@ RETRY:
         {
             // The lock file doesn't exist but we can't create the lock file.
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->currentWindow() ?
-                Application::instance()->currentWindow()->gtkWidget() : NULL,
+                NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -1051,8 +1162,7 @@ RETRY:
             // The session is being locked by another instance of the
             // application.  But we can't read the process ID.
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->currentWindow() ?
-                Application::instance()->currentWindow()->gtkWidget() : NULL,
+                NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -1068,15 +1178,15 @@ RETRY:
             // The session is being locked by another instance of the
             // application.
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->currentWindow() ?
-                Application::instance()->currentWindow()->gtkWidget() : NULL,
+                NULL,
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
                 _("Samoyed failed to start session \"%s\" because the session "
                   "is being locked by another instance of Samoyed, whose "
-                  "process ID is %d."),
-                name, lockingPid);
+                  "process ID is %d. If that instance does not exist, remove "
+                  "the lock file \"%s\" and retry to start session \"%s\".\n"),
+                name, lockingPid, lockFn.c_str(), name);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
             return false;
@@ -1093,8 +1203,7 @@ RETRY:
     if (length == -1)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -1120,60 +1229,11 @@ RETRY:
 bool unlockSession(const char *name)
 {
     // Remove the lock file.
-    std::string lockFn(Application::instance()->userDirectoryName());
+    std::string lockFn(Application::instance().userDirectoryName());
     lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFn += name;
     lockFn += G_DIR_SEPARATOR_S "lock";
     return !g_unlink(lockFn.c_str());
-}
-
-bool saveSession(const char *name, bool reportError)
-{
-    std::string sessionFn(Application::instance()->userDirectoryName());
-    sessionFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    sessionFn += name;
-    sessionFn += G_DIR_SEPARATOR_S "session.xml";
-    FILE *sessionFp = g_fopen(sessionFn.c_str(), "w");
-    if (sessionFp)
-    {
-        XmlElementSession *session = XmlElementSession::save();
-        if (session->write(sessionFp, 0))
-        {
-            delete session;
-            if (!fclose(sessionFp))
-                return true;
-        }
-        else
-        {
-            delete session;
-            fclose(sessionFp);
-        }
-    }
-
-    if (reportError)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow()->gtkWidget(),
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_NONE,
-            _("Samoyed failed to save the current session to file \"%s\". %s."),
-            sessionFn.c_str(), g_strerror(errno));
-        gtk_dialog_add_buttons(
-            GTK_DIALOG(dialog),
-            _("_Quit the session without saving it"), GTK_RESPONSE_YES,
-            _("_Cancel quitting the session"), GTK_RESPONSE_NO,
-            NULL);
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                        GTK_RESPONSE_NO);
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_NO)
-            return false;
-        // To continue quitting the session.
-        return true;
-    }
-    return false;
 }
 
 }
@@ -1181,18 +1241,168 @@ bool saveSession(const char *name, bool reportError)
 namespace Samoyed
 {
 
+// Don't report the error.
+void Sesssion::UnsavedFileListRead::execute(const Session &session) const
+{
+    std::string unsavedFn(Application::instance().userDirectoryName());
+    unsavedFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    unsavedFn += session.name();
+    unsavedFn += G_DIR_SEPARATOR_S "unsaved-files";
+
+    char *text;
+    std::set<std::string> unsavedFileUris;
+    if (g_file_get_contents(fileName, &text, NULL, NULL))
+    {
+        for (char *cp = strtok(text, DELIMITERS);
+             cp;
+             cp = strtok(NULL, DELIMITERS))
+            unsavedFileUris.insert(cp);
+    }
+    g_free(text);
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    G_CALLBACK(Session::onUnsavedFileListRead),
+                    new UnsavedFileListReadParam(m_session, unsavedFileUris),
+                    NULL);
+}
+
+// Don't report the error.
+void Session::UnsavedFileListWrite::execute(const Session &session) const
+{
+    std::string unsavedFn(Application::instance().userDirectoryName());
+    unsavedFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    unsavedFn += session.name();
+    unsavedFn += G_DIR_SEPARATOR_S "unsaved-files";
+
+    FILE *unsavedFp = g_fopen(unsavedFn.c_str(), "w");
+    if (unsavedFp)
+    {
+        for (std::set<std::string>::const_iterator it =
+                 session.unsavedFileUris().begin();
+             it != session.unsavedFileUris().end();
+             ++it)
+        {
+            fputs(*it, unsavedFp);
+            fputs("\n", unsavedFp);
+        }
+        fclose(unsavedFp);
+    }
+}
+
+gboolean Session::onUnsavedFileListRead(gpointer param)
+{
+    UnsavedFileListReadParam *p =
+        static_cast<UnsavedFileListReadParam *>(param);
+    p->m_session.m_unsavedFileListUris.swap(p->m_unsavedFileUris);
+    if (p->m_session.m_destroy)
+    {
+        delete p;
+        return FALSE;
+    }
+
+    // Show the unsaved files.
+    FileRecoverer *recoverer =
+        new FileRecoverer(p->m_session.unsavedFileListUris());
+    Application::instance().currentWindow().addPane(recoverer);
+    delete p;
+    return FALSE;
+}
+
+gboolean Session::onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param)
+{
+    Session *session = static_cast<Session *>(param);
+    delete session->m_unsavedFileListRequestWorker;
+    {
+        boost::mutex::scoped_lock
+            lock(session->m_unsavedFileListRequestQueueMutex);
+        if (!session->m_unsavedFileListRequestQueue.empty())
+        {
+            session->m_unsavedFileListRequestWorker =
+                new UnsavedFileListRequestWorker(
+                    Worker::PRIORITY_IDLE,
+                    boost::bind(&Session::onUnsavedFileListRequestWorkerDone,
+                                this, _1),
+                    *this);
+            Application::instance().scheduler().
+                schedule(*session->m_unsavedFileListRequestWorker);
+        }
+        else
+            session->m_unsavedFileListRequestWorker = NULL;
+    }
+    if (!session->m_unsavedFileListRequestWorker && p->m_session.m_destroy)
+        delete session;
+    return FALSE;
+}
+
+void Session::onUnsavedFileListRequestWorkerDone(Worker &worker)
+{
+    assert(&worker == m_unsavedFileListRequestWorker);
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    G_CALLBACK(onUnsavedFileListRequestWorkerDoneInMainThread),
+                    this,
+                    NULL);
+}
+
+void Session::queueUnsavedFileListRequest(UnsavedFileListRequest *request)
+{
+    {
+        boost::mutex::scoped_lock lock(m_unsavedFileListRequestQueueMutex);
+        m_unsavedFileListRequestQueue.push_back(request);
+    }
+
+    if (!m_unsavedFileListRequestWorker)
+    {
+        m_unsavedFileListRequestWorker = new UnsavedFileListRequestWorker(
+            Worker::PRIORITY_IDLE,
+            boost::bind(&Session::onUnsavedFileListRequestWorkerDone,
+                        this, _1),
+            *this);
+        Application::instance().scheduler().
+            schedule(*m_unsavedFileListRequestWorker);
+    }
+}
+
+void Session::executeQueuedUnsavedFileListRequests()
+{
+    for (;;)
+    {
+        std::deque<UnsavedFileListRequest *> requests;
+        {
+            boost::mutex::scoped_lock
+                queueLock(m_unsavedFileListRequestQueueMutex);
+            if (m_unsavedFileListRequestQueue.empty())
+                return;
+            requests.swap(m_unsavedFileListRequestQueue);
+        }
+        do
+        {
+            UnsavedFileListRequest *request = requests.pop_front();
+            request->execute(*this);
+            delete request;
+        }
+        while (!requests.empty());
+    }
+}
+
+
+
+void Session::destroy()
+{
+    m_destroy = true;
+    if (!m_unsavedFileListRequestWorker)
+        delete this;
+}
+
 // Report the error.
 bool Session::makeSessionsDirectory()
 {
-    std::string sessionsDirName(Application::instance()->userDirectoryName());
+    std::string sessionsDirName(Application::instance().userDirectoryName());
     sessionsDirName += G_DIR_SEPARATOR_S "sessions";
     if (!g_file_test(sessionsDirName.c_str(), G_FILE_TEST_EXISTS))
     {
         if (g_mkdir(sessionsDirName.c_str(), 0755))
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->currentWindow() ?
-                Application::instance()->currentWindow()->gtkWidget() : NULL,
+                NULL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
                 _("Samoyed failed to create directory \"%s\" to session "
@@ -1210,7 +1420,7 @@ bool Session::makeSessionsDirectory()
 void Session::onCrashed(int signalNumber)
 {
     // Remove the lock file and set the last session name.
-    Session *session = Application::instance()->session();
+    Session *session = Application::instance().session();
     if (!session)
         return;
     unlockSession(session->name());
@@ -1225,7 +1435,7 @@ void Session::registerCrashHandler()
 // Don't report the error.
 bool Session::lastSessionName(std::string &name)
 {
-    std::string fileName(Application::instance()->userDirectoryName());
+    std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
     char *text;
     int textLength;
@@ -1243,7 +1453,7 @@ bool Session::allSessionNames(std::vector<std::string> &names)
 {
     // Each sub-directory in directory "sessions" stores a session.  Its name is
     // the session name.
-    std::string sessionsDirName(Application::instance()->userDirectoryName());
+    std::string sessionsDirName(Application::instance().userDirectoryName());
     sessionsDirName += G_DIR_SEPARATOR_S "sessions";
 
     GError *error = NULL;
@@ -1251,8 +1461,8 @@ bool Session::allSessionNames(std::vector<std::string> &names)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().windows() ?
+            Application::instance().currentWindow().gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -1276,38 +1486,10 @@ bool Session::allSessionNames(std::vector<std::string> &names)
     return true;
 }
 
-// Don't report the error.
-bool Session::querySessionInfo(const char *name, Information &info)
-{
-    GError *error = NULL;
-    std::string sessionDirName(Application::instance()->userDirectoryName());
-    sessionDirName += G_DIR_SEPARATOR_S "sessions";
-    sessionDirName += name;
-
-    // Check to see if the session is locked.
-    info.m_lockedByThis = false;
-    info.m_lockedByOther = false;
-    if (Application::instance()->session() &&
-        strcmp(Application::instance()->session()->name(), name) == 0)
-        info.m_lockedByThis = true;
-    else
-    {
-        std::string lockFn(sessionDirName + G_DIR_SEPARATOR_S "lock");
-        if (g_file_test(lockFn.c_str(), G_FILE_TEST_EXIST))
-            info.m_lockedByOther = true;
-    }
-
-    // If the session is locked, don't need to check the unsaved files.
-    if (info.m_lockedByThis || info.m_lockedByOther)
-        return true;
-
-    // Check to see if the session has any unsaved files.
-    std::string unsavedFn(sessionDirName + G_DIR_SEPARATOR_S "unsaved-files");
-    return readUnsavedFileUris(unsavedFn.c_str(), name, info.m_unsavedFileUris);
-}
-
 Session::Session(const char *name):
-    m_name(name)
+    m_destroy(false),
+    m_name(name),
+    m_unsavedFileListRequestWorker(NULL)
 {
 }
 
@@ -1320,14 +1502,13 @@ Session::~Session()
 Session *Session::create(const char *name)
 {
     // Create the session directory.
-    std::string sessionDirName(Application::instance()->userDirectoryName());
+    std::string sessionDirName(Application::instance().userDirectoryName());
     sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionDirName += name;
     if (g_mkdir(sessionDirName.c_str(), 0755))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -1346,17 +1527,21 @@ Session *Session::create(const char *name)
         return false;
     }
 
-    // Start a new session.
-    if (!Window::create(NULL))
-        return NULL;
-    Session *session = new Session(name);
+    // Create the main window for the new session.
+    ProjectExplorer *projectExplorer = new ProjectExplorer;
+    EditorGroup *editorGroup = new EditorGroup;
+    SplitPane *splitPane = new SplitPane(SplitPane::ORIENTATION_HORIZONTAL,
+                                         -1,
+                                         projectExplorer,
+                                         editorGroup);
+    new Window(Window::Confignuration(), splitPane);
 
-    return session;
+    return new Session(name);
 }
 
 Session *Session::restore(const char *name)
 {
-    std::string sessionDirFn(Application::instance()->userDirectoryName());
+    std::string sessionDirFn(Application::instance().userDirectoryName());
     sessionDirFn += G_DIR_SEPARATOR_S sessions G_DIR_SEPARATOR_S;
     sessionDirFn += name;
 
@@ -1374,45 +1559,84 @@ Session *Session::restore(const char *name)
     }
     delete s;
 
-    // Make sure the main window is created.
-    if (!Application::instance()->mainWindow())
-        if (!Window::create(NULL))
-            return NULL;
-
-    Session *session = new Session(name);
+    Session *session = new Session;
 
     // Check to see if the session has any unsaved files.
-    std::string unsavedFn(sessionDirName + G_DIR_SEPARATOR_S "unsaved-files");
-    if (readUnsavedFileUris(unsavedFn.c_str(),
-                            name,
-                            session->m_unsavedFileUris))
-    {
-        if (!session->m_unsavedFileUris.empty())
-        {
-            FileRecoverer *recoverer =
-                FileRecoverer::create(session->m_unsavedFileUris);
-            Application::instance()->window()->addTool(recoverer);
-        }
-    }
+    queueUnsavedFileListRequest(new UnsavedFileListRead(*session));
 
     return session;
 }
 
 bool Session::save()
 {
-    return saveSession(m_name.c_str(), true);
+    std::string sessionFn(Application::instance().userDirectoryName());
+    sessionFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionFn += m_name;
+    sessionFn += G_DIR_SEPARATOR_S "session.xml";
+
+    XmlElementSession *session = XmlElementSession::save();
+    xmlNodePtr node = session->write();
+    delete session;
+
+    xmlDocPtr doc = xmlNewDoc(static_cast<const xmlChar *>("1.0"));
+    xmlDocSetRootElement(doc, node);
+    if (xmlSaveFormatFile(sessionFn.c_str(), doc, 1) == -1)
+    {
+        xmlFreeDoc(doc);
+        GtkWidget *dialog;
+        xmlErrorPtr error = xmlGetLastError();
+        if (error)
+        {
+            dialog = gtk_message_dialog_new(
+                Application::instance().currentWindow().gtkWidget(),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_NONE,
+                _("Samoyed failed to save the current session to file \"%s\". "
+                  "%s."),
+                sessionFn.c_str(), error->message);
+        }
+        else
+        {
+            dialog = gtk_message_dialog_new(
+                Application::instance().currentWindow().gtkWidget(),
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_NONE,
+                _("Samoyed failed to save the current session to file "
+                  "\"%s\". "),
+                sessionFn.c_str());
+        }
+        gtk_dialog_add_buttons(
+            GTK_DIALOG(dialog),
+            _("_Quit the session without saving it"), GTK_RESPONSE_YES,
+            _("_Cancel quitting the session"), GTK_RESPONSE_NO,
+            NULL);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_NO);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_NO)
+            return false;
+        // To continue quitting the session.
+        return true;
+    }
+    xmlFreeDoc(doc);
+    return true;
 }
 
 void Session::addUnsavedFileUri(const char *uri)
 {
     if (!m_unsavedFileUris.insert(uri).second)
         return;
+    queueUnsavedFileListRequest(new UnsavedFileListWrite(m_unsavedFileUris));
 }
 
 void Session::removeUnsavedFileUri(const char *uri)
 {
     if (!m_unsavedFileUris.erase(uri))
         return;
+    queueUnsavedFileListRequest(new UnsavedFileListWrite(m_unsavedFileUris));
 }
 
 }

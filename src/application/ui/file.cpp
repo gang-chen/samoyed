@@ -82,13 +82,12 @@ bool File::EditStack::mergePush(EditPrimitive *edit)
 std::pair<File *, Editor *> File::open(const char *uri, Project &project)
 {
     // Can't open an already opened file.
-    assert(!Application::instance()->findFile(uri));
+    assert(!Application::instance().findFile(uri));
     char *mimeType = FileTypeRegistry::getFileType(uri);
     if (!mimeType)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -99,12 +98,11 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
         return std::make_pair(NULL, NULL);
     }
     const FileTypeRegistry::FileFactory *factory =
-        Application::instance()->fileTypeRegistry()->getFileFactory(mimeType);
+        Application::instance().fileTypeRegistry().getFileFactory(mimeType);
     if (!factory)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -200,8 +198,7 @@ bool File::destroyEditor(Editor &editor)
     {
         // Ask the user.
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -247,7 +244,7 @@ File::File(const char *uri):
     m_internalFreezeCount(0),
     m_loader(NULL)
 {
-    Application::instance()->addFile(*this);
+    Application::instance().addFile(*this);
 
     // Start the initial loading.
     load(false);
@@ -259,7 +256,7 @@ File::~File()
     assert(!m_superUndo);
     assert(!m_loader);
 
-    Application::instance()->removeFile(*this);
+    Application::instance().removeFile(*this);
 
     delete m_superUndo;
     if (m_ioError)
@@ -308,7 +305,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     file.m_revision = loader.revision();
     if (file.m_ioError)
         g_error_free(file.m_ioError);
-    file.m_ioError = loader.fetchError();
+    file.m_ioError = loader.takeError();
     file.resetEditCount();
     file.m_undoHistory.clear();
     file.m_redoHistory.clear();
@@ -321,8 +318,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     if (file.m_ioError)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -351,7 +347,7 @@ gboolean File::onSavedInMainThead(gpointer param)
     {
         if (file.m_ioError)
             g_error_free(file.m_ioError);
-        file.m_ioError = saver.fetchError();
+        file.m_ioError = saver.takeError();
         file.onSaved(saver);
         file.m_saved(file);
         delete &saver;
@@ -360,8 +356,7 @@ gboolean File::onSavedInMainThead(gpointer param)
         if (m_closing)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->currentWindow() ?
-                Application::instance()->currentWindow()->gtkWidget() : NULL,
+                Application::instance().currentWindow().gtkWidget(),
                 GTK_DIALOG_MODEL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_NONE,
@@ -389,8 +384,7 @@ gboolean File::onSavedInMainThead(gpointer param)
         else
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance()->currentWindow() ?
-                Application::instance()->currentWindow()->gtkWidget() : NULL,
+                Application::instance().currentWindow().gtkWidget(),
                 GTK_DIALOG_MODAL,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -441,8 +435,7 @@ bool File::load(bool userRequest)
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -463,7 +456,7 @@ bool File::load(bool userRequest)
     freezeInternally();
     m_loader = createLoader(Worker::defaultPriorityInCurrentThread(),
                             boost::bind(&File::onLoadedWrapper, this, _1));
-    Application::instance()->scheduler()->schedule(*m_loader);
+    Application::instance().scheduler().schedule(*m_loader);
     return true;
 }
 
@@ -474,7 +467,7 @@ void File::save()
     freezeInternally();
     Saver *saver = createSaver(Worker::defaultPriorityInCurrentThread(),
                                boost::bind(&File::onSavedWrapper, this, _1));
-    Application::instance()->scheduler()->schedule(*saver);
+    Application::instance().scheduler().schedule(*saver);
 }
 
 void File::saveUndo(EditPrimitive *edit)

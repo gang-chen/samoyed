@@ -29,10 +29,10 @@ void FileSource::Loading::execute(FileSource &source)
                           source.uri());
     loader.runAll();
     source.beginWrite(false, NULL, NULL, NULL);
-    TextBuffer *buffer = loader.fetchBuffer();
+    TextBuffer *buffer = loader.takeBuffer();
     source.setBuffer(buffer);
     source.endWrite(loader.revision(),
-                    loader.fetchError(),
+                    loader.takeError(),
                     Range(0, buffer->length()));
 }
 
@@ -213,7 +213,7 @@ void FileSource::endWrite(Revision &revision,
         // Notify the observers first because the abstract syntax tree updating
         // will lead to long-time parsing in this thread.
         m_changed(*this, ChangeHint(oldRev, revision, range));
-        Application::instance()->projectAstManager()->
+        Application::instance().projectAstManager().
             onFileSourceChanged(*this,
                                 ChangeHint(oldRev, revision, range));
     }
@@ -248,9 +248,9 @@ void FileSource::executeQueuedWrites()
         }
         do
         {
-            Write *w = writes.pop_front();
-            w->execute(*this);
-            delete w;
+            Write *write = writes.pop_front();
+            write->execute(*this);
+            delete write;
         }
         while (!writes.empty());
     }
@@ -260,7 +260,7 @@ void FileSource::requestWrite(Write *write)
 {
     queueWrite(write);
 
-    if (Application::instance()->inMainThread())
+    if (Application::instance().inMainThread())
     {
         // If we are in the main thread, use a background worker to execute the
         // queued write requests.
@@ -271,7 +271,7 @@ void FileSource::requestWrite(Write *write)
                 Worker::defaultPriorityInCurrentThread(),
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
-            Application::instance()->scheduler()->schedule(*m_writeWorker);
+            Application::instance().scheduler().schedule(*m_writeWorker);
         }
     }
     else
@@ -285,7 +285,7 @@ void FileSource::onWriteWorkerDone(Worker &worker)
 {
     {
         boost::mutex::scoped_lock workerLock(m_writeWorkerMutex);
-        assert(&worker == &m_writeWorker);
+        assert(&worker == m_writeWorker);
         boost::mutex::scoped_lock queueLock(m_writeQueueMutex);
         if (!m_writeQueue.empty())
         {
@@ -295,7 +295,7 @@ void FileSource::onWriteWorkerDone(Worker &worker)
                 Worker::defaultPriorityInCurrentThread(),
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
-            Application::instance()->scheduler()->schedule(*m_writeWorker);
+            Application::instance().scheduler().schedule(*m_writeWorker);
         }
         else
             m_writeWorker = NULL;

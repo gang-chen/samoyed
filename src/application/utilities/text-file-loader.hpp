@@ -27,7 +27,7 @@ public:
         FileLoader(priority, callback, uri)
     {}
 
-    TextBuffer *fetchBuffer()
+    TextBuffer *takeBuffer()
     {
         TextBuffer *buffer = m_buffer;
         m_buffer = NULL;

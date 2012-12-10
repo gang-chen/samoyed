@@ -4,10 +4,13 @@
 #ifndef SMYD_SESSION_HPP
 #define SMYD_SESSION_HPP
 
+#include "utilities/worker.hpp"
 #include <string>
 #include <vector>
 #include <set>
+#include <deque>
 #include <boost/utility>
+#include <boost/thread/mutex.hpp>
 
 namespace Samoyed
 {
@@ -42,13 +45,6 @@ namespace Samoyed
 class Session: public boost::noncopyable
 {
 public:
-    struct Information
-    {
-        bool m_lockedByThis;
-        bool m_lockedByOther;
-        std::set<std::string> m_unsavedFileUris;
-    };
-
     static bool makeSessionsDirectory();
 
     static void registerCrashHandler();
@@ -56,8 +52,6 @@ public:
     static bool lastSessionName(std::string &name);
 
     static bool allSessionNames(std::vector<std::string> &names);
-
-    static bool querySessionInfo(const char *name, Information &info);
 
     ~Session();
 
@@ -81,17 +75,83 @@ public:
      */
     bool save();
 
+    /**
+     * Request to destroy this session object.
+     */
+    void destroy();
+
+    const std::set<std::string> &unsavedFileUris() const
+    { return m_unsavedFileUris; }
+
     void addUnsavedFileUri(const char *uri);
     void removeUnsavedFileUri(const char *uri);
 
 private:
+    class UnsavedFileListRequest
+    {
+    public:
+        virtual ~UnsavedFileListRequest() {}
+        virtual void execute(const Session &session) const = 0;
+    };
+
+    class UnsavedFileListRead: public UnsavedFileListRequest
+    {
+    public:
+        UnsavedFileListRead(Session &session): m_session(session)
+        virtual void execute(const Session &session) const;
+    private:
+        Session &m_session;
+    };
+
+    class UnsavedFileListWrite: public UnsavedFileListRequest
+    {
+    public:
+        UnsavedFileListWrite(std::set<std::string> &unsavedFileUris):
+            m_unsavedFileUris(unsavedFileUris.begin(), unsavedFileUris.end())
+        {}
+        virtual void execute(const Session &session) const;
+    private:
+        std::vector<std::string> m_unsavedFileUris;
+    };
+
+    class UnsavedFileListRequestWorker: public Worker
+    {
+    public:
+        UnsavedFileListRequestWorker(unsigned int priority,
+                                     const Callback &callback,
+                                     Session &session):
+            Worker(priority, callback),
+            m_session(session)
+        {}
+        virtual bool step();
+
+    private:
+        Session &m_session;
+    };
+
     static void onCrashed(int signalNumber);
 
+    static gboolean onUnsavedFileListRead(gpointer param);
+
+    static gboolean
+        onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param);
+
     Session(const char *name);
+
+    void queueUnsavedFileListRequest(UnsavedFileListRequest *request);
+    void executeQueuedUnsavedFileListRequests();
+    void onUnsavedFileListRequestWorkerDone(Worker &worker);
+
+    bool m_destroy;
 
     const std::string m_name;
 
     std::set<std::string> m_unsavedFileUris;
+
+    std::deque<UnsavedFileListRequest *> m_unsavedFileListRequestQueue;
+    mutable boost::mutex m_unsavedFileListRequestQueueMutex;
+
+    UnsavedFileListRequestWorker *m_unsavedFileListRequestWorker;
 };
 
 }

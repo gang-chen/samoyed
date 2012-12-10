@@ -17,13 +17,20 @@ class Window;
 class PaneBase: public boost::noncopyable
 {
 public:
-    PaneBase(): m_parent(NULL), m_window(NULL) {}
+    enum Type
+    {
+        TYPE_PROJECT_EXPLORER,
+        TYPE_EDITOR_GROUP,
+        TYPE_SPLIT_PANE
+    };
+
+    PaneBase(Type type): m_type(type), m_parent(NULL), m_window(NULL) {}
     virtual ~PaneBase();
 
     virtual GtkWidget *gtkWidget() const = 0;
 
-    virtual Pane *currentPane() = 0;
-    virtual const Pane *currentPane() const = 0;
+    virtual Pane &currentPane() = 0;
+    virtual const Pane &currentPane() const = 0;
 
     SplitPane *parent() { return m_parent; }
     const SplitPane *parent() const { return m_parent; }
@@ -35,7 +42,10 @@ public:
 
     virtual bool close() = 0;
 
+    Type type() const { return m_type; }
+
 private:
+    Type m_type;
     SplitPane *m_parent;
     Window *m_window;
 };

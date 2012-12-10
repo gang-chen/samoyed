@@ -13,7 +13,7 @@ g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I.. -I../../../libs -I/usr/include\
 #include "worker.hpp"
 #include "scheduler.hpp"
 #ifndef SMYD_WORKER_UNIT_TEST
-# include "application.hpp"
+# include "../application.hpp"
 #endif
 #include <assert.h>
 #include <boost/thread/mutex.hpp>
@@ -36,7 +36,7 @@ Worker::ExecutionWrapper::ExecutionWrapper(Worker &worker):
     m_worker(worker)
 {
 #ifndef SMYD_WORKER_UNIT_TEST
-    Application::instance()->setThreadWorker(&m_worker);
+    Application::instance().setThreadWorker(&m_worker);
 #endif
     if (!m_worker.m_blocked)
         m_worker.begin();
@@ -47,7 +47,7 @@ Worker::ExecutionWrapper::~ExecutionWrapper()
     if (!m_worker.m_blocked)
         m_worker.end();
 #ifndef SMYD_WORKER_UNIT_TEST
-    Application::instance()->setThreadWorker(NULL);
+    Application::instance().setThreadWorker(NULL);
 #endif
 }
 
@@ -56,9 +56,9 @@ unsigned int Worker::defaultPriorityInCurrentThread()
 #ifdef SMYD_WORKER_UNIT_TEST
     return PRIORITY_INTERACTIVE;
 #else
-    if (Application::instance()->inMainThread())
+    if (Application::instance().inMainThread())
         return PRIORITY_INTERACTIVE;
-    return Application::instance()->threadWorker()->priority();
+    return Application::instance().threadWorker()->priority();
 #endif
 }
 
@@ -86,7 +86,7 @@ void Worker::operator()()
 #ifdef SMYD_WORKER_UNIT_TEST
             scheduler.
 #else
-            Application::instance()->scheduler()->
+            Application::instance().scheduler().
 #endif
             highestPendingWorkerPriority();
         if (hpp > m_priority)
@@ -97,7 +97,7 @@ void Worker::operator()()
             printf("%s: Priority %u preempted by priority %u\n",
                    desc.get(), m_priority, hpp);
 #else
-            Application::instance()->scheduler()->schedule(*this);
+            Application::instance().scheduler().schedule(*this);
 #endif
             return;
         }
@@ -159,7 +159,7 @@ void Worker::operator()()
 #ifdef SMYD_WORKER_UNIT_TEST
                     scheduler.
 #else
-                    Application::instance()->scheduler()->
+                    Application::instance().scheduler().
 #endif
                     highestPendingWorkerPriority();
                 if (hpp > m_priority)
@@ -171,7 +171,7 @@ void Worker::operator()()
 #ifdef SMYD_WORKER_UNIT_TEST
                     scheduler.
 #else
-                    Application::instance()->scheduler()->
+                    Application::instance().scheduler().
 #endif
                         schedule(*this);
 #ifdef SMYD_WORKER_UNIT_TEST
@@ -247,7 +247,7 @@ void Worker::unblock()
 #ifdef SMYD_WORKER_UNIT_TEST
         scheduler.schedule(*this);
 #else
-        Application::instance()->scheduler()->schedule(*this);
+        Application::instance().scheduler().schedule(*this);
 #endif
     }
     // If the worker was finished or canceled, do nothing.

@@ -24,7 +24,7 @@ public:
 
     const Revision &revision() const { return m_revision; }
 
-    GError *fetchError()
+    GError *takeError()
     {
         GError *error = m_error;
         m_error = NULL;

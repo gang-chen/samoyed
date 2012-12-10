@@ -52,7 +52,7 @@ void TextFileReader::open(const char *uri)
     bool utf8 = true;
     std::string encoding;
     ReferencePointer<ProjectConfiguration> prjConfig =
-        Application::instance()->projectConfigurationManager()->
+        Application::instance().projectConfigurationManager().
         getProjectConfigurationForFile(uri);
     if (prjConfig)
     {

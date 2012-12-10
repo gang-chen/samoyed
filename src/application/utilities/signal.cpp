@@ -92,7 +92,7 @@ void onCrashed(int signalNumber)
 #endif
 
 #ifndef OS_WIN32
-void onTerminated(int signalNumber)
+void onTerminate(int signalNumber)
 {
     if (terminating)
         raise(signalNumber);
@@ -146,7 +146,7 @@ void Signal::registerTerminationHandler(SignalHandler handler)
         if (savedTermSignalAction.sa_handler != SIG_IGN)
         {
             struct sigaction newAction;
-            newAction.sa_handler = onTerminated;
+            newAction.sa_handler = onTerminate;
             sigemptyset(&newAction.sa_mask);
             newAction.sa_flags = 0;
             sigaction(SIGTERM, &newAction, 0);

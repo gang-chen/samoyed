@@ -123,20 +123,20 @@ Editor *SourceFile::newEditor(Project &project)
 
 void SourceFile::registerFileType()
 {
-    Application::instance()->fileTypeRegistry()->
+    Application::instance().fileTypeRegistry().
         registerFileFactory("text/x-csrc", create);
-    Application::instance()->fileTypeRegistry()->
+    Application::instance().fileTypeRegistry().
         registerFileFactory("text/x-chdr", create);
-    Application::instance()->fileTypeRegistry()->
+    Application::instance().fileTypeRegistry().
         registerFileFactory("text/x-c++src", create);
-    Application::instance()->fileTypeRegistry()->
+    Application::instance().fileTypeRegistry().
         registerFileFactory("text/x-c++hdr", create);
 }
 
 SourceFile::SourceFile(const char* uri):
     File(uri)
 {
-    m_source = Application::instance()->fileSourceManager()->get(uri);
+    m_source = Application::instance().fileSourceManager().get(uri);
 }
 
 SourceFile::~SourceFile()
@@ -149,7 +149,7 @@ void SourceFile::onLoaded(FileLoader &loader)
     TextFileLoader &ld = static_cast<TextFileLoader &>(loader);
 
     // Copy the contents in the loader's buffer to the editors.
-    TextBuffer *buffer = ld.fetchBuffer();
+    TextBuffer *buffer = ld.takeBuffer();
     TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
     onEdited(Removal(0, 0, -1, -1), NULL);
     do

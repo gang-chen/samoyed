@@ -10,6 +10,7 @@
 #include <boost/utility.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/tss.hpp>
+#include <glib.h>
 
 namespace Samoyed
 {
@@ -23,6 +24,7 @@ template<class> class Manager;
 class FileSource;
 class ProjectAstManager;
 class Window;
+class ProjectExplorer;
 
 /**
  * An application represents a running instance of this application.
@@ -70,17 +72,17 @@ public:
     /**
      * Get the sole application instance.
      */
-    static Application *instance() { return s_instance; }
+    static Application &instance() { return *s_instance; }
 
-    FileTypeRegistry *fileTypeRegistry() const { return m_fileTypeRegistry; }
+    FileTypeRegistry &fileTypeRegistry() const { return *m_fileTypeRegistry; }
 
-    Scheduler *scheduler() const { return m_scheduler; }
+    Scheduler &scheduler() const { return *m_scheduler; }
 
-    Manager<FileSource> *fileSourceManager() const
-    { return m_fileSourceManager; }
+    Manager<FileSource> &fileSourceManager() const
+    { return *m_fileSourceManager; }
 
-    ProjectAstManager *projectAstManager() const
-    { return m_projectAstManager; }
+    ProjectAstManager &projectAstManager() const
+    { return *m_projectAstManager; }
 
     /**
      * @return True iff we are in the main thread.  The main thread is the
@@ -96,16 +98,6 @@ public:
     void setThreadWorker(Worker *worker)
     { m_threadWorker.reset(worker); }
 
-    Project *findProject(const char *uri);
-    const Project *findProject(const char *uri) const;
-
-    void addProject(Project &project);
-
-    void removeProject(Project &project);
-
-    Project *projects() { return m_firstProject; }
-    const Project *projects() const { return m_firstProject; }
-
     File *findFile(const char *uri);
     const File *findFile(const char *uri) const;
 
@@ -120,19 +112,29 @@ public:
 
     void removeWindow(Window &window);
 
-    Window *currentWindow() const { return m_currentWindow; }
+    void onWindowClosed();
 
-    void setCurrentWindow(Window *window) { m_currentWindow = window; }
+    Window &currentWindow() const { return *m_currentWindow; }
+
+    void setCurrentWindow(Window &window) { m_currentWindow = &window; }
 
     /**
      * The first window is the main window.
      */
-    Window *mainWindow() const { return *m_firstWindow; }
+    Window &mainWindow() const { return *m_firstWindow; }
 
     Window *windows() { return m_firstWindow; }
     const Window *windows() const { return m_firstWindow; }
 
-    Session *session() const { return m_session; }
+    ProjectExplorer &projectExplorer() const { return *m_projectExplorer; }
+
+    bool setProjectExplorer(ProjectExplorer &projectExplorer)
+    {
+        if (m_projectExplorer)
+            return false;
+        m_projectExplorer = &projectExplorer;
+        return true;
+    }
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -146,11 +148,7 @@ public:
     const char *userDirectoryName() const
     { return m_userDirName.c_str(); }
 
-    void onProjectClosed();
-
 private:
-    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
-
     typedef std::map<ComparablePointer<const char *>, File *> FileTable;
 
     bool startUp();
@@ -159,12 +157,16 @@ private:
 
     void continueQuitting();
 
+    static gboolean checkTerminateRequest(gpointer app);
+
     /**
      * The sole application instance.
      */
     static Application *s_instance;
 
     int m_exitStatus;
+
+    bool m_quitting;
 
     Session *m_session;
     bool m_creatingSession;
@@ -182,15 +184,15 @@ private:
 
     boost::thread_specific_ptr<Worker> m_threadWorker;
 
-    ProjectTable m_projectTable;
-
     FileTable m_fileTable;
+    File *m_firstFile;
+    File *m_lastFile;
 
     Window *m_firstWindow;
     Window *m_lastWindow;
     Window *m_currentWindow;
 
-    bool m_quitting;
+    ProjectExplorer *m_projectExplorer;
 
     std::string m_dataDirName;
     std::string m_librariesDirName;

@@ -6,15 +6,17 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
-#include "pane.hpp"
+#include "pane-base.hpp"
+#include "project-explorer.hpp"
+#include "editor-groups.hpp"
 #include "../application.hpp"
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-Window::Window():
-    m_pane(NULL),
+Window::Window(const Configuration &config, PaneBase &content):
+    m_content(&content),
     m_window(NULL),
     m_mainBox(NULL),
     m_menuBar(NULL),
@@ -24,78 +26,55 @@ Window::Window():
     m_actionsForProjects(NULL),
     m_actionsForFiles(NULL)
 {
-}
-
-Window *Window::create(const Configuration *config)
-{
-    Window *w = new Window;
-
-    w->m_uiManager = gtk_ui_manager_new();
-
-    w->m_basicActions = gtk_action_group_new("basic actions");
-    gtk_action_group_set_translation_domain(w->m_basicActions, NULL);
-    gtk_action_group_add_actions(w->m_basicActions,
+    m_uiManager = gtk_ui_manager_new();
+    m_basicActions = gtk_action_group_new("basic actions");
+    gtk_action_group_set_translation_domain(m_basicActions, NULL);
+    gtk_action_group_add_actions(m_basicActions,
                                  Actions::s_basicActionEntries,
                                  G_N_ELEMENTS(Actions::s_basicActionEntries),
-                                 w);
-    gtk_ui_manager_insert_action_group(w->m_uiManager, w->m_basicActions, 0);
-    g_object_unref(w->m_basicActions);
+                                 window);
+    gtk_ui_manager_insert_action_group(m_uiManager, m_basicActions, 0);
+    g_object_unref(m_basicActions);
 
-    GError *error = NULL;
-    std::string uiFile(Application::instance()->dataDirectory());
+    std::string uiFile(Application::instance().dataDirectory());
     uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
-    gtk_ui_manager_add_ui_from_file(w->m_uiManager, uiFile.c_str(), &error);
-    if (error)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load UI file \"%s\" to construct the user "
-              "interface. %s."),
-            uiFile.c_str(), error->message);
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        g_error_free(error);
-        g_object_unref(m_uiManager);
-        delete w;
-        return NULL;
-    }
+    // Ignore the possible failure, which implies the installation is broken.
+    gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL);
 
-    w->m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    w->m_mainBox = gtk_vbox_new();
-    gtk_container_add(GTK_CONTAINER(w->m_window), w->m_mainBox);
+    m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    m_mainBox = gtk_vbox_new();
+    gtk_container_add(GTK_CONTAINER(m_window), m_mainBox);
 
-    w->m_menuBar = gtk_ui_manager_get_widget(w->m_uiManager, "/main-menu-bar");
-    gtk_box_pack_start(GTK_BOX(w->m_mainBox), w->m_menuBar, false, false, 0);
+    m_menuBar = gtk_ui_manager_get_widget(m_uiManager, "/main-menu-bar");
+    gtk_box_pack_start(GTK_BOX(m_mainBox), m_menuBar, FALSE, FALSE, 0);
 
-    w->m_toolbar = gtk_ui_manager_get_widget(w->m_uiManager, "/main-toolbar");
-    gtk_box_pack_start(GTK_BOX(w->m_mainBox), w->m_toolbar, false, false, 0);
+    m_toolbar = gtk_ui_manager_get_widget(m_uiManager, "/main-toolbar");
+    gtk_box_pack_start(GTK_BOX(m_mainBox), m_toolbar, FALSE, FALSE, 0);
 
-    g_signal_connect(w->m_window,
+    gtk_box_back_start(GTK_BOX(m_mainBox), m_content.gtkWidget(),
+                       TRUE, TRUE, 0);
+
+    g_signal_connect(m_window,
                      "delete-event",
                      G_CALLBACK(onDeleteEvent),
-                     this);
-    g_signal_connect(w->m_window,
+                     window);
+    g_signal_connect(m_window,
                      "destroy",
                      G_CALLBACK(onDestroy),
-                     this);
-    g_signal_connect(w->m_window,
+                     window);
+    g_signal_connect(m_window,
                      "focus-in-event",
                      G_CALLBACK(onFocusInEvent),
-                     this);
+                     window);
 
-    gtk_widget_show(w->m_window);
+    gtk_widget_show_all(m_window);
 
-    Application::instance()->addWindow(*w);
-    return w;
+    Application::instance().addWindow(*window);
 }
 
 Window::~Window()
 {
-    Application::instance()->removeWindow(*this);
+    Application::instance().removeWindow(*this);
     delete m_pane;
     if (m_uiManager)
         g_object_unref(m_uiManager);
@@ -105,6 +84,7 @@ Window::~Window()
         m_window = NULL;
         gtk_widget_destroy(w);
     }
+    Application::instance().onWindowClosed();
 }
 
 gboolean Window::onDeleteEvent(GtkWidget *widget,
@@ -113,12 +93,11 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
 {
     Window *w = static_cast<Window *>(window);
 
-    if (Application::instance()->mainWindow() == w)
+    if (&Application::instance().mainWindow() == w)
     {
         // Closing the main window will quit the application.  Confirm it.
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance()->currentWindow() ?
-            Application::instance()->currentWindow()->gtkWidget() : NULL,
+            Application::instance().currentWindow().gtkWidget() : NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -136,7 +115,7 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
 
         // Quitting the application will destroy the window if the user doesn't
         // prevent it.
-        Application::instance()->quit();
+        Application::instance().quit();
         return TRUE;
     }
 
@@ -166,7 +145,7 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
                                 GdkEvent *event,
                                 gpointer window)
 {
-    Application::instance()->setCurrentWindow(static_cast<Window *>(window));
+    Application::instance().setCurrentWindow(*static_cast<Window *>(window));
     return FALSE;
 }
 

@@ -11,7 +11,7 @@
 namespace Samoyed
 {
 
-class SplitPane;
+class PaneBase;
 
 /**
  * A window represents a top-level window.
@@ -29,18 +29,22 @@ public:
         bool m_fullScreen;
         bool m_maximized;
         bool m_toolbarVisible;
+        Configuration():
+            m_screenIndex(-1),
+            m_fullScreen(false),
+            m_maximized(true),
+            m_toolbarVisible(true)
+        {}
     };
 
-    static Window *create(const Configuration *config);
+    Window(const Configuration &config, PaneBase &content);
 
     ~Window();
 
     Configuration configuration() const;
 
-    PaneBase *pane() { return m_pane; }
-    const PaneBase *pane() const { return m_pane; }
-
-    void setPane(Pane *pane);
+    PaneBase &content() { return *m_content; }
+    const PaneBase &content() const { return *m_content; }
 
     /**
      * @return The underlying GTK+ widget.  Note that it is read-only.
@@ -56,9 +60,7 @@ private:
                                    GdkEvent *event,
                                    gpointer window);
 
-    Window();
-
-    PaneBase *m_pane;
+    PaneBase *m_content;
 
     bool m_closing;
 

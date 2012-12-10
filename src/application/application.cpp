@@ -26,11 +26,11 @@
 namespace
 {
 
-bool onTerminated(int signalNumber)
+bool terminate = false;
+
+bool onTerminate(int signalNumber)
 {
-    Application *app = Application::instance();
-    if (app)
-        app->quit();
+    terminate = true;
 }
 
 }
@@ -42,6 +42,7 @@ Application *Application::s_instance = NULL;
 
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
+    m_quitting(false),
     m_session(NULL),
     m_creatingSession(false),
     m_switchingSession(false),
@@ -50,18 +51,16 @@ Application::Application():
     m_fileSourceManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
-    m_firstProject(NULL),
-    m_lastProject(NULL),
     m_firstFile(NULL),
     m_lastFile(NULL),
     m_firstWindow(NULL),
     m_lastWindow(NULL),
     m_currentWindow(NULL),
-    m_quitting(false)
+    m_projectExplorer(NULL)
 {
-    Signal::registerTerminationHandler(onTerminated);
     assert(!s_instance);
     s_instance = this;
+    Signal::registerTerminationHandler(onTerminated);
 }
 
 Application::~Application()
@@ -300,6 +299,8 @@ CLEAN_UP:
     if (m_exitStatus == EXIT_FAILURE)
         return m_exitStatus;
 
+    g_idle_add(G_CALLBACK(checkTerminateRequest), this);
+
     // Enter the main event loop.
     if (m_session)
         gtk_main();
@@ -310,19 +311,13 @@ CLEAN_UP:
 
 void Application::continueQuitting()
 {
-    assert(!m_firstProject);
-    assert(!m_lastProject);
+    assert(!m_firstWindow);
+    assert(!m_lastWindow);
     assert(!m_firstFile);
     assert(!m_lastFile);
 
     m_quitting = false;
 
-    assert(m_firstWindow);
-    for (Window *window = lastWindow, *prev; window; window = prev)
-    {
-        prev = window->previous();
-        delete window;
-    }
     assert(m_session);
     delete m_session;
     m_session = NULL;
@@ -371,21 +366,21 @@ void Application::quit()
     if (!m_session->save())
         return;
 
-    // Request to close all opened projects.  If the user cancels closing a
-    // project, cancel quitting.
-    for (Project *project = m_firstProject, *next; project; project = next)
-    {
-        next = project->next();
-        if (!project->close())
-            return;
-    }
-
-    // Set the quitting flag so that we can continue quitting the application
-    // after all projects are closed.
     m_quitting = true;
 
-    if (!m_firstProject)
-        continueQuitting();
+    // Request to close all windows.  If the user cancels closing a window,
+    // cancel quitting.
+    for (Window *window = m_lastWindow, *prev;
+         window && m_quitting;
+         window = prev)
+    {
+        prev = window->previous();
+        if (!window->close())
+        {
+            m_quitting = false;
+            return;
+        }
+    }
 }
 
 void Application::createSession()
@@ -412,41 +407,6 @@ void Application::cancelQuitting()
     m_quitting = false;
     m_creatingSession = false;
     m_switchingSession = false;
-}
-
-void Application::onProjectClosed()
-{
-    // Continue quitting the application if all projects are closed.
-    if (m_quitting && !m_firstProject)
-        continueQuitting();
-}
-
-Project *Application::findProject(const char *uri)
-{
-    ProjectTable::const_iterator it = m_projectTable.find(uri);
-    if (it == m_projectTable.end())
-        return NULL;
-    return it->second;
-}
-
-const Project *Application::findProject(const char *uri) const
-{
-    ProjectTable::const_iterator it = m_projectTable.find(uri);
-    if (it == m_projectTable.end())
-        return NULL;
-    return it->second;
-}
-
-void Application::addProject(Project &project)
-{
-    m_projectTable.insert(std::make_pair(project.uri(), &project));
-    project.addToList(m_firstProject, m_lastProject);
-}
-
-void Application::removeProject(Project &project)
-{
-    m_projectTable.erase(project.uri());
-    project.removeFromList(m_firstProject, m_lastProject);
 }
 
 File *Application::findFile(const char *uri)
@@ -477,18 +437,39 @@ void Application::removeFile(File &file)
     file.removeFromList(m_firstFile, m_lastFile);
 }
 
-void Window::addWindow(Window &window)
+void Application::addWindow(Window &window)
 {
     window.addToList(m_firstWindow, m_lastWindow);
     if (!m_currentWindow)
         m_currentWindow = &window;
 }
 
-void Window::removeWindow(Window &window)
+void Application::removeWindow(Window &window)
 {
+    // Assert that the main window is the last one to be closed.
+    assert(&window != m_firstWindow || m_firstWindow == m_lastWindow);
     window.removeFromList(m_firstWindow, m_lastWindow);
     if (&window == m_currentWindow)
         m_currentWindow = m_firstWindow;
+}
+
+void Application::onWindowClosed()
+{
+    // Continue qutting the application if all windows are closed.
+    if (m_qutting && !m_firstWindow)
+        continueQuitting();
+}
+
+gboolean Application::checkTerminateRequest(gpointer app)
+{
+    if (!s_instance)
+        return FALSE;
+    if (terminate)
+    {
+        s_instance->quit();
+        return FALSE;
+    }
+    return TRUE;
 }
 
 }

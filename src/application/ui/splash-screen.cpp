@@ -70,7 +70,7 @@ double progress = 0.;
 
 gboolean addProgress(gpointer splash)
 {
-    char buffer[100];
+    char buffer[BUFSIZ];
     Samoyed::SplashScreen *s = static_cast<Samoyed::SplashScreen *>(splash);
     if (progress >= 1.)
     {

@@ -5,7 +5,68 @@
 # include <config.h>
 #endif
 #include "project-explorer.hpp"
+#include "project.hpp"
+#include <utility>
+#include <map>
 
 namespace Samoyed
 {
+
+ProjectExplorer::ProjectExplorer():
+    Pane(TYPE_PROJECT_EXPLORER),
+    m_closing(false),
+    m_firstProject(NULL),
+    m_lastProject(NULL)
+{
+}
+
+void ProjectExplorer::close()
+{
+    m_closing = true;
+    for (Project *project = m_firstProject, *next; project; project = next)
+    {
+        next = project->next();
+        if (!project->close())
+        {
+            m_closing = false;
+            return;
+        }
+    }
+}
+
+Project *ProjectExplorer::findProject(const char *uri)
+{
+    ProjectTable::const_iterator it = m_projectTable.find(uri);
+    if (it == m_projectTable.end())
+        return NULL;
+    return it->second;
+}
+
+const Project *ProjectExplorer::findProject(const char *uri) const
+{
+    ProjectTable::const_iterator it = m_projectTable.find(uri);
+    if (it == m_projectTable.end())
+        return NULL;
+    return it->second;
+}
+
+void ProjectExplorer::addProject(Project &project)
+{
+    m_projectTable.insert(std::make_pair(project.uri(), &project));
+    project.addToList(m_firstProject, m_lastProject);
+}
+
+void ProjectExplorer::removeProject(Project &project)
+{
+    m_projectTable.erase(project.uri());
+    project.removeFromList(m_firstProject, m_lastProject);
+}
+
+void ProjectExplorer::onProjectClosed()
+{
+    // Continue closing the project explorer if all projects are closed.
+    if (m_closing && !m_firstProject)
+        continueClosing();
+}
+
 }

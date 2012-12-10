@@ -197,7 +197,7 @@ private:
          */
         IteratorTemplate(BufferT &buffer, int index, int index2, int index3):
             m_buffer(buffer),
-            m_block(buffer.m_first),
+            m_block(buffer.m_firstBlock),
             m_pointer(m_block->begin() == m_block->gapBegin() ?
                       m_block->gapEnd() : m_block->begin()),
             m_index(0),
@@ -519,8 +519,8 @@ public:
     };
 
     Buffer():
-        m_first(new Block),
-        m_last(m_first),
+        m_firstBlock(new Block),
+        m_lastBlock(m_firstBlock),
         m_length(0),
         m_length2(0),
         m_length3(0),
@@ -664,8 +664,8 @@ private:
     /**
      * The first and last block in this buffer.
      */
-    Block *m_first;
-    Block *m_last;
+    Block *m_firstBlock;
+    Block *m_lastBlock;
 
     /**
      * The total length of the stored atoms in the primary index, i.e., the unit
@@ -722,7 +722,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     if (index < m_index / 2)
     {
         // Iterate forward from the beginning.
-        m_block = m_buffer.m_first;
+        m_block = m_buffer.m_firstBlock;
         m_index = 0;
         m_index2 = 0;
         m_index3 = 0;
@@ -782,7 +782,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     else
     {
         // Iterate backward from the end.
-        m_block = m_buffer.m_last;
+        m_block = m_buffer.m_lastBlock;
         m_index = m_buffer.m_length;
         m_index2 = m_buffer.m_length2;
         m_index3 = m_buffer.m_length3;
@@ -987,7 +987,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     if (index2 < m_index2 / 2)
     {
         // Iterate forward from the beginning.
-        m_block = m_buffer.m_first;
+        m_block = m_buffer.m_firstBlock;
         m_index = 0;
         m_index2 = 0;
         m_index3 = 0;
@@ -1047,7 +1047,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     else
     {
         // Iterate backward from the end.
-        m_block = m_buffer.m_last;
+        m_block = m_buffer.m_lastBlock;
         m_index = m_buffer.m_length;
         m_index2 = m_buffer.m_length2;
         m_index3 = m_buffer.m_length3;
@@ -1233,7 +1233,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     if (index3 < m_index3 / 2)
     {
         // Iterate forward from the beginning.
-        m_block = m_buffer.m_first;
+        m_block = m_buffer.m_firstBlock;
         m_index = 0;
         m_index2 = 0;
         m_index3 = 0;
@@ -1294,7 +1294,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     else
     {
         // Iterate backward from the end.
-        m_block = m_buffer.m_last;
+        m_block = m_buffer.m_lastBlock;
         m_index = m_buffer.m_length;
         m_index2 = m_buffer.m_length2;
         m_index3 = m_buffer.m_length3;
@@ -1487,7 +1487,7 @@ Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
 
     if (m_pointer == m_block->gapBegin())
         m_pointer = m_block->gapEnd();
-    if (m_pointer == m_block->end() && m_block != m_buffer.m_last)
+    if (m_pointer == m_block->end() && m_block != m_buffer.m_lastBlock)
     {
         m_block = m_block->next();
         if (m_block->begin() == m_block->gapBegin())
@@ -1758,11 +1758,11 @@ Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH, SECONDARY_INDEXING,
     ~Buffer()
 {
     // Destroy all the memory blocks.
-    while (m_first)
+    while (m_firstBlock)
     {
-        Block *next = m_first->next();
-        delete m_first;
-        m_first = next;
+        Block *next = m_firstBlock->next();
+        delete m_firstBlock;
+        m_firstBlock = next;
     }
 }
 
@@ -1910,7 +1910,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
             if (next)
                 next->m_previous = newBlock;
             else
-                m_last = newBlock;
+                m_lastBlock = newBlock;
             next = newBlock;
         }
 
@@ -2045,7 +2045,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
         if (next)
             next->m_previous = newBlock;
         else
-            m_last = newBlock;
+            m_lastBlock = newBlock;
         block = newBlock;
     }
 
@@ -2103,20 +2103,20 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     if (length == m_length)
     {
         assert(m_cursor.index() == 0);
-        assert(m_cursor.m_block == m_first);
-        while (m_last != m_first)
+        assert(m_cursor.m_block == m_firstBlock);
+        while (m_lastBlock != m_firstBlock)
         {
-            Block *prev = m_last->previous();
-            delete m_last;
-            m_last = prev;
+            Block *prev = m_lastBlock->previous();
+            delete m_lastBlock;
+            m_lastBlock = prev;
         }
-        m_first->clear();
-        m_first->m_next = NULL;
-        m_first->m_previous = NULL;
+        m_firstBlock->clear();
+        m_firstBlock->m_next = NULL;
+        m_firstBlock->m_previous = NULL;
         m_length = 0;
         m_length2 = 0;
         m_length3 = 0;
-        m_cursor.m_pointer = m_first->gapEnd();
+        m_cursor.m_pointer = m_firstBlock->gapEnd();
         return;
     }
 
@@ -2274,11 +2274,11 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
         if (nb)
             nb->m_previous = pb;
         else
-            m_last = pb;
+            m_lastBlock = pb;
         if (pb)
             pb->m_next = nb;
         else
-            m_first = nb;
+            m_firstBlock = nb;
         delete block;
 
         // If remove until the end of this block, the cursor will point to the
@@ -2394,11 +2394,11 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
             if (nb)
                 nb->m_previous = pb;
             else
-                m_last = pb;
+                m_lastBlock = pb;
             if (pb)
                 pb->m_next = nb;
             else
-                m_first = nb;
+                m_firstBlock = nb;
             delete block;
 
             // If remove until the end of this block, the cursor will point to
@@ -2435,12 +2435,12 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     }
     else
     {
-        assert(m_last->end() == m_last->gapEnd());
-        m_cursor.m_block = m_last;
-        m_cursor.m_pointer = m_last->end();
-        m_cursor.m_indexInBlock = m_last->length();
-        m_cursor.m_index2InBlock = m_last->length2();
-        m_cursor.m_index3InBlock = m_last->length3();
+        assert(m_lastBlock->end() == m_lastBlock->gapEnd());
+        m_cursor.m_block = m_lastBlock;
+        m_cursor.m_pointer = m_lastBlock->end();
+        m_cursor.m_indexInBlock = m_lastBlock->length();
+        m_cursor.m_index2InBlock = m_lastBlock->length2();
+        m_cursor.m_index3InBlock = m_lastBlock->length3();
     }
     if (TERTIARY_INDEXING)
         m_cursor.addSkip3();
@@ -2570,7 +2570,7 @@ Unit *Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
             if (next)
                 next->m_previous = newBlock;
             else
-                m_last = newBlock;
+                m_lastBlock = newBlock;
             next = newBlock;
         }
 
@@ -2668,7 +2668,7 @@ Unit *Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     }
     else
     {
-        m_last = newBlock;
+        m_lastBlock = newBlock;
         m_cursor.m_block = newBlock;
         m_cursor.m_pointer = newBlock->gapEnd();
     }
