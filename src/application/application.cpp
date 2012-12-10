@@ -319,7 +319,7 @@ void Application::continueQuitting()
     m_quitting = false;
 
     assert(m_session);
-    delete m_session;
+    m_session->destroy();
     m_session = NULL;
 
     bool choose;
