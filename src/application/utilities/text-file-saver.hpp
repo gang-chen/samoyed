@@ -25,10 +25,13 @@ public:
         m_text(text)
     {}
 
+    virtual ~TextFileSaver()
+    { g_free(m_text); }
+
     virtual bool step();
     
 private:
-    std::string m_text;
+    char *m_text;
 };
 
 }

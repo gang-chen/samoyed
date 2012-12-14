@@ -45,19 +45,7 @@ void testInsertion(SimpleBuffer &buffer,
 {
     int oldIndex = buffer.cursor();
     buffer.insert(text, length, -1, -1);
-    int len = length;
-    const char *cp = text;
-    while (len)
-    {
-        int l = len;
-        char *gap = buffer2.makeGap(l);
-        if (l > len)
-            l = len;
-        memcpy(gap, cp, sizeof(char) * l);
-        buffer2.insertInGap(gap, l, -1, -1);
-        len -= l;
-        cp += l;
-    }
+    buffer2.insert(text, length, -1, -1);
     string.insert(oldIndex, text, length);
     int newIndex = buffer.cursor();
     assert(oldIndex + length == newIndex);

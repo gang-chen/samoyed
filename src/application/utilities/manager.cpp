@@ -3,8 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -I/usr/include -lboost_thread\
- -pthread -Werror -Wall -o manager
+g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -lboost_thread -pthread -Werror -Wall\
+ -o manager
 */
 
 #ifdef SMYD_MANAGER_UNIT_TEST

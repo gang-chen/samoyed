@@ -24,8 +24,12 @@ public:
     TextFileLoader(unsigned int priority,
                    const Callback &callback,
                    const char *uri):
-        FileLoader(priority, callback, uri)
+        FileLoader(priority, callback, uri),
+        m_buffer(NULL)
     {}
+
+    virtual ~TextFileLoader()
+    { delete m_buffer; }
 
     TextBuffer *takeBuffer()
     {

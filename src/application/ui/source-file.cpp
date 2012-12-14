@@ -105,7 +105,7 @@ Edit *SourceFile::TempInsertion::execute(File &file) const
     return NULL;
 }
 
-bool SourceFile::merge(File::EditPrimitive *edit)
+bool SourceFile::TempInsertion::merge(File::EditPrimitive *edit)
 {
     assert(0);
     return false;
@@ -247,6 +247,18 @@ SourceFile::removeOnly(int beginLine, int beginColumn,
     m_source->onFileTextRemoved(*this,
                                 beginLine, beginColumn, endLine, endColumn);
     return undo;
+}
+
+FileLoader *SourceFile::createLoader(unsigned int priority,
+                                     const Worker::Callback &callback)
+{
+    return new TextFileLoader(priority, callback, uri());
+}
+
+FileSaver *SourceFile::createSaver(unsigned int priority,
+                                   const Worker::Callback &callback)
+{
+    return new TextFileSaved(priority, callback, uri(), text());
 }
 
 }

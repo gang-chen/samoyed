@@ -19,8 +19,15 @@ public:
               const Callback &callback,
               const char *uri):
         Worker(priority, callback),
-        m_uri(uri)
+        m_uri(uri),
+        m_error(NULL)
     {}
+
+    virtual ~FileSaver()
+    {
+        if (m_error)
+            g_error_free(m_error);
+    }
 
     const Revision &revision() const { return m_revision; }
 
@@ -32,6 +39,10 @@ public:
     }
 
 protected:
+    Revision &revision() { return m_revision; }
+
+    GError *&error() { return m_error; }
+
 private:
     const std::string m_uri;
     Revision m_revision;
