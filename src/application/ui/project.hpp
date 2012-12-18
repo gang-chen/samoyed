@@ -31,6 +31,12 @@ class ProjectConfiguration;
 class Project: public boost::noncopyable
 {
 public:
+    Project(const char *uri);
+
+    ~Project();
+
+    bool close();
+
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;
 
@@ -48,6 +54,8 @@ private:
     const std::string m_uri;
 
     const std::string m_name;
+
+    bool m_closing;
 
     ReferencePoint<ProjectConfiguration> m_config;
 

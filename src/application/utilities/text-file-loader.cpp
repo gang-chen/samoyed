@@ -15,11 +15,14 @@ g++ text-file-loader.cpp worker.cpp -DSMYD_TEXT_FILE_LOADER_UNIT_TEST\
 #ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
 # include "scheduler.hpp"
 # include <assert.h>
+# include <stdio.h>
+# include <string.h>
 #else
 # include "../application.hpp"
 # include "../resources/project-configuration-manager.hpp"
 # include "../resources/project-configuration.hpp"
 #endif
+#include <string>
 #include <boost/bind.hpp>
 #include <glib.h>
 #include <gio/gio.h>
@@ -76,7 +79,7 @@ bool TextFileReader::step()
 
     // Open the file.
     file = g_file_new_for_uri(uri);
-    fileStream = g_file_read(m_file, 0, &error());
+    fileStream = g_file_read(m_file, NULL, &error());
     if (error())
         goto CLEAN_UP;
 
@@ -115,6 +118,10 @@ bool TextFileReader::step()
         m_buffer->insert(buffer, size, -1, -1);
     }
 
+    g_input_stream_close(stream, NULL, &error());
+    if (error())
+        goto CLEAN_UP;
+
 CLEAN_UP:
     if (converterStream)
         g_object_unref(converterStream);
@@ -137,12 +144,20 @@ const char *TEXT_UTF8 = "\xe4\xbd\xa0\xe5\xa5\xbd\x68\x65\x6c\x6c\x6f";
 void onDone(Worker &worker)
 {
     TextFileLoader &loader = static_cast<TextFileLoader &>(worker);
+    GError *error = loader.takeError();
+    if (error)
+    {
+        printf("Text file loader error: %s.\n", error->message);
+        g_error_free(error);
+        return;
+    }
     TextBuffer *buffer = loader.takeBuffer();
     char *text = new char[buffer->length() + 1];
     buffer->getAtoms(0, buffer->length(), text);
     text[buffer->length()] = '\0';
-    assert(strcmp(TEXT_UTF8, text) == 0);
+    assert(strcmp(text, TEXT_UTF8) == 0);
     delete[] text;
+    delete buffer;
     delete &loader;
 }
 
@@ -152,10 +167,13 @@ int main()
     std::string fileName(pwd);
     g_free(pwd);
     fileName += G_DIR_SEPARATOR_S "text-file-loader-test";
-    g_file_set_contents(fileName.c_str(), TEXT_GB2312, -1, NULL);
+    if (!g_file_set_contents(fileName.c_str(), TEXT_GB2312, -1, NULL))
+        return -1;
 
     Scheduler scheduler(1);
     char *uri = g_filename_to_uri(fileName.c_str(), NULL, NULL);
+    if (!uri)
+        return -1;
     TextFileLoader *loader = new TextFileLoader(1, onDone, uri);
     g_free(uri);
     scheduler.schedule(*loader);

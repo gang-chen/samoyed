@@ -6,21 +6,41 @@
 #endif
 #include "editor-group.hpp"
 #include "editor.hpp"
+#include <vector>
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-void EditorGroup::addEditor(Editor &editor)
+void EditorGroup::addEditor(Editor &editor, int index)
 {
-    int index = m_editors.size();
-    m_editors.push_back(&editor);
+    m_editors.insert(m_editors.begin() + index, &editor);
     editor.addToGroup(*this, index);
 }
 
 void EditorGroup::removeEditor(Editor &editor)
 {
-    m_editors.erase(m_editors.begin + editor.index());
+    m_editors.erase(m_editors.begin() + editor.index());
     editor.removeFromGroup();
+    if (closing() && m_editors.empty())
+        continueClosing();
+}
+
+bool EditorGroup::close()
+{
+    if (!(*(m_editors.begin() + m_currentIndex))->close())
+        return false;
+    for (std::vector<Editor *>::const_iterator it = m_editors.begin();
+         it != m_editors.end();
+         ++it)
+    {
+        if (!(*it)->closing() && !(*it)->close())
+            return false;
+    }
+    closing() = true;
+    if (m_editors.empty())
+        delete this;
+    return true;
 }
 
 }

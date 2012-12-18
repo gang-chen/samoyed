@@ -20,18 +20,21 @@ ProjectExplorer::ProjectExplorer():
 {
 }
 
+ProjectExplorer::~ProjectExplorer()
+{
+}
+
 void ProjectExplorer::close()
 {
-    m_closing = true;
     for (Project *project = m_firstProject, *next; project; project = next)
     {
         next = project->next();
         if (!project->close())
-        {
-            m_closing = false;
             return;
-        }
     }
+    closing() = true;
+    if (!m_firstProject)
+        delete this;
 }
 
 Project *ProjectExplorer::findProject(const char *uri)
@@ -60,13 +63,8 @@ void ProjectExplorer::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
-}
-
-void ProjectExplorer::onProjectClosed()
-{
-    // Continue closing the project explorer if all projects are closed.
-    if (m_closing && !m_firstProject)
-        continueClosing();
+    if (closing() && !m_firstProject)
+        delete this;
 }
 
 }

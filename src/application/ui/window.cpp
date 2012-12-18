@@ -57,19 +57,19 @@ Window::Window(const Configuration &config, PaneBase &content):
     g_signal_connect(m_window,
                      "delete-event",
                      G_CALLBACK(onDeleteEvent),
-                     window);
+                     this);
     g_signal_connect(m_window,
                      "destroy",
                      G_CALLBACK(onDestroy),
-                     window);
+                     this);
     g_signal_connect(m_window,
                      "focus-in-event",
                      G_CALLBACK(onFocusInEvent),
-                     window);
+                     this);
 
     gtk_widget_show_all(m_window);
 
-    Application::instance().addWindow(*window);
+    Application::instance().addWindow(*this);
 }
 
 Window::~Window()

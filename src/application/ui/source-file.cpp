@@ -30,7 +30,7 @@ namespace Samoyed
 Edit *SourceFile::Insertion::execute(File &file) const
 {
     return static_cast<SourceFile &>(file).
-        insertOnly(m_line, m_column, m_text.c_str(), -1, NULL);
+        insertOnly(m_line, m_column, m_text.c_str(), m_text.length(), NULL);
 }
 
 bool SourceFile::Insertion::merge(File::EditPrimitive *edit)
@@ -258,7 +258,11 @@ FileLoader *SourceFile::createLoader(unsigned int priority,
 FileSaver *SourceFile::createSaver(unsigned int priority,
                                    const Worker::Callback &callback)
 {
-    return new TextFileSaved(priority, callback, uri(), text());
+    return new TextFileSaved(priority,
+                             callback,
+                             uri(),
+                             text(),
+                             characterCount());
 }
 
 }

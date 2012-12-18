@@ -26,6 +26,8 @@ public:
 
     virtual ~SplitPane();
 
+    virtual bool close();
+
     virtual GtkWidget *gtkWidget() const { return m_paned; }
 
     virtual Pane &currentPane()
@@ -45,8 +47,6 @@ public:
     const PaneBase &child(int index) const { return *m_children[index]; }
 
     Orientation orientation() const { return m_orientation; }
-
-    virtual bool close();
 
     void replaceChild(PaneBase &oldChild, PaneBase &newChild);
 

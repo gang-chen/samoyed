@@ -106,9 +106,9 @@ public:
     Editor *createEditor(Project &project);
 
     /**
-     * @return False iff the user cancels destroying the editor.
+     * @return False iff the user cancels closing the editor.
      */
-    bool destroyEditor(Editor &editor);
+    bool closeEditor(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
 

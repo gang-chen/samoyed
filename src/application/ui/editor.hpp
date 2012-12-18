@@ -12,6 +12,7 @@ namespace Samoyed
 class File;
 class Project;
 class EditorGroup;
+class File::EditPrimitive;
 
 /**
  * An editor is used to edit an opened file in the context of an opend project.
@@ -22,6 +23,8 @@ public:
     Editor(File &file, Project &project);
 
     virtual ~Editor();
+
+    bool close();
 
     EditorGroup *editorGroup() const { return m_editorGroup; }
     int index() const { return m_index; }
@@ -37,6 +40,14 @@ public:
         m_group = NULL;
         m_index = -1;
     }
+
+    virtual void onEdited(File::EditPrimitive &edit) = 0;
+
+    virtual void onFileEditedStateChanged() = 0;
+
+    virtual void freeze() = 0;
+
+    virtual void unfreeze() = 0;
 
 private:
     /**

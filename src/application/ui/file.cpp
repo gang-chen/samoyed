@@ -129,7 +129,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
 
 Editor *File::createEditor(Project &project)
 {
-    Editor *editor = createMyEditor(project);
+    Editor *editor = newEditor(project);
     if (!editor)
         return NULL;
 
@@ -162,9 +162,9 @@ void File::continueClosing()
     delete this;
 }
 
-bool File::destroyEditor(Editor &editor)
+bool File::closeEditor(Editor &editor)
 {
-    // Can't destroy the editor waiting for the completion of the closing.
+    // Can't close the editor waiting for the completion of the closing.
     assert(!m_closing);
 
     if (editor.nextInFile() || editor.previousInFile())

@@ -20,9 +20,11 @@ public:
     TextFileSaver(unsigned int priority,
                   const Callback &callback,
                   const char *uri,
-                  const char *text):
+                  const char *text,
+                  int length):
         FileSaver(priority, callback, uri),
-        m_text(text)
+        m_text(text),
+        m_length(length)
     {}
 
     virtual ~TextFileSaver()
@@ -32,6 +34,8 @@ public:
     
 private:
     char *m_text;
+
+    int m_length;
 };
 
 }

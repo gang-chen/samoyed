@@ -19,6 +19,12 @@ class Editor;
 class EditorGroup: public Pane
 {
 public:
+    EditorGroup();
+
+    virtual ~EditorGroup();
+
+    virtual bool close();
+
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
 
     int editorCount() const { return m_editors.size(); }

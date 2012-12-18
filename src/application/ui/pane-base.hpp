@@ -24,8 +24,16 @@ public:
         TYPE_SPLIT_PANE
     };
 
-    PaneBase(Type type): m_type(type), m_parent(NULL), m_window(NULL) {}
-    virtual ~PaneBase();
+    PaneBase(Type type):
+        m_type(type),
+        m_closing(false),
+        m_window(NULL),
+        m_parent(NULL)
+    {}
+
+    virtual ~PaneBase() {}
+
+    virtual bool close() = 0;
 
     virtual GtkWidget *gtkWidget() const = 0;
 
@@ -40,14 +48,21 @@ public:
     const Window *window() const { return m_window; }
     void setWindow(Window *window) { m_window = window; }
 
-    virtual bool close() = 0;
+    bool closing() const { return m_closing; }
 
     Type type() const { return m_type; }
 
+protected:
+    bool &closing() { return m_closing; }
+
 private:
     Type m_type;
-    SplitPane *m_parent;
+
+    bool m_closing;
+
     Window *m_window;
+
+    SplitPane *m_parent;
 };
 
 }

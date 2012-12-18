@@ -158,6 +158,10 @@ public:
 
     static void registerFileType();
 
+    int characterCount() const;
+
+    int lineCount() const;
+
     /**
      * @return The whole text contents, in a memory chunk allocated by GTK+.
      */

@@ -11,8 +11,10 @@ namespace Samoyed
 {
 
 SplitPane::SplitPane(Orientation orientation,
+                     int length;
                      PaneBase &child1,
                      PaneBase &child2):
+    m_orientation(orientation),
     m_currentIndex(0)
 {
     m_children[0] = &child1;
@@ -20,6 +22,12 @@ SplitPane::SplitPane(Orientation orientation,
     m_paned = gtk_paned_new(orientation);
     gtk_paned_add1(GTK_PANED(m_paned), child1.gtkWidget());
     gtk_paned_add2(GTK_PANED(m_paned), child2.gtkWidget());
+    if (length != -1)
+        gtk_paned_set_position(m_paned, length);
+    g_signal_connect(m_paned,
+                     "destroy",
+                     G_CALLBACK(onDestroy),
+                     this);
 }
 
 SplitPane::~SplitPane()
@@ -39,6 +47,9 @@ bool SplitPane::close()
         return false;
     if (!m_children[1 - currentIndex]->close())
         return false;
+    closing() = true;
+    // Note that the split pane will be automatically closed after either of its
+    // children is closed.
     return true;
 }
 
@@ -47,12 +58,12 @@ void SplitPane::replaceChild(PaneBase &oldChild, PaneBase &newChild)
     int index = &oldChild == m_children[0] ? 0 : 1;
     gtk_container_remove(GTK_CONTAINER(m_paned), oldChild.gtkWidget());
     if (index == 0)
-        gtk_container_add1(GTK_PANED(m_paned), newChild.gtkWidget());
+        gtk_paned_add1(GTK_PANED(m_paned), newChild.gtkWidget());
     else
-        gtk_container_add2(GTK_PANED(m_paned), newChild.gtkWidget());
+        gtk_paned_add2(GTK_PANED(m_paned), newChild.gtkWidget());
 }
 
-void SplitPane::removeChild(PaneBase &child)
+void SplitPane::onChildClosed(PaneBase &child)
 {
     gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
 
