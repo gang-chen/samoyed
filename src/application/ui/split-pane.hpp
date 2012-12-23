@@ -50,7 +50,7 @@ public:
 
     void replaceChild(PaneBase &oldChild, PaneBase &newChild);
 
-    void removeChild(PaneBase &child);
+    void onChildClosed(PaneBase *child);
 
 private:
     static void onDestroy(GtkWidget *widget, gpointer splitPane);

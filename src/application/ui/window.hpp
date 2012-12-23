@@ -39,7 +39,9 @@ public:
 
     Window(const Configuration &config, PaneBase &content);
 
-    ~Window();
+    bool close();
+
+    void onContentClosed();
 
     Configuration configuration() const;
 
@@ -59,6 +61,8 @@ private:
     static gboolean onFocusInEvent(GtkWidget *widget,
                                    GdkEvent *event,
                                    gpointer window);
+
+    ~Window();
 
     PaneBase *m_content;
 

@@ -16,12 +16,9 @@ public:
     SplashScreen(const char *title, const char *imageFileName);
     ~SplashScreen();
     void setProgress(double progress, const char *message);
+    GtkWidget *gtkWidget() const { return m_window; }
 
 private:
-    static gboolean onDeleteEvent(GtkWidget *widget,
-                                  GdkEvent *event,
-                                  gpointer window);
-
     GtkWidget *m_window;
     GtkWidget *m_progressBar;
 };

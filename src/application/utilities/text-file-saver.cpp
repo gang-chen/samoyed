@@ -3,9 +3,16 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-saver.cpp worker.cpp -DSMYD_TEXT_FILE_SAVER_UNIT_TEST\
- -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-saver
+g++ text-file-saver.cpp worker.cpp revision.cpp\
+ -DSMYD_TEXT_FILE_SAVER_UNIT_TEST\
+ `pkg-config --cflags --libs glib-2.0 gio-2.0` -I../../../libs -lboost_thread\
+ -pthread -Werror -Wall -o text-file-saver
 */
+
+#ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
+# define _(T) T
+# define N_(T) T
+#endif
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -20,10 +27,14 @@ g++ text-file-saver.cpp worker.cpp -DSMYD_TEXT_FILE_SAVER_UNIT_TEST\
 # include "../resources/project-configuration.hpp"
 #endif
 #include <string.h>
+#include <stdio.h>
 #include <string>
 #include <boost/bind.hpp>
 #include <glib.h>
 #include <gio/gio.h>
+#ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
+# include <glib/gstdio.h>
+#endif
 
 namespace
 {
@@ -61,7 +72,7 @@ bool TextFileSaver::step()
     GOutputStream *stream = NULL;
 
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
-    std::string encoding("GB2312");
+    std::string encoding(strrchr(uri(), '.') + 1);
 #else
     // Get the external character encoding of the file from the configuration of
     // a project containing the file.  Assume the file is contained in one or
@@ -74,8 +85,8 @@ bool TextFileSaver::step()
 #endif
 
     // Open the file.
-    file = g_file_new_for_uri(uri);
-    fileStream = g_file_replace(m_file,
+    file = g_file_new_for_uri(uri());
+    fileStream = g_file_replace(file,
                                 NULL,
                                 TRUE,
                                 G_FILE_CREATE_NONE,
@@ -86,7 +97,7 @@ bool TextFileSaver::step()
 
     // Open the encoding converter and setup the input stream.
     if (encoding == "UTF-8")
-        stream = G_INPUT_STREAM(fileStream);
+        stream = G_OUTPUT_STREAM(fileStream);
     else
     {
         encodingConverter =
@@ -94,8 +105,8 @@ bool TextFileSaver::step()
         if (error())
             goto CLEAN_UP;
         converterStream =
-            g_converter_input_stream_new(G_INPUT_STREAM(fileStream),
-                                         G_CONVERTER(encodingConverter));
+            g_converter_output_stream_new(G_OUTPUT_STREAM(fileStream),
+                                          G_CONVERTER(encodingConverter));
         stream = converterStream;
     }
 
@@ -129,16 +140,25 @@ CLEAN_UP:
     return true;
 }
 
+char *TextFileSaver::description() const
+{
+    int size = snprintf(NULL, 0, _("Saving text file \"%s\""), uri());
+    char *desc = new char[size + 1];
+    snprintf(desc, size + 1, _("Saving text file \"%s\""), uri());
+    return desc;
+}
+
 }
 
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
 
-const char *TEXT_GB2312 = "\xc4\xe3\xba\xc3\x68\x65\x6c\x6c\x6f";
+const char *TEXT_GBK = "\xc4\xe3\xba\xc3\x68\x65\x6c\x6c\x6f";
 const char *TEXT_UTF8 = "\xe4\xbd\xa0\xe5\xa5\xbd\x68\x65\x6c\x6c\x6f";
 
-void onDone(Worker &worker)
+void onDone(Samoyed::Worker &worker)
 {
-    TextFileSaver &saver = static_cast<TextFileSaver &>(worker);
+    Samoyed::TextFileSaver &saver =
+        static_cast<Samoyed::TextFileSaver &>(worker);
     GError *error = saver.takeError();
     if (error)
     {
@@ -161,28 +181,57 @@ void onDone(Worker &worker)
         g_error_free(error);
         return;
     }
-    assert(strcmp(text, TEXT_GB2312) == 0);
+    if (strcmp(strrchr(saver.uri(), '.'), ".GBK") == 0)
+        assert(strcmp(text, TEXT_GBK) == 0);
+    else if (strcmp(strrchr(saver.uri(), '.'), "UTF-8") == 0)
+        assert(strcmp(text, TEXT_UTF8) == 0);
+    else
+        assert(0);
     g_unlink(fileName);
     g_free(text);
     g_free(fileName);
     delete &saver;
 }
 
+Samoyed::Scheduler scheduler(1);
+
 int main()
 {
-    char *pwd = g_get_current_dir();
-    std::string fileName(pwd);
-    g_free(pwd);
-    fileName += G_DIR_SEPARATOR_S "text-file-saver-test";
+    g_type_init();
 
-    Scheduler scheduler(1);
-    char *uri = g_filename_to_uri(fileName.c_str(), NULL, NULL);
-    if (!uri)
+    char *pwd = g_get_current_dir();
+
+    std::string fileName1(pwd);
+    fileName1 += G_DIR_SEPARATOR_S "text-file-saver-test.GBK";
+    char *uri1 = g_filename_to_uri(fileName1.c_str(), NULL, NULL);
+    if (!uri1)
+    {
+        printf("File name to URI conversion error.\n");
         return -1;
-    TextFileSaver *saver = new TextFileSaver(1, onDone, uri, TEXT_UTF8, -1);
-    g_free(uri);
-    scheduler.schedule(*saver);
+    }
+    char *textUtf8 = g_strdup(TEXT_UTF8);
+    Samoyed::TextFileSaver *saver1 =
+        new Samoyed::TextFileSaver(1, onDone, uri1, textUtf8, -1);
+    g_free(uri1);
+
+    std::string fileName2(pwd);
+    fileName2 += G_DIR_SEPARATOR_S "text-file-saver-test.UTF-8";
+    char *uri2 = g_filename_to_uri(fileName1.c_str(), NULL, NULL);
+    if (!uri2)
+    {
+        printf("File name to URI conversion error.\n");
+        return -1;
+    }
+    char *text2Utf8 = g_strdup(TEXT_UTF8);
+    Samoyed::TextFileSaver *saver2 =
+        new Samoyed::TextFileSaver(1, onDone, uri2, text2Utf8, -1);
+    g_free(uri2);
+
+    scheduler.schedule(*saver1);
+    scheduler.schedule(*saver2);
     scheduler.wait();
+
+    g_free(pwd);
     return 0;
 }
 

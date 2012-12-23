@@ -33,10 +33,6 @@ SplashScreen::SplashScreen(const char *title, const char *imageFileName)
     gtk_container_add(GTK_CONTAINER(m_window), box);
     gtk_box_pack_start(GTK_BOX(box), image, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(box), m_progressBar, FALSE, FALSE, 0);
-    g_signal_connect(m_window,
-                     "delete-event",
-                     G_CALLBACK(onDeleteEvent),
-                     this);
     gtk_widget_show_all(m_window);
 }
 
@@ -51,22 +47,18 @@ void SplashScreen::setProgress(double progress, const char *message)
     gtk_progress_bar_set_text(GTK_PROGRESS_BAR(m_progressBar), message);
 }
 
-gboolean SplashScreen::onDeleteEvent(GtkWidget *widget,
-                                     GdkEvent *event,
-                                     gpointer window)
-{
-    // Disable closing the splash screen.
-    return TRUE;
-}
-
 }
 
 #ifdef SMYD_SPLASH_SCREEN_UNIT_TEST
 
-namespace
-{
-
 double progress = 0.;
+
+gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer splash)
+{
+    delete static_cast<Samoyed::SplashScreen *>(splash);
+    gtk_main_quit();
+    return TRUE;
+}
 
 gboolean addProgress(gpointer splash)
 {
@@ -74,6 +66,7 @@ gboolean addProgress(gpointer splash)
     Samoyed::SplashScreen *s = static_cast<Samoyed::SplashScreen *>(splash);
     if (progress >= 1.)
     {
+        delete s;
         gtk_main_quit();
         return FALSE;
     }
@@ -84,18 +77,21 @@ gboolean addProgress(gpointer splash)
     return TRUE;
 }
 
-}
-
 int main(int argc, char *argv[])
 {
     char buffer[100];
     gtk_init(&argc, &argv);
-    Samoyed::SplashScreen splash("Splash screen test",
-                                 "../../../data/splash-screen.png");
+    Samoyed::SplashScreen *splash =
+        new Samoyed::SplashScreen("Splash screen test",
+                                  "../../../data/splash-screen.png");
     snprintf(buffer, sizeof(buffer),
              "Testing splash screen. Finished %.2f.", progress);
-    splash.setProgress(progress, buffer);
-    g_timeout_add(2000, addProgress, &splash);
+    splash->setProgress(progress, buffer);
+    g_signal_connect(splash->gtkWidget(),
+                     "delete-event",
+                     G_CALLBACK(onDeleteEvent),
+                     splash);
+    g_timeout_add(2000, addProgress, splash);
     gtk_main();
     return 0;
 }

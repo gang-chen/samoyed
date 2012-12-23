@@ -11,9 +11,9 @@ namespae Samoyed
 PaneBase::~PaneBase()
 {
     if (window())
-        window()->onPaneClosed();
+        window()->onContentClosed();
     else if (parent())
-        parent()->onChildClosed(*this);
+        parent()->onChildClosed(this);
 }
 
 }

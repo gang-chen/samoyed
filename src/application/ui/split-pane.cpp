@@ -63,22 +63,17 @@ void SplitPane::replaceChild(PaneBase &oldChild, PaneBase &newChild)
         gtk_paned_add2(GTK_PANED(m_paned), newChild.gtkWidget());
 }
 
-void SplitPane::onChildClosed(PaneBase &child)
+void SplitPane::onChildClosed(PaneBase *child)
 {
-    gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
-
-    // If a child is removed, this split pane should be removed as well and
-    // replaced by the remained child.
-    PaneBase *other = &child == m_children[0] ? m_children[1] : m_children[0];
+    // If a child is closed, this split pane should be destroyed and replaced by
+    // the remained child.
+    PaneBase *other = child == m_children[0] ? m_children[1] : m_children[0];
     other->setParent(parent());
     g_object_ref(other->gtkWidget());
-    if (parent())
+    if (window())
+        window()->setContent(other);
+    else if (parent())
         parent()->replaceChild(*this, *other);
-    else
-    {
-        assert(window()->pane() == this);
-        window()->setPane(other);
-    }
     g_object_unref(other->gtkWidget());
 }
 

@@ -7,12 +7,17 @@ g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I../../../libs -lboost_thread -pthread\
  -Werror -Wall -o worker
 */
 
+#if defined(SMYD_WORKER_UNIT_TEST) || \
+    defined(SMYD_TEXT_FILE_LOADER_UNIT_TEST) || \
+    defined(SMYD_TEXT_FILE_SAVER_UNIT_TEST)
+# define SMYD_UNIT_TEST 1
+#endif
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "worker.hpp"
 #include "scheduler.hpp"
-#ifndef SMYD_WORKER_UNIT_TEST
+#ifndef SMYD_UNIT_TEST
 # include "../application.hpp"
 #endif
 #include <assert.h>
@@ -25,8 +30,8 @@ g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I../../../libs -lboost_thread -pthread\
 # include <boost/date_time/posix_time/posix_time_types.hpp>
 #endif
 
-#ifdef SMYD_WORKER_UNIT_TEST
-Samoyed::Scheduler scheduler;
+#ifdef SMYD_UNIT_TEST
+extern Samoyed::Scheduler scheduler;
 #endif
 
 namespace Samoyed
@@ -35,7 +40,7 @@ namespace Samoyed
 Worker::ExecutionWrapper::ExecutionWrapper(Worker &worker):
     m_worker(worker)
 {
-#ifndef SMYD_WORKER_UNIT_TEST
+#ifndef SMYD_UNIT_TEST
     Application::instance().setThreadWorker(&m_worker);
 #endif
     if (!m_worker.m_blocked)
@@ -46,14 +51,14 @@ Worker::ExecutionWrapper::~ExecutionWrapper()
 {
     if (!m_worker.m_blocked)
         m_worker.end();
-#ifndef SMYD_WORKER_UNIT_TEST
+#ifndef SMYD_UNIT_TEST
     Application::instance().setThreadWorker(NULL);
 #endif
 }
 
 unsigned int Worker::defaultPriorityInCurrentThread()
 {
-#ifdef SMYD_WORKER_UNIT_TEST
+#ifdef SMYD_UNIT_TEST
     return PRIORITY_INTERACTIVE;
 #else
     if (Application::instance().inMainThread())
@@ -83,7 +88,7 @@ void Worker::operator()()
             return;
         }
         unsigned int hpp =
-#ifdef SMYD_WORKER_UNIT_TEST
+#ifdef SMYD_UNIT_TEST
             scheduler.
 #else
             Application::instance().scheduler().
@@ -91,13 +96,15 @@ void Worker::operator()()
             highestPendingWorkerPriority();
         if (hpp > m_priority)
         {
-#ifdef SMYD_WORKER_UNIT_TEST
+#ifdef SMYD_UNIT_TEST
             scheduler.schedule(*this);
+#else
+            Application::instance().scheduler().schedule(*this);
+#endif
+#ifdef SMYD_WORKER_UNIT_TEST
             boost::scoped_array<char> desc(description());
             printf("%s: Priority %u preempted by priority %u\n",
                    desc.get(), m_priority, hpp);
-#else
-            Application::instance().scheduler().schedule(*this);
 #endif
             return;
         }
@@ -156,7 +163,7 @@ void Worker::operator()()
                     return;
                 }
                 unsigned int hpp =
-#ifdef SMYD_WORKER_UNIT_TEST
+#ifdef SMYD_UNIT_TEST
                     scheduler.
 #else
                     Application::instance().scheduler().
@@ -168,7 +175,7 @@ void Worker::operator()()
                     // are preempted by a higher priority.  But actually only
                     // one worker is needed.
                     m_state = STATE_READY;
-#ifdef SMYD_WORKER_UNIT_TEST
+#ifdef SMYD_UNIT_TEST
                     scheduler.
 #else
                     Application::instance().scheduler().
@@ -244,7 +251,7 @@ void Worker::unblock()
     else if (m_state == STATE_BLOCKED)
     {
         m_state = STATE_READY;
-#ifdef SMYD_WORKER_UNIT_TEST
+#ifdef SMYD_UNIT_TEST
         scheduler.schedule(*this);
 #else
         Application::instance().scheduler().schedule(*this);
@@ -256,6 +263,8 @@ void Worker::unblock()
 }
 
 #ifdef SMYD_WORKER_UNIT_TEST
+
+Samoyed::Scheduler scheduler;
 
 class Alarm: public Samoyed::Worker
 {

@@ -29,6 +29,8 @@ public:
             g_error_free(m_error);
     }
 
+    const char *uri() const { return m_uri.c_str(); }
+
     const Revision &revision() const { return m_revision; }
 
     GError *takeError()

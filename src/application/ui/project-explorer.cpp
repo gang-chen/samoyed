@@ -26,15 +26,16 @@ ProjectExplorer::~ProjectExplorer()
 
 void ProjectExplorer::close()
 {
+    setClosing(true);
     for (Project *project = m_firstProject, *next; project; project = next)
     {
         next = project->next();
         if (!project->close())
+        {
+            setClosing(false);
             return;
+        }
     }
-    closing() = true;
-    if (!m_firstProject)
-        delete this;
 }
 
 Project *ProjectExplorer::findProject(const char *uri)
@@ -63,6 +64,10 @@ void ProjectExplorer::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
+}
+
+void ProjectExplorer::onProjectClosed()
+{
     if (closing() && !m_firstProject)
         delete this;
 }

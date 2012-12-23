@@ -35,6 +35,8 @@ public:
 
     void removeEditor(Editor &editor);
 
+    void onEditorClosed();
+
     int currentEditorIndex() const { return m_currentEditorIndex; }
 
     void setCurrentEditorIndex(int index) { m_currentEditorIndex = index; }

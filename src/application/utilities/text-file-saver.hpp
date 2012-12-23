@@ -6,6 +6,7 @@
 
 #include "file-saver.hpp"
 #include <string>
+#include <glib.h>
 
 namespace Samoyed
 {
@@ -20,7 +21,7 @@ public:
     TextFileSaver(unsigned int priority,
                   const Callback &callback,
                   const char *uri,
-                  const char *text,
+                  char *text,
                   int length):
         FileSaver(priority, callback, uri),
         m_text(text),
@@ -31,7 +32,9 @@ public:
     { g_free(m_text); }
 
     virtual bool step();
-    
+
+    virtual char *description() const;
+
 private:
     char *m_text;
 

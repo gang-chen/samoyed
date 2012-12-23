@@ -4,10 +4,8 @@
 #ifndef SMYD_TEXT_FILE_LOADER_HPP
 #define SMYD_TEXT_FILE_LOADER_HPP
 
-#include "worker.hpp"
-#include "revision.hpp"
+#include "file-loader.hpp"
 #include <string>
-#include <glib.h>
 
 namespace Samoyed
 {
@@ -18,7 +16,7 @@ class TextBuffer;
  * A text file loader reads a text file, converts its contents into UTF-8
  * encoded text and stored in a text buffer.
  */
-class TextFileLoader
+class TextFileLoader: public FileLoader
 {
 public:
     TextFileLoader(unsigned int priority,
@@ -28,8 +26,7 @@ public:
         m_buffer(NULL)
     {}
 
-    virtual ~TextFileLoader()
-    { delete m_buffer; }
+    virtual ~TextFileLoader();
 
     TextBuffer *takeBuffer()
     {
@@ -39,11 +36,12 @@ public:
     }
 
     virtual bool step();
-    
+
+    virtual char *description() const;
+
 private:
     TextBuffer *m_buffer;
 };
-
 
 }
 

@@ -53,7 +53,7 @@ public:
     Type type() const { return m_type; }
 
 protected:
-    bool &closing() { return m_closing; }
+    void setClosing(bool closing) { m_closing = closing; }
 
 private:
     Type m_type;

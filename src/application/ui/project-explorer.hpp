@@ -29,6 +29,8 @@ public:
 
     void removeProject(Project &project);
 
+    void onProjectClosed();
+
     Project *projects() { return m_firstProject; }
     const Project *projects() const { return m_firstProject; }
 

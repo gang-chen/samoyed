@@ -59,10 +59,6 @@ Window::Window(const Configuration &config, PaneBase &content):
                      G_CALLBACK(onDeleteEvent),
                      this);
     g_signal_connect(m_window,
-                     "destroy",
-                     G_CALLBACK(onDestroy),
-                     this);
-    g_signal_connect(m_window,
                      "focus-in-event",
                      G_CALLBACK(onFocusInEvent),
                      this);
@@ -74,16 +70,11 @@ Window::Window(const Configuration &config, PaneBase &content):
 
 Window::~Window()
 {
+    assert(!m_content);
     Application::instance().removeWindow(*this);
-    delete m_pane;
     if (m_uiManager)
         g_object_unref(m_uiManager);
-    if (m_window)
-    {
-        GtkWidget *w = m_window;
-        m_window = NULL;
-        gtk_widget_destroy(w);
-    }
+    gtk_widget_destroy(m_window);
     Application::instance().onWindowClosed();
 }
 
@@ -119,26 +110,28 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
         return TRUE;
     }
 
-    // Request to close all editors.  If the user cancels closing an editor,
-    // cancel closing this window.
-    if (m_pane)
-        if (!m_pane->close())
-            return TRUE;
-    m_closing = true;
-    if (m_pane)
-        return TRUE;
-    return FALSE;
+    close();
+    return TRUE;
 }
 
-void Window::onDestroy(GtkWidget *widget, gpointer window)
+bool Window::close()
 {
-    Window *w = static_cast<Window *>(window);
-    if (w->m_window)
+    // Request to close all editors.  If the user cancels closing an editor,
+    // cancel closing this window.
+    m_closing = true;
+    if (!m_content->close())
     {
-        assert(w->m_window == widget);
-        w->m_window = NULL;
-        delete w;
+        m_closing = false;
+        return TRUE;
     }
+    return TRUE;
+}
+
+void Window::onContentClosed()
+{
+    assert(m_closing);
+    m_content = NULL;
+    delete this;
 }
 
 gboolean Window::onFocusInEvent(GtkWidget *widget,
@@ -147,23 +140,6 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 {
     Application::instance().setCurrentWindow(*static_cast<Window *>(window));
     return FALSE;
-}
-
-void Window::setPane(Pane *pane)
-{
-    // Remove the old pane from this window, which may destroy it.
-    if (m_pane)
-    {
-    }
-
-    // Add the new pane to this window.
-    if (pane)
-    {
-    }
-
-    m_pane = pane;
-    if (m_closing && !m_pane)
-        delete this;
 }
 
 }
