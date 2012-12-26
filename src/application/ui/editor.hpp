@@ -5,6 +5,7 @@
 #define SMYD_EDITOR_HPP
 
 #include "../utilities/misc.hpp"
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
@@ -24,6 +25,8 @@ public:
 
     virtual ~Editor();
 
+    virtual GtkWidget *gtkWidget() const;
+
     bool close();
 
     EditorGroup *editorGroup() const { return m_editorGroup; }
@@ -40,6 +43,8 @@ public:
         m_group = NULL;
         m_index = -1;
     }
+
+    void resetIndex(int index) { m_index = index; }
 
     virtual void onEdited(File::EditPrimitive &edit) = 0;
 

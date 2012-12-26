@@ -22,6 +22,8 @@ public:
 
     virtual bool close();
 
+    virtual GtkWidget *gtkWidget() const { return m_notebook; }
+
     Project *findProject(const char *uri);
     const Project *findProject(const char *uri) const;
 

@@ -25,6 +25,7 @@ class FileSource;
 class ProjectAstManager;
 class Window;
 class ProjectExplorer;
+class SplashScreen;
 
 /**
  * An application represents a running instance of this application.
@@ -128,13 +129,8 @@ public:
 
     ProjectExplorer &projectExplorer() const { return *m_projectExplorer; }
 
-    bool setProjectExplorer(ProjectExplorer &projectExplorer)
-    {
-        if (m_projectExplorer)
-            return false;
-        m_projectExplorer = &projectExplorer;
-        return true;
-    }
+    void setProjectExplorer(ProjectExplorer *projectExplorer)
+    { m_projectExplorer = projectExplorer; }
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -151,13 +147,19 @@ public:
 private:
     typedef std::map<ComparablePointer<const char *>, File *> FileTable;
 
-    bool startUp();
+    static gboolean onSplashScreenDeleteEvent(GtkWidget *widget,
+                                              GdkEvent *event,
+                                              gpointer splash);
+
+    static gboolean checkTerminateRequest(gpointer app);
+
+    static gboolean startUp(gpointer app);
 
     void shutDown();
 
-    void continueQuitting();
+    void quitEarly();
 
-    static gboolean checkTerminateRequest(gpointer app);
+    void continueQuitting();
 
     /**
      * The sole application instance.
@@ -193,6 +195,12 @@ private:
     Window *m_currentWindow;
 
     ProjectExplorer *m_projectExplorer;
+
+    char *m_sessionName;
+    char *m_newSessionName;
+    int m_chooseSession;
+
+    SplashScreen *m_splashScreen;
 
     std::string m_dataDirName;
     std::string m_librariesDirName;

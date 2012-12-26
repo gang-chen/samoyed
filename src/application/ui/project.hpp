@@ -44,11 +44,13 @@ public:
 
     void removeEditor(Editor &editor);
 
+    void onEditorClosed();
+
     Editor *editors() { return m_firstEditor; }
     const Editor *editors() const { return m_firstEditor; }
 
 private:
-    typedef std::multi_map<ComparablePointer<const char *>, Editor *>
+    typedef std::multimap<ComparablePointer<const char *>, Editor *>
         EditorTable;
 
     const std::string m_uri;

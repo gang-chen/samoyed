@@ -9,6 +9,7 @@
 #include "pane-base.hpp"
 #include "project-explorer.hpp"
 #include "editor-groups.hpp"
+#include "temporary.hpp"
 #include "../application.hpp"
 #include <gtk/gtk.h>
 
@@ -17,8 +18,11 @@ namespace Samoyed
 
 Window::Window(const Configuration &config, PaneBase &content):
     m_content(&content),
+    m_firstTemp(NULL),
+    m_lastTemp(NULL),
     m_window(NULL),
-    m_mainBox(NULL),
+    m_mainVBox(NULL),
+    m_mainHBox(NULL),
     m_menuBar(NULL),
     m_toolbar(NULL),
     m_uiManager(NULL),
@@ -42,17 +46,35 @@ Window::Window(const Configuration &config, PaneBase &content):
     gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL);
 
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    m_mainBox = gtk_vbox_new();
-    gtk_container_add(GTK_CONTAINER(m_window), m_mainBox);
+    m_mainVBox = gtk_grid_new();
+    m_mainHBox = gtk_grid_new();
+
+    gtk_container_add(GTK_CONTAINER(m_window), m_mainVBox);
 
     m_menuBar = gtk_ui_manager_get_widget(m_uiManager, "/main-menu-bar");
-    gtk_box_pack_start(GTK_BOX(m_mainBox), m_menuBar, FALSE, FALSE, 0);
+    gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+                            m_menuBar,
+                            NULL,
+                            GTK_POS_BOTTOM,
+                            1,
+                            1);
 
     m_toolbar = gtk_ui_manager_get_widget(m_uiManager, "/main-toolbar");
-    gtk_box_pack_start(GTK_BOX(m_mainBox), m_toolbar, FALSE, FALSE, 0);
+    gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+                            m_toolbar,
+                            m_menuBar,
+                            GTK_POS_BOTTOM,
+                            1,
+                            1);
 
-    gtk_box_back_start(GTK_BOX(m_mainBox), m_content.gtkWidget(),
-                       TRUE, TRUE, 0);
+    gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+                            m_mainHBox,
+                            m_toolbar,
+                            GTK_POS_BOTTOM,
+                            1,
+                            1);
+
+    gtk_grid_attach(GTK_GRID(m_mainHBox), m_content.gtkWidget(), 0, 0, 1, 1);
 
     g_signal_connect(m_window,
                      "delete-event",
@@ -71,6 +93,8 @@ Window::Window(const Configuration &config, PaneBase &content):
 Window::~Window()
 {
     assert(!m_content);
+    assert(!m_firstTemp);
+    assert(!m_lastTemp);
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
@@ -116,9 +140,12 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
 
 bool Window::close()
 {
-    // Request to close all editors.  If the user cancels closing an editor,
-    // cancel closing this window.
     m_closing = true;
+    for (Temporary *temp = m_firstTemp, *next; temp; temp = next)
+    {
+        next = temp->next();
+        delete temp;
+    }
     if (!m_content->close())
     {
         m_closing = false;
@@ -140,6 +167,30 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 {
     Application::instance().setCurrentWindow(*static_cast<Window *>(window));
     return FALSE;
+}
+
+void Window::addTemporary(Temporary &temp)
+{
+    temp.addToList(m_firstTemp, m_lastTemp);
+    if (temp.orientation == Temporary::ORIENTATION_HORIZONTAL)
+        gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+                                temp.gtkWidget(),
+                                NULL,
+                                GTK_POS_TOP,
+                                1,
+                                1);
+    else
+        gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+                                temp.gtkWidget(),
+                                NULL,
+                                GTK_POS_LEFT,
+                                1,
+                                1);
+}
+
+void Window::removeTemporary(Temporary &temp)
+{
+    temp.removeFromList(m_firstTemp, m_lastTemp);
 }
 
 }

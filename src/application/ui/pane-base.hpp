@@ -31,7 +31,7 @@ public:
         m_parent(NULL)
     {}
 
-    virtual ~PaneBase() {}
+    virtual ~PaneBase();
 
     virtual bool close() = 0;
 

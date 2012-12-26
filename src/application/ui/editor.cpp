@@ -23,10 +23,10 @@ Editor::Editor(File &file, Project &project):
 
 Editor::~Editor()
 {
-    ///// destroy my widget first? notify parent and let it destroy itself?...
-    if (m_group)
-        m_group->removeEditor(*this);
+    assert(m_group);
+    m_group->removeEditor(*this);
     m_project.removeEditor(*this);
+    m_group->onEditorClosed();
 }
 
 bool Editor::close()

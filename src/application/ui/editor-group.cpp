@@ -12,35 +12,78 @@
 namespace Samoyed
 {
 
+EditorGroup::EditorGroup()
+{
+}
+
+EditorGroup::~EditorGroup()
+{
+    gtk_widget_destroy(m_notebook);
+}
+
+bool EditorGroup::close()
+{
+    setClosing(true);
+    if (m_editors.empty())
+    {
+        delete this;
+        return true;
+    }
+
+    // First close the current editor and then close the others.
+    int currentIndex = currentEditorIndex();
+    std::vector<Editor *> editors(m_editors);
+    if (!m_editors[currentIndex]->close())
+    {
+        setClosing(false);
+        return false;
+    }
+    for (int i = 0; i < editors.size(); i++)
+    {
+        if (i != currentIndex)
+        if (!editors[i]->close())
+        {
+            setClosing(false);
+            return false;
+        }
+    }
+    return true;
+}
+
 void EditorGroup::addEditor(Editor &editor, int index)
 {
     m_editors.insert(m_editors.begin() + index, &editor);
+    for (int i = index + 1; i < m_editors.size(); i++)
+        m_editors[i]->setIndex(i);
     editor.addToGroup(*this, index);
+    gtk_notebook_insert_page(GTK_NOTEBOOK(m_notebook),
+                             editor.gtkWidget(),
+                             editor(),
+                             index);
 }
 
 void EditorGroup::removeEditor(Editor &editor)
 {
     m_editors.erase(m_editors.begin() + editor.index());
+    for (int i = editor.index(); i < m_editors.size(); i++)
+        m_editors[i]->setIndex(i);
     editor.removeFromGroup();
-    if (closing() && m_editors.empty())
-        continueClosing();
 }
 
-bool EditorGroup::close()
+void EditorGroup::onEditorClosed()
 {
-    if (!(*(m_editors.begin() + m_currentIndex))->close())
-        return false;
-    for (std::vector<Editor *>::const_iterator it = m_editors.begin();
-         it != m_editors.end();
-         ++it)
-    {
-        if (!(*it)->closing() && !(*it)->close())
-            return false;
-    }
-    closing() = true;
-    if (m_editors.empty())
+    if (closing() && m_editors.empty())
         delete this;
-    return true;
+}
+
+int EditorGroup::currentEditorIndex()
+{
+    return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook));
+}
+
+void EditorGroup::setCurrentEditorIndex(int index)
+{
+    return gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index);
 }
 
 }

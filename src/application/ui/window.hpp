@@ -12,6 +12,7 @@ namespace Samoyed
 {
 
 class PaneBase;
+class Temporary;
 
 /**
  * A window represents a top-level window.
@@ -48,6 +49,9 @@ public:
     PaneBase &content() { return *m_content; }
     const PaneBase &content() const { return *m_content; }
 
+    void addTemporary(Temporary &temp);
+    void removeTemporary(Temporary &temp);
+
     /**
      * @return The underlying GTK+ widget.  Note that it is read-only.
      */
@@ -66,6 +70,9 @@ private:
 
     PaneBase *m_content;
 
+    Temporary *m_firstTemp;
+    Temporary *m_lastTemp;
+
     bool m_closing;
 
     /**
@@ -73,7 +80,9 @@ private:
      */
     GtkWidget *m_window;
 
-    GtkWidget *m_mainBox;
+    GtkWidget *m_mainVBox;
+
+    GtkWidget *m_mainHBox;
 
     GtkWidget *m_menuBar;
 

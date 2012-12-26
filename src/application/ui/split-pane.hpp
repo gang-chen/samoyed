@@ -28,6 +28,8 @@ public:
 
     virtual bool close();
 
+    void onChildClosed(PaneBase *child);
+
     virtual GtkWidget *gtkWidget() const { return m_paned; }
 
     virtual Pane &currentPane()
@@ -46,15 +48,12 @@ public:
     PaneBase &child(int index) { return *m_children[index]; }
     const PaneBase &child(int index) const { return *m_children[index]; }
 
+    void addChild(PaneBase &child, int index);
+    void removeChild(PaneBase &child);
+
     Orientation orientation() const { return m_orientation; }
 
-    void replaceChild(PaneBase &oldChild, PaneBase &newChild);
-
-    void onChildClosed(PaneBase *child);
-
 private:
-    static void onDestroy(GtkWidget *widget, gpointer splitPane);
-
     Orientation m_orientation;
 
     PaneBase *m_children[2];

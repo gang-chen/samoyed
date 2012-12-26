@@ -37,14 +37,12 @@ public:
 
     void onEditorClosed();
 
-    int currentEditorIndex() const { return m_currentEditorIndex; }
+    int currentEditorIndex() const;
 
-    void setCurrentEditorIndex(int index) { m_currentEditorIndex = index; }
+    void setCurrentEditorIndex(int index);
 
 private:
     std::vector<Editor *> m_editors;
-
-    int m_currentEditorIndex;
 
     GtkWidget *m_notebook;
 };

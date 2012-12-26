@@ -18,24 +18,35 @@ ProjectExplorer::ProjectExplorer():
     m_firstProject(NULL),
     m_lastProject(NULL)
 {
+    Application::instance().setProjectExplorer(this);
 }
 
 ProjectExplorer::~ProjectExplorer()
 {
+    Application::instance().setProjectExplorer(NULL);
+    gtk_widget_destroy(m_notebook);
 }
 
-void ProjectExplorer::close()
+bool ProjectExplorer::close()
 {
     setClosing(true);
+    if (!m_firstProject)
+    {
+        delete this;
+        return true;
+    }
+
+    // Close all projects.
     for (Project *project = m_firstProject, *next; project; project = next)
     {
         next = project->next();
         if (!project->close())
         {
             setClosing(false);
-            return;
+            return false;
         }
     }
+    return true;
 }
 
 Project *ProjectExplorer::findProject(const char *uri)

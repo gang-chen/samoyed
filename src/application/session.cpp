@@ -76,6 +76,7 @@ public:
     virtual xmlNodePtr write() const = 0;
     virtual bool restore(RestorePhase phase,
                          Samoyed::PaneBase *&pane) const = 0;
+    static XmlElementPaneBase *save(const Samoyed::PaneBase &pane);
 };
 
 class XmlElementProjectExplorer: public XmlElementPaneBase
@@ -288,6 +289,21 @@ bool XmlElementEditor::restore(RestorePhase phase,
     return true;
 }
 
+XmlElementPaneBase *XmlElementPaneBase::save(const Samoyed::PaneBase &pane)
+{
+    if (pane.type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
+        return XmlElementProjectExplorer::save(
+            static_cast<const Samoyed::ProjectExplorer &>(pane));
+    if (pane.type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
+        return XmlElementEditorGroup::save(
+            static_cast<const Samoyed::EditorGroup &>(pane));
+    if (pane.type() == Samoyed::Pane::TYPE_SPLIT_PANE)
+        return XmlElementSplitPane::save(
+            static_cast<const Samoyed::SplitPane &>(pane));
+    assert(0);
+    return NULL;
+}
+
 XmlElementProjectExplorer *
 XmlElementProjectExplorer::read(xmlDocPtr doc,
                                 xmlNodePtr node,
@@ -313,9 +329,8 @@ xmlNodePtr XmlElementProjectExplorer::write() const
 {
     xmlNodePtr node =
         xmlNewNode(NULL, static_cast<const xmlChar *>("project-explorer"));
-    for (std::vector<std::string>::const_iterator it =
-             m_projectExplorers.begin();
-         it != m_projectExplorers.end();
+    for (std::vector<std::string>::const_iterator it = m_projectUris.begin();
+         it != m_projectUris.end();
          ++it)
         xmlNewTextChild(node, NULL,
                         static_cast<const xmlChar *>("project-uri"),
@@ -639,24 +654,8 @@ XmlElementSplitPane::save(const Samoyed::SplitPane &splitPane)
 {
     XmlElementSplitPane *sp =
         new XmlElementSplitPane(splitPane.orientation());
-    if (splitPane.child(0).type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
-        sp->m_children[0] = XmlElementProjectExplorer::save(
-            static_cast<const Samoyed::ProjectExplorer &>(splitPane.child(0)));
-    else if (splitPane.child(0).type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
-        sp->m_children[0] = XmlElementEditorGroup::save(
-            static_cast<const Samoyed::EditorGroup &>(splitPane.child(0)));
-    else if (splitPane.child(0).type() == Samoyed::Pane::TYPE_SPLIT_PANE)
-        sp->m_children[0] = XmlElementSplitPane::save(
-            static_cast<const Samoyed::SplitPane &>(splitPane.child(0)));
-    if (splitPane.child(1).type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
-        sp->m_children[1] = XmlElementProjectExplorer::save(
-            static_cast<const Samoyed::ProjectExplorer &>(splitPane.child(1)));
-    else if (splitPane.child(1).type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
-        sp->m_children[1] = XmlElementEditorGroup::save(
-            static_cast<const Samoyed::EditorGroup &>(splitPane.child(1)));
-    else if (splitPane.child(1).type() == Samoyed::Pane::TYPE_SPLIT_PANE)
-        sp->m_children[1] = XmlElementSplitPane::save(
-            static_cast<const Samoyed::SplitPane &>(splitPane.child(1)));
+    sp->m_children[0] = XmlElementPaneBase::save(splitPane.child(0));
+    sp->m_children[1] = XmlElementPaneBase::save(splitPane.child(1));
     return sp;
 }
 
@@ -890,15 +889,7 @@ xmlNodePtr XmlElementWindow::write() const
 XmlElementWindow *XmlElementWindow::save(const Samoyed::Window &window)
 {
     XmlElementWindow *w = new XmlElementWindow;
-    if (window.pane().type() == Samoyed::Pane::TYPE_PROJECT_EXPLORER)
-        w->m_content = XmlElementProjectExplorer::save(
-            static_cast<const Samoyed::ProjectExplorer &>(window.pane()));
-    else if (window.pane.type() == Samoyed::Pane::TYPE_EDITOR_GROUP)
-        w->m_content = XmlElementEditorGroup::save(
-            static_cast<const Samoyed::EditorGroup &>(window.pane()));
-    else if (window.pane.type() == Samoyed::Pane::TYPE_SPLIT_PANE)
-        w->m_content = XmlElementSplitPane::save(
-            static_cast<const Samoyed::SplitPane &>(window.pane()));
+    w->m_content = XmlElementPaneBase::save(window.content());
     return w;
 }
 

@@ -15,23 +15,36 @@
 namespace Samoyed
 {
 
+Project::Project(const char *uri)
+{
+    Application::instance().projectExplorer().addProject(*this);
+}
+
 Project::~Project()
 {
     Application::instance().projectExplorer().removeProject(*this);
+    Application::instance().projectExplorer().onProjectClosed();
 }
 
 bool Project::close()
 {
+    m_closing = true;
+    if (!m_firstEditor)
+    {
+        delete this;
+        return true;
+    }
+
     // Close all editors.
     for (Editor *editor = m_firstEditor, *next; editor; editor = next)
     {
         next = editor->nextInProject();
         if (!editor->close())
+        {
+            m_closing = false;
             return false;
+        }
     }
-    m_closing = true;
-    if (!m_firstEditor)
-        delete this;
     return true;
 }
 
@@ -59,10 +72,21 @@ void Project::addEditor(Editor &editor)
 
 void Project::removeEditor(Editor &editor)
 {
-    m_editorTable.erase(editor.file().uri());///// multi_map...
+    std::pair<EditorTable::iterator, EditorTale::iterator> range =
+        m_editorTable.equal_range(editor.file().uri());
+    for (EditorTable::iterator it = range.first; it != range.second; ++it)
+        if (it->second == &editor)
+        {
+            m_editorTable.erase(it);
+            break;
+        }
     editor.removeFromListInProject(m_firstEditor, m_lastEditor);
+}
+
+void Project::onEditorClosed()
+{
     if (m_closing && !m_firstEditor)
-        continueClosing();
+        delete this;
 }
 
 }

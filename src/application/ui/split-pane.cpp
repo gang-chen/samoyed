@@ -24,68 +24,80 @@ SplitPane::SplitPane(Orientation orientation,
     gtk_paned_add2(GTK_PANED(m_paned), child2.gtkWidget());
     if (length != -1)
         gtk_paned_set_position(m_paned, length);
-    g_signal_connect(m_paned,
-                     "destroy",
-                     G_CALLBACK(onDestroy),
-                     this);
 }
 
 SplitPane::~SplitPane()
 {
-    if (m_paned)
-    {
-        GtkWidget *w = m_paned;
-        m_paned = NULL;
-        gtk_widget_destroy(w);
-    }
+    gtk_widget_destroy(m_paned);
 }
 
 bool SplitPane::close()
 {
-    int currentIndex = m_currentIndex;
-    if (!m_children[currentIndex]->close())
+    setClosing(true);
+    PaneBase *child1 = m_children[m_currentIndex];
+    PaneBase *child2 = m_children[1 - m_currentIndex];
+    if (!child1->close())
+    {
+        setClosing(false);
         return false;
-    if (!m_children[1 - currentIndex]->close())
+    }
+    if (!child2->close())
         return false;
-    closing() = true;
-    // Note that the split pane will be automatically closed after either of its
-    // children is closed.
     return true;
-}
-
-void SplitPane::replaceChild(PaneBase &oldChild, PaneBase &newChild)
-{
-    int index = &oldChild == m_children[0] ? 0 : 1;
-    gtk_container_remove(GTK_CONTAINER(m_paned), oldChild.gtkWidget());
-    if (index == 0)
-        gtk_paned_add1(GTK_PANED(m_paned), newChild.gtkWidget());
-    else
-        gtk_paned_add2(GTK_PANED(m_paned), newChild.gtkWidget());
 }
 
 void SplitPane::onChildClosed(PaneBase *child)
 {
     // If a child is closed, this split pane should be destroyed and replaced by
     // the remained child.
-    PaneBase *other = child == m_children[0] ? m_children[1] : m_children[0];
-    other->setParent(parent());
+    int index = &child == m_children[0] ? 0 : 1;
+    assert(m_children[index]);
+    m_children[index] = NULL;
+
+    PaneBase *other = m_children[1 - index];
+    assert(other);
     g_object_ref(other->gtkWidget());
+    removeChild(*other);
+
+// remove first, add next; if remove cause chain reaction?
+    assert((window() && !parent()) || (!window() && parent()));
     if (window())
+    {
         window()->setContent(other);
+        other->setWindow(window());
+    }
     else if (parent())
-        parent()->replaceChild(*this, *other);
+    {
+        index = parent()->child(0) == this ? 0 : 1;
+        parent()->addChild(*other, index);
+    }
     g_object_unref(other->gtkWidget());
+
+    delete this;
 }
 
-void SplitPane::onDestroy(GtkWidget *widget, gpointer splitPane)
+void SplitPane::addChild(PaneBase &child, int index)
 {
-    SplitPane *s = static_cast<SplitPane *>(splitPane);
-    if (s->m_paned)
-    {
-        assert(s->m_paned == widget);
-        s->m_paned = NULL;
-        delete s;
-    }
+    assert(!m_children[index]);
+    assert(!child.parent());
+    assert(!child.window());
+    m_children[index] = &child;
+    child.setParent(this);
+    if (index == 0)
+        gtk_paned_add1(GTK_PANED(m_paned), child.gtkWidget());
+    else
+        gtk_paned_add2(GTK_PANED(m_paned), child.gtkWidget());
+}
+
+void SplitPane::removeChild(PaneBase &child)
+{
+    int index = &child == m_children[0] ? 0 : 1;
+    assert(m_children[index] == &child);
+    assert(child.parent() == this);
+    assert(!child.window());
+    gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
+    m_children[index] = NULL;
+    child.setParent(NULL);
 }
 
 }
