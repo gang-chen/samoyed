@@ -11,6 +11,7 @@
 #include "editor-groups.hpp"
 #include "temporary.hpp"
 #include "../application.hpp"
+#include <assert.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -74,7 +75,12 @@ Window::Window(const Configuration &config, PaneBase &content):
                             1,
                             1);
 
-    gtk_grid_attach(GTK_GRID(m_mainHBox), m_content.gtkWidget(), 0, 0, 1, 1);
+    gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
+                            m_content.gtkWidget(),
+                            NULL,
+                            GTK_POS_RIGHT,
+                            1,
+                            1);
 
     g_signal_connect(m_window,
                      "delete-event",
@@ -159,6 +165,29 @@ void Window::onContentClosed()
     assert(m_closing);
     m_content = NULL;
     delete this;
+}
+
+void Window::setContent(PaneBase *content)
+{
+    if (content)
+    {
+        assert(!m_content);
+        m_content = content;
+        m_content->setWindow(this);
+        gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
+                                m_content->gtkWidget(),
+                                NULL,
+                                GTK_POS_RIGHT,
+                                1,
+                                1);
+    }
+    else
+    {
+        assert(m_content);
+        gtk_container_remove(GTK_CONTAINER(m_mainHBox), m_content->gtkWidget());
+        m_content->setWindow(NULL);
+        m_content = NULL;
+    }
 }
 
 gboolean Window::onFocusInEvent(GtkWidget *widget,
