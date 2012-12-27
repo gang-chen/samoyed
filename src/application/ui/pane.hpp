@@ -15,6 +15,7 @@ class Pane: public PaneBase
 {
 public:
     Pane(Type type): PaneBase(type) {}
+    virtual ~Pane();
 
     SplitPane *split(Type type);
 
