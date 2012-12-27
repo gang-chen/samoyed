@@ -155,6 +155,12 @@ private:
 
     static gboolean startUp(gpointer app);
 
+    bool makeUserDirectory();
+
+    bool chooseStartSession(bool restore);
+
+    bool startSession();
+
     void shutDown();
 
     void quitEarly();
