@@ -91,15 +91,12 @@ gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
     return TRUE;
 }
 
-gboolean Application::startUp(gpointer app)
+bool Application::makeUserDirectory()
 {
-    Application *a = static_cast<Application *>(app);
-    bool choose;
-
     // Check to see if the user directory exists.  If not, create it.
-    if (!g_file_test(a->m_userDirName.c_str(), G_FILE_TEST_EXISTS))
+    if (!g_file_test(m_userDirName.c_str(), G_FILE_TEST_EXISTS))
     {
-        if (g_mkdir(a->m_userDirName.c_str(), 0755))
+        if (g_mkdir(m_userDirName.c_str(), 0755))
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 NULL,
@@ -107,12 +104,80 @@ gboolean Application::startUp(gpointer app)
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
                 _("Samoyed failed to create directory \"%s\". %s."),
-                a->m_userDirName.c_str(), g_strerror(errno));
+                m_userDirName.c_str(), g_strerror(errno));
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
-            goto ERROR_OUT;
+            return false;
         }
     }
+    return true;
+}
+
+bool Application::chooseStartSession(bool restore)
+{
+    SessionChooserDialog::Action action;
+    if (restore)
+        action = SessionChooserDialog::ACTION_RESTORE;
+    else
+        action = SessionChooserDialog::ACTION_CREATE;
+
+    while (!m_session)
+    {
+        // Pop up a dialog to let the user choose which session to start.
+        SessionChooserDialog dialog(action);
+        dialog.run();
+        if (dialog.action() == SessionChooserDialog::ACTION_RESTORE)
+        {
+            m_session = Session::restore(dialog.sessionName());
+            action = SessionChooserDialog::ACTION_RESTORE;
+        }
+        else if (dialog.action() == SessionChooserDialog::ACTION_CREATE)
+        {
+            m_session = Session::create(dialog.sessionName());
+            action = SessionChooserDialog::ACTION_CREATE;
+        }
+        else
+            break;
+    }
+    return m_session;
+}
+
+bool Application::startSession()
+{
+    bool restore;
+    if (m_sessionName)
+    {
+        m_session = Session::restore(m_sessionName);
+        restore = true;
+    }
+    else if (m_newSessionName)
+    {
+        m_session = Session::create(m_newSessionName);
+        restore = false;
+    }
+    else if (m_chooseSession)
+        restore = true;
+    else
+    {
+        // By default restore the last session.
+        std::string name;
+        if (Session::lastSessionName(name))
+        {
+            m_session = Session::restore(name.c_str());
+            restore = true;
+        }
+        else
+            restore = false;
+    }
+    return chooseStartSession(restore);
+}
+
+gboolean Application::startUp(gpointer app)
+{
+    Application *a = static_cast<Application *>(app);
+
+    if (!a->makeUserDirectory())
+        goto ERROR_OUT;
 
     // Create global objects.
 
@@ -120,53 +185,8 @@ gboolean Application::startUp(gpointer app)
     delete a->m_splashScreen;
     a->m_splashScreen = NULL;
 
-    // Start a session.
-    if (a->m_sessionName)
-    {
-        a->m_session = Session::restore(a->m_sessionName);
-        choose = false;
-    }
-    else if (a->m_newSessionName)
-    {
-        a->m_session = Session::create(a->m_newSessionName);
-        choose = true;
-    }
-    else if (a->chooseSession)
-        choose = true;
-    else
-    {
-        // By default restore the last session.
-        std::string name;
-        if (Session::lastSessionName(name))
-        {
-            a->m_session = Session::restore(name.c_str());
-            choose = true;
-        }
-        else
-            choose = false;
-    }
-    while (!a->m_session)
-    {
-        // Pop up a dialog to let the user choose which session to start.
-        SessionChooserDialog *dialog = SessionChooserDialog::create(choose);
-        dialog->run();
-        if (dialog->sessionName())
-        {
-            a->m_session = Session::restore(dialog->sessionName());
-            choose = true;
-        }
-        else if (dialog->newSessionName())
-        {
-            a->m_session = Session::create(dialog->newSessionName());
-            choose = false;
-        }
-        else
-        {
-            delete dialog;
-            break;
-        }
-        delete dialog;
-    }
+    a->startSession();
+
     goto CLEAN_UP;
 
 ERROR_OUT:
@@ -217,37 +237,16 @@ void Application::continueQuitting()
     m_session->destroy();
     m_session = NULL;
 
-    bool choose;
+    bool restore;
     if (m_creatingSession)
-        choose = false;
+        restore = false;
     if (m_switchingSession)
-        choose = true;
+        restore = true;
     if (m_creatingSession || m_switchingSession)
     {
         m_creatingSession = false;
         m_switchingSession = false;
-        while (!m_session)
-        {
-            // Pop up a dialog to let the user choose which session to start.
-            SessionChooserDialog *dialog = SessionChooserDialog::create(choose);
-            dialog->run();
-            if (dialog->sessionName())
-            {
-                m_session = Session::restore(dialog->sessionName());
-                choose = true;
-            }
-            else if (dialog->newSessionName())
-            {
-                m_session = Session::create(dialog->newSessionName());
-                choose = false;
-            }
-            else
-            {
-                delete dialog;
-                break;
-            }
-            delete dialog;
-        }
+        chooseStartSession(restore);
     }
     if (!m_session)
         gtk_main_quit();
