@@ -76,10 +76,10 @@ void Application::quitEarly()
 {
     delete m_splashScreen;
     m_splashScreen = NULL;
-    g_free(m_newSessionName);
     g_free(m_sessionName);
-    m_newSessionName = NULL;
+    g_free(m_newSessionName);
     m_sessionName = NULL;
+    m_newSessionName = NULL;
     gtk_main_quit();
 }
 
@@ -94,6 +94,7 @@ gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
 gboolean Application::startUp(gpointer app)
 {
     Application *a = static_cast<Application *>(app);
+    bool choose;
 
     // Check to see if the user directory exists.  If not, create it.
     if (!g_file_test(a->m_userDirName.c_str(), G_FILE_TEST_EXISTS))
@@ -120,7 +121,6 @@ gboolean Application::startUp(gpointer app)
     a->m_splashScreen = NULL;
 
     // Start a session.
-    bool choose;
     if (a->m_sessionName)
     {
         a->m_session = Session::restore(a->m_sessionName);
@@ -175,10 +175,10 @@ ERROR_OUT:
     a->m_exitStatus = EXIT_FAILURE;
 
 CLEAN_UP:
-    g_free(a->m_newSessionName);
     g_free(a->m_sessionName);
-    a->m_newSessionName = NULL;
+    g_free(a->m_newSessionName);
     a->m_sessionName = NULL;
+    a->m_newSessionName = NULL;
 
     if (a->m_exitStatus == EXIT_FAILURE || !a->session)
         gtk_main_quit();
@@ -364,7 +364,7 @@ int Application::run(int argc, char *argv[])
     g_option_context_add_main_entries(optionContext, optionEntries, "samoyed");
     g_option_context_add_group(optionContext, gtk_get_option_group(true));
     g_option_context_set_summary(
-        "The samoyed integrated development environment");
+        _("The samoyed integrated development environment"));
     // Note that the following function will terminate this application if
     // "--help" is specified.
     GError *error = NULL;
@@ -412,7 +412,7 @@ int Application::run(int argc, char *argv[])
     // Show the splash screen.
     std::string splashImage = m_dataDirectory +
         G_DIR_SEPARATOR_S "splash-screen.png";
-    m_splashScreen = new SplashScreen("Samoyed", splashImage.c_str());
+    m_splashScreen = new SplashScreen(_("Samoyed"), splashImage.c_str());
     g_signal_connect(m_splashScreen->gtkWidget(),
                      "delete-event",
                      G_CALLBACK(onSplashScreenDeleteEvent),
@@ -429,6 +429,12 @@ int Application::run(int argc, char *argv[])
     return m_exitStatus;
 
 ERROR_OUT:
+    delete m_splashScreen;
+    m_splashScreen = NULL;
+    g_free(m_sessionName);
+    g_free(m_newSessionName);
+    m_sessionName = NULL;
+    m_newSessionName = NULL;
     m_exitStatus = EXIT_FAILURE;
     return m_exitStatus;
 }
