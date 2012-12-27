@@ -4,6 +4,7 @@
 #ifndef SMYD_SESSION_CHOOSER_DIALOG_HPP
 #define SMYD_SESSION_CHOOSER_DIALOG_HPP
 
+#include <string>
 #include <boost/utility>
 #include <gtk/gtk.h>
 
@@ -13,29 +14,29 @@ namespace Samoyed
 class SessionChooserDialog: public boost::noncopyable
 {
 public:
-    enum Response
+    enum Action
     {
-        CANCEL,
-        CREATE,
-        RESTORE
+        ACTION_CANCEL,
+        ACTION_CREATE,
+        ACTION_RESTORE
     };
 
-    static SessionChooserDialog *create(bool choose);
+    SessionChooserDialog(Action action);
 
     ~SessionChooserDialog();
 
-    Response run();
+    void run();
 
-    Response response() const;
+    Action action() const { return m_action; }
 
-    const char *sessionName() const;
-
-    const char *newSessionName() const;
+    const char *sessionName() const { return m_sessionName.c_str(); }
 
 private:
-    SessionChooserDialog();
-
     GtkWidget *m_dialog;
+    
+    Action m_action;
+    
+    std::string m_sessionName;
 };
 
 }
