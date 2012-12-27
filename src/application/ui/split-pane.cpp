@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "split-pane.hpp"
+#include <assert.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -28,6 +29,8 @@ SplitPane::SplitPane(Orientation orientation,
 
 SplitPane::~SplitPane()
 {
+    assert(!window() && !parent());
+    assert(!m_children[0] && !m_children[1]);
     gtk_widget_destroy(m_paned);
 }
 
@@ -50,29 +53,37 @@ void SplitPane::onChildClosed(PaneBase *child)
 {
     // If a child is closed, this split pane should be destroyed and replaced by
     // the remained child.
+    assert((window() && !parent()) || (!window() && parent()));
+
+    // Mark the child being removed.
     int index = &child == m_children[0] ? 0 : 1;
     assert(m_children[index]);
     m_children[index] = NULL;
 
-    PaneBase *other = m_children[1 - index];
-    assert(other);
-    g_object_ref(other->gtkWidget());
-    removeChild(*other);
+    // Remove the remained child from this split pane.
+    PaneBase *remained = m_children[1 - index];
+    assert(remained);
+    g_object_ref(remained->gtkWidget());
+    removeChild(*remained);
 
-// remove first, add next; if remove cause chain reaction?
-    assert((window() && !parent()) || (!window() && parent()));
+    // Keep the GTK+ widget alive.  We will destroy it by ourselves.
+    g_object_ref(gtkWidget());
+
+    // Replace this split pane with the remained child.
     if (window())
     {
-        window()->setContent(other);
-        other->setWindow(window());
+        window()->setContent(NULL);
+        window()->setContent(remained);
     }
     else if (parent())
     {
-        index = parent()->child(0) == this ? 0 : 1;
-        parent()->addChild(*other, index);
+        index = this == parent()->child(0) ? 0 : 1;
+        parent()->removeChild(*this);
+        parent()->addChild(*remained, index);
     }
-    g_object_unref(other->gtkWidget());
+    g_object_unref(remained->gtkWidget());
 
+    // Destroy this split pane.
     delete this;
 }
 
@@ -95,9 +106,9 @@ void SplitPane::removeChild(PaneBase &child)
     assert(m_children[index] == &child);
     assert(child.parent() == this);
     assert(!child.window());
-    gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
     m_children[index] = NULL;
     child.setParent(NULL);
+    gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
 }
 
 }
