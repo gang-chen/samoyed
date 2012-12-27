@@ -41,11 +41,11 @@ bool EditorGroup::close()
     for (int i = 0; i < editors.size(); i++)
     {
         if (i != currentIndex)
-        if (!editors[i]->close())
-        {
-            setClosing(false);
-            return false;
-        }
+            if (!editors[i]->close())
+            {
+                setClosing(false);
+                return false;
+            }
     }
     return true;
 }
@@ -74,16 +74,6 @@ void EditorGroup::onEditorClosed()
 {
     if (closing() && m_editors.empty())
         delete this;
-}
-
-int EditorGroup::currentEditorIndex()
-{
-    return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook));
-}
-
-void EditorGroup::setCurrentEditorIndex(int index)
-{
-    return gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index);
 }
 
 }
