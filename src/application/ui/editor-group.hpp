@@ -37,9 +37,11 @@ public:
 
     void onEditorClosed();
 
-    int currentEditorIndex() const;
+    int currentEditorIndex() const
+    { return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook)); }
 
-    void setCurrentEditorIndex(int index);
+    void setCurrentEditorIndex(int index)
+    { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
 private:
     std::vector<Editor *> m_editors;
