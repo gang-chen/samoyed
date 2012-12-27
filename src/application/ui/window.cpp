@@ -172,6 +172,8 @@ void Window::setContent(PaneBase *content)
     if (content)
     {
         assert(!m_content);
+        assert(!content->window());
+        assert(!content->parent());
         m_content = content;
         m_content->setWindow(this);
         gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
@@ -184,6 +186,8 @@ void Window::setContent(PaneBase *content)
     else
     {
         assert(m_content);
+        assert(m_content->window() == this);
+        assert(!m_content->parent());
         gtk_container_remove(GTK_CONTAINER(m_mainHBox), m_content->gtkWidget());
         m_content->setWindow(NULL);
         m_content = NULL;
