@@ -49,6 +49,8 @@ public:
     PaneBase &content() { return *m_content; }
     const PaneBase &content() const { return *m_content; }
 
+    void setContent(PaneBase *content);
+
     void addTemporary(Temporary &temp);
     void removeTemporary(Temporary &temp);
 
