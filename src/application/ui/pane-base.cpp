@@ -3,7 +3,7 @@
 
 #include "pane-base.hpp"
 
-namespae Samoyed
+namespace Samoyed
 {
 
 }
