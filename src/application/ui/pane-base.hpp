@@ -4,6 +4,7 @@
 #ifndef SMYD_PANE_BASE_HPP
 #define SMYD_PANE_BASE_HPP
 
+#include <assert.h>
 #include <boost/utility.hpp>
 #include <gtk/gtk.h>
 
@@ -42,11 +43,21 @@ public:
 
     SplitPane *parent() { return m_parent; }
     const SplitPane *parent() const { return m_parent; }
-    void setParent(SplitPane *parent) { m_parent = parent; }
+    void setParent(SplitPane *parent)
+    {
+        assert(!m_window);
+        assert((m_parent && !parent) || (!m_parent || parent));
+        m_parent = parent;
+    }
 
     Window *window() { return m_window; }
     const Window *window() const { return m_window; }
-    void setWindow(Window *window) { m_window = window; }
+    void setWindow(Window *window)
+    {
+        assert(!m_parent);
+        assert((m_window && !window) || (!m_window || window));
+        m_window = window;
+    }
 
     bool closing() const { return m_closing; }
 
