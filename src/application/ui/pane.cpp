@@ -5,7 +5,20 @@
 # include <config.h>
 #endif
 #include "pane.hpp"
+#include "window.hpp"
+#include "split-pane.hpp"
+#include <assert.h>
 
 namespace Samoyed
 {
+
+Pane::~Pane()
+{
+    assert((window() && !parent()) || (!window() && parent()));
+    if (window())
+        window()->onContentClosed();
+    else if (parent())
+        parent()->onChildClosed(this);
+}
+
 }
