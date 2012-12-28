@@ -68,6 +68,8 @@ private:
     EditorGroup *m_group;
     int m_index;
 
+    bool m_closing;
+
     SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, File)
     SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, Project)
 };
