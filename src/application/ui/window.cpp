@@ -8,8 +8,8 @@
 #include "actions.hpp"
 #include "pane-base.hpp"
 #include "project-explorer.hpp"
-#include "editor-groups.hpp"
-#include "temporary.hpp"
+#include "editor-group.hpp"
+#include "bar.hpp"
 #include "../application.hpp"
 #include <assert.h>
 #include <gtk/gtk.h>
@@ -19,27 +19,18 @@ namespace Samoyed
 
 Window::Window(const Configuration &config, PaneBase &content):
     m_content(&content),
-    m_firstTemp(NULL),
-    m_lastTemp(NULL),
+    m_firstBar(NULL),
+    m_lastBar(NULL),
     m_window(NULL),
     m_mainVBox(NULL),
     m_mainHBox(NULL),
     m_menuBar(NULL),
     m_toolbar(NULL),
     m_uiManager(NULL),
-    m_basicActions(NULL),
-    m_actionsForProjects(NULL),
-    m_actionsForFiles(NULL)
+    m_actions(NULL)
 {
     m_uiManager = gtk_ui_manager_new();
-    m_basicActions = gtk_action_group_new("basic actions");
-    gtk_action_group_set_translation_domain(m_basicActions, NULL);
-    gtk_action_group_add_actions(m_basicActions,
-                                 Actions::s_basicActionEntries,
-                                 G_N_ELEMENTS(Actions::s_basicActionEntries),
-                                 window);
-    gtk_ui_manager_insert_action_group(m_uiManager, m_basicActions, 0);
-    g_object_unref(m_basicActions);
+    gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actions(), 0);
 
     std::string uiFile(Application::instance().dataDirectory());
     uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
@@ -99,8 +90,8 @@ Window::Window(const Configuration &config, PaneBase &content):
 Window::~Window()
 {
     assert(!m_content);
-    assert(!m_firstTemp);
-    assert(!m_lastTemp);
+    assert(!m_firstBar);
+    assert(!m_lastBar);
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
@@ -140,17 +131,17 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
         return TRUE;
     }
 
-    close();
+    w->close();
     return TRUE;
 }
 
 bool Window::close()
 {
     m_closing = true;
-    for (Temporary *temp = m_firstTemp, *next; temp; temp = next)
+    for (Bar *bar = m_firstBar, *next; bar; bar = next)
     {
-        next = temp->next();
-        delete temp;
+        next = bar->next();
+        delete bar;
     }
     if (!m_content->close())
     {
@@ -202,28 +193,28 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
     return FALSE;
 }
 
-void Window::addTemporary(Temporary &temp)
+void Window::addBar(Bar &bar)
 {
-    temp.addToList(m_firstTemp, m_lastTemp);
-    if (temp.orientation == Temporary::ORIENTATION_HORIZONTAL)
+    bar.addToList(m_firstBar, m_lastBar);
+    if (bar.orientation() == Bar::ORIENTATION_HORIZONTAL)
         gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                                temp.gtkWidget(),
+                                bar.gtkWidget(),
                                 NULL,
                                 GTK_POS_TOP,
                                 1,
                                 1);
     else
         gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                                temp.gtkWidget(),
+                                bar.gtkWidget(),
                                 NULL,
                                 GTK_POS_LEFT,
                                 1,
                                 1);
 }
 
-void Window::removeTemporary(Temporary &temp)
+void Window::removeBar(Bar &bar)
 {
-    temp.removeFromList(m_firstTemp, m_lastTemp);
+    bar.removeFromList(m_firstBar, m_lastBar);
 }
 
 }
