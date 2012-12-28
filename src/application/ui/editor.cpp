@@ -16,7 +16,8 @@ Editor::Editor(File &file, Project &project):
     m_file(file),
     m_project(project),
     m_group(NULL),
-    m_index(-1)
+    m_index(-1),
+    m_closing(false)
 {
     m_project.addEditor(*this);
 }
@@ -24,6 +25,7 @@ Editor::Editor(File &file, Project &project):
 Editor::~Editor()
 {
     assert(m_group);
+    assert(m_closing);
     m_group->removeEditor(*this);
     m_project.removeEditor(*this);
     m_group->onEditorClosed();
@@ -31,7 +33,16 @@ Editor::~Editor()
 
 bool Editor::close()
 {
-    return m_file.closeEditor(*this);
+    // It is possible the editor is requested to be closed for multiple times.
+    if (m_closing)
+        return true;
+    m_closing = true;
+    if (!m_file.closeEditor(*this))
+    {
+        m_closing = false;
+        return false;
+    }
+    return true;
 }
 
 }
