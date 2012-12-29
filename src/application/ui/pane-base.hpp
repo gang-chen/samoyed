@@ -32,8 +32,6 @@ public:
         m_parent(NULL)
     {}
 
-    virtual ~PaneBase() {}
-
     virtual bool close() = 0;
 
     virtual GtkWidget *gtkWidget() const = 0;
@@ -64,6 +62,8 @@ public:
     Type type() const { return m_type; }
 
 protected:
+    virtual ~PaneBase() {}
+
     void setClosing(bool closing) { m_closing = closing; }
 
 private:

@@ -15,12 +15,12 @@ class Pane: public PaneBase
 {
 public:
     Pane(Type type): PaneBase(type) {}
-    virtual ~Pane();
-
-    SplitPane *split(Type type);
 
     virtual Pane &currentPane() { return *this; }
     virtual const Pane &currentPane() const { return *this; }
+
+protected:
+    virtual ~Pane();
 };
 
 }

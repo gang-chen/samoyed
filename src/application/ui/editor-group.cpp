@@ -14,10 +14,12 @@ namespace Samoyed
 
 EditorGroup::EditorGroup()
 {
+    m_notebook = gtk_notebook_new();
 }
 
 EditorGroup::~EditorGroup()
 {
+    assert(m_editors.empty());
     gtk_widget_destroy(m_notebook);
 }
 
@@ -56,9 +58,11 @@ void EditorGroup::addEditor(Editor &editor, int index)
     for (int i = index + 1; i < m_editors.size(); i++)
         m_editors[i]->setIndex(i);
     editor.addToGroup(*this, index);
+    GtkWidget *label = gtk_label_new(editor().title());
+    gtk_widget_set_tooltip_text(label, editor.file().uri())
     gtk_notebook_insert_page(GTK_NOTEBOOK(m_notebook),
                              editor.gtkWidget(),
-                             editor(),
+                             label,
                              index);
 }
 
@@ -74,6 +78,13 @@ void EditorGroup::onEditorClosed()
 {
     if (closing() && m_editors.empty())
         delete this;
+}
+
+void EditorGroup::onEditorTitleChanged(Editor &editor)
+{
+    GtkWidget *label = gtk_notebook_get_tab_label(GTK_NOTEBOOK(m_notebook),
+                                                  editor.gtkWidget());
+    gtk_label_set_text(GTK_LABEL(label), editor.title());
 }
 
 }

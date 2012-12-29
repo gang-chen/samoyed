@@ -1,9 +1,17 @@
 lib_LTLIBRARIES = libsamoyed.la
 
 libsamoyed_la_SOURCES = \
-    application.cpp
+    application.cpp \
+    file-type-registry.cpp \
+    session.cpp
 
-DEFS = -DPKGDATADIR=\"$(pkgdatadir)\" \
-       -DLIBDIR=\"$(libdir)\" \
-       -DLOCALEDIR=\"$(localedir)\" \
-       @DEFS@
+SUBDIRS = \
+    resources \
+    ui \
+    utilities
+
+DEFS = \
+    -DPKGDATADIR=\"$(pkgdatadir)\" \
+    -DLIBDIR=\"$(libdir)\" \
+    -DLOCALEDIR=\"$(localedir)\" \
+    @DEFS@

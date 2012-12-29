@@ -5,6 +5,7 @@
 #define SMYD_SPLIT_PANE_HPP
 
 #include "pane-base.hpp"
+#include <assert.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -23,8 +24,6 @@ public:
 
     SplitPane(Orientation orientation, int position,
               PaneBase &child1, PaneBase &child2);
-
-    virtual ~SplitPane();
 
     virtual bool close();
 
@@ -52,6 +51,20 @@ public:
     void removeChild(PaneBase &child);
 
     Orientation orientation() const { return m_orientation; }
+
+    int childIndex(PaneBase &child) const
+    {
+        if (&child == m_children[0])
+            return 0;
+        assert(&child == m_children[1]);
+        return 1;
+    }
+
+    static SplitPane *split(Orientation orientation, int position,
+                            PaneBase &child1, PaneBase &child2);
+
+protected:
+    virtual ~SplitPane();
 
 private:
     Orientation m_orientation;

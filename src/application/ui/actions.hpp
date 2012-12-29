@@ -26,18 +26,40 @@ public:
     void updateSensitivity(const Window *window);
 
 private:
-    static void newSession(GtkAction *action, Window *window);
+    static void createSession(GtkAction *action, Window *window);
     static void switchSession(GtkAction *action, Window *window);
     static void manageSessions(GtkAction *action, Window *window);
     static void quitSession(GtkAction *action, Window *window);
 
-    static void newProject(GtkAction *action, Window *window);
+    static void createProject(GtkAction *action, Window *window);
     static void openProject(GtkAction *action, Window *window);
+    static void closeProject(GtkAction *action, Window *window);
+    static void closeAllProjects(GtkAction *action, Window *window);
+    static void createFile(GtkAction *action, Window *window);
+    static void createDirectory(GtkAction *action, Window *window);
 
+    static void openFile(GtkAction *action, Window *window);
+    static void openFileInNewEditor(GtkAction *action, Window *window);
+    static void saveFile(GtkAction *action, Window *window);
+    static void saveAllFiles(GtkAction *action, Window *window);
+    static void reloadFile(GtkAction *action, Window *window);
+    static void closeFile(GtkAction *action, Window *window);
+    static void closeAllFiles(GtkAction *action, Window *window);
+    static void setupPage(GtkAction *action, Window *window);
+    static void previewPrintedFile(GtkAction *action, Window *window);
+    static void printFile(GtkAction *action, Window *window);
+
+    static void undo(GtkAction *action, Window *window);
+    static void redo(GtkAction *action, Window *window);
+    static void cut(GtkAction *action, Window *window);
+    static void copy(GtkAction *action, Window *window);
+    static void paste(GtkAction *action, Window *window);
+    static void deleteObject(GtkAction *action, Window *window);
+    static void editProperties(GtkAction *action, Window *window);
     static void editPreferences(GtkAction *action, Window *window);
 
-    static void newWindow(GtkAction *action, Window *window);
-    static void newEditorGroup(GtkAction *action, Window *window);
+    static void createWindow(GtkAction *action, Window *window);
+    static void createEditorGroup(GtkAction *action, Window *window);
     static void enterFullScreen(GtkAction *action, Window *window);
 
     static void showManual(GtkAction *action, Window *window);
@@ -57,7 +79,7 @@ private:
 
         // Session menu.
         { "session-new", NULL, N_("_New..."), NULL,
-          N_("Start a new session"), G_CALLBACK(newSession) },
+          N_("Start a new session"), G_CALLBACK(createSession) },
         { "session-switch", NULL, N_("_Switch..."), NULL,
           N_("Switch to a saved session"), G_CALLBACK(switchSession) },
         { "session-manage", NULL, N_("_Manage..."), NULL,
@@ -67,7 +89,7 @@ private:
 
         // Project menu.
         { "project-new", NULL, N_("_New..."), NULL,
-          N_("Create a project"), G_CALLBACK(newProject) },
+          N_("Create a project"), G_CALLBACK(createProject) },
         { "project-open", NULL, N_("_Open..."), NULL,
           N_("Open a project"), G_CALLBACK(openProject) },
         { "project-close", NULL, N_("_Close"), NULL,
@@ -75,24 +97,22 @@ private:
         { "project-close-all", NULL, N_("Close _All"), NULL,
           N_("Close all opened projects"), G_CALLBACK(closeAllProjects) },
         { "project-new-file", NULL, N_("New _File..."), NULL,
-          N_("Create a file in the selected directory"), G_CALLBACK(newFile) },
-        { "project-new-dir", NULL, N_("New _Directory..."), NULL,
-          N_("Create a directory in the selected directory"),
-          G_CALLBACK(newDirectory) },
-        { "project-delete-item", NULL, N_("Delete _Item"),
-          N_("Delete the selected project item"),
-          G_CALLBACK(deleteProjectItem) },
+          N_("Create a file"), G_CALLBACK(createFile) },
+        { "project-new-directory", NULL, N_("New _Directory..."), NULL,
+          N_("Create a directory"), G_CALLBACK(createDirectory) },
 
         // File menu.
         { "file-open", NULL, N_("_Open"), NULL,
           N_("Open the selected file"), G_CALLBACK(openFile) },
-        { "file-open-new-editor", NULL, N_("Open in _New _Editor"), NULL,
+        { "file-open-new-editor", NULL, N_("Open in New _Editor"), NULL,
           N_("Open the selected file in a new editor"),
           G_CALLBACK(openFileInNewEditor) },
         { "file-save", NULL, N_("_Save"), NULL,
           N_("Save the current file"), G_CALLBACK(saveFile) },
         { "file-save-all", NULL, N_("Save _All"), NULL,
           N_("Save all edited files"), G_CALLBACK(saveAllFiles) },
+        { "file-reload", NULL, N_("_Reload"), NULL,
+          N_("Reload the curren file"), G_CALLBACK(reloadFile) },
         { "file-close", NULL, N_("_Close"), NULL,
           N_("Close the current file"), G_CALLBACK(closeFile) },
         { "file-close-all", NULL, N_("C_lose All"), NULL,
@@ -125,9 +145,9 @@ private:
 
         // View menu.
         { "view-new-window", NULL, N_("New _Window"), NULL,
-          N_("Create a window"), G_CALLBACK(newWindow) },
+          N_("Create a window"), G_CALLBACK(createWindow) },
         { "view-new-editor-group", NULL, N_("New Editor _Group"), NULL,
-          N_("Create an editor group"), G_CALLBACK(newEditorGroup) },
+          N_("Create an editor group"), G_CALLBACK(createEditorGroup) },
         { "view-full-screen", NULL, N_("_Full Screen"), NULL,
           N_("Enter full screen mode"), G_CALLBACK(enterFullScreen) },
 
@@ -138,6 +158,12 @@ private:
           N_("Show the tutorial"), G_CALLBACK(showTutorial) },
         { "help-about", NULL, N_("_About"), NULL,
           N_("About this application", G_CALLBACK(showAbout) }
+
+        // New popup menu.
+        { "new-file", NULL, N_("_File"), NULL,
+          N_("Create a file"), G_CALLBACK(createFile) },
+        { "new-directory", NULL, N_("_Directory"), NULL,
+          N_("Create a directory"), G_CALLBACK(createDirectory) }
     };
 
     GtkActionGroup *m_actions;

@@ -21,8 +21,6 @@ class EditorGroup: public Pane
 public:
     EditorGroup();
 
-    virtual ~EditorGroup();
-
     virtual bool close();
 
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
@@ -42,6 +40,11 @@ public:
 
     void setCurrentEditorIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
+
+    void onEditorTitleChanged(Editor &editor);
+
+protected:
+    virtual ~EditorGroup();
 
 private:
     std::vector<Editor *> m_editors;

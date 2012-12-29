@@ -52,6 +52,16 @@ Window::Window(const Configuration &config, PaneBase &content):
                             1);
 
     m_toolbar = gtk_ui_manager_get_widget(m_uiManager, "/main-toolbar");
+
+    GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
+                                                        "/new-popup-menu");
+    GtkWidget *newIcon = gtk_image_new_from_file();
+    GtkWidget *newItem = gtk_menu_tool_button_new(newIcon, NULL);
+    gtk_tool_item_set_tooltip_text(GTK_TOOL_ITEM(newItem),
+                                   _("Create an object"));
+    gtk_tool_item_set_menu(GTK_TOOL_ITEM(newItem), newPopupMenu);
+    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), GTK_TOOL_ITEM(newItem), 0);
+
     gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
                             m_toolbar,
                             m_menuBar,

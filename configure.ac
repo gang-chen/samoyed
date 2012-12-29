@@ -53,5 +53,13 @@ PKG_CHECK_MODULES(GTK3, [gtk+-3.0 >= 3.0.0])
 
 GLIB_SETTINGS
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([
+Makefile
+data/Makefile
+images/Makefile
+src/Makefile
+src/application/Makefile
+src/launcher/Makefile
+src/plugins/Makefile
+])
 AC_OUTPUT

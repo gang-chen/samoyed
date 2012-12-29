@@ -25,6 +25,8 @@ public:
 
     static void destroySharedData();
 
+    virtual GtkWidget *gtkWidget() const { return m_view; }
+
 private:
     /**
      * The tag table shared by all the GTK+ text buffers.

@@ -16,6 +16,8 @@ Actions::Actions(Window *window)
                                  Actions::s_actionEntries,
                                  G_N_ELEMENTS(Actions::s_actionEntries),
                                  window);
+    // Load icons.
+    gtk_action_set_gicon(g_file_icon_new(g_file_new_for_path()));
 }
 
 Actions::~Actions()

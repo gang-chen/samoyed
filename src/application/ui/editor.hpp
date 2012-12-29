@@ -5,6 +5,7 @@
 #define SMYD_EDITOR_HPP
 
 #include "../utilities/misc.hpp"
+#include <string>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -25,7 +26,7 @@ public:
 
     virtual ~Editor();
 
-    virtual GtkWidget *gtkWidget() const;
+    virtual GtkWidget *gtkWidget() const = 0;
 
     bool close();
 
@@ -69,6 +70,8 @@ private:
     int m_index;
 
     bool m_closing;
+
+    std::string m_title;
 
     SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, File)
     SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, Project)

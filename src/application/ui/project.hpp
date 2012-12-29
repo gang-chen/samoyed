@@ -33,8 +33,6 @@ class Project: public boost::noncopyable
 public:
     Project(const char *uri);
 
-    ~Project();
-
     bool close();
 
     Editor *findEditor(const char *uri);
@@ -48,6 +46,9 @@ public:
 
     Editor *editors() { return m_firstEditor; }
     const Editor *editors() const { return m_firstEditor; }
+
+protected:
+    ~Project();
 
 private:
     typedef std::multimap<ComparablePointer<const char *>, Editor *>

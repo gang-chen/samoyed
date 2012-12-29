@@ -2,43 +2,93 @@
 <ui>
 
   <menubar name="main-menu-bar">
-    <menu name="session-menu" action="session">
-      <menuitem name="session-new-item" action="session-new"/>
-      <menuitem name="session-switch-item" action="session-switch"/>
-      <menuitem name="session-manage-item" action="session-manage"/>
-      <menuitem name="session-quit-item" action="session-quit"/>
+    <menu name="session" action="session">
+      <menuitem name="session-new" action="session-new"/>
+      <menuitem name="session-switch" action="session-switch"/>
+      <menuitem name="session-manage" action="session-manage"/>
+      <menuitem name="session-quit" action="session-quit"/>
     </menu>
 
-    <menu name="project-menu" action="project">
-      <menuitem name="project-new-item" action="project-new"/>
+    <menu name="project" action="project">
+      <menuitem name="project-new" action="project-new"/>
+      <menuitem name="project-open" action="project-open"/>
+      <menuitem name="project-close" action="project-close"/>
+      <menuitem name="project-close-all" action="project-close-all"/>
+      <separator/>
+      <menuitem name="project-new-file" action="project-new-file"/>
+      <menuitem name="project-new-directory" action="project-new-directory"/>
     </menu>
 
-    <menu name="file-menu" action="file">
-      <menuitme name="file-save-item" action="file-save"/>
-      <menuitem name="file-save-all-item" action="file-save-all"/>
+    <menu name="file" action="file">
+      <menuitem name="file-open" action="file-open"/>
+      <menuitem name="file-open-new-editor" action="file-open-new-editor"/>
+      <separator/>
+      <menuitme name="file-save" action="file-save"/>
+      <menuitem name="file-save-all" action="file-save-all"/>
+      <menuitem name="file-reload" action="file-reload"/>
+      <separator/>
+      <menuitem name="file-close" action="file-close"/>
+      <menuitem name="file-close-all" action="file-close-all"/>
+      <separator/>
+      <menuitem name="file-page-setup" action="file-page-setup"/>
+      <menuitem name="file-print-preview" action="file-print-preview"/>
+      <menuitem name="file-print" action="file-print"/>
     </menu>
 
-    <menu name="edit-menu" action="edit">
-      <menumitem name="edit-cut-item" action="edit-cut"/>
+    <menu name="edit" action="edit">
+      <menuitem name="edit-undo" action="edit-undo"/>
+      <menuitem name="edit-redo" action="edit-redo"/>
+      <separator/>
+      <menuitem name="edit-cut" action="edit-cut"/>
+      <menuitem name="edit-copy" action="edit-copy"/>
+      <menuitem name="edit-paste" action="edit-paste"/>
+      <menuitem name="edit-delete" action="edit-delete"/>
+      <separator/>
+      <menuitem name="edit-properties" action="edit-properties"/>
+      <separator/>
+      <menuitem name="edit-preferences" action="edit-preferences"/>
     </menu>
 
-    <menu name="help-menu" action="help">
-      <menuitem name="help-manual-item" action="help-manual"/>
-      <menuitem name="help-tutorial-item" action="help-tutorial"/>
-      <menuitme name="help-about-item" action="help-about"/>
+    <menu name="view" action="view">
+      <menuitem name="view-new-window" action="view-new-window"/>
+      <menuitem name="view-new-editor-group" action="view-new-editor-group"/>
+      <separator/>
+      <menuitem name="view-full-screen" action="view-full-screen"/>
+    </menu>
+
+    <menu name="help" action="help">
+      <menuitem name="help-manual" action="help-manual"/>
+      <menuitem name="help-tutorial" action="help-tutorial"/>
+      <menuitme name="help-about" action="help-about"/>
     </menu>
   </menubar>
 
   <toolbar name="main-toolbar">
-    <toolitem name="file-save-item" action="file-save"/>
-    <toolitem name="file-save-all-item" action="file-save-all"/>
+    <toolitem name="file-save" action="file-save"/>
+    <toolitem name="file-save-all" action="file-save-all"/>
     <separator/>
-    <toolitem name="edit-cut-item" action="edit-cut"/>
+    <toolitem name="edit-undo" action="edit-undo"/>
+    <toolitem name="edit-redo" action="edit-redo"/>
+    <separator/>
+    <toolitem name="edit-cut" action="edit-cut"/>
+    <toolitem name="edit-copy" action="edit-copy"/>
+    <toolitem name="edit-paste" action="edit-paste"/>
+    <toolitem name="edit-delete" action="edit-delete"/>
+    <separator/>
     <separator/>
   </toolbar>
 
-  <popup name="editor-popup-menu" action="editor-popup">
-    <menuitem name="edit-cut-item" action="edit-cut"/>
+  <popup name="new-popup-menu">
+    <menuitem name="file" action="new-file"/>
+    <menuitem name="directory" action="new-directory"/>
+  </popup>
+
+  <popup name="editor-popup-menu">
+    <menuitem name="edit-cut" action="edit-cut"/>
+  </popup>
+
+  <popup name="project-explorer-popup-menu">
+    <menuitem name="project-new-file" action="project-new-file"/>
   </popup>
 
 </ui>

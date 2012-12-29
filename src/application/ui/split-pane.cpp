@@ -12,7 +12,7 @@ namespace Samoyed
 {
 
 SplitPane::SplitPane(Orientation orientation,
-                     int length;
+                     int position,
                      PaneBase &child1,
                      PaneBase &child2):
     m_orientation(orientation),
@@ -23,8 +23,8 @@ SplitPane::SplitPane(Orientation orientation,
     m_paned = gtk_paned_new(orientation);
     gtk_paned_add1(GTK_PANED(m_paned), child1.gtkWidget());
     gtk_paned_add2(GTK_PANED(m_paned), child2.gtkWidget());
-    if (length != -1)
-        gtk_paned_set_position(m_paned, length);
+    if (position != -1)
+        gtk_paned_set_position(m_paned, position);
 }
 
 SplitPane::~SplitPane()
@@ -55,9 +55,8 @@ void SplitPane::onChildClosed(PaneBase *child)
     // the remained child.
     assert((window() && !parent()) || (!window() && parent()));
 
-    // Mark the child being removed.
-    int index = &child == m_children[0] ? 0 : 1;
-    assert(m_children[index]);
+    // Mark the child as being removed.
+    int index = childIndex(child);
     m_children[index] = NULL;
 
     // Remove the remained child from this split pane.
@@ -77,11 +76,10 @@ void SplitPane::onChildClosed(PaneBase *child)
     }
     else if (parent())
     {
-        index = this == parent()->child(0) ? 0 : 1;
+        index = parent()->childIndex(*this);
         parent()->removeChild(*this);
         parent()->addChild(*remained, index);
     }
-    g_object_unref(remained->gtkWidget());
 
     // Destroy this split pane.
     delete this;
@@ -102,13 +100,57 @@ void SplitPane::addChild(PaneBase &child, int index)
 
 void SplitPane::removeChild(PaneBase &child)
 {
-    int index = &child == m_children[0] ? 0 : 1;
-    assert(m_children[index] == &child);
+    int index = childIndex(child);
     assert(child.parent() == this);
     assert(!child.window());
     m_children[index] = NULL;
     child.setParent(NULL);
     gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
+}
+
+SplitPane *SplitPane::split(Orientation orientation,
+                            int position,
+                            PaneBase &child1,
+                            PaneBase &child2)
+{
+    PaneBase *originalPane, *newPane;
+    Window *window;
+    SplitPane *parent;
+    int index;
+
+    if (child1.window() || child1.parent())
+    {
+        originalPane = &child1;
+        newPane = &child2;
+    }
+    else
+    {
+        assert(child2.window() || child2.parent());
+        originalPane = &child2;
+        newPane = &child1;
+    }
+    window = originalPane->window();
+    parent = originalPane->parent();
+    if (parent)
+        index = parent->childIndex(*originalPane);
+
+    // Remove the original pane from its container.
+    g_object_ref(originalPane->gtkWidget());
+    if (window)
+        window->setContent(NULL);
+    else
+        parent->removeChild(*originalPane);
+
+    // Create a split pane to hold the two panes.
+    SplitPane *splitPane = new SplitPane(orientation, position, child1, child2);
+
+    // Add it to the container.
+    if (window)
+        window->setContent(splitPane);
+    else
+        parent->addChild(*splitPane, index);
+
+    return splitPane;
 }
 
 }

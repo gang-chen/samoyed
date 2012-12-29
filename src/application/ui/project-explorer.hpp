@@ -18,8 +18,6 @@ class ProjectExplorer: public Pane
 public:
     ProjectExplorer();
 
-    virtual ~ProjectExplorer();
-
     virtual bool close();
 
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
@@ -35,6 +33,9 @@ public:
 
     Project *projects() { return m_firstProject; }
     const Project *projects() const { return m_firstProject; }
+
+protected:
+    virtual ~ProjectExplorer();
 
 private:
     typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;

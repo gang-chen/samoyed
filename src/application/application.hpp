@@ -54,7 +54,7 @@ public:
     bool quitting() const { return m_quitting; }
 
     /**
-     * Request to uit the application.
+     * Request to quit the application.
      */
     void quit();
 
@@ -68,6 +68,9 @@ public:
      */
     void switchSession();
 
+    /**
+     * Request to cancel quitting.
+     */
     void cancelQuitting();
 
     /**
@@ -120,7 +123,7 @@ public:
     void setCurrentWindow(Window &window) { m_currentWindow = &window; }
 
     /**
-     * The first window is the main window.
+     * @return The main window, i.e., the first window is the main window.
      */
     Window &mainWindow() const { return *m_firstWindow; }
 
