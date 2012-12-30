@@ -21,16 +21,18 @@ AC_SUBST(SAMOYED_MICRO_VERSION, samoyed_micro_version)
 AC_DEFINE(SAMOYED_VERSION, samoyed_version, [Samoyed version])
 AC_SUBST(SAMOYED_VERSION, samoyed_version)
 
+AC_USE_SYSTEM_EXTENSIONS
+
 AM_INIT_AUTOMAKE([1.11 silent-rules])
 AM_MAINTAINER_MODE
 
 LT_PREREQ([2.2])
 LT_INIT([disable-static])
 
-AC_USE_SYSTEM_EXTENSIONS
-
 AC_LANG([C++])
 AC_PROG_CXX
+AC_PROG_INSTALL
+PKG_PROG_PKG_CONFIG
 
 AC_CANONICAL_HOST
 os_win32=no
@@ -49,17 +51,18 @@ AX_BOOST_BASE([1.42])
 AX_BOOST_THREAD
 AX_BOOST_REGEX
 
-PKG_CHECK_MODULES(GTK3, [gtk+-3.0 >= 3.0.0])
-
-GLIB_SETTINGS
+PKG_CHECK_MODULES(SAMOYED, [gtk+-3.0 >= 3.0.0])
 
 AC_CONFIG_FILES([
 Makefile
 data/Makefile
-images/Makefile
+po/Makefile.in
 src/Makefile
 src/application/Makefile
+src/application/resources/Makefile
+src/application/ui/Makefile
+src/application/ui/dialogs/Makefile
+src/application/utilities/Makefile
 src/launcher/Makefile
-src/plugins/Makefile
 ])
 AC_OUTPUT

@@ -1,4 +1,8 @@
-libsamoyed_la_SOURCES = \
+SUBDIRS = dialogs
+
+noinst_LTLIBRARIES = libui.la
+
+libui_la_SOURCES = \
     actions.cpp \
     editor-group.cpp \
     editor.cpp \
@@ -10,7 +14,18 @@ libsamoyed_la_SOURCES = \
     source-file.cpp \
     splash-screen.cpp \
     split-pane.cpp \
-    window.cpp
-
-SUBDIRS = \
-    dialogs
+    window.cpp \
+    actions.hpp \
+    bar.hpp \
+    editor-group.hpp \
+    editor.hpp \
+    file.hpp \
+    pane-base.hpp \
+    pane.hpp \
+    project-explorer.hpp \
+    project.hpp \
+    source-editor.hpp \
+    source-file.hpp \
+    splash-screen.hpp \
+    split-pane.hpp \
+    window.hpp
