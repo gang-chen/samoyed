@@ -3,7 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I../../../libs -lboost_thread -pthread\
+g++ worker.cpp -DSMYD_WORKER_UNIT_TEST\
+ `pkg-config --cflags --libs glib-2.0` -I../../../libs -lboost_thread -pthread\
  -Werror -Wall -o worker
 */
 

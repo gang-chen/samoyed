@@ -12,7 +12,7 @@ libsamoyed_la_SOURCES = \
 
 libsamoyed_la_CPPFLAGS = \
     -DSMYD_PKGDATADIR=\"$(pkgdatadir)\" \
-    -DSMYD_LIBDIR=\"$(libdir)\" \
+    -DSMYD_PKGLIBDIR=\"$(pkglibdir)\" \
     -DSMYD_LOCALEDIR=\"$(localedir)\" \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)

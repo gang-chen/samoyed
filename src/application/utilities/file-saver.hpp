@@ -19,8 +19,8 @@ public:
               const Callback &callback,
               const char *uri):
         Worker(priority, callback),
-        m_uri(uri),
-        m_error(NULL)
+        m_error(NULL),
+        m_uri(uri)
     {}
 
     virtual ~FileSaver()

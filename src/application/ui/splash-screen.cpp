@@ -83,9 +83,10 @@ int main(int argc, char *argv[])
     Samoyed::SplashScreen *splash =
         new Samoyed::SplashScreen("Splash screen test",
                                   "../../../data/splash-screen.png");
-    char *decc = g_strdup_printf("Testing splash screen. Finished %.2f.", progress);
-    splash->setProgress(progress, desc);
-    g_free(desc);
+    char *msg = g_strdup_printf("Testing splash screen. Finished %.2f.",
+                                progress);
+    splash->setProgress(progress, msg);
+    g_free(msg);
     g_signal_connect(splash->gtkWidget(),
                      "delete-event",
                      G_CALLBACK(onDeleteEvent),

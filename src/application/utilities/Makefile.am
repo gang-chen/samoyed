@@ -25,8 +25,5 @@ libutilities_la_SOURCES = \
     worker.hpp
 
 libutilities_la_CPPFLAGS = \
-    -DSMYD_PKGDATADIR=\"$(pkgdatadir)\" \
-    -DSMYD_LIBDIR=\"$(libdir)\" \
-    -DSMYD_LOCALEDIR=\"$(localedir)\" \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)

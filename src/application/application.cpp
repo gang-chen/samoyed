@@ -310,9 +310,9 @@ int Application::run(int argc, char *argv[])
         G_DIR_SEPARATOR_S "share" G_DIR_SEPARATOR_S "locale";
     g_free(instDir);
 #else
-    m_dataDirName = PKGDATADIR;
-    m_librariesDirName = std::string(LIBDIR) + G_DIR_SEPARATOR_S "samoyed";
-    m_localeDirName = LOCALEDIR;
+    m_dataDirName = SMYD_PKGDATADIR;
+    m_librariesDirName = SMYD_PKGLIBDIR;
+    m_localeDirName = SMYD_LOCALEDIR;
 #endif
     m_userDirName = g_get_home_dir() + G_DIR_SEPARATOR_S ".samoyed";
 
