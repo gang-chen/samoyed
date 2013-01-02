@@ -63,7 +63,6 @@
 /po/remove-potcdate.sin
 /po/Rules-quot
 Makefile.in
-Makefile
 
 # Build directory.
 /build/
