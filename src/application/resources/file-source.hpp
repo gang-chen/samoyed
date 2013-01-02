@@ -8,12 +8,14 @@
 #include "../utilities/misc.hpp"
 #include "../utilities/revision.hpp"
 #include "../utilities/worker.hpp"
+#include "../utilities/manager.hpp"
 #include <string>
 #include <deque>
 #include <boost/signals2/dummy_mutex.hpp>
 #include <boost/signals2/signal_type.hpp>
 #include <boost/signals2/signal.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <glib.h>
 
 namespace Samoyed
@@ -62,14 +64,14 @@ public:
      * Begin a read transaction by locking the source for read.
      */
     bool beginRead(bool trying,
-                   const TextBuffer *&buffer,
+                   const TextBuffer **buffer,
                    Revision *revision,
                    GError **error) const;
 
     /**
      * End a read transaction by unlocking the source.
      */
-    void endRead();
+    void endRead() const;
 
     /**
      * Add an observer by registering a callback.  It is assumed that the
@@ -151,7 +153,7 @@ private:
         Insertion(const Revision &revision,
                   int line,
                   int column,
-                  char *text,
+                  const char *text,
                   int length):
             m_revision(revision),
             m_line(line),
@@ -196,7 +198,7 @@ private:
     class Replacement: public Write
     {
     public:
-        Replacement(const Revision **revision,
+        Replacement(const Revision &revision,
                     const GError *error,
                     TextBuffer *buffer):
             m_revision(revision),
@@ -226,14 +228,13 @@ private:
             m_source(&source)
         {}
         virtual bool step();
+        virtual char *description() const;
 
     private:
         ReferencePointer<FileSource> m_source;
     };
 
-    FileSource(const Key &uri,
-               unsigned long serialNumber,
-               Manager<FileSource> &mgr);
+    FileSource(const Key &uri, unsigned long id, Manager<FileSource> &mgr);
 
     ~FileSource();
 
@@ -242,11 +243,11 @@ private:
                     Revision *revision,
                     GError **error);
 
-    void endWrite(Revision &revision,
+    void endWrite(const Revision &revision,
                   GError *error,
                   const Range &range);
 
-    void queueWrite(Writte *write);
+    void queueWrite(Write *write);
 
     void executeQueuedWrites();
 
@@ -254,11 +255,7 @@ private:
 
     void onWriteWorkerDone(Worker &worker);
 
-    void setBuffer(TextBuffer *buffer)
-    {
-        delete m_buffer;
-        m_buffer = buffer;
-    }
+    void setBuffer(TextBuffer *buffer);
 
     const std::string m_uri;
 

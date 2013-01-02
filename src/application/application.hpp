@@ -10,7 +10,7 @@
 #include <boost/utility.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/tss.hpp>
-#include <glib.h>
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
@@ -189,7 +189,7 @@ private:
 
     Manager<FileSource> *m_fileSourceManager;
 
-    ProjectAstManager *m_fileAstManager;
+    ProjectAstManager *m_projectAstManager;
 
     boost::thread::id m_mainThreadId;
 

@@ -17,6 +17,9 @@
       <separator/>
       <menuitem name="project-new-file" action="project-new-file"/>
       <menuitem name="project-new-directory" action="project-new-directory"/>
+      <separator/>
+      <menuitem name="project-manage-configurations"
+                action="project-manage-configurations"/>
     </menu>
 
     <menu name="file" action="file">
@@ -44,7 +47,7 @@
       <menuitem name="edit-paste" action="edit-paste"/>
       <menuitem name="edit-delete" action="edit-delete"/>
       <separator/>
-      <menuitem name="edit-properties" action="edit-properties"/>
+      <menuitem name="edit-configure" action="edit-configure"/>
       <separator/>
       <menuitem name="edit-preferences" action="edit-preferences"/>
     </menu>

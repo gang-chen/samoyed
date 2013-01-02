@@ -37,6 +37,7 @@ private:
     static void closeAllProjects(GtkAction *action, Window *window);
     static void createFile(GtkAction *action, Window *window);
     static void createDirectory(GtkAction *action, Window *window);
+    static void manageConfigurations(GtkAction *action, Window *window);
 
     static void openFile(GtkAction *action, Window *window);
     static void openFileInNewEditor(GtkAction *action, Window *window);
@@ -55,7 +56,7 @@ private:
     static void copy(GtkAction *action, Window *window);
     static void paste(GtkAction *action, Window *window);
     static void deleteObject(GtkAction *action, Window *window);
-    static void editProperties(GtkAction *action, Window *window);
+    static void configure(GtkAction *action, Window *window);
     static void editPreferences(GtkAction *action, Window *window);
 
     static void createWindow(GtkAction *action, Window *window);
@@ -100,6 +101,10 @@ private:
           N_("Create a file"), G_CALLBACK(createFile) },
         { "project-new-directory", NULL, N_("New _Directory..."), NULL,
           N_("Create a directory"), G_CALLBACK(createDirectory) },
+        { "project-manage-configurations", NULL,
+          N_("Manage Confi_gurations..."), NULL,
+          N_("Manage configurations of the current project"),
+          G_CALLBACK(manageConfigurations) },
 
         // File menu.
         { "file-open", NULL, N_("_Open"), NULL,
@@ -137,10 +142,10 @@ private:
           N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
         { "edit-delete", NULL, N_("_Delete"), NULL,
           N_("Delete the selected object"), G_CALLBACK(deleteObject) },
-        { "edit-properties", NULL, N_("Pr_operties..."), NULL,
-          N_("Edit the properties of the selected object"),
+        { "configure", NULL, N_("Confi_gure..."), NULL,
+          N_("Configure the selected object"),
           G_CALLBACK(editProperties) },
-        { "edit-preferences", NULL, N_("Pr_eferences..."), NULL,
+        { "edit-preferences", NULL, N_("Pre_ferences..."), NULL,
           N_("Edit your preferences"), G_CALLBACK(editPreferences) },
 
         // View menu.

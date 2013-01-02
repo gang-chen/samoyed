@@ -21,6 +21,7 @@
 #endif
 #include <boost/thread/thread.hpp>
 #include <glib.h>
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
 namespace
@@ -316,9 +317,9 @@ int Application::run(int argc, char *argv[])
     m_userDirName = g_get_home_dir() + G_DIR_SEPARATOR_S ".samoyed";
 
 #ifdef ENABLE_NLS
-    bindtextdomain("samoyed", localeDirectoryName());
-    bind_textdomain_codeset("samoyed", "UTF-8");
-    textdomain("samoyed");
+    bindtextdomain(GETTEXT_PACKAGE, localeDirectoryName());
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+    textdomain(GETTEXT_PACKAGE);
 #endif
 
     // Initialize GTK+ and parse command line options.
@@ -360,7 +361,9 @@ int Application::run(int argc, char *argv[])
         { NULL }
     };
     GOptionContext *optionContext = g_option_context_new(NULL);
-    g_option_context_add_main_entries(optionContext, optionEntries, "samoyed");
+    g_option_context_add_main_entries(optionContext,
+                                      optionEntries,
+                                      GETTEXT_PACKAGE);
     g_option_context_add_group(optionContext, gtk_get_option_group(true));
     g_option_context_set_summary(
         _("The samoyed integrated development environment"));

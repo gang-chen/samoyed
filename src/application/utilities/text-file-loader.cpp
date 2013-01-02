@@ -30,8 +30,6 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
 # include "../resources/project-configuration-manager.hpp"
 # include "../resources/project-configuration.hpp"
 #endif
-#include <string.h>
-#include <stdio.h>
 #include <string>
 #include <boost/bind.hpp>
 #include <glib.h>
@@ -103,8 +101,8 @@ bool TextFileLoader::step()
 
     // Open the file.
     file = g_file_new_for_uri(uri());
-    fileStream = g_file_read(file, NULL, &error());
-    if (error())
+    fileStream = g_file_read(file, NULL, &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
     // Open the encoding converter and setup the input stream.
@@ -113,8 +111,8 @@ bool TextFileLoader::step()
     else
     {
         encodingConverter =
-            g_charset_converter_new("UTF-8", encoding.c_str(), &error());
-        if (error())
+            g_charset_converter_new("UTF-8", encoding.c_str(), &m_error);
+        if (m_error)
             goto CLEAN_UP;
         converterStream =
             g_converter_input_stream_new(G_INPUT_STREAM(fileStream),
@@ -123,8 +121,8 @@ bool TextFileLoader::step()
     }
 
     // Get the revision.
-    revision().synchronize(file, &error());
-    if (error())
+    m_revision.synchronize(file, &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
     // Read, convert and insert.
@@ -136,14 +134,14 @@ bool TextFileLoader::step()
                                        cp,
                                        buffer + BUFFER_SIZE - cp,
                                        NULL,
-                                       &error());
-        if (error())
+                                       &m_error);
+        if (m_error)
             goto CLEAN_UP;
         if (size == 0)
         {
             if (cp != buffer)
             {
-                error() = g_error_new(G_IO_ERROR,
+                m_error = g_error_new(G_IO_ERROR,
                                       G_IO_ERROR_PARTIAL_INPUT,
                                       _("Incomplete UTF-8 encoded characters "
                                         "in file \"%s\""),
@@ -157,7 +155,7 @@ bool TextFileLoader::step()
         // Make sure the input UTF-8 encoded characters are valid and complete.
         if (!Utf8::validate(buffer, size, valid))
         {
-            error() = g_error_new(G_IO_ERROR,
+            m_error = g_error_new(G_IO_ERROR,
                                   G_IO_ERROR_INVALID_DATA,
                                   _("Invalid UTF-8 encoded characters in file "
                                     "\"%s\""),
@@ -170,8 +168,8 @@ bool TextFileLoader::step()
         cp = buffer + size;
     }
 
-    g_input_stream_close(stream, NULL, &error());
-    if (error())
+    g_input_stream_close(stream, NULL, &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
 CLEAN_UP:
@@ -188,10 +186,7 @@ CLEAN_UP:
 
 char *TextFileLoader::description() const
 {
-    int size = snprintf(NULL, 0, _("Loading text file \"%s\""), uri());
-    char *desc = new char[size + 1];
-    snprintf(desc, size + 1, _("Loading text file \"%s\""), uri());
-    return desc;
+    return g_strdup_printf(_("Loading text file \"%s\""), uri());
 }
 
 }

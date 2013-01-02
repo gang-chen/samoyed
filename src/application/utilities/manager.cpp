@@ -42,10 +42,8 @@ public:
     Key key() const { return m_name.c_str(); }
     const char *name() const { return m_name.c_str(); }
 private:
-    Person(const Key &name,
-           unsigned long serialNumber,
-           Samoyed::Manager<Person> &mgr):
-        Samoyed::Managed<Person>(serialNumber, mgr),
+    Person(const Key &name, unsigned long id, Samoyed::Manager<Person> &mgr):
+        Samoyed::Managed<Person>(id, mgr),
         m_name(name)
     {
         printf("Constructing %s\n", this->name());

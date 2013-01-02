@@ -16,8 +16,12 @@
 #include <assert.h>
 #include <string>
 #include <deque>
+#ifdef ENABLE_NLS
+# include <libintl.h>
+#endif
 #include <boost/bind.hpp>
 #include <glib.h>
+#include <glib/gi18n.h>
 
 namespace Samoyed
 {
@@ -68,7 +72,7 @@ void FileSource::Removal::execute(FileSource &source)
     buffer->transformLineColumnToByteOffset(m_endLine,
                                             m_endColumn,
                                             endByteOffset);
-    buffer->remove(endIndex - buffer->cursor(), -1, -1);
+    buffer->remove(endByteOffset - buffer->cursor(), -1, -1);
     source.endWrite(m_revision,
                     oldError,
                     Range(buffer->cursor()));
@@ -98,10 +102,16 @@ bool FileSource::WriteExecutionWorker::step()
     return true;
 }
 
+char *FileSource::WriteExecutionWorker::description() const
+{
+    return g_strdup_printf(_("Executing queued writes for file \"%s\""),
+                           m_source->uri());
+}
+
 FileSource::FileSource(const Key &uri,
-                       unsigned long serialNumber,
+                       unsigned long id,
                        Manager<FileSource> &mgr):
-    Managed<FileSource>(serialNumber, mgr),
+    Managed<FileSource>(id, mgr),
     m_uri(uri),
     m_error(NULL),
     m_buffer(NULL),
@@ -153,7 +163,7 @@ FileSource::addObserver(const Changed::slot_type &callback)
     if (!m_revision.zero())
         callback(*this,
                  ChangeHint(Revision(), m_revision, Range(0, -1)));
-    else if (m_errorCode)
+    else if (m_error)
         callback(*this,
                  ChangeHint(Revision(), m_revision, Range()));
     return m_changed.connect(callback);
@@ -194,7 +204,7 @@ bool FileSource::beginWrite(bool trying,
     return true;
 }
 
-void FileSource::endWrite(Revision &revision,
+void FileSource::endWrite(const Revision &revision,
                           GError *error,
                           const Range &range)
 {
@@ -204,7 +214,7 @@ void FileSource::endWrite(Revision &revision,
     // Do not free 'oldError' if it is the same as 'error'.  This allows the
     // caller to pass the error code obtained from 'beginWrite()' back here if
     // the error code isn't changed.
-    if (oldEerror && oldError != error)
+    if (oldError && oldError != error)
         g_error_free(oldError);
     m_error = error;
     m_dataMutex.unlock();
@@ -227,7 +237,8 @@ void FileSource::queueWrite(Write *write)
     {
         while (!m_writeQueue.empty())
         {
-            Write *w = m_writeQueue.pop_front();
+            Write *w = m_writeQueue.front();
+            m_writeQueue.pop_front();
             delete w;
         }
     }
@@ -248,7 +259,8 @@ void FileSource::executeQueuedWrites()
         }
         do
         {
-            Write *write = writes.pop_front();
+            Write *write = writes.front();
+            writes.pop_front();
             write->execute(*this);
             delete write;
         }
@@ -264,10 +276,10 @@ void FileSource::requestWrite(Write *write)
     {
         // If we are in the main thread, use a background worker to execute the
         // queued write requests.
-        boost::mutex::scoped_lock workerLock(m_changeWorkerMutex);
+        boost::mutex::scoped_lock workerLock(m_writeWorkerMutex);
         if (!m_writeWorker)
         {
-            m_writeWorker = new ChangeExecutionWorker(
+            m_writeWorker = new WriteExecutionWorker(
                 Worker::defaultPriorityInCurrentThread(),
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
@@ -291,7 +303,7 @@ void FileSource::onWriteWorkerDone(Worker &worker)
         {
             // Some new write requests were queued.  Create a new background
             // worker to execute them.
-            m_writeWorker = new ChangeExecutionWorker(
+            m_writeWorker = new WriteExecutionWorker(
                 Worker::defaultPriorityInCurrentThread(),
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
@@ -350,7 +362,7 @@ void FileSource::onFileTextInserted(const File &file,
 {
     Insertion *ins =
         new Insertion(file.revision(), line, column, text, length);
-    requestUpdate(ins);
+    requestWrite(ins);
 }
 
 void FileSource::onFileTextRemoved(const File &file,
@@ -364,7 +376,7 @@ void FileSource::onFileTextRemoved(const File &file,
                                beginColumn,
                                endLine,
                                endColumn);
-    requestUpdate(rem);
+    requestWrite(rem);
 }
 
 void FileSource::update()
@@ -378,6 +390,12 @@ void FileSource::update()
     }
     Loading *load = new Loading;
     requestWrite(load);
+}
+
+void FileSource::setBuffer(TextBuffer *buffer)
+{
+    delete m_buffer;
+    m_buffer = buffer;
 }
 
 }

@@ -16,8 +16,9 @@ void ProjectAstManager::onFileSourceChanged(const FileSource &source,
 {
     // Broadcast the signal to all the projects.
     iterate(boost::bind(&ProjectAst::onFileSourceChanged,
-                        source, _2,
-                        changeHint, _3));
+                        _1,
+                        boost::cref(source),
+                        boost::cref(changeHint)));
 }
 
 }

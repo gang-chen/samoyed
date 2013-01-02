@@ -243,6 +243,7 @@ SourceFile::removeOnly(int beginLine, int beginColumn,
 {
     char *removed = getText(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
+    g_free(removed);
     onEdited(Removal(beginLine, beginColumn, endLine, endColumn), committer);
     m_source->onFileTextRemoved(*this,
                                 beginLine, beginColumn, endLine, endColumn);

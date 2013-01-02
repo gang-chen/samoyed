@@ -26,9 +26,9 @@ g++ worker.cpp -DSMYD_WORKER_UNIT_TEST -I../../../libs -lboost_thread -pthread\
 #ifdef SMYD_WORKER_UNIT_TEST
 # include <stdio.h>
 # include <boost/bind.hpp>
-# include <boost/scoped_array.hpp>
 # include <boost/date_time/posix_time/posix_time_types.hpp>
 #endif
+#include <glib.h>
 
 #ifdef SMYD_UNIT_TEST
 extern Samoyed::Scheduler scheduler;
@@ -102,9 +102,10 @@ void Worker::operator()()
             Application::instance().scheduler().schedule(*this);
 #endif
 #ifdef SMYD_WORKER_UNIT_TEST
-            boost::scoped_array<char> desc(description());
+            char *desc = description();
             printf("%s: Priority %u preempted by priority %u\n",
-                   desc.get(), m_priority, hpp);
+                   desc, m_priority, hpp);
+            g_free(desc);
 #endif
             return;
         }
@@ -182,9 +183,10 @@ void Worker::operator()()
 #endif
                         schedule(*this);
 #ifdef SMYD_WORKER_UNIT_TEST
-                    boost::scoped_array<char> desc(description());
+                    char *desc = description();
                     printf("%s: Priority %u preempted by priority %u\n",
-                           desc.get(), m_priority, hpp);
+                           desc, m_priority, hpp);
+                    g_free(desc);
 #endif
                     return;
                 }
@@ -277,8 +279,9 @@ public:
         void operator()(Worker &worker) const
         {
             Alarm &alarm = static_cast<Alarm &>(worker);
-            boost::scoped_array<char> desc(alarm.description());
-            printf("%s: Update requested\n", desc.get());
+            char *desc = alarm.description();
+            printf("%s: Update requested\n", desc);
+            g_free(desc);
             alarm.m_updatedTimes += m_times;
         }
 
@@ -302,15 +305,8 @@ public:
 
     virtual char *description() const
     {
-        int size =
-            snprintf(NULL, 0,
-                     "Alarm %d: Alarm every %d seconds for %d times",
-                     m_id, m_sec, m_times);
-        char *desc = new char[size + 1];
-        snprintf(desc, size + 1,
-                 "Alarm %d: Alarm every %d seconds for %d times",
-                 m_id, m_sec, m_times);
-        return desc;
+        return g_strdup_printf("Alarm %d: Alarm every %d seconds for %d times",
+                               m_id, m_sec, m_times);
     }
 
     bool update(int times)
@@ -321,13 +317,15 @@ public:
 private:
     virtual bool step()
     {
-        boost::scoped_array<char> desc(description());
+        char *desc = description();
         if (m_tick >= m_times)
         {
-            printf("%s: Done\n", desc.get());
+            printf("%s: Done\n", desc);
+            g_free(desc);
             return true;
         }
-        printf("%s: Tick %d\n", desc.get(), ++m_tick);
+        printf("%s: Tick %d\n", desc, ++m_tick);
+        g_free(desc);
         boost::system_time t = boost::get_system_time();
         t += boost::posix_time::seconds(m_sec);
         boost::thread::sleep(t);
@@ -370,25 +368,26 @@ public:
         boost::mutex::scoped_lock lock(m_mutex);
         if (m_alarm)
         {
-            boost::scoped_array<char> desc(m_alarm->description());
+            char *desc = m_alarm->description();
             if (incremental)
             {
                 if (m_alarm->update(times))
                 {
-                    printf("%s: Update requested successfully\n", desc.get());
+                    printf("%s: Update requested successfully\n", desc);
                 }
                 else
                 {
-                    printf("%s: Can't be updated\n", desc.get());
+                    printf("%s: Can't be updated\n", desc);
                     m_updatedTimes += times;
                 }
             }
             else
             {
                 m_alarm->cancel();
-                printf("%s: Cancel requested\n", desc.get());
+                printf("%s: Cancel requested\n", desc);
                 m_updatedTimes += times;
             }
+            g_free(desc);
         }
         else
         {
@@ -407,16 +406,17 @@ private:
         boost::mutex::scoped_lock lock(m_mutex);
         assert(m_alarm == &worker);
         Samoyed::Worker::State state = worker.state();
-        boost::scoped_array<char> desc(m_alarm->description());
+        char *desc = m_alarm->description();
         if (state == Samoyed::Worker::STATE_FINISHED)
         {
-            printf("%s: Finished\n", desc.get());
+            printf("%s: Finished\n", desc);
         }
         else
         {
             assert(state == Samoyed::Worker::STATE_CANCELED);
-            printf("%s: Canceled\n", desc.get());
+            printf("%s: Canceled\n", desc);
         }
+        g_free(desc);
         m_alarm = NULL;
         delete &worker;
         if (m_updatedTimes > 0)

@@ -62,7 +62,6 @@ gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer splash)
 
 gboolean addProgress(gpointer splash)
 {
-    char buffer[BUFSIZ];
     Samoyed::SplashScreen *s = static_cast<Samoyed::SplashScreen *>(splash);
     if (progress >= 1.)
     {
@@ -71,22 +70,22 @@ gboolean addProgress(gpointer splash)
         return FALSE;
     }
     progress += 0.2;
-    snprintf(buffer, sizeof(buffer),
-             "Testing splash screen.  Finished %.2f.", progress);
-    s->setProgress(progress, buffer);
+    char *desc = g_strdup_printf("Testing splash screen.  Finished %.2f.",
+                                 progress);
+    s->setProgress(progress, desc);
+    g_free(desc);
     return TRUE;
 }
 
 int main(int argc, char *argv[])
 {
-    char buffer[100];
     gtk_init(&argc, &argv);
     Samoyed::SplashScreen *splash =
         new Samoyed::SplashScreen("Splash screen test",
                                   "../../../data/splash-screen.png");
-    snprintf(buffer, sizeof(buffer),
-             "Testing splash screen. Finished %.2f.", progress);
-    splash->setProgress(progress, buffer);
+    char *decc = g_strdup_printf("Testing splash screen. Finished %.2f.", progress);
+    splash->setProgress(progress, desc);
+    g_free(desc);
     g_signal_connect(splash->gtkWidget(),
                      "delete-event",
                      G_CALLBACK(onDeleteEvent),

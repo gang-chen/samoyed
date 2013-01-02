@@ -100,6 +100,9 @@ public:
         return m_state;
     }
 
+    /**
+     * @return A description, in a memory chunk allocated by GTK+.
+     */
     virtual char *description() const = 0;
 
     unsigned int priority() const { return m_priority; }

@@ -10,3 +10,10 @@ libresources_la_SOURCES = \
     project-ast-manager.hpp \
     project-ast.hpp \
     project-configuration.hpp
+
+libresources_la_CPPFLAGS = \
+    -DSMYD_PKGDATADIR=\"$(pkgdatadir)\" \
+    -DSMYD_LIBDIR=\"$(libdir)\" \
+    -DSMYD_LOCALEDIR=\"$(localedir)\" \
+    $(BOOST_CPPFLAGS) \
+    $(GTK_CFLAGS)

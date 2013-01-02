@@ -21,13 +21,13 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 #include "revision.hpp"
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
 # include "scheduler.hpp"
+# include <stdio.h>
+# include <string.h>
 #else
 # include "../application.hpp"
 # include "../resources/project-configuration-manager.hpp"
 # include "../resources/project-configuration.hpp"
 #endif
-#include <string.h>
-#include <stdio.h>
 #include <string>
 #include <boost/bind.hpp>
 #include <glib.h>
@@ -91,8 +91,8 @@ bool TextFileSaver::step()
                                 TRUE,
                                 G_FILE_CREATE_NONE,
                                 NULL,
-                                &error());
-    if (error())
+                                &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
     // Open the encoding converter and setup the input stream.
@@ -101,8 +101,8 @@ bool TextFileSaver::step()
     else
     {
         encodingConverter =
-            g_charset_converter_new(encoding.c_str(), "UTF-8", &error());
-        if (error())
+            g_charset_converter_new(encoding.c_str(), "UTF-8", &m_error);
+        if (m_error)
             goto CLEAN_UP;
         converterStream =
             g_converter_output_stream_new(G_OUTPUT_STREAM(fileStream),
@@ -115,17 +115,17 @@ bool TextFileSaver::step()
                           m_text,
                           m_length == -1 ? strlen(m_text) : m_length,
                           NULL,
-                          &error());
-    if (error())
+                          &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
-    g_output_stream_close(stream, NULL, &error());
-    if (error())
+    g_output_stream_close(stream, NULL, &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
     // Get the revision.
-    revision().synchronize(file, &error());
-    if (error())
+    m_revision.synchronize(file, &m_error);
+    if (m_error)
         goto CLEAN_UP;
 
 CLEAN_UP:
@@ -142,10 +142,7 @@ CLEAN_UP:
 
 char *TextFileSaver::description() const
 {
-    int size = snprintf(NULL, 0, _("Saving text file \"%s\""), uri());
-    char *desc = new char[size + 1];
-    snprintf(desc, size + 1, _("Saving text file \"%s\""), uri());
-    return desc;
+    return g_strdup_printf(_("Saving text file \"%s\""), uri());
 }
 
 }

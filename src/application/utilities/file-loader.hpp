@@ -41,14 +41,11 @@ public:
     }
 
 protected:
-    Revision &revision() { return m_revision; }
-
-    GError *&error() { return m_error; }
+    Revision m_revision;
+    GError *m_error;
 
 private:
     const std::string m_uri;
-    Revision m_revision;
-    GError *m_error;
 };
 
 }

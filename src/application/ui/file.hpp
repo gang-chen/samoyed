@@ -191,10 +191,10 @@ public:
      */
     void unfreeze();
 
-    Editor *editors() const { return m_editors; }
+    Editor *editors() const { return m_firstEditor; }
 
     boost::signals2::connection
-    addCloseCallback(const Closed::slot_type &callback)
+    addCloseCallback(const Close::slot_type &callback)
     { return m_close.connect(callback); }
 
     boost::signals2::connection

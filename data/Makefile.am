@@ -1,5 +1,5 @@
 dist_pkgdata_DATA = \
-    actions-ui.xml
+    actions-ui.xml \
     splash-screen.png
 
 EXTRA_DIST = \

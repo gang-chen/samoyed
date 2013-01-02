@@ -23,3 +23,10 @@ libutilities_la_SOURCES = \
     text-file-saver.hpp \
     utf8.hpp \
     worker.hpp
+
+libutilities_la_CPPFLAGS = \
+    -DSMYD_PKGDATADIR=\"$(pkgdatadir)\" \
+    -DSMYD_LIBDIR=\"$(libdir)\" \
+    -DSMYD_LOCALEDIR=\"$(localedir)\" \
+    $(BOOST_CPPFLAGS) \
+    $(GTK_CFLAGS)

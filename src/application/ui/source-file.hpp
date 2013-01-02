@@ -163,23 +163,20 @@ public:
     int lineCount() const;
 
     /**
-     * @return The whole text contents, in a memory chunk allocated by GTK+.
-     */
-    char *text() const;
-
-    /**
      * @param beginLine The line number of the first character to be returned,
      * starting from 0.
      * @param beginColumn The column number of the first character to be
      * returned, the character index, starting from 0.
      * @param endLine The line number of the exclusive last character to be
-     * returned, starting from 0.
+     * retrieved, starting from 0; or -1 to retrieve the text until the last
+     * line.
      * @param endColumn The column number of the exclusive last character to be
-     * returned, the character index, starting from 0.
+     * retrieved, the character index, starting from 0; or -1 to retrieve the
+     * text until the last column.
      * @return The text contents, in a memory chunk allocated by GTK+.
      */
-    char *text(int beginLine, int beginColumn,
-               int endLine, int endColumn) const;
+    char *getText(int beginLine, int beginColumn,
+                  int endLine, int endColumn) const;
 
     /**
      * @param line The line number of the insertion position, starting from 0.
@@ -198,9 +195,10 @@ public:
      * @param beginColumn The column number of the first character to be
      * removed, the character index, starting from 0.
      * @param endLine The line number of the exclusive last character to be
-     * removed, starting from 0.
+     * removed, starting from 0; or -1 to remove the text until the last line.
      * @param endColumn The column number of the exclusive last character to be
-     * removed, the character index, starting from 0.
+     * removed, the character index, starting from 0; or -1 to remove the text
+     * until the last column.
      */
     void remove(int beginLine, int beginColumn, int endLine, int endColumn,
                 SourceEditor *committer);

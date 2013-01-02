@@ -4,14 +4,17 @@
 #ifndef SMYD_PROJECT_AST_HPP
 #define SMYD_PROJECT_AST_HPP
 
-#include "file-ast-manager.hpp"
-#include "project-symbol-table-manager.hpp"
+#include "../utilities/managed.hpp"
+#include "../utilities/misc.hpp"
+#include "../utilities/manager.hpp"
+#include <string>
 
 namespace Samoyed
 {
 
 class FileSource;
 class ChangeHint;
+class ProjectAstManager;
 class ProjectConfiguration;
 
 /**
@@ -27,18 +30,23 @@ class ProjectConfiguration;
 class ProjectAst
 {
 public:
+    typedef ComparablePointer<const char *> Key;
+    typedef CastableString KeyHolder;
+    Key key() const { return m_uri.c_str(); }
 
-private:
     bool onFileSourceChanged(const FileSource &source,
                              const ChangeHint &changeHint);
 
-    FileAstManager m_fileAstManager;
+private:
+    ProjectAst(const Key &uri, unsigned long id, ProjectAstManager &mgr);
 
-    ProjectSymbolTableManager m_symbolTableManager;
+    ~ProjectAst();
+
+    std::string m_uri;
 
     ReferencePointer<ProjectConfiguration> m_config;
 
-    friend class ProjectAstManager;
+    template<class> friend class Manager;
 };
 
 }
