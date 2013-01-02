@@ -21,7 +21,7 @@
 #endif
 #include <boost/bind.hpp>
 #include <glib.h>
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 
 namespace Samoyed
 {
