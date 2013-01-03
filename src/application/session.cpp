@@ -181,8 +181,8 @@ XmlElementEditor *XmlElementEditor::read(xmlDocPtr doc,
                                          xmlNodePtr node,
                                          std::string &error)
 {
-    char buffer[BUFSIZ];
     xmlChar *value;
+    char *cp;
     XmlElementEditor *editor = new XmlElementEditor;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
@@ -221,21 +221,22 @@ XmlElementEditor *XmlElementEditor::read(xmlDocPtr doc,
     if (editor->m_fileUri.empty())
     {
         delete editor;
-        snprintf(buffer, sizeof(buffer),
-                 _("File %s, line %d: No file URI is specified for the "
-                   "editor.\n"),
-                 doc->name, node->line);
-        error += buffer;
+        cp = g_strdup_printf(
+            _("File %s, line %d: No file URI is specified for the editor.\n"),
+            doc->name, node->line);
+        error += cp;
+        g_free(cp);
         return NULL;
     }
     if (editor->m_projectUri.empty())
     {
         delete editor;
-        snprintf(buffer, sizeof(buffer),
-                 _("File %s, line %d: No project URI is specified for the "
-                   "editor.\n"),
-                 doc->name, node->line);
-        error += buffer;
+        cp = g_strdup_printf(
+            _("File %s, line %d: No project URI is specified for the "
+              "editor.\n"),
+            doc->name, node->line);
+        error += cp;
+        g_free(cp);
         return NULL;
     }
     return editor;
@@ -243,7 +244,7 @@ XmlElementEditor *XmlElementEditor::read(xmlDocPtr doc,
 
 xmlNodePtr XmlElementEditor::write() const
 {
-    char buffer[BUFSIZ];
+    char *cp;
     xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("editor"));
     xmlNewTextChild(node, NULL,
                     static_cast<const xmlChar *>("file-uri"),
@@ -251,14 +252,16 @@ xmlNodePtr XmlElementEditor::write() const
     xmlNewTextChild(node, NULL,
                     static_cast<const xmlChar *>("project-uri"),
                     static_cast<const xmlChar *>(m_projectUri.c_str()));
-    snprintf(buffer, sizeof(buffer), "%d", m_cursorLine);
+    cp = g_strdup_printf("%d", m_cursorLine);
     xmlNewTextChild(node, NULL,
                     static_cast<const xmlChar *>("cursor-line"),
-                    static_cast<const xmlChar *>(buffer));
-    snprintf(buffer, sizeof(buffer), "%d", m_cursorColumn);
+                    static_cast<const xmlChar *>(cp));
+    g_free(cp);
+    cp = g_strdup_printf("%d", m_cursorColumn);
     xmlNewTextChild(node, NULL,
                     static_cast<const xmlChar *>("cursor-column"),
-                    static_cast<const xmlChar *>(buffer));
+                    static_cast<const xmlChar *>(cp));
+    g_free(cp);
     return node;
 }
 
@@ -403,17 +406,18 @@ XmlElementEditorGroup *XmlElementEditorGroup::read(xmlDocPtr doc,
 
 xmlNodePtr XmlElementEditorGroup::write() const
 {
-    char buffer[BUFSIZ];
+    char *cp;
     xmlNodePtr node =
         xmlNewNode(NULL, static_cast<const xmlChar *>("editor-group"));
     for (std::vector<XmlElementEditor *>::const_iterator it = m_editors.begin();
          it != m_editors.end();
          ++it)
         xmlAddChild(node, (*it)->write());
-    snprintf(buffer, sizeof(buffer), "%d", m_currentEditorIndex);
+    cp = g_strdup_printf("%d", m_currentEditorIndex);
     xmlNewTextChild(node, NULL,
                     static_cast<const xmlChar *>("current-editor-index"),
-                    static_cast<const xmlChar *>(buffer));
+                    static_cast<const xmlChar *>(cp));
+    g_free(cp);
     return node;
 }
 
@@ -479,8 +483,8 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
                                               std::string &error,
                                               bool inMainWindowRoot)
 {
-    char buffer[BUFSIZ];
     xmlChar *value;
+    char *cp;
     XmlElementSplitPane *splitPane = new XmlElementSplitPane;
     for (xmlNodePtr child = node->children; child; child->next)
     {
@@ -504,27 +508,30 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
         {
             if (splitPane->m_children[0] && splitPane->m_children[1])
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: More than two panes contained by "
-                           "the split pane.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: More than two panes contained by the "
+                      "split pane.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else if (!inMainWindowRoot)
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: A project explorer contained by "
-                           "the auxilliary window.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: A project explorer contained by the "
+                      "auxilliary window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else if (splitPane->m_children[0])
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: A project explorer in the right "
-                           "or bottom half of the main window.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: A project explorer in the right or "
+                      "bottom half of the main window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else
             {
@@ -540,11 +547,12 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
         {
             if (splitPane->m_children[0] && splitPane->m_children[1])
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: More than two panes contained by "
-                           "the split pane.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: More than two panes contained by the "
+                      "split pane.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else if (!inMainWindowRoot)
             {
@@ -565,11 +573,12 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             }
             else
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: An editor group in the left or "
-                           "top half of the main window.\n"
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: An editor group in the left or top "
+                      "half of the main window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
         }
         else if (xmlStrcmp(child->name,
@@ -578,11 +587,12 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
         {
             if (splitPane->m_children[0] && splitPane->m_children[1])
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: More than two panes contained by "
-                           "the split pane.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: More than two panes contained by the "
+                      "split pane.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else if (!inMainWindowRoot)
             {
@@ -605,11 +615,12 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             }
             else
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: A split pane in the left or top "
-                           "half of the main window.\n"
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: A split pane in the left or top half "
+                      "of the main window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
         }
     }
@@ -619,18 +630,19 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
     {
         XmlElementBasePane *child = splitPane->m_children[0];
         delete splitPane;
-        snprintf(buffer, sizeof(buffer),
-                 _("File %s, line %d: Only one pane contained by the split "
-                   "pane.\n"),
-                 doc->name, node->line);
-        error += buffer;
+        cp = g_strdup_printf(
+            _("File %s, line %d: Only one pane contained by the split pane.\n"),
+            doc->name, node->line);
+        error += cp;
+        g_free(cp);
         return child;
     }
     delete splitPane;
-    snprintf(buffer, sizeof(buffer),
-             _("File %s, line %d: No pane contained by the split pane.\n"),
-             doc->name, node->line);
-    error += buffer;
+    cp = g_strdup_printf(
+        _("File %s, line %d: No pane contained by the split pane.\n"),
+        doc->name, node->line);
+    error += cp;
+    g_free(cp);
     return NULL;
 }
 
@@ -716,8 +728,8 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
                                          std::string &error,
                                          bool isMainWindow)
 {
-    char buffer[BUFSIZ];
     xmlChar *value;
+    char *cp;
     XmlElementWindow *window = new XmlElementWindow;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
@@ -797,19 +809,21 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
         {
             if (window->m_content)
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: More than one panes or split "
-                           "panes contained by the window.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: More than one panes or split panes "
+                      "contained by the window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: A project explorer contained in "
-                           "the window as the root.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: A project explorer contained in the "
+                      "window as the root.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
         }
         else if (xmlStrcmp(child->name,
@@ -818,19 +832,21 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
         {
             if (window->m_content)
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: More than one panes or split "
-                           "panes contained by the window.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: More than one panes or split panes "
+                      "contained by the window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else if (isMainWindow)
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: An editor group contained in the "
-                           "main window as the root.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: An editor group contained in the main "
+                      "window as the root.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else
             {
@@ -846,11 +862,12 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
         {
             if (window->m_content)
             {
-                snprintf(buffer, sizeof(buffer),
-                         _("File %s, line %d: More than one panes or split "
-                           "panes contained by the window.\n"),
-                         doc->name, child->line);
-                error += buffer;
+                cp = g_strdup_printf(
+                    _("File %s, line %d: More than one panes or split panes "
+                      "contained by the window.\n"),
+                    doc->name, child->line);
+                error += cp;
+                g_free(cp);
             }
             else
             {
@@ -864,11 +881,12 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
     if (!m_content)
     {
         delete window;
-        snprintf(buffer, sizeof(buffer),
-                 _("File %s, line %d: No pane or split pane contained by the "
-                   "window.\n"),
-                 doc->name, node->line);
-        error += buffer;
+        cp = g_strdup_printf(
+            _("File %s, line %d: No pane or split pane contained by the "
+              "window.\n"),
+            doc->name, node->line);
+        error += cp;
+        g_free(cp);
         return NULL;
     }
     return window;
@@ -876,7 +894,6 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
 
 xmlNodePtr XmlElementWindow::write() const
 {
-    char buffer[BUFSIZ];
     xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("window"));
     snprintf(buffer, sizeof(buffer), "%d", m_configuration.m_screenIndex);
     xmlNewTextChild(node, NULL,
@@ -917,7 +934,7 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                                            xmlNodePtr node,
                                            std::string &error)
 {
-    char buffer[BUFSIZ];
+    char *cp;
     XmlElementSession *session = new XmlElementSession;
     for (xmlNodePtr child = node->children; child; child->next)
     {
@@ -934,10 +951,11 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
     if (session->m_windows.empty())
     {
         delete session;
-        snprintf(buffer, sizeof(buffer),
-                 _("File %s, line %d: No window in the session.\n"),
-                 doc->name, node->line);
-        error += buffer;
+        cp = g_strdup_printf(
+            _("File %s, line %d: No window in the session.\n"),
+            doc->name, node->line);
+        error += cp;
+        g_free(cp);
         return NULL;
     }
     return session;

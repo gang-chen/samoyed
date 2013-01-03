@@ -9,7 +9,7 @@
 #include <vector>
 #include <set>
 #include <deque>
-#include <boost/utility>
+#include <boost/utility.hpp>
 #include <boost/thread/mutex.hpp>
 
 namespace Samoyed
@@ -53,8 +53,6 @@ public:
 
     static bool allSessionNames(std::vector<std::string> &names);
 
-    const char *name() const { return m_name.c_str(); }
-
     /**
      * Create a new session and start it.
      */
@@ -66,6 +64,14 @@ public:
      * not.
      */
     static Session *restore(const char *name);
+
+    static bool locked(const char *name);
+
+    static bool remove(const char *name);
+
+    static bool rename(const char *oldName, const char *newName);
+
+    const char *name() const { return m_name.c_str(); }
 
     /**
      * Save this session before quitting it.

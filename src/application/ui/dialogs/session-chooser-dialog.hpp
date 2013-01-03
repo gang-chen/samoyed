@@ -5,7 +5,7 @@
 #define SMYD_SESSION_CHOOSER_DIALOG_HPP
 
 #include <string>
-#include <boost/utility>
+#include <boost/utility.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
