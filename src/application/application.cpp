@@ -162,7 +162,7 @@ bool Application::startSession()
     {
         // By default restore the last session.
         std::string name;
-        if (Session::lastSessionName(name))
+        if (Session::readLastSessionName(name))
         {
             m_session = Session::restore(name.c_str());
             restore = true;

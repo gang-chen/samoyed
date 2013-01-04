@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
+    lock-file.cpp \
     revision.cpp \
     signal.cpp \
     text-file-loader.cpp \
@@ -11,6 +12,7 @@ libutilities_la_SOURCES = \
     change-hint.hpp \
     file-loader.hpp \
     file-saver.hpp \
+    lock-file.hpp \
     managed.hpp \
     manager.hpp \
     misc.hpp \

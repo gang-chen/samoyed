@@ -11,10 +11,8 @@ g++ splash-screen.cpp -DSMYD_SPLASH_SCREEN_UNIT_TEST\
 # include <config.h>
 #endif
 #include "splash-screen.hpp"
+#include <glib.h>
 #include <gtk/gtk.h>
-#ifdef SMYD_SPLASH_SCREEN_UNIT_TEST
-# include <stdio.h>
-#endif
 
 namespace Samoyed
 {

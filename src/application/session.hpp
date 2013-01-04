@@ -4,6 +4,7 @@
 #ifndef SMYD_SESSION_HPP
 #define SMYD_SESSION_HPP
 
+#include "utilities/lock-file.hpp"
 #include "utilities/worker.hpp"
 #include <string>
 #include <vector>
@@ -31,27 +32,40 @@ namespace Samoyed
  * edits are saved in replay files.  When the session is restored, these files
  * can be recovered by replaying the edits saved in the replay files.
  *
- * The XML file, the lock file and the file recording the unsaved files for a
- * session are in a directory whose name is the session name.
+ * The XML file and the file recording the unsaved files for a session are in a
+ * directory whose name is the session name.
  *
  * The sessions directory: USER/sessions.
  * The last session name is stored in USER/last-session.
  * The session directory: USER/sessions/SESSION.
  * The session file: USER/sessions/SESSION/session.xml.
- * The session lock file: USER/sessions/SESSION/lock.
+ * The session lock file: USER/sessions/SESSION.lock.
  * The unsaved file URIs in a session are stored in
  * USER/sessions/SESSION/unsaved-files.
  */
 class Session: public boost::noncopyable
 {
 public:
-    static bool makeSessionsDirectory();
+    enum LockedState
+    {
+        STATE_UNLOCKED,
+        STATE_LOCKED_BY_THIS_PROCESS,
+        STATE_LOCKED_BY_ANOTHER_PROCESS
+    };
 
     static void registerCrashHandler();
 
-    static bool lastSessionName(std::string &name);
+    static bool makeSessionsDirectory();
 
-    static bool allSessionNames(std::vector<std::string> &names);
+    static bool readLastSessionName(std::string &name);
+
+    static bool readAllSessionNames(std::vector<std::string> &names);
+
+    static LockedState queryLockedState(const char *name);
+
+    static bool remove(const char *name);
+
+    static bool rename(const char *oldName, const char *newName);
 
     /**
      * Create a new session and start it.
@@ -64,12 +78,6 @@ public:
      * not.
      */
     static Session *restore(const char *name);
-
-    static bool locked(const char *name);
-
-    static bool remove(const char *name);
-
-    static bool rename(const char *oldName, const char *newName);
 
     const char *name() const { return m_name.c_str(); }
 
@@ -101,7 +109,7 @@ private:
     class UnsavedFileListRead: public UnsavedFileListRequest
     {
     public:
-        UnsavedFileListRead(Session &session): m_session(session)
+        UnsavedFileListRead(Session &session): m_session(session) {}
         virtual void execute(const Session &session) const;
     private:
         Session &m_session;
@@ -140,8 +148,11 @@ private:
     static gboolean
         onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param);
 
-    Session(const char *name);
+    Session(const char *name, const char *lockFileName);
     ~Session();
+
+    bool lock();
+    void unlock();
 
     void queueUnsavedFileListRequest(UnsavedFileListRequest *request);
     void executeQueuedUnsavedFileListRequests();
@@ -150,6 +161,8 @@ private:
     bool m_destroy;
 
     const std::string m_name;
+
+    LockFile m_lockFile;
 
     std::set<std::string> m_unsavedFileUris;
 

@@ -12,6 +12,7 @@
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
 #include "ui/file-recoverer.hpp"
+#include "utilities/lock-file.hpp"
 #include "utilities/signal.hpp"
 #include "utilities/scheduler.hpp"
 #include <assert.h>
@@ -21,6 +22,9 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <glib.h>
 #include <gtk/gtk.h>
@@ -894,13 +898,13 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
 
 xmlNodePtr XmlElementWindow::write() const
 {
+    char *cp;
     xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("window"));
-    snprintf(buffer, sizeof(buffer), "%d", m_configuration.m_screenIndex);
+    cp = g_strdup_printf("%d", m_configuration.m_screenIndex);
     xmlNewTextChild(node, NULL,
                     static_cast<const xmlChar *>("screen-index"),
-                    static_cast<const xmlChar *>(buffer));
-
-
+                    static_cast<const xmlChar *>(cp));
+    g_free(cp);
 }
 
 XmlElementWindow *XmlElementWindow::save(const Samoyed::Window &window)
@@ -1111,140 +1115,6 @@ bool writeLastSessionName(const char *name)
     return true;
 }
 
-// Report the error.
-bool lockSession(const char *name)
-{
-    std::string lockFn(Application::instance().userDirectoryName());
-    lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    lockFn += name;
-    lockFn += G_DIR_SEPARATOR_S "lock";
-
-    int lockFd;
-
-RETRY:
-    // Create the lock file.
-    lockFd = g_open(lockFn.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
-    if (lockFd == -1)
-    {
-        if (errno != EEXIST)
-        {
-            // The lock file doesn't exist but we can't create the lock file.
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create lock file \"%s\" to lock session "
-                  "\"%s\". %s."),
-                lockFn.c_str(), name, g_strerror(errno));
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-
-        // Read the locking process ID.  Don't repot the error if the read is
-        // failed because another process may be writing the lock file.
-        pid_t lockingPid;
-        lockFd = g_open(lockFn.c_str(), O_RDONLY, 0);
-        if (lockFd == -1)
-        {
-            if (errno == ENOENT)
-                // The lock file doesn't exist.  Retry to create it.
-                goto RETRY;
-            lockingPid = -1;
-        }
-        else
-        {
-            char buffer[BUFSIZ];
-            int length = read(fd, buffer, sizeof(buffer) - 1);
-            if (length <= 0)
-                lockingPid = -1;
-            else
-            {
-                buffer[length] = '\0';
-                lockingPid = atoi(buffer);
-            }
-            close(lockFd);
-        }
-        if (lockingPid < 0)
-        {
-            // The session is being locked by another instance of the
-            // application.  But we can't read the process ID.
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to start session \"%s\" because the session "
-                  "is being locked by another instance of Samoyed."),
-                name);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-        if (lockingPid != getpid())
-        {
-            // The session is being locked by another instance of the
-            // application.
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to start session \"%s\" because the session "
-                  "is being locked by another instance of Samoyed, whose "
-                  "process ID is %d. If that instance does not exist, remove "
-                  "the lock file \"%s\" and retry to start session \"%s\".\n"),
-                name, lockingPid, lockFn.c_str(), name);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-
-        // The session is being locked by this instance!
-        return true;
-    }
-
-    // Write our process ID.
-    char buffer[BUFSIZ];
-    int length = snprintf(buffer, BUFSIZ, "%d", getpid());
-    length = write(lockFd, buffer, length);
-    if (length == -1)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to create lock file \"%s\" to lock session "
-              "\"%s\". %s."),
-            lockFn.c_str(), name(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        close(lockFd);
-        // Remove the lock file.
-        g_unlink(lockFn.c_str());
-        return false;
-    }
-    if (close(lockFd))
-    {
-        g_unlink(lockFn.c_str());
-        return false;
-    }
-    return true;
-}
-
-// Don't report the error.
-bool unlockSession(const char *name)
-{
-    // Remove the lock file.
-    std::string lockFn(Application::instance().userDirectoryName());
-    lockFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    lockFn += name;
-    lockFn += G_DIR_SEPARATOR_S "lock";
-    return !g_unlink(lockFn.c_str());
-}
-
 }
 
 namespace Samoyed
@@ -1311,7 +1181,7 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
     // Show the unsaved files.
     FileRecoverer *recoverer =
         new FileRecoverer(p->m_session.unsavedFileListUris());
-    Application::instance().currentWindow().addPane(recoverer);
+    Application::instance().currentWindow().addBar(*recoverer);
     delete p;
     return FALSE;
 }
@@ -1419,11 +1289,10 @@ bool Session::makeSessionsDirectory()
 // Don't report the error.
 void Session::onCrashed(int signalNumber)
 {
-    // Remove the lock file and set the last session name.
+    // Set the last session name.
     Session *session = Application::instance().session();
     if (!session)
         return;
-    unlockSession(session->name());
     writeLastSessionName(session->name());
 }
 
@@ -1433,7 +1302,7 @@ void Session::registerCrashHandler()
 }
 
 // Don't report the error.
-bool Session::lastSessionName(std::string &name)
+bool Session::readLastSessionName(std::string &name)
 {
     std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
@@ -1449,7 +1318,7 @@ bool Session::lastSessionName(std::string &name)
 }
 
 // Report the error.
-bool Session::allSessionNames(std::vector<std::string> &names)
+bool Session::readAllSessionNames(std::vector<std::string> &names)
 {
     // Each sub-directory in directory "sessions" stores a session.  Its name is
     // the session name.
@@ -1486,16 +1355,16 @@ bool Session::allSessionNames(std::vector<std::string> &names)
     return true;
 }
 
-Session::Session(const char *name):
+Session::Session(const char *name, const char *lockFileName):
     m_destroy(false),
     m_name(name),
+    m_lockFile(lockFileName),
     m_unsavedFileListRequestWorker(NULL)
 {
 }
 
 Session::~Session()
 {
-    unlockSession(m_name.c_str());
     writeLastSessionName(m_name.c_str());
 }
 
@@ -1506,8 +1375,78 @@ void Session::destroy()
         delete this;
 }
 
+// Report the error.
+bool Session::lock()
+{
+    LockFile::State state = m_lockFile.lock();
+
+    if (state == LockFile::STATE_LOCKED_BY_THIS_LOCK)
+        return true;
+
+    if (state == LockFile::STATE_FAILED)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to create lock file \"%s\" to lock session "
+              "\"%s\". %s."),
+            m_lockFile.fileName(), name, g_strerror(errno));
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return false;
+    }
+
+    if (state == LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to start session \"%s\" because the session is "
+              "being locked by process %d on host \"%s\". If that process does "
+              "not exist or is not an instance of Samoyed, remove lock file "
+              "\"%s\" and retry to start session \"%s\".\n"),
+            name,
+            m_lockFile.lockingProcessid(),
+            m_lockFile.lockingHostName(),
+            m_lockFile.fileName(),
+            name);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return false;
+    }
+
+    // If it is said to be locked by this process but not this lock, we assume
+    // it is a stale lock.
+    asssert(state == LockFile::STATE_LOCKED_BY_THIS_PROCESS);
+    m_lockFile.unlock(true);
+    return lock();
+}
+
+void unlockSession::unlock()
+{
+    m_lockFile.unlock();
+}
+
 Session *Session::create(const char *name)
 {
+    std::string lockFileName(Application::instance().userDirectoryName());
+    lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    lockFileName += name;
+    lockFileName += ".lock";
+
+    Session *session = new Session(name, lockFileName);
+
+    // Lock the session.
+    if (!session->lock())
+    {
+        delete session;
+        return NULL;
+    }
+
     // Create the session directory.
     std::string sessionDirName(Application::instance().userDirectoryName());
     sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
@@ -1524,14 +1463,8 @@ Session *Session::create(const char *name)
             sessionDirName.c_str(), name, g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        return false;
-    }
-
-    // Lock it.
-    if (!lockSession(name))
-    {
-        g_unlink(sessionDirName.c_str());
-        return false;
+        delete session;
+        return NULL;
     }
 
     // Create the main window for the new session.
@@ -1543,30 +1476,45 @@ Session *Session::create(const char *name)
                                          editorGroup);
     new Window(Window::Confignuration(), splitPane);
 
-    return new Session(name);
+    return session;
 }
 
 Session *Session::restore(const char *name)
 {
-    std::string sessionDirFn(Application::instance().userDirectoryName());
-    sessionDirFn += G_DIR_SEPARATOR_S sessions G_DIR_SEPARATOR_S;
-    sessionDirFn += name;
+    std::string lockFileName(Application::instance().userDirectoryName());
+    lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    lockFileName += name;
+    lockFileName += ".lock";
+
+    Session *session = new Session(name, lockFileName);
+
+    // Lock the session.
+    if (!session->lock())
+    {
+        delete session;
+        return NULL;
+    }
 
     // Read the session file.
+    std::string sessionDirName(Application::instance().userDirectoryName());
+    sessionDirName += G_DIR_SEPARATOR_S sessions G_DIR_SEPARATOR_S;
+    sessionDirName += name;
     std::string sessionFn(sessionDirName + G_DIR_SEPARATOR_S "session.xml");
     XmlElementSession *s = readSessionFile(sessionFn.c_str(), name);
     if (!s)
+    {
+        delete session;
         return NULL;
+    }
 
     // Restore the session.
     if (!s->restore())
     {
         delete s;
+        delete session;
         return NULL;
     }
     delete s;
-
-    Session *session = new Session;
 
     // Check to see if the session has any unsaved files.
     queueUnsavedFileListRequest(new UnsavedFileListRead(*session));
