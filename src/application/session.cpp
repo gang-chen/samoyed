@@ -1097,24 +1097,6 @@ XmlElementSession *readSessionFile(const char *fileName,
     return session;
 }
 
-// Don't report the error.
-bool writeLastSessionName(const char *name)
-{
-    std::string fileName(Application::instance().userDirectoryName());
-    fileName += G_DIR_SEPARATOR_S "last-session";
-    int fd = g_open(fileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd == -1)
-        return false;
-    if (write(fd, name, strlen(name)) == -1)
-    {
-        close(fd);
-        return false;
-    }
-    if (close(fd))
-        return false;
-    return true;
-}
-
 }
 
 namespace Samoyed
@@ -1262,6 +1244,21 @@ void Session::executeQueuedUnsavedFileListRequests()
     }
 }
 
+// Don't report the error.
+void Session::onCrashed(int signalNumber)
+{
+    // Set the last session name.
+    Session *session = Application::instance().session();
+    if (!session)
+        return;
+    writeLastSessionName(session->name());
+}
+
+void Session::registerCrashHandler()
+{
+    Signal::registerCrashHandler(onCrashed);
+}
+
 // Report the error.
 bool Session::makeSessionsDirectory()
 {
@@ -1287,18 +1284,21 @@ bool Session::makeSessionsDirectory()
 }
 
 // Don't report the error.
-void Session::onCrashed(int signalNumber)
+bool Session::writeLastSessionName(const char *name)
 {
-    // Set the last session name.
-    Session *session = Application::instance().session();
-    if (!session)
-        return;
-    writeLastSessionName(session->name());
-}
-
-void Session::registerCrashHandler()
-{
-    Signal::registerCrashHandler(onCrashed);
+    std::string fileName(Application::instance().userDirectoryName());
+    fileName += G_DIR_SEPARATOR_S "last-session";
+    int fd = g_open(fileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1)
+        return false;
+    if (write(fd, name, strlen(name)) == -1)
+    {
+        close(fd);
+        return false;
+    }
+    if (close(fd))
+        return false;
+    return true;
 }
 
 // Don't report the error.
@@ -1400,20 +1400,29 @@ bool Session::lock()
 
     if (state == LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS)
     {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_MODAL,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to start session \"%s\" because the session is "
-              "being locked by process %d on host \"%s\". If that process does "
-              "not exist or is not an instance of Samoyed, remove lock file "
-              "\"%s\" and retry to start session \"%s\".\n"),
-            name,
-            m_lockFile.lockingProcessid(),
-            m_lockFile.lockingHostName(),
-            m_lockFile.fileName(),
-            name);
+        const char *lockHostName = m_lockFile.lockingHostName();
+        pid_t lockPid = m_lockFile.lockingProcessId();
+        GtkWidget *dialog;
+        if (*lockHostName != '\0' && lockPid != -1)
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to start session \"%s\" because the session "
+                  "is being locked by process %d on host \"%s\". If that "
+                  "process does not exist or is not an instance of Samoyed, "
+                  "remove lock file \"%s\" and retry to start session \"%s\"."),
+                name, lockPid, lockHostName, m_lockFile.fileName(), name);
+        else
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_MODAL,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to start session \"%s\" because the session "
+                  "is being locked by another process."),
+                name);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return false;
@@ -1426,7 +1435,7 @@ bool Session::lock()
     return lock();
 }
 
-void unlockSession::unlock()
+void Session::unlock()
 {
     m_lockFile.unlock();
 }
