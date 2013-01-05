@@ -1112,7 +1112,7 @@ void Sesssion::UnsavedFileListRead::execute(const Session &session) const
 
     char *text;
     std::set<std::string> unsavedFileUris;
-    if (g_file_get_contents(fileName, &text, NULL, NULL))
+    if (g_file_get_contents(unsavedFn.c_str(), &text, NULL, NULL))
     {
         for (char *cp = strtok(text, DELIMITERS);
              cp;
@@ -1355,6 +1355,36 @@ bool Session::readAllSessionNames(std::vector<std::string> &names)
     return true;
 }
 
+Session::LockState Session::queryLockState(const char *name)
+{
+    std::string lockFileName(Application.instance().userDirectoryName());
+    lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    lockFileName += name;
+    lockFileName += ".lock";
+    
+    LockFile lockFile(lockFileName.c_str());
+    LockFile::State state = lockFile.queryState();
+    if (state == LockFile::STATE_UNLOCKED)
+        return STATE_UNLOCKED;
+    if (state == LockFile::STATE_LOCKED_BY_THIS_PROCESS)
+        return STATE_LOCKED_BY_THIS_PROCESS;
+    return STATE_LOCKED_BY_ANOTHER_PROCESS;
+}
+
+bool Session::remove(const char *name)
+{
+    std::string lockFileName(Application.instance().userDirectoryName());
+    lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    lockFileName += name;
+    lockFileName += ".lock";
+    
+    LockFile lockFile(lockFileName.c_str());
+}
+
+bool Session::rename(const char *oldName, const char *newName)
+{
+}
+
 Session::Session(const char *name, const char *lockFileName):
     m_destroy(false),
     m_name(name),
@@ -1505,11 +1535,11 @@ Session *Session::restore(const char *name)
     }
 
     // Read the session file.
-    std::string sessionDirName(Application::instance().userDirectoryName());
-    sessionDirName += G_DIR_SEPARATOR_S sessions G_DIR_SEPARATOR_S;
-    sessionDirName += name;
-    std::string sessionFn(sessionDirName + G_DIR_SEPARATOR_S "session.xml");
-    XmlElementSession *s = readSessionFile(sessionFn.c_str(), name);
+    std::string sessionFileName(Application::instance().userDirectoryName());
+    sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionFileName += m_name;
+    sessionFileName += G_DIR_SEPARATOR_S "session.xml";
+    XmlElementSession *s = readSessionFile(sessionFileName.c_str(), name);
     if (!s)
     {
         delete session;
@@ -1533,10 +1563,10 @@ Session *Session::restore(const char *name)
 
 bool Session::save()
 {
-    std::string sessionFn(Application::instance().userDirectoryName());
-    sessionFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    sessionFn += m_name;
-    sessionFn += G_DIR_SEPARATOR_S "session.xml";
+    std::string sessionFileName(Application::instance().userDirectoryName());
+    sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionFileName += m_name;
+    sessionFileName += G_DIR_SEPARATOR_S "session.xml";
 
     XmlElementSession *session = XmlElementSession::save();
     xmlNodePtr node = session->write();
@@ -1544,11 +1574,11 @@ bool Session::save()
 
     xmlDocPtr doc = xmlNewDoc(static_cast<const xmlChar *>("1.0"));
     xmlDocSetRootElement(doc, node);
-    if (xmlSaveFormatFile(sessionFn.c_str(), doc, 1) == -1)
+    if (xmlSaveFormatFile(sessionFileName.c_str(), doc, 1) == -1)
     {
         xmlFreeDoc(doc);
-        GtkWidget *dialog;
         xmlErrorPtr error = xmlGetLastError();
+        GtkWidget *dialog;
         if (error)
         {
             dialog = gtk_message_dialog_new(
@@ -1558,7 +1588,7 @@ bool Session::save()
                 GTK_BUTTONS_NONE,
                 _("Samoyed failed to save the current session to file \"%s\". "
                   "%s."),
-                sessionFn.c_str(), error->message);
+                sessionFileName.c_str(), error->message);
         }
         else
         {
@@ -1569,7 +1599,7 @@ bool Session::save()
                 GTK_BUTTONS_NONE,
                 _("Samoyed failed to save the current session to file "
                   "\"%s\". "),
-                sessionFn.c_str());
+                sessionFileName.c_str());
         }
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
