@@ -13,7 +13,10 @@ g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST\
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#ifdef SMYD_LOCK_FILE_UNIT_TEST
+# include <string.h>
+#endif
+#include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -44,7 +47,8 @@ void LockFile::onCrashed(int signalNumber)
 
 LockFile::LockFile(const char *fileName):
     m_fileName(fileName),
-    m_locked(false)
+    m_locked(false),
+    m_lockingProcessId(-1)
 {
     if (!s_first)
         Signal::registerCrashHandler(onCrashed);
@@ -62,12 +66,14 @@ LockFile::State LockFile::queryState()
 {
     int fd, l;
     char buffer[MAX_HOST_NAME_LENGTH + MAX_PROCESS_ID_LENGTH];
-    char *cp, *readHostName;
-    pid_t readPid;
+    char *cp;
     char hostName[MAX_HOST_NAME_LENGTH];
 
     if (m_locked)
         return STATE_LOCKED_BY_THIS_LOCK;
+
+    m_lockingHostName.clear();
+    m_lockingProcessId = -1;
 
     fd = g_open(m_fileName.c_str(), O_RDONLY, 0);
     if (fd == -1)
@@ -87,27 +93,28 @@ LockFile::State LockFile::queryState()
     if (cp == NULL)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
     *cp = '\0';
-    readHostName = buffer;
-    readPid = atoi(cp + 1);
-    m_hostName = readHostName;
-    m_processId = readPid;
+    m_lockingHostName = buffer;
+    m_lockingProcessId = atoi(cp + 1);
 
     hostName[0] = '\0';
     gethostname(hostName, sizeof(hostName) - 1);
     hostName[sizeof(hostName) - 1] = '\0';
 
-    if (strcmp(hostName, readHostName))
+    if (m_lockingHostName == hostName)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
-    if (readPid == getpid())
+    if (m_lockingProcessId == getpid())
         return STATE_LOCKED_BY_THIS_PROCESS;
 
     // Check to see if the lock file is stale.
-    if (!kill(readPid, 0) || errno != ESRCH)
+    if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
 
     // Remove the stale lock file.
     if (g_unlink(m_fileName.c_str()))
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
+
+    m_lockingHostName.clear();
+    m_lockingProcessId = -1;
     return STATE_UNLOCKED;
 }
 
@@ -116,8 +123,11 @@ LockFile::State LockFile::lock()
     char hostName[MAX_HOST_NAME_LENGTH];
     int fd, l;
     char buffer[MAX_HOST_NAME_LENGTH + MAX_PROCESS_ID_LENGTH];
-    char *cp, *readHostName;
-    pid_t readPid;
+    char *cp;
+
+    assert(!m_locked);
+    m_lockingHostName.clear();
+    m_lockingProcessId = -1;
 
     hostName[0] = '\0';
     gethostname(hostName, sizeof(hostName) - 1);
@@ -144,32 +154,30 @@ RETRY:
         }
 
         l = read(fd, buffer, sizeof(buffer) - 1);
-        close(fd);
-
-        if (l == -1)
+        if (close(fd) || l == -1)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
         buffer[l] = '\0';
         cp = strchr(buffer, ' ');
         if (cp == NULL)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
         *cp = '\0';
-        readHostName = buffer;
-        readPid = atoi(cp + 1);
-        m_hostName = readHostName;
-        m_processId = readPid;
+        m_lockingHostName = buffer;
+        m_lockingProcessId = atoi(cp + 1);
 
-        if (strcmp(hostName, readHostName))
+        if (m_lockingHostName == hostName)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
-        if (readPid == getpid())
+        if (m_lockingProcessId == getpid())
             return STATE_LOCKED_BY_THIS_PROCESS;
 
         // Check to see if the lock file is stale.
-        if (!kill(readPid, 0) || errno != ESRCH)
+        if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
 
         // Remove the stale lock file.
         if (g_unlink(m_fileName.c_str()))
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
+        m_lockingHostName.clear();
+        m_lockingProcessId = -1;
         goto RETRY;
     }
 
@@ -182,8 +190,8 @@ RETRY:
         return STATE_FAILED;
     }
     m_locked = true;
-    m_hostName = hostName;
-    m_processId = getpid();
+    m_lockingHostName = hostName;
+    m_lockingProcessId = getpid();
     return STATE_LOCKED_BY_THIS_LOCK;
 }
 
@@ -191,7 +199,8 @@ void LockFile::unlock(bool force)
 {
     if (!force)
         assert(m_locked);
-    g_unlink(m_fileName.c_str());
+    if (!g_unlink(m_fileName.c_str()))
+        m_locked = false;
 }
 
 }
@@ -212,6 +221,8 @@ int main()
         Samoyed::LockFile l(fileName);
         assert(l.queryState() == Samoyed::LockFile::STATE_UNLOCKED);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_THIS_LOCK);
+        assert(strcmp(l.lockingHostName(), hostName) == 0);
+        assert(l.lockingProcessId() == getpid());
     }
 
     snprintf(buffer, sizeof(buffer), "%s %d", hostName, getpid());
@@ -221,6 +232,8 @@ int main()
         assert(l.queryState() ==
                Samoyed::LockFile::STATE_LOCKED_BY_THIS_PROCESS);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_THIS_PROCESS);
+        assert(strcmp(l.lockingHostName(), hostName) == 0);
+        assert(l.lockingProcessId() == getpid());
     }
 
     snprintf(buffer, sizeof(buffer), "%s 0", hostName);
@@ -230,6 +243,8 @@ int main()
         assert(l.queryState() ==
                Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS);
+        assert(strcmp(l.lockingHostName(), hostName) == 0);
+        assert(l.lockingProcessId() == 0);
     }
 
     snprintf(buffer, sizeof(buffer), "%s 1000000", hostName);
@@ -238,6 +253,8 @@ int main()
         Samoyed::LockFile l(fileName);
         assert(l.queryState() == Samoyed::LockFile::STATE_UNLOCKED);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_THIS_LOCK);
+        assert(strcmp(l.lockingHostName(), hostName) == 0);
+        assert(l.lockingProcessId() == getpid());
     }
 
     return 0;
