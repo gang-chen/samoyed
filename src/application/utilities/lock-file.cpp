@@ -7,6 +7,9 @@ g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST\
  `pkg-config --cflags --libs glib-2.0` -Werror -Wall -o lock-file
 */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "lock-file.hpp"
 #include "signal.hpp"
 #include <assert.h>
