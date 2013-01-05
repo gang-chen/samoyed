@@ -141,6 +141,8 @@ private:
         Session &m_session;
     };
 
+    static bool writeLastSessionName(const char *name);
+
     static void onCrashed(int signalNumber);
 
     static gboolean onUnsavedFileListRead(gpointer param);
