@@ -35,9 +35,9 @@ public:
 
     const char *fileName() const { return m_fileName.c_str(); }
 
-    const char *lockingHostName() const { return m_hostName.c_str(); }
+    const char *lockingHostName() const { return m_lockingHostName.c_str(); }
 
-    pid_t lockingProcessId() const { return m_processId; }
+    pid_t lockingProcessId() const { return m_lockingProcessId; }
 
 private:
     static void onCrashed(int signalNumber);
@@ -48,9 +48,9 @@ private:
 
     bool m_locked;
 
-    std::string m_hostName;
+    std::string m_lockingHostName;
 
-    pid_t m_processId;
+    pid_t m_lockingProcessId;
 
     SMYD_DEFINE_DOUBLY_LINKED(LockFile)
 };
