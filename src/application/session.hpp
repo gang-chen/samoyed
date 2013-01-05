@@ -35,18 +35,18 @@ namespace Samoyed
  * The XML file and the file recording the unsaved files for a session are in a
  * directory whose name is the session name.
  *
- * The sessions directory: USER/sessions.
- * The last session name is stored in USER/last-session.
- * The session directory: USER/sessions/SESSION.
- * The session file: USER/sessions/SESSION/session.xml.
- * The session lock file: USER/sessions/SESSION.lock.
+ * The sessions directory: ~USER/sessions.
+ * The last session name is stored in ~USER/last-session.
+ * The session directory: ~USER/sessions/SESSION.
+ * The session file: ~USER/sessions/SESSION/session.xml.
+ * The session lock file: ~USER/sessions/SESSION.lock.
  * The unsaved file URIs in a session are stored in
- * USER/sessions/SESSION/unsaved-files.
+ * ~USER/sessions/SESSION/unsaved-files.
  */
 class Session: public boost::noncopyable
 {
 public:
-    enum LockedState
+    enum LockState
     {
         STATE_UNLOCKED,
         STATE_LOCKED_BY_THIS_PROCESS,
@@ -61,7 +61,7 @@ public:
 
     static bool readAllSessionNames(std::vector<std::string> &names);
 
-    static LockedState queryLockedState(const char *name);
+    static LockState queryLockState(const char *name);
 
     static bool remove(const char *name);
 
