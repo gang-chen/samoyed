@@ -6,8 +6,9 @@
 
 #include <string.h>
 #include <string>
+#include <gtk/gtk.h>
 
-#define SMYD_DEFINE_DOUBLY_LINKED(Class) \
+#define SAMOYED_DEFINE_DOUBLY_LINKED(Class) \
 public: \
     Class *next() { return m_next; } \
     Class *previous() { return m_previous; } \
@@ -38,7 +39,7 @@ private: \
     Class *m_next; \
     Class *m_previous;
 
-#define SMYD_DEFINE_DOUBLY_LINKED_IN(Class, Container) \
+#define SAMOYED_DEFINE_DOUBLY_LINKED_IN(Class, Container) \
 public: \
     Class *nextIn##Container() { return m_nextIn##Container; } \
     Class *previousIn##Container() { return m_previousIn##Container; } \
@@ -134,6 +135,10 @@ public:
 private:
     std::string m_string;
 };
+
+bool removeFileOrDirectory(const char *name, GError **error);
+
+void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
 
 }
 

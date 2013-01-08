@@ -9,6 +9,7 @@
 #include "file-type-registry.hpp"
 #include "ui/project.hpp"
 #include "ui/file.hpp"
+#include "utilities/misc.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
@@ -101,10 +102,15 @@ bool Application::makeUserDirectory()
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 NULL,
-                GTK_DIALOG_MODAL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create directory \"%s\". %s."),
+                _("Samoyed failed to create the user directory to store user "
+                  "information. Quit."));
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to create the user directory, \"%s\". %s. "
+                  "Samoyed cannot run without the directory."),
                 m_userDirName.c_str(), g_strerror(errno));
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
@@ -178,6 +184,9 @@ gboolean Application::startUp(gpointer app)
     Application *a = static_cast<Application *>(app);
 
     if (!a->makeUserDirectory())
+        goto ERROR_OUT;
+
+    if (!Session::makeSessionsDirectory())
         goto ERROR_OUT;
 
     // Create global objects.
@@ -310,9 +319,9 @@ int Application::run(int argc, char *argv[])
         G_DIR_SEPARATOR_S "share" G_DIR_SEPARATOR_S "locale";
     g_free(instDir);
 #else
-    m_dataDirName = SMYD_PKGDATADIR;
-    m_librariesDirName = SMYD_PKGLIBDIR;
-    m_localeDirName = SMYD_LOCALEDIR;
+    m_dataDirName = SAMOYED_PKGDATADIR;
+    m_librariesDirName = SAMOYED_PKGLIBDIR;
+    m_localeDirName = SAMOYED_LOCALEDIR;
 #endif
     m_userDirName = g_get_home_dir() + G_DIR_SEPARATOR_S ".samoyed";
 

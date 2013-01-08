@@ -8,6 +8,7 @@
 #include "editor.hpp"
 #include "../application.hpp"
 #include "../application.hpp/file-type-registry.hpp"
+#include "../utilities/misc.hpp"
 #include "../utilities/file-loader.hpp"
 #include "../utilities/file-saver.hpp"
 #include "../utilities/scheduler.hpp"
@@ -88,10 +89,14 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget(),
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to open file \"%s\". Its MIME type is unknown."),
+            _("Samoyed failed to open file \"%s\"."),
+            uri());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("The MIME type of file \"%s\" is unknown."),
             uri());
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -103,11 +108,14 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget(),
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to open file \"%s\". Its MIME type \"%s\" is "
-              "unsupported."),
+            _("Samoyed failed to open file \"%s\"."),
+            uri());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("The MIME type of file \"%s\" is \"%s\", which is unsupported."),
             uri(), mimeType);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -199,7 +207,7 @@ bool File::closeEditor(Editor &editor)
         // Ask the user.
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget(),
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
             _("File \"%s\" was edited."),
@@ -319,11 +327,15 @@ gboolean File::onLoadedInMainThread(gpointer param)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget(),
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load file \"%s\". %s."),
-            name(), file.m_ioError->message);
+            _("Samoyed failed to load file \"%s\"."),
+            name());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("%s."),
+            file.m_ioError->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
     }
@@ -357,11 +369,15 @@ gboolean File::onSavedInMainThead(gpointer param)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 Application::instance().currentWindow().gtkWidget(),
-                GTK_DIALOG_MODEL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_NONE,
-                _("Samoyed failed to save file \"%s\" before closing it. %s."),
-                name(), file.m_ioError->message);
+                _("Samoyed failed to save file \"%s\" before closing it."),
+                name());
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("%s."),
+                file.m_ioError->message);
             gtk_dialog_add_buttons(
                 GTK_DIALOG(dialog),
                 _("Retry to _save the file and close it"),
@@ -385,11 +401,15 @@ gboolean File::onSavedInMainThead(gpointer param)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 Application::instance().currentWindow().gtkWidget(),
-                GTK_DIALOG_MODAL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to save file \"%s\". %s."),
-                name(), file.m_ioError->message);
+                _("Samoyed failed to save file \"%s\"."),
+                name());
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("%s."),
+                file.m_ioError->message);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
         }
@@ -436,7 +456,7 @@ bool File::load(bool userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget(),
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
             _("File \"%s\" was edited. Loading it will discard the edits."),

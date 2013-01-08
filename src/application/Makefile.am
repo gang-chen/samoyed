@@ -11,9 +11,9 @@ libsamoyed_la_SOURCES = \
     session.hpp
 
 libsamoyed_la_CPPFLAGS = \
-    -DSMYD_PKGDATADIR=\"$(pkgdatadir)\" \
-    -DSMYD_PKGLIBDIR=\"$(pkglibdir)\" \
-    -DSMYD_LOCALEDIR=\"$(localedir)\" \
+    -DSAMOYED_PKGDATADIR=\"$(pkgdatadir)\" \
+    -DSAMOYED_PKGLIBDIR=\"$(pkglibdir)\" \
+    -DSAMOYED_LOCALEDIR=\"$(localedir)\" \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
 

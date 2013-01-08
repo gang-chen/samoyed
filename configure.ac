@@ -1,15 +1,31 @@
-AC_PREREQ([2.65])
+AM_SILENT_RULES([yes])
 
-AC_INIT([Samoyed], [0.0.0])
+m4_define(samoyed_major_version, 0)
+m4_define(samoyed_minor_version, 0)
+m4_define(samoyed_micro_version, 0)
+m4_define(samoyed_version,
+          samoyed_major_version.samoyed_minor_version.samoyed_micro_version)
+
+AC_INIT([Samoyed], [samoyed_version])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([src/launcher/main.cpp])
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_DEFINE(SAMOYED_MAJOR_VERSION, samoyed_major_version, [Samoyed major version])
+AC_SUBST(SAMOYED_MAJOR_VERSION, samoyed_major_version)
+AC_DEFINE(SAMOYED_MINOR_VERSION, samoyed_minor_version, [Samoyed minor version])
+AC_SUBST(SAMOYED_MINOR_VERSION, samoyed_minor_version)
+AC_DEFINE(SAMOYED_MICRO_VERSION, samoyed_micro_version, [Samoyed micro version])
+AC_SUBST(SAMOYED_MICRO_VERSION, samoyed_micro_version)
+AC_DEFINE(SAMOYED_VERSION, samoyed_version, [Samoyed version])
+AC_SUBST(SAMOYED_VERSION, samoyed_version)
+
 AC_USE_SYSTEM_EXTENSIONS
 
-AM_INIT_AUTOMAKE([1.11 silent-rules])
+AM_INIT_AUTOMAKE([1.11])
 AM_MAINTAINER_MODE
+AM_SILENT_RULES([yes])
 
 LT_PREREQ([2.2])
 LT_INIT([disable-static])
@@ -17,7 +33,7 @@ LT_INIT([disable-static])
 AC_LANG([C++])
 AC_PROG_CXX
 AC_PROG_INSTALL
-PKG_PROG_PKG_CONFIG
+PKG_PROG_PKG_CONFIG([0.26])
 
 AC_CANONICAL_HOST
 os_win32=no

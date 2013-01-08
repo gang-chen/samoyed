@@ -11,6 +11,7 @@
 #include "editor-group.hpp"
 #include "bar.hpp"
 #include "../application.hpp"
+#include "../utilities/misc.hpp"
 #include <assert.h>
 #include <gtk/gtk.h>
 
@@ -120,13 +121,13 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
         // Closing the main window will quit the application.  Confirm it.
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget() : NULL,
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
             _("Closing this window will quit Samoyed."));
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
-            _("_Quit"), GTK_RESPONSE_YES,
+            _("_Quit Samoyed"), GTK_RESPONSE_YES,
             _("_Cancel"), GTK_RESPONSE_NO);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_NO);

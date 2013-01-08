@@ -37,6 +37,8 @@ const int MAX_HOST_NAME_LENGTH = 500, MAX_PROCESS_ID_LENGTH = 500;
 namespace Samoyed
 {
 
+bool LockFile::s_crashHandlerRegistered = false;
+
 LockFile *LockFile::s_first = NULL, *LockFile::s_last = NULL;
 
 void LockFile::onCrashed(int signalNumber)
@@ -44,7 +46,7 @@ void LockFile::onCrashed(int signalNumber)
     for (LockFile *l = s_first; l; l = l->next())
     {
         if (l->m_locked)
-            l->unlock();
+            l->unlock(false);
     }
 }
 
@@ -53,8 +55,11 @@ LockFile::LockFile(const char *fileName):
     m_locked(false),
     m_lockingProcessId(-1)
 {
-    if (!s_first)
+    if (!s_crashHandlerRegistered)
+    {
         Signal::registerCrashHandler(onCrashed);
+        s_crashHandlerRegistered = true;
+    }
     addToList(s_first, s_last);
 }
 
@@ -103,7 +108,7 @@ LockFile::State LockFile::queryState()
     gethostname(hostName, sizeof(hostName) - 1);
     hostName[sizeof(hostName) - 1] = '\0';
 
-    if (m_lockingHostName == hostName)
+    if (m_lockingHostName != hostName)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
     if (m_lockingProcessId == getpid())
         return STATE_LOCKED_BY_THIS_PROCESS;
@@ -167,7 +172,7 @@ RETRY:
         m_lockingHostName = buffer;
         m_lockingProcessId = atoi(cp + 1);
 
-        if (m_lockingHostName == hostName)
+        if (m_lockingHostName != hostName)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
         if (m_lockingProcessId == getpid())
             return STATE_LOCKED_BY_THIS_PROCESS;

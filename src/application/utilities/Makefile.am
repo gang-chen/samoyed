@@ -2,6 +2,7 @@ noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
     lock-file.cpp \
+    misc.cpp \
     revision.cpp \
     signal.cpp \
     text-file-loader.cpp \

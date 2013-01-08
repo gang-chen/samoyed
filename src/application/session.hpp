@@ -53,8 +53,6 @@ public:
         STATE_LOCKED_BY_ANOTHER_PROCESS
     };
 
-    static void registerCrashHandler();
-
     static bool makeSessionsDirectory();
 
     static bool readLastSessionName(std::string &name);
@@ -159,6 +157,8 @@ private:
     void queueUnsavedFileListRequest(UnsavedFileListRequest *request);
     void executeQueuedUnsavedFileListRequests();
     void onUnsavedFileListRequestWorkerDone(Worker &worker);
+
+    static bool s_crashHandlerRegistered;
 
     bool m_destroy;
 

@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <string>
 #include <vector>
 #include <utility>
@@ -226,8 +227,8 @@ XmlElementEditor *XmlElementEditor::read(xmlDocPtr doc,
     {
         delete editor;
         cp = g_strdup_printf(
-            _("File %s, line %d: No file URI is specified for the editor.\n"),
-            doc->name, node->line);
+            _("Line %d: No file URI is specified for the editor.\n"),
+            node->line);
         error += cp;
         g_free(cp);
         return NULL;
@@ -236,9 +237,8 @@ XmlElementEditor *XmlElementEditor::read(xmlDocPtr doc,
     {
         delete editor;
         cp = g_strdup_printf(
-            _("File %s, line %d: No project URI is specified for the "
-              "editor.\n"),
-            doc->name, node->line);
+            _("Line %d: No project URI is specified for the editor.\n"),
+            node->line);
         error += cp;
         g_free(cp);
         return NULL;
@@ -513,27 +513,27 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             if (splitPane->m_children[0] && splitPane->m_children[1])
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: More than two panes contained by the "
-                      "split pane.\n"),
-                    doc->name, child->line);
+                    _("Line %d: More than two panes contained by the split "
+                      "pane.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
             else if (!inMainWindowRoot)
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: A project explorer contained by the "
-                      "auxilliary window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: A project explorer contained by the auxilliary "
+                      "window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
             else if (splitPane->m_children[0])
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: A project explorer in the right or "
-                      "bottom half of the main window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: A project explorer in the right or bottom half "
+                      "of the main window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -552,9 +552,9 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             if (splitPane->m_children[0] && splitPane->m_children[1])
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: More than two panes contained by the "
-                      "split pane.\n"),
-                    doc->name, child->line);
+                    _("Line %d: More than two panes contained by the split "
+                      "pane.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -578,9 +578,9 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             else
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: An editor group in the left or top "
-                      "half of the main window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: An editor group in the left or top half of the "
+                      "main window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -592,9 +592,9 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             if (splitPane->m_children[0] && splitPane->m_children[1])
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: More than two panes contained by the "
-                      "split pane.\n"),
-                    doc->name, child->line);
+                    _("Line %d: More than two panes contained by the split "
+                      "pane.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -620,9 +620,9 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
             else
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: A split pane in the left or top half "
-                      "of the main window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: A split pane in the left or top half of the "
+                      "main window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -635,16 +635,16 @@ XmlElementBasePane *XmlElementSplitPane::read(xmlDocPtr doc,
         XmlElementBasePane *child = splitPane->m_children[0];
         delete splitPane;
         cp = g_strdup_printf(
-            _("File %s, line %d: Only one pane contained by the split pane.\n"),
-            doc->name, node->line);
+            _("Line %d: Only one pane contained by the split pane.\n"),
+            node->line);
         error += cp;
         g_free(cp);
         return child;
     }
     delete splitPane;
     cp = g_strdup_printf(
-        _("File %s, line %d: No pane contained by the split pane.\n"),
-        doc->name, node->line);
+        _("Line %d: No pane contained by the split pane.\n"),
+        node->line);
     error += cp;
     g_free(cp);
     return NULL;
@@ -814,18 +814,18 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
             if (window->m_content)
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: More than one panes or split panes "
-                      "contained by the window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: More than one panes or split panes contained "
+                      "by the window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
             else
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: A project explorer contained in the "
-                      "window as the root.\n"),
-                    doc->name, child->line);
+                    _("Line %d: A project explorer contained in the window as "
+                      "the root.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -837,18 +837,18 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
             if (window->m_content)
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: More than one panes or split panes "
-                      "contained by the window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: More than one panes or split panes contained "
+                      "by the window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
             else if (isMainWindow)
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: An editor group contained in the main "
-                      "window as the root.\n"),
-                    doc->name, child->line);
+                    _("Line %d: An editor group contained in the main window "
+                      "as the root.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -867,9 +867,9 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
             if (window->m_content)
             {
                 cp = g_strdup_printf(
-                    _("File %s, line %d: More than one panes or split panes "
-                      "contained by the window.\n"),
-                    doc->name, child->line);
+                    _("Line %d: More than one panes or split panes contained "
+                      "by the window.\n"),
+                    child->line);
                 error += cp;
                 g_free(cp);
             }
@@ -886,9 +886,8 @@ XmlElementWindow *XmlElementWindow::read(xmlDocPtr doc,
     {
         delete window;
         cp = g_strdup_printf(
-            _("File %s, line %d: No pane or split pane contained by the "
-              "window.\n"),
-            doc->name, node->line);
+            _("Line %d: No pane or split pane contained by the window.\n"),
+            node->line);
         error += cp;
         g_free(cp);
         return NULL;
@@ -956,8 +955,8 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
     {
         delete session;
         cp = g_strdup_printf(
-            _("File %s, line %d: No window in the session.\n"),
-            doc->name, node->line);
+            _("Line %d: No window in the session.\n"),
+            node->line);
         error += cp;
         g_free(cp);
         return NULL;
@@ -1018,29 +1017,30 @@ XmlElementSession::~XmlElementSession()
 }
 
 // Report the error.
-XmlElementSession *readSessionFile(const char *fileName,
-                                   const char *sessionName)
+XmlElementSession *parseSessionFile(const char *fileName,
+                                    const char *sessionName)
 {
     xmlDocPtr doc = xmlParseFile(fileName);
     if (!doc)
     {
         GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to restore session \"%s\"."),
+            sessionName);
         xmlErrorPtr error = xmlGetLastError();
         if (error)
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
+            gtkMessageDialogAddDetails(
+                dialog,
                 _("Samoyed failed to parse session file \"%s\" to restore "
                   "session \"%s\". %s."),
                 fileName, sessionName, error->message);
         else
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
+            gtkMessageDialogAddDetails(
+                dialog,
                 _("Samoyed failed to parse session file \"%s\" to restore "
                   "session \"%s\"."),
                 fileName, sessionName);
@@ -1055,12 +1055,15 @@ XmlElementSession *readSessionFile(const char *fileName,
         xmlFreeDoc(doc);
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to restore session \"%s\". Session file \"%s\" "
-              "is empty."),
-            sessionName, fileName);
+            _("Samoyed failed to restore session \"%s\"."),
+            sessionName);
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Session file \"%s\" is empty."),
+            fileName);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return NULL;
@@ -1072,23 +1075,23 @@ XmlElementSession *readSessionFile(const char *fileName,
     if (!session)
     {
         GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to restore session \"%s\"."),
+            sessionName);
         if (error.empty())
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
+            gtkMessageDialogAddDetails(
+                dialog,
                 _("Samoyed failed to construct session \"%s\" from session "
                   "file \"%s\"."),
                 sessionName, fileName);
         else
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
+            gtkMessageDialogAddDetails(
                 _("Samoyed failed to construct session \"%s\" from session "
-                  "file \"%s\". %s."),
+                  "file \"%s\". Errors found in file \"%s\":\n%s."),
                 sessionName, fileName, error.c_str());
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -1101,6 +1104,8 @@ XmlElementSession *readSessionFile(const char *fileName,
 
 namespace Samoyed
 {
+
+bool Session::s_crashHandlerRegistered = false;
 
 // Don't report the error.
 void Sesssion::UnsavedFileListRead::execute(const Session &session) const
@@ -1254,11 +1259,6 @@ void Session::onCrashed(int signalNumber)
     writeLastSessionName(session->name());
 }
 
-void Session::registerCrashHandler()
-{
-    Signal::registerCrashHandler(onCrashed);
-}
-
 // Report the error.
 bool Session::makeSessionsDirectory()
 {
@@ -1270,10 +1270,15 @@ bool Session::makeSessionsDirectory()
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create directory \"%s\" to session "
-                  "information. %s."),
+                _("Samoyed failed to create the sessions directory to store "
+                  "sessions. Quit."));
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to create the sessions directory, \"%s\". "
+                  "%s. Samoyed cannot run without the directory."),
                 sessionsDirName.c_str(), g_strerror(errno));
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
@@ -1332,9 +1337,12 @@ bool Session::readAllSessionNames(std::vector<std::string> &names)
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().windows() ?
             Application::instance().currentWindow().gtkWidget() : NULL,
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to query existing sessions."));
+        gtkMessageDialogAddDetails(
+            dialog,
             _("Samoyed failed to open directory \"%s\" to list existing "
               "sessions. %s."),
             sessionsDirName.c_str(), error->message);
@@ -1345,13 +1353,14 @@ bool Session::readAllSessionNames(std::vector<std::string> &names)
     }
 
     const char *sessionName;
-    while (sessionName = g_dir_read_name(dir))
+    while ((sessionName = g_dir_read_name(dir)))
     {
-        std::string sessionDirName(sessionsDirName + G_DIR_SEPARATOR_S);
+        std::string sessionDirName(sessionsDirName + G_DIR_SEPARATOR);
         sessionDirName += sessionName;
         if (g_file_test(sessionDirName.c_str(), G_FILE_TEST_IS_DIR))
             names.push_back(sessionName);
     }
+    g_dir_close(dir);
     return true;
 }
 
@@ -1391,6 +1400,11 @@ Session::Session(const char *name, const char *lockFileName):
     m_lockFile(lockFileName),
     m_unsavedFileListRequestWorker(NULL)
 {
+    if (!s_crashHandlerRegistered)
+    {
+        Signal::registerCrashHandler(onCrashed);
+        s_crashHandlerRegistered = true;
+    }
 }
 
 Session::~Session()
@@ -1417,12 +1431,16 @@ bool Session::lock()
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to lock session \"%s\"."),
+            name());
+        gtkMessageDialogAddDetails(
+            dialog,
             _("Samoyed failed to create lock file \"%s\" to lock session "
               "\"%s\". %s."),
-            m_lockFile.fileName(), name, g_strerror(errno));
+            m_lockFile.fileName(), name(), g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return false;
@@ -1433,26 +1451,22 @@ bool Session::lock()
         const char *lockHostName = m_lockFile.lockingHostName();
         pid_t lockPid = m_lockFile.lockingProcessId();
         GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to lock session \"%s\" because the session is "
+              "being locked by another process."),
+            name());
         if (*lockHostName != '\0' && lockPid != -1)
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to start session \"%s\" because the session "
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to lock session \"%s\" because the session "
                   "is being locked by process %d on host \"%s\". If that "
                   "process does not exist or is not an instance of Samoyed, "
-                  "remove lock file \"%s\" and retry to start session \"%s\"."),
-                name, lockPid, lockHostName, m_lockFile.fileName(), name);
-        else
-            dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to start session \"%s\" because the session "
-                  "is being locked by another process."),
-                name);
+                  "remove lock file \"%s\" and retry."),
+                name(), lockPid, lockHostName, m_lockFile.fileName());
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return false;
@@ -1494,12 +1508,16 @@ Session *Session::create(const char *name)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
-            GTK_DIALOG_MODAL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to create session \"%s\"."),
+            name());
+        gtkMessageDialogAddDetails(
+            dialog,
             _("Samoyed failed to create directory \"%s\" for session \"%s\". "
               "%s."),
-            sessionDirName.c_str(), name, g_strerror(errno));
+            sessionDirName.c_str(), name(), g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         delete session;
@@ -1539,7 +1557,7 @@ Session *Session::restore(const char *name)
     sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionFileName += m_name;
     sessionFileName += G_DIR_SEPARATOR_S "session.xml";
-    XmlElementSession *s = readSessionFile(sessionFileName.c_str(), name);
+    XmlElementSession *s = parseSessionFile(sessionFileName.c_str(), name);
     if (!s)
     {
         delete session;
@@ -1579,28 +1597,23 @@ bool Session::save()
         xmlFreeDoc(doc);
         xmlErrorPtr error = xmlGetLastError();
         GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            Application::instance().currentWindow().gtkWidget(),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_NONE,
+            _("Samoyed failed to save the current session."));
         if (error)
-        {
-            dialog = gtk_message_dialog_new(
-                Application::instance().currentWindow().gtkWidget(),
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_NONE,
+            gtkMessageDialogAddDetails(
+                dialog,
                 _("Samoyed failed to save the current session to file \"%s\". "
                   "%s."),
                 sessionFileName.c_str(), error->message);
-        }
         else
-        {
-            dialog = gtk_message_dialog_new(
-                Application::instance().currentWindow().gtkWidget(),
-                GTK_DIALOG_MODAL,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_NONE,
-                _("Samoyed failed to save the current session to file "
-                  "\"%s\". "),
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to save the current session to file \"%s\"."),
                 sessionFileName.c_str());
-        }
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
             _("_Quit the session without saving it"), GTK_RESPONSE_YES,
