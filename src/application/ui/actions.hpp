@@ -162,7 +162,7 @@ private:
         { "help-tutorial", NULL, N_("_Tutorial"), NULL,
           N_("Show the tutorial"), G_CALLBACK(showTutorial) },
         { "help-about", NULL, N_("_About"), NULL,
-          N_("About this application", G_CALLBACK(showAbout) }
+          N_("About Samoyed", G_CALLBACK(showAbout) }
 
         // New popup menu.
         { "new-file", NULL, N_("_File"), NULL,
