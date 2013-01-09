@@ -210,15 +210,28 @@ bool File::closeEditor(Editor &editor)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
-            _("File \"%s\" was edited."),
+            _("File \"%s\" was edited but not saved. Save it before closing "
+              "it?"),
             name());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
-            _("_Save the file and close it"), GTK_RESPONSE_YES,
-            _("_Discard the edits and close the file"), GTK_RESPONSE_NO,
-            _("_Cancel closing the file"), GTK_RESPONSE_CANCEL,
+            _("Save and Close"), GTK_RESPONSE_YES,
+            _("Discard and Close"), GTK_RESPONSE_NO,
+            _("Cancel"), GTK_RESPONSE_CANCEL,
             NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
+        gtk_widget_set_tooltip_text(
+            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                               GTK_RESPONSE_YES),
+            _("Save the file and close it"));
+        gtk_widget_set_tooltip_text(
+            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                               GTK_RESPONSE_NO),
+            _("Discard the edits and close the file"));
+        gtk_widget_set_tooltip_text(
+            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                               GTK_RESPONSE_CANCEL),
+            _("Cancel closing the file"));
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_CANCEL)
@@ -372,7 +385,8 @@ gboolean File::onSavedInMainThead(gpointer param)
                 GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_NONE,
-                _("Samoyed failed to save file \"%s\" before closing it."),
+                _("Samoyed failed to save file \"%s\" before closing it. Close "
+                  "it?"),
                 name());
             gtkMessageDialogAddDetails(
                 dialog,
@@ -380,14 +394,26 @@ gboolean File::onSavedInMainThead(gpointer param)
                 file.m_ioError->message);
             gtk_dialog_add_buttons(
                 GTK_DIALOG(dialog),
-                _("Retry to _save the file and close it"),
+                _("Retry to Save and Close"),
                 GTK_RESPONSE_YES,
-                _("_Discard the edits and close the file"),
+                _("Discard and Close"),
                 GTK_RESPONSE_NO,
-                _("_Cancel closing the file"),
+                _("Cancel"),
                 GTK_RESPONSE_CANCEL);
             gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                             GTK_RESPONSE_YES);
+            gtk_widget_set_tooltip_text(
+                gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                                   GTK_RESPONSE_YES),
+                _("Retry to _save the file and close it"));
+            gtk_widget_set_tooltip_text(
+                gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                                   GTK_RESPONSE_YES),
+                _("Discard the edits and close the file"));
+            gtk_widget_set_tooltip_text(
+                gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                                   GTK_RESPONSE_YES),
+                _("Cancel closing the file"));
             int response = gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
             if (response == GTK_RESPONSE_YES)
@@ -459,7 +485,8 @@ bool File::load(bool userRequest)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
-            _("File \"%s\" was edited. Loading it will discard the edits."),
+            _("File \"%s\" was edited. Loading it will discard the edits. "
+              "Continue?"),
             name());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
