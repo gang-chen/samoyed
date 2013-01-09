@@ -20,6 +20,7 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 #endif
 #include <stdarg.h>
 #include <stdio.h>
+#include <string>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
@@ -27,7 +28,10 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 namespace
 {
 
-const int SPACING = 4, TEXT_WIDTH_REQUEST = 400, TEXT_HEIGHT_REQUEST = 300;
+const int EXPANDER_SPACING = 4;
+const itn EXPANDER_BORDER_WIDTH = 4;
+const int TEXT_WIDTH_REQUEST = 400;
+const int TEXT_HEIGHT_REQUEST = 300;
 
 }
 
@@ -74,8 +78,10 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
 
     expander = gtk_expander_new(_("Details"));
-    gtk_expander_set_spacing(GTK_EXPANDER(expander), SPACING);
+    gtk_expander_set_spacing(GTK_EXPANDER(expander), EXPANDER_SPACING);
     gtk_expander_set_resize_toplevel(GTK_EXPANDER(expander), TRUE);
+    gtk_containder_set_border_width(GTK_CONTAINER(expander),
+                                    EXPANDER_BORDER_WIDTH);
 
     sw = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw),
