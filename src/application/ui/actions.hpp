@@ -21,11 +21,16 @@ public:
 
     ~Actions();
 
-    GtkActionGroup *actions() const { return m_actions; }
+    GtkActionGroup *actionGroup() const { return m_actionGroup; }
 
     void updateSensitivity(const Window *window);
 
 private:
+    enum
+    {
+        ,
+    };
+
     static void createSession(GtkAction *action, Window *window);
     static void switchSession(GtkAction *action, Window *window);
     static void manageSessions(GtkAction *action, Window *window);
@@ -80,10 +85,12 @@ private:
 
         // Session menu.
         { "session-new", NULL, N_("_New..."), NULL,
-          N_("Start a new session"), G_CALLBACK(createSession) },
+          N_("Quit the current session and start a new one"),
+          G_CALLBACK(createSession) },
         { "session-switch", NULL, N_("_Switch..."), NULL,
-          N_("Switch to a saved session"), G_CALLBACK(switchSession) },
-        { "session-manage", NULL, N_("_Manage..."), NULL,
+          N_("Quit the current session and restore a saved one"),
+          G_CALLBACK(switchSession) },
+        { "session-manage", NULL, N_("_Manage"), NULL,
           N_("Manage saved sessions"), G_CALLBACK(manageSessions) },
         { "session-quit", NULL, N_("_Quit"), "<control>Q",
           N_("Quit the current session"), G_CALLBACK(quitSession) },
@@ -101,8 +108,10 @@ private:
           N_("Create a file"), G_CALLBACK(createFile) },
         { "project-new-directory", NULL, N_("New _Directory..."), NULL,
           N_("Create a directory"), G_CALLBACK(createDirectory) },
+        { "configure", NULL, N_("Confi_gure"), NULL,
+          N_("Configure the selected object"), G_CALLBACK(configure) },
         { "project-manage-configurations", NULL,
-          N_("Manage Confi_gurations..."), NULL,
+          N_("Manage Confi_gurations"), NULL,
           N_("Manage configurations of the current project"),
           G_CALLBACK(manageConfigurations) },
 
@@ -123,8 +132,8 @@ private:
         { "file-close-all", NULL, N_("C_lose All"), NULL,
           N_("Close all opened files"), G_CALLBACK(closeAllFiles) },
         { "file-page-setup", NULL, N_("Page _Setup..."), NULL,
-          N_("Setup page information for printing"), G_CALLBACK(setupPage) },
-        { "file-print-preview", NULL, N_("Print Pre_view..."), NULL,
+          N_("Set up the page settings for printing"), G_CALLBACK(setupPage) },
+        { "file-print-preview", NULL, N_("Print Pre_view"), NULL,
           N_("Preview the printed file"), G_CALLBACK(previewPrintedFile) },
         { "file-print", NULL, N_("_Print"), NULL,
           N_("Print the current file"), G_CALLBACK(printFile) },
@@ -142,10 +151,7 @@ private:
           N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
         { "edit-delete", NULL, N_("_Delete"), NULL,
           N_("Delete the selected object"), G_CALLBACK(deleteObject) },
-        { "configure", NULL, N_("Confi_gure..."), NULL,
-          N_("Configure the selected object"),
-          G_CALLBACK(editProperties) },
-        { "edit-preferences", NULL, N_("Pre_ferences..."), NULL,
+        { "edit-preferences", NULL, N_("Pre_ferences"), NULL,
           N_("Edit your preferences"), G_CALLBACK(editPreferences) },
 
         // View menu.
@@ -171,7 +177,9 @@ private:
           N_("Create a directory"), G_CALLBACK(createDirectory) }
     };
 
-    GtkActionGroup *m_actions;
+//// init actions, add to action group
+    GtkActionGroup *m_actionGroup;
+    GtkAction *m_actions[];
 };
 
 }
