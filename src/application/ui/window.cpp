@@ -123,22 +123,11 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
             Application::instance().currentWindow().gtkWidget() : NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_NONE,
-            _("Closing this window will quit Samoyed. Continue?"));
-        gtk_dialog_add_buttons(
-            GTK_DIALOG(dialog),
-            _("Continue"), GTK_RESPONSE_YES,
-            _("Cancel"), GTK_RESPONSE_NO);
+            GTK_BUTTONS_YES_NO,
+            _("You will quit Samoyed if you close this window. Continue closing
+               this window and quitting Samoyed?"));
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                        GTK_RESPONSE_NO);
-        gtk_widget_set_tooltip_text(
-            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                               GTK_RESPONSE_YES),
-            _("Close this window and quit Samoyed"));
-        gtk_widget_set_tooltip_text(
-            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                               GTK_RESPONSE_NO),
-            _("Cancel closing this window"));
+                                        GTK_RESPONSE_YES);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_NO)

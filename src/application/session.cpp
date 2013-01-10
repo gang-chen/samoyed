@@ -12,6 +12,7 @@
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
 #include "ui/file-recoverer.hpp"
+#include "utilities/misc.hpp"
 #include "utilities/lock-file.hpp"
 #include "utilities/signal.hpp"
 #include "utilities/scheduler.hpp"
@@ -1100,6 +1101,48 @@ XmlElementSession *parseSessionFile(const char *fileName,
     return session;
 }
 
+bool lockSession(const char *name, Samoyed::LockFile &lockFile, char **error)
+{
+    Samoyed::LockFile::State state = lockFile.lock();
+
+    if (state == Samoyed::LockFile::STATE_LOCKED_BY_THIS_LOCK)
+        return true;
+
+    if (state == Samoyed::LockFile::STATE_FAILED)
+    {
+        *error = g_strdup_printf(
+            _("Samoyed failed to create lock file \"%s\" to lock session "
+              "\"%s\". %s."),
+            m_lockFile.fileName(), name, g_strerror(errno));
+        return false;
+    }
+
+    if (state == Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS)
+    {
+        const char *lockHostName = m_lockFile.lockingHostName();
+        pid_t lockPid = m_lockFile.lockingProcessId();
+        if (*lockHostName != '\0' && lockPid != -1)
+            *error = g_strdup_printf(
+                _("Samoyed failed to lock session \"%s\" because the session "
+                  "is being locked by process %d on host \"%s\". If that "
+                  "process does not exist or is not an instance of Samoyed, "
+                  "remove lock file \"%s\" and retry."),
+                name, lockPid, lockHostName, m_lockFile.fileName());
+        else
+            *error = g_strdup_printf(
+                _("Samoyed failed to lock session \"%s\" because the session "
+                  "is being locked by another process."),
+                name);
+        return false;
+    }
+
+    // If it is said to be locked by this process but not this lock, we assume
+    // it is a stale lock.
+    assert(state == LockFile::STATE_LOCKED_BY_THIS_PROCESS);
+    m_lockFile.unlock(true);
+    return lock();
+}
+
 }
 
 namespace Samoyed
@@ -1386,12 +1429,144 @@ bool Session::remove(const char *name)
     lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFileName += name;
     lockFileName += ".lock";
-    
+
     LockFile lockFile(lockFileName.c_str());
+    char *lockError = NULL;
+    if (!lockSession(name, lockFile, &lockError))
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to remove session \"%s\"."),
+            name);
+        gtkMessageDialogAddDetails(dialog, _("%s"), lockError);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_free(lockError);
+        return false;
+    }
+
+    std::string sessionDirName(Application::instance().userDirectoryName());
+    sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionDirName += name;
+    GError *removeError = NULL;
+    if (!removeFileOrDirectory(sessionDirName.c_str(), &removeError))
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to remove session \"%s\"."),
+            name);
+        gtkMessageDialogAddDetails(dialog, _("%s"), removeError->message);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(removeError);
+        return false;
+    }
+
+    return true;
 }
 
 bool Session::rename(const char *oldName, const char *newName)
 {
+    char *lockError = NULL;
+
+    std::string oldLockFileName(Application.instance().userDirectoryName());
+    oldLockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    oldLockFileName += oldName;
+    oldLockFileName += ".lock";
+
+    LockFile oldLockFile(oldLockFileName.c_str());
+    if (!lockSession(name, oldLockFile, &lockError))
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to rename session \"%s\" \"%s\"."),
+            oldName, newName);
+        gtkMessageDialogAddDetails(dialog, _("%s"), lockError);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_free(lockError);
+        return false;
+    }
+
+    std::string newLockFileName(Application.instance().userDirectoryName());
+    newLockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    newLockFileName += newName;
+    newLockFileName += ".lock";
+
+    LockFile newLockFile(oldLockFileName.c_str());
+    if (!lockSession(name, newLockFile, &lockError))
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to rename session \"%s\" \"%s\"."),
+            oldName, newName);
+        gtkMessageDialogAddDetails(dialog, _("%s"), lockError);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_free(lockError);
+        return false;
+    }
+
+    std::string oldessionDirName(Application::instance().userDirectoryName());
+    oldSessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    oldSessionDirName += oldName;
+    std::string newSessionDirName(Application::instance().userDirectoryName());
+    newSessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    newSessionDirName += newName;
+
+    // If the new session directory already exists, ask the user whether to
+    // overwrite it.
+    if (g_file_test(newSessionDirName.c_str(), G_FILE_TEST_EXISTS)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_YES_NO,
+            _("Session \"%s\" already exists. It will be overwritten if you "
+              "rename another session the same name. Overwrite it?"),
+            newName);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_YES);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_NO)
+            return false;
+    }
+
+    if (g_rename(oldSessionDirName.c_str(), newSessionDirName.c_str())
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to rename session \"%s\" \"%s\"."),
+            oldName, newName);
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to rename directory \"%s\" \"%s\". %s."),
+            oldSessionDirName.c_str(),
+            newSessionDirName.c_str(),
+            g_strerror(errno));
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return false;
+    }
+
+    return true;
 }
 
 Session::Session(const char *name, const char *lockFileName):
@@ -1419,66 +1594,6 @@ void Session::destroy()
         delete this;
 }
 
-// Report the error.
-bool Session::lock()
-{
-    LockFile::State state = m_lockFile.lock();
-
-    if (state == LockFile::STATE_LOCKED_BY_THIS_LOCK)
-        return true;
-
-    if (state == LockFile::STATE_FAILED)
-    {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to lock session \"%s\"."),
-            name());
-        gtkMessageDialogAddDetails(
-            dialog,
-            _("Samoyed failed to create lock file \"%s\" to lock session "
-              "\"%s\". %s."),
-            m_lockFile.fileName(), name(), g_strerror(errno));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        return false;
-    }
-
-    if (state == LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS)
-    {
-        const char *lockHostName = m_lockFile.lockingHostName();
-        pid_t lockPid = m_lockFile.lockingProcessId();
-        GtkWidget *dialog;
-        dialog = gtk_message_dialog_new(
-            NULL,
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to lock session \"%s\" because the session is "
-              "being locked by another process."),
-            name());
-        if (*lockHostName != '\0' && lockPid != -1)
-            gtkMessageDialogAddDetails(
-                dialog,
-                _("Samoyed failed to lock session \"%s\" because the session "
-                  "is being locked by process %d on host \"%s\". If that "
-                  "process does not exist or is not an instance of Samoyed, "
-                  "remove lock file \"%s\" and retry."),
-                name(), lockPid, lockHostName, m_lockFile.fileName());
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        return false;
-    }
-
-    // If it is said to be locked by this process but not this lock, we assume
-    // it is a stale lock.
-    asssert(state == LockFile::STATE_LOCKED_BY_THIS_PROCESS);
-    m_lockFile.unlock(true);
-    return lock();
-}
-
 void Session::unlock()
 {
     m_lockFile.unlock();
@@ -1494,16 +1609,71 @@ Session *Session::create(const char *name)
     Session *session = new Session(name, lockFileName);
 
     // Lock the session.
-    if (!session->lock())
+    char *error = NULL;
+    if (!lockSession(name, m_lockFile, &error))
     {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to create session \"%s\"."),
+            name());
+        gtkMessageDialogAddDetails(dialog, _("%s"), error);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_free(error);
         delete session;
         return NULL;
     }
 
-    // Create the session directory.
     std::string sessionDirName(Application::instance().userDirectoryName());
     sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionDirName += name;
+
+    // If the session directory already exists, remove it.
+    if (g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_YES_NO,
+            _("Session \"%s\" already exists. It will be overwritten if you "
+              "create a new one. Overwrite it?"),
+            name);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_YES);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_NO)
+        {
+            delete session;
+            return NULL;
+        }
+
+        GError *error;
+        if (!removeFileOrDirectory(sessionDirName.c_str(), &error))
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT;
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to create session \"%s\".));
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to remove the old session directory, \"%s\". "
+                  "%s."),
+                sessionDirName.c_str(), error->message);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            g_error_free(*error);
+            delete session;
+            return NULL;
+        }
+    }
+
+    // Create the session directory.
     if (g_mkdir(sessionDirName.c_str(), 0755))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -1546,8 +1716,20 @@ Session *Session::restore(const char *name)
     Session *session = new Session(name, lockFileName);
 
     // Lock the session.
-    if (!session->lock())
+    char *error = NULL;
+    if (!lockSession(name, m_lockFile, &error))
     {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to restore session \"%s\"."),
+            name());
+        gtkMessageDialogAddDetails(dialog, _("%s"), error);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_free(error);
         delete session;
         return NULL;
     }
@@ -1601,8 +1783,9 @@ bool Session::save()
             Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_NONE,
-            _("Samoyed failed to save the current session."));
+            GTK_BUTTONS_YES_NO,
+            _("Samoyed failed to save the current session. Quit the session "
+              "without saving it?"));
         if (error)
             gtkMessageDialogAddDetails(
                 dialog,
@@ -1614,11 +1797,6 @@ bool Session::save()
                 dialog,
                 _("Samoyed failed to save the current session to file \"%s\"."),
                 sessionFileName.c_str());
-        gtk_dialog_add_buttons(
-            GTK_DIALOG(dialog),
-            _("_Quit the session without saving it"), GTK_RESPONSE_YES,
-            _("_Cancel quitting the session"), GTK_RESPONSE_NO,
-            NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));

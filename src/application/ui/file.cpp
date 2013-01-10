@@ -215,9 +215,9 @@ bool File::closeEditor(Editor &editor)
             name());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
-            _("Save and Close"), GTK_RESPONSE_YES,
-            _("Discard and Close"), GTK_RESPONSE_NO,
-            _("Cancel"), GTK_RESPONSE_CANCEL,
+            GTK_STOCK_YES, GTK_RESPONSE_YES,
+            GTK_STOCK_NO, GTK_RESPONSE_NO,
+            GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
             NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
         gtk_widget_set_tooltip_text(
@@ -379,66 +379,20 @@ gboolean File::onSavedInMainThead(gpointer param)
         delete p;
 
         if (m_closing)
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance().currentWindow().gtkWidget(),
-                GTK_DIALOG_DESTROY_WITH_PARENT,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_NONE,
-                _("Samoyed failed to save file \"%s\" before closing it. Close "
-                  "it?"),
-                name());
-            gtkMessageDialogAddDetails(
-                dialog,
-                _("%s."),
-                file.m_ioError->message);
-            gtk_dialog_add_buttons(
-                GTK_DIALOG(dialog),
-                _("Retry to Save and Close"),
-                GTK_RESPONSE_YES,
-                _("Discard and Close"),
-                GTK_RESPONSE_NO,
-                _("Cancel"),
-                GTK_RESPONSE_CANCEL);
-            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                            GTK_RESPONSE_YES);
-            gtk_widget_set_tooltip_text(
-                gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                                   GTK_RESPONSE_YES),
-                _("Retry to _save the file and close it"));
-            gtk_widget_set_tooltip_text(
-                gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                                   GTK_RESPONSE_YES),
-                _("Discard the edits and close the file"));
-            gtk_widget_set_tooltip_text(
-                gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                                   GTK_RESPONSE_YES),
-                _("Cancel closing the file"));
-            int response = gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            if (response == GTK_RESPONSE_YES)
-                save();
-            else if (response == GTK_RESPONSE_NO)
-                continueClosing();
-            else
-                m_closing = false;
-        }
-        else
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                Application::instance().currentWindow().gtkWidget(),
-                GTK_DIALOG_DESTROY_WITH_PARENT,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to save file \"%s\"."),
-                name());
-            gtkMessageDialogAddDetails(
-                dialog,
-                _("%s."),
-                file.m_ioError->message);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-        }
+        m_closing = false;
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance().currentWindow().gtkWidget(),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to save file \"%s\"."),
+            name());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("%s."),
+            file.m_ioError->message);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
     }
     else
     {
@@ -484,15 +438,10 @@ bool File::load(bool userRequest)
             Application::instance().currentWindow().gtkWidget(),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_NONE,
-            _("File \"%s\" was edited. Loading it will discard the edits. "
-              "Continue?"),
+            GTK_BUTTONS_YES_NO,
+            _("File \"%s\" was edited. Your edits will be discarded if you "
+              "load it. Continue loading it?"),
             name());
-        gtk_dialog_add_buttons(
-            GTK_DIALOG(dialog),
-            _("_Discard the edits and load the file"), GTK_RESPONSE_YES,
-            _("_Cancel loading the file"), GTK_RESPONSE_NO,
-            NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);

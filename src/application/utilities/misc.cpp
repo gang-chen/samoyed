@@ -40,7 +40,13 @@ namespace Samoyed
 bool removeFileOrDirectory(const char *name, GError **error)
 {
     if (!g_file_test(name, G_FILE_TEST_IS_DIR))
-        return !g_unlink(name);
+    {
+        if (g_unlink(name))
+        {
+            g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
+            return false;
+        }
+    }
 
     GDir *dir = g_dir_open(name, 0, error);
     if (!dir)
@@ -61,7 +67,12 @@ bool removeFileOrDirectory(const char *name, GError **error)
     }
 
     g_dir_close(dir);
-    return !g_rmdir(name);
+    if (g_rmdir(name))
+    {
+        g_set_error_literal(errno, G_FILE_ERROR, errno, g_strerrno(errno));
+        return false;
+    }
+    return true;
 }
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
