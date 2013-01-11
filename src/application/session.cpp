@@ -1101,7 +1101,7 @@ XmlElementSession *parseSessionFile(const char *fileName,
     return session;
 }
 
-bool lockSession(const char *name, Samoyed::LockFile &lockFile, char **error)
+bool lockSession(const char *name, Samoyed::LockFile &lockFile, char *&error)
 {
     Samoyed::LockFile::State state = lockFile.lock();
 
@@ -1110,7 +1110,7 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char **error)
 
     if (state == Samoyed::LockFile::STATE_FAILED)
     {
-        *error = g_strdup_printf(
+        error = g_strdup_printf(
             _("Samoyed failed to create lock file \"%s\" to lock session "
               "\"%s\". %s."),
             m_lockFile.fileName(), name, g_strerror(errno));
@@ -1122,14 +1122,14 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char **error)
         const char *lockHostName = m_lockFile.lockingHostName();
         pid_t lockPid = m_lockFile.lockingProcessId();
         if (*lockHostName != '\0' && lockPid != -1)
-            *error = g_strdup_printf(
+            error = g_strdup_printf(
                 _("Samoyed failed to lock session \"%s\" because the session "
                   "is being locked by process %d on host \"%s\". If that "
                   "process does not exist or is not an instance of Samoyed, "
                   "remove lock file \"%s\" and retry."),
                 name, lockPid, lockHostName, m_lockFile.fileName());
         else
-            *error = g_strdup_printf(
+            error = g_strdup_printf(
                 _("Samoyed failed to lock session \"%s\" because the session "
                   "is being locked by another process."),
                 name);
@@ -1140,7 +1140,7 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char **error)
     // it is a stale lock.
     assert(state == LockFile::STATE_LOCKED_BY_THIS_PROCESS);
     m_lockFile.unlock(true);
-    return lock();
+    return lockSession(name, lockFile, error);
 }
 
 }
@@ -1432,7 +1432,7 @@ bool Session::remove(const char *name)
 
     LockFile lockFile(lockFileName.c_str());
     char *lockError = NULL;
-    if (!lockSession(name, lockFile, &lockError))
+    if (!lockSession(name, lockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1481,7 +1481,7 @@ bool Session::rename(const char *oldName, const char *newName)
     oldLockFileName += ".lock";
 
     LockFile oldLockFile(oldLockFileName.c_str());
-    if (!lockSession(name, oldLockFile, &lockError))
+    if (!lockSession(name, oldLockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1503,7 +1503,7 @@ bool Session::rename(const char *oldName, const char *newName)
     newLockFileName += ".lock";
 
     LockFile newLockFile(oldLockFileName.c_str());
-    if (!lockSession(name, newLockFile, &lockError))
+    if (!lockSession(name, newLockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1546,7 +1546,7 @@ bool Session::rename(const char *oldName, const char *newName)
             return false;
     }
 
-    if (g_rename(oldSessionDirName.c_str(), newSessionDirName.c_str())
+    if (g_rename(oldSessionDirName.c_str(), newSessionDirName.c_str()))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1610,7 +1610,7 @@ Session *Session::create(const char *name)
 
     // Lock the session.
     char *error = NULL;
-    if (!lockSession(name, m_lockFile, &error))
+    if (!lockSession(name, session->m_lockFile, error))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1618,7 +1618,7 @@ Session *Session::create(const char *name)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to create session \"%s\"."),
-            name());
+            name);
         gtkMessageDialogAddDetails(dialog, _("%s"), error);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -1640,7 +1640,7 @@ Session *Session::create(const char *name)
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
             _("Session \"%s\" already exists. It will be overwritten if you "
-              "create a new one. Overwrite it?"),
+              "create a new one with the same name. Overwrite it?"),
             name);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_YES);
@@ -1660,14 +1660,15 @@ Session *Session::create(const char *name)
                 GTK_DIALOG_DESTROY_WITH_PARENT;
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create session \"%s\".));
+                _("Samoyed failed to create session \"%s\"."),
+                name);
             gtkMessageDialogAddDetails(
                 dialog,
                 _("Samoyed failed to remove the old session directory, \"%s\". "
                   "%s."),
                 sessionDirName.c_str(), error->message);
             gtk_dialog_run(GTK_DIALOG(dialog));
-            g_error_free(*error);
+            g_error_free(error);
             delete session;
             return NULL;
         }
@@ -1682,12 +1683,12 @@ Session *Session::create(const char *name)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to create session \"%s\"."),
-            name());
+            name);
         gtkMessageDialogAddDetails(
             dialog,
             _("Samoyed failed to create directory \"%s\" for session \"%s\". "
               "%s."),
-            sessionDirName.c_str(), name(), g_strerror(errno));
+            sessionDirName.c_str(), name, g_strerror(errno));
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         delete session;
@@ -1717,7 +1718,7 @@ Session *Session::restore(const char *name)
 
     // Lock the session.
     char *error = NULL;
-    if (!lockSession(name, m_lockFile, &error))
+    if (!lockSession(name, session->m_lockFile, error))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1725,7 +1726,7 @@ Session *Session::restore(const char *name)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to restore session \"%s\"."),
-            name());
+            name);
         gtkMessageDialogAddDetails(dialog, _("%s"), error);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -1737,7 +1738,7 @@ Session *Session::restore(const char *name)
     // Read the session file.
     std::string sessionFileName(Application::instance().userDirectoryName());
     sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    sessionFileName += m_name;
+    sessionFileName += name;
     sessionFileName += G_DIR_SEPARATOR_S "session.xml";
     XmlElementSession *s = parseSessionFile(sessionFileName.c_str(), name);
     if (!s)
@@ -1756,7 +1757,7 @@ Session *Session::restore(const char *name)
     delete s;
 
     // Check to see if the session has any unsaved files.
-    queueUnsavedFileListRequest(new UnsavedFileListRead(*session));
+    session->queueUnsavedFileListRequest(new UnsavedFileListRead(*session));
 
     return session;
 }
