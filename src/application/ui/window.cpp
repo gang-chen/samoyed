@@ -31,7 +31,7 @@ Window::Window(const Configuration &config, PaneBase &content):
     m_actions(NULL)
 {
     m_uiManager = gtk_ui_manager_new();
-    gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actions(), 0);
+    gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
 
     std::string uiFile(Application::instance().dataDirectory());
     uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
