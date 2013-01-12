@@ -236,10 +236,10 @@ bool File::closeEditor(Editor &editor)
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_CANCEL)
             return false;
-        if (response == GTK_RESPONSE_YES)
+        if (response != GTK_RESPONSE_NO)
         {
-            save();
             m_closing = true;
+            save();
             return true;
         }
     }
@@ -445,7 +445,7 @@ bool File::load(bool userRequest)
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_NO)
+        if (response != GTK_RESPONSE_YES)
             return false;
     }
     m_loading = true;

@@ -1802,10 +1802,10 @@ bool Session::save()
                                         GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_NO)
-            return false;
-        // To continue quitting the session.
-        return true;
+        if (response == GTK_RESPONSE_YES)
+            // To continue quitting the session.
+            return true;
+        return false;
     }
     xmlFreeDoc(doc);
     return true;

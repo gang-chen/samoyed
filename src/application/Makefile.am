@@ -17,6 +17,8 @@ libsamoyed_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
 
+libsamoyed_la_LDFLAGS = $(BOOST_LDFLAGS)
+
 libsamoyed_la_LIBADD = \
     resources/libresources.la \
     ui/libui.la \

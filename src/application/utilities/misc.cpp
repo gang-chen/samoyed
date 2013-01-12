@@ -18,6 +18,7 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 #ifdef SMYD_MISC_UNIT_TEST
 # include <assert.h>
 #endif
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string>
@@ -46,6 +47,7 @@ bool removeFileOrDirectory(const char *name, GError **error)
             g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
             return false;
         }
+        return true;
     }
 
     GDir *dir = g_dir_open(name, 0, error);
@@ -69,7 +71,7 @@ bool removeFileOrDirectory(const char *name, GError **error)
     g_dir_close(dir);
     if (g_rmdir(name))
     {
-        g_set_error_literal(errno, G_FILE_ERROR, errno, g_strerrno(errno));
+        g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
         return false;
     }
     return true;
@@ -125,7 +127,6 @@ int main(int argc, char *argv[])
     if (!g_mkdir("misc-test-dir", 0755) &&
         g_file_set_contents("misc-test-dir/file", "hello", -1, NULL))
         assert(Samoyed::removeFileOrDirectory("misc-test-dir", NULL));
-    assert(!Samoyed::removeFileOrDirectory("misc-test-dir", NULL));
 
     GtkWidget *dialog = gtk_message_dialog_new(
         NULL,

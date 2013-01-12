@@ -32,10 +32,14 @@ public:
     const char *sessionName() const { return m_sessionName.c_str(); }
 
 private:
+    static void onSwitchButtonClicked(GtkButton *button, gpointer dialog);
+
     GtkWidget *m_dialog;
-    
+    GtkWidget *m_notebook;
+    GtkWidget *m_switchButton;
+
     Action m_action;
-    
+
     std::string m_sessionName;
 };
 

@@ -97,9 +97,9 @@ private:
      */
     GtkUIManager *m_uiManager;
 
-    Actions m_action;
+    Actions m_actions;
 
-    SMYD_DEFINE_DOUBLY_LINKED(Window)
+    SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };
 
 }
