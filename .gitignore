@@ -68,6 +68,7 @@ Makefile.in
 /build/
 
 # Unit test builds.
+src/application/ui/dialogs/session-chooser-dialog
 src/application/ui/splash-screen
 src/application/utilities/buffer
 src/application/utilities/lock-file
