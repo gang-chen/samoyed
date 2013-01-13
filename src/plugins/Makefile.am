@@ -1,1 +1,1 @@
-SUBDIRS = spell terminal
+SUBDIRS = terminal
