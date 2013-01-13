@@ -34,9 +34,15 @@ public:
 private:
     static void onSwitchButtonClicked(GtkButton *button, gpointer dialog);
 
+    static void onSelectedSessionChanged(GtkTreeSelection *selection,
+                                         gpointer dialog);
+
     GtkWidget *m_dialog;
     GtkWidget *m_notebook;
+    GtkWidget *m_newSessionEntry;
     GtkWidget *m_switchButton;
+
+    GtkListStore *m_sessions;
 
     Action m_action;
 

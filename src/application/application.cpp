@@ -30,7 +30,7 @@ namespace
 
 bool terminate = false;
 
-bool onTerminate(int signalNumber)
+void onTerminated(int signalNumber)
 {
     terminate = true;
 }
@@ -120,7 +120,7 @@ bool Application::makeUserDirectory()
     return true;
 }
 
-bool Application::chooseStartSession(bool restore)
+bool Application::chooseSessionToStart(bool restore)
 {
     SessionChooserDialog::Action action;
     if (restore)
@@ -176,7 +176,7 @@ bool Application::startSession()
         else
             restore = false;
     }
-    return chooseStartSession(restore);
+    return chooseSessionToStart(restore);
 }
 
 gboolean Application::startUp(gpointer app)
@@ -256,7 +256,7 @@ void Application::continueQuitting()
     {
         m_creatingSession = false;
         m_switchingSession = false;
-        chooseStartSession(restore);
+        chooseSessionToStart(restore);
     }
     if (!m_session)
         gtk_main_quit();

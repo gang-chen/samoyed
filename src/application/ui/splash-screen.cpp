@@ -85,10 +85,8 @@ int main(int argc, char *argv[])
                                 progress);
     splash->setProgress(progress, msg);
     g_free(msg);
-    g_signal_connect(splash->gtkWidget(),
-                     "delete-event",
-                     G_CALLBACK(onDeleteEvent),
-                     splash);
+    g_signal_connect(splash->gtkWidget(), "delete-event",
+                     G_CALLBACK(onDeleteEvent), splash);
     g_timeout_add(2000, addProgress, splash);
     gtk_main();
     return 0;

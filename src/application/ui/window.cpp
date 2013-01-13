@@ -46,11 +46,8 @@ Window::Window(const Configuration &config, PaneBase &content):
 
     m_menuBar = gtk_ui_manager_get_widget(m_uiManager, "/main-menu-bar");
     gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                            m_menuBar,
-                            NULL,
-                            GTK_POS_BOTTOM,
-                            1,
-                            1);
+                            m_menuBar, NULL,
+                            GTK_POS_BOTTOM, 1, 1);
 
     m_toolbar = gtk_ui_manager_get_widget(m_uiManager, "/main-toolbar");
 
@@ -64,34 +61,21 @@ Window::Window(const Configuration &config, PaneBase &content):
     gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), GTK_TOOL_ITEM(newItem), 0);
 
     gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                            m_toolbar,
-                            m_menuBar,
-                            GTK_POS_BOTTOM,
-                            1,
-                            1);
+                            m_toolbar, m_menuBar,
+                            GTK_POS_BOTTOM, 1, 1);
 
     gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                            m_mainHBox,
-                            m_toolbar,
-                            GTK_POS_BOTTOM,
-                            1,
-                            1);
+                            m_mainHBox, m_toolbar,
+                            GTK_POS_BOTTOM, 1, 1);
 
     gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
-                            m_content.gtkWidget(),
-                            NULL,
-                            GTK_POS_RIGHT,
-                            1,
-                            1);
+                            m_content.gtkWidget(), NULL,
+                            GTK_POS_RIGHT, 1, 1);
 
-    g_signal_connect(m_window,
-                     "delete-event",
-                     G_CALLBACK(onDeleteEvent),
-                     this);
-    g_signal_connect(m_window,
-                     "focus-in-event",
-                     G_CALLBACK(onFocusInEvent),
-                     this);
+    g_signal_connect(m_window, "delete-event",
+                     G_CALLBACK(onDeleteEvent), this);
+    g_signal_connect(m_window, "focus-in-event",
+                     G_CALLBACK(onFocusInEvent), this);
 
     gtk_widget_show_all(m_window);
 
@@ -176,11 +160,8 @@ void Window::setContent(PaneBase *content)
         m_content = content;
         m_content->setWindow(this);
         gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
-                                m_content->gtkWidget(),
-                                NULL,
-                                GTK_POS_RIGHT,
-                                1,
-                                1);
+                                m_content->gtkWidget(), NULL,
+                                GTK_POS_RIGHT, 1, 1);
     }
     else
     {
@@ -206,18 +187,12 @@ void Window::addBar(Bar &bar)
     bar.addToList(m_firstBar, m_lastBar);
     if (bar.orientation() == Bar::ORIENTATION_HORIZONTAL)
         gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                                bar.gtkWidget(),
-                                NULL,
-                                GTK_POS_TOP,
-                                1,
-                                1);
+                                bar.gtkWidget(), NULL,
+                                GTK_POS_TOP, 1, 1);
     else
         gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                                bar.gtkWidget(),
-                                NULL,
-                                GTK_POS_LEFT,
-                                1,
-                                1);
+                                bar.gtkWidget(), NULL,
+                                GTK_POS_LEFT, 1, 1);
 }
 
 void Window::removeBar(Bar &bar)

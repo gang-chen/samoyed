@@ -160,7 +160,7 @@ private:
 
     bool makeUserDirectory();
 
-    bool chooseStartSession(bool restore);
+    bool chooseSessionToStart(bool restore);
 
     bool startSession();
 

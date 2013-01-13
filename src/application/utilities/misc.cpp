@@ -89,7 +89,7 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
 
-    expander = gtk_expander_new(_("Details"));
+    expander = gtk_expander_new_with_mnemonic(_("_Details"));
     gtk_expander_set_spacing(GTK_EXPANDER(expander), EXPANDER_SPACING);
     gtk_expander_set_resize_toplevel(GTK_EXPANDER(expander), TRUE);
 
