@@ -18,6 +18,7 @@ g++ session-chooser-dialog.cpp -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST\
 #ifndef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
 # include "../../session.hpp"
 #endif
+#include "../../utilities/misc.hpp"
 #include <string>
 #include <vector>
 #include <gtk/gtk.h>
@@ -122,7 +123,7 @@ SessionChooserDialog::SessionChooserDialog(Action action):
         action == ACTION_CREATE ? _("New Session") : _("Restore Session"),
         NULL,
         GTK_DIALOG_MODAL,
-        action == ACTION_CREATE ? _("_New") : _("_Restore"), GTK_RESPONSE_OK,
+        GTK_STOCK_OK, GTK_RESPONSE_OK,
         GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
         NULL);
 
@@ -152,13 +153,24 @@ SessionChooserDialog::SessionChooserDialog(Action action):
     }
 
     // The new session page.
-    GtkWidget *newPage = gtk_grid_new();
-    gtk_notebook_append_page(GTK_NOTEBOOK(m_notebook), newPage, NULL);
+    GtkWidget *label = gtk_label_new_with_mnemonic(_("_Session name:"));
     m_newSessionEntry = gtk_entry_new();
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_newSessionEntry);
+    GtkWidget *labelEntry = gtk_grid_new();
+    gtk_grid_attach_next_to(GTK_GRID(labelEntry),
+                            label, NULL,
+                            GTK_POS_RIGHT, 1, 1);
+    gtk_grid_attach_next_to(GKT_GRID(labelEntry),
+                            m_newSessionEntry, label,
+                            GTK_POS_RIGHT, 1, 1);
+    label = gtk_label_new_with_mnemonic(_("S_aved sessions:"));
+    GtkWidget *newPage = gtk_grid_new();
+gtk_grid_
     gtk_grid_attach_next_to(GTK_GRID(newPage),
                             m_newSessionEntry, NULL,
                             GTK_POS_BOTTOM, 1, 1);
     GtkWidget *expander = gtk_expander_new_with_mnemonic(_("_Saved sessions"));
+    gtk_expander_set_spacing(GTK_EXPANDER(expander), EXPANDER_SPACING);
     gtk_expander_set_resize_toplevel(GTK_EXPANDER(expander), TRUE);
     gtk_grid_attach_next_to(GTK_GRID(newPage),
                             expander, m_newSessionEntry,
@@ -181,16 +193,14 @@ SessionChooserDialog::SessionChooserDialog(Action action):
                                                       "active", 1,
                                                       NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW(sessionList), column);
+    gtk_container_add(GTK_CONTAINER(expander), sessionList);
     GtkTreeSelection *selection;
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(sessionList));
     gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
     g_signal_connect(selection, "changed",
                      G_CALLBACK(onSelectedSessionChanged), this);
-    gtk_container_add(GTK_CONTAINER(expander), sessionList);
 
     // The restore session page.
-    GtkWidget *restorePage = gtk_frame_new(_("Choose a session"));
-    gtk_notebook_append_page(GTK_NOTEBOOK(m_notebook), restorePage, NULL);
     sessionList = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_sessions));
     renderer = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes("Name",
@@ -208,8 +218,9 @@ SessionChooserDialog::SessionChooserDialog(Action action):
     gtk_tree_view_append_column(GTK_TREE_VIEW(sessionList), column);
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(sessionList));
     gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
-    gtk_container_add(GTK_CONTAINER(restorePage), sessionList);
-    gtk_container_set_border_width(GTK_CONTAINER(restorePage), 30);
+
+    gtk_notebook_append_page(GTK_NOTEBOOK(m_notebook), newPage, NULL);
+    gtk_notebook_append_page(GTK_NOTEBOOK(m_notebook), restorePage, NULL);
 
     // The switch button.
     m_switchButton = gtk_button_new_with_mnemonic(
