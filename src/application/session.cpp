@@ -1185,9 +1185,9 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
     FILE *unsavedFp = g_fopen(unsavedFn.c_str(), "w");
     if (unsavedFp)
     {
-        for (std::set<std::string>::const_iterator it =
-                 session.unsavedFileUris().begin();
-             it != session.unsavedFileUris().end();
+        for (std::vector<std::string>::const_iterator it =
+                 m_unsavedFileUris.begin();
+             it != m_unsavedFileUris.end();
              ++it)
         {
             fputs(*it, unsavedFp);
@@ -1201,7 +1201,7 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
 {
     UnsavedFileListReadParam *p =
         static_cast<UnsavedFileListReadParam *>(param);
-    p->m_session.m_unsavedFileListUris.swap(p->m_unsavedFileUris);
+    p->m_session.m_unsavedFileUris.swap(p->m_unsavedFileUris);
     if (p->m_session.m_destroy)
     {
         delete p;
