@@ -26,15 +26,6 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
 
-namespace
-{
-
-const int EXPANDER_SPACING = 6;
-const int TEXT_WIDTH_REQUEST = 400;
-const int TEXT_HEIGHT_REQUEST = 300;
-
-}
-
 namespace Samoyed
 {
 
@@ -79,7 +70,7 @@ bool removeFileOrDirectory(const char *name, GError **error)
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 {
-    GtkWidget *box, *expander, *sw, *label;
+    GtkWidget *label, *sw, *expander, *box;
     char *text;
     va_list args;
 
@@ -87,11 +78,10 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     text = g_strdup_vprintf(details, args);
     va_end(args);
 
-    box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
-
-    expander = gtk_expander_new_with_mnemonic(_("_Details"));
-    gtk_expander_set_spacing(GTK_EXPANDER(expander), EXPANDER_SPACING);
-    gtk_expander_set_resize_toplevel(GTK_EXPANDER(expander), TRUE);
+    label = gtk_label_new(text);
+    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+    gtk_label_set_selectable(GTK_LABEL(label), TRUE);
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
 
     sw = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw),
@@ -99,17 +89,17 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw),
                                    GTK_POLICY_NEVER,
                                    GTK_POLICY_AUTOMATIC);
-
-    label = gtk_label_new(text);
-    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
-    gtk_label_set_selectable(GTK_LABEL(label), TRUE);
-    gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_widget_set_size_request(sw, TEXT_WIDTH_REQUEST, TEXT_HEIGHT_REQUEST);
-
     gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(sw), label);
+
+    expander = gtk_expander_new_with_mnemonic(_("_Details"));
+    gtk_expander_set_spacing(GTK_EXPANDER(expander), CONTAINER_SPACING);
+    gtk_expander_set_resize_toplevel(GTK_EXPANDER(expander), TRUE);
     gtk_container_add(GTK_CONTAINER(expander), sw);
-    gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
     gtk_widget_show_all(expander);
+
+    box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
+    gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
 
     g_free(text);
 }
