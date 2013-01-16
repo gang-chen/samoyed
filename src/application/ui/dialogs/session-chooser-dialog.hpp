@@ -54,7 +54,7 @@ private:
         GtkWidget *m_dialog;
     };
 
-    class RestoreSessionDialog: public WorkerDialog
+    class RestoreSessionDialog: public Dialog
     {
     public:
         RestoreSessionDialog();
@@ -64,6 +64,7 @@ private:
 
     private:
         static void onResponse(GtkDialog *dialog, int id, gpointer d);
+        GtkListStore *m_store;
         GtkWidget *m_list;
         GtkWidget *m_dialog;
     }
