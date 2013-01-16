@@ -32,17 +32,43 @@ public:
     const char *sessionName() const { return m_sessionName.c_str(); }
 
 private:
-    static void onSwitchButtonClicked(GtkButton *button, gpointer dialog);
+    class Dialog: public boost::noncopyable
+    {
+    public:
+        virtual ~Dialog() {}
+        virtual void run() = 0;
+        virtual const char *name() const = 0;
+    };
 
-    static void onSelectedSessionChanged(GtkTreeSelection *selection,
-                                         gpointer dialog);
+    class NewSessionDialog: public Dialog
+    {
+    public:
+        NewSessionDialog();
+        virtual ~NewSessionDialog();
+        virtual void run();
+        virtual const char *name() const;
 
-    GtkWidget *m_dialog;
-    GtkWidget *m_notebook;
-    GtkWidget *m_newSessionEntry;
-    GtkWidget *m_switchButton;
+    private:
+        static void onResponse(GtkDialog *dialog, int id, gpointer d);
+        GtkWidget *m_name;
+        GtkWidget *m_dialog;
+    };
 
-    GtkListStore *m_sessions;
+    class RestoreSessionDialog: public WorkerDialog
+    {
+    public:
+        RestoreSessionDialog();
+        virtual ~RestoreSessionDialog();
+        virtual void run();
+        virtual const char *name() const;
+
+    private:
+        static void onResponse(GtkDialog *dialog, int id, gpointer d);
+        GtkWidget *m_list;
+        GtkWidget *m_dialog;
+    }
+
+    Dialog *m_dialog;
 
     Action m_action;
 
