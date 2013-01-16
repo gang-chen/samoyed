@@ -26,15 +26,6 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
 
-namespace
-{
-
-const int EXPANDER_SPACING = 6;
-const int TEXT_WIDTH_REQUEST = 400;
-const int TEXT_HEIGHT_REQUEST = 300;
-
-}
-
 namespace Samoyed
 {
 
@@ -102,7 +93,7 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(sw), label);
 
     expander = gtk_expander_new_with_mnemonic(_("_Details"));
-    gtk_expander_set_spacing(GTK_EXPANDER(expander), EXPANDER_SPACING);
+    gtk_expander_set_spacing(GTK_EXPANDER(expander), CONTAINER_SPACING);
     gtk_expander_set_resize_toplevel(GTK_EXPANDER(expander), TRUE);
     gtk_container_add(GTK_CONTAINER(expander), sw);
     gtk_widget_show_all(expander);
