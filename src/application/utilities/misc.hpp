@@ -136,6 +136,12 @@ private:
     std::string m_string;
 };
 
+const int CONTAINER_BORDER_WIDTH = 12;
+const int CONTAINER_SPACING = 6;
+const int LABEL_SPACING = 12;
+const int TEXT_WIDTH_REQUEST = 400;
+const int TEXT_HEIGHT_REQUEST = 300;
+
 bool removeFileOrDirectory(const char *name, GError **error);
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
