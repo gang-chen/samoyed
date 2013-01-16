@@ -74,6 +74,71 @@ bool readSessions(std::vector<std::string> &sessionNames,
 namespace Samoyed
 {
 
+void SessionChooserDialog::NewSessionDialog::onResponse(GtkDialog *dialog,
+                                                        gint response,
+                                                        gpointer d)
+{
+
+}
+
+SessionChooserDialog::NewSessionDialog::NewSessionDialog()
+{
+    GtkWidget *label = gtk_label_new_with_mnemonic(_("_Session name:"));
+    m_name = gtk_entry_new();
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_name);
+    GtkGrid *grid = gtk_grid_new();
+    gtk_grid_attach_next_to(GTK_GRID(grid),
+                            label, NULL,
+                            GTK_POS_RIGHT, 1, 1);
+    gtk_grid_attach_next_to(GTK_GRID(grid),
+                            m_name, label,
+                            GTK_POS_RIGHT, 1, 1);
+    gtk_container_set_column_spacing(GTK_CONTAINER(grid), LABEL_SPACING);
+    m_dialog = gtk_dialog_new_with_buttons(
+        _("New Session"),
+        NULL,
+        GTK_DIALOG_MODAL,
+        GTK_STOCK_OK, GTK_RESPONSE_OK,
+        GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+        _("_Restore Session..."), RESPONSE_RESTORE_SESSION,
+        NULL);
+    gtk_container_add(
+        GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(m_dialog))),
+        grid);
+    gtk_widget_set_tooltip_text(
+        gtk_dialog_get_widget_for_response(GTK_DIALOG(m_dialog),
+                                           RESPONSE_RESTORE_SESSION),
+        _("Restore a saved session instead of creating a new one"));
+    gtk_button_box_set_child_secondary(
+        GTK_BUTTON_BOX(gtk_dialog_get_action_area(GTK_DIALOG(m_dialog))),
+        gtk_dialog_get_widget_for_response(GTK_DIALOG(m_dialog),
+                                           RESPONSE_RESTORE_SESSION),
+        TRUE);
+    gtk_button_box_set_child_non_homogeneous(
+        GTK_BUTTON_BOX(gtk_dialog_get_action_area(GTK_DIALOG(m_dialog))),
+        gtk_dialog_get_widget_for_response(GTK_DIALOG(m_dialog),
+                                           RESPONSE_RESTORE_SESSION),
+        TRUE);
+    gtk_dialog_set_default_response(GTK_DIALOG(m_dialog), GTK_RESPONSE_YES);
+    g_signal_connect(m_dialog, "response", G_CALLBACK(onResponse), this);
+    gtk_widget_show_all(grid);
+}
+
+SessionChooserDialog::NewSessionDialog::~NewSessionDialog()
+{
+    gtk_widget_destroy(m_dialog);
+}
+
+int SessionChooserDialog::NewSessionDialog::run()
+{
+    return gtk_dialog_run(GTK_DIALOG(m_dialog));
+}
+
+const char *SessionChooserDialog::NewSessionDialog::name() const
+{
+    return gtk_entry_get_text(GTK_ENTRY(m_name));
+}
+
 void SessionChooserDialog::onSwitchButtonClicked(GtkButton *button,
                                                  gpointer dialog)
 {
