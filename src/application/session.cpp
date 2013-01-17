@@ -1045,6 +1045,8 @@ XmlElementSession *parseSessionFile(const char *fileName,
                 _("Samoyed failed to parse session file \"%s\" to restore "
                   "session \"%s\"."),
                 fileName, sessionName);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return NULL;
@@ -1065,6 +1067,8 @@ XmlElementSession *parseSessionFile(const char *fileName,
             dialog,
             _("Session file \"%s\" is empty."),
             fileName);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return NULL;
@@ -1094,6 +1098,8 @@ XmlElementSession *parseSessionFile(const char *fileName,
                 _("Samoyed failed to construct session \"%s\" from session "
                   "file \"%s\". Errors found in file \"%s\":\n%s."),
                 sessionName, fileName, error.c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
     }
@@ -1323,6 +1329,8 @@ bool Session::makeSessionsDirectory()
                 _("Samoyed failed to create the sessions directory, \"%s\". "
                   "%s. Samoyed cannot run without the directory."),
                 sessionsDirName.c_str(), g_strerror(errno));
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
             return false;
@@ -1389,6 +1397,8 @@ bool Session::readAllSessionNames(std::vector<std::string> &names)
             _("Samoyed failed to open directory \"%s\" to list existing "
               "sessions. %s."),
             sessionsDirName.c_str(), error->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_error_free(error);
@@ -1442,6 +1452,8 @@ bool Session::remove(const char *name)
             _("Samoyed failed to remove session \"%s\"."),
             name);
         gtkMessageDialogAddDetails(dialog, _("%s"), lockError);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(lockError);
@@ -1462,6 +1474,8 @@ bool Session::remove(const char *name)
             _("Samoyed failed to remove session \"%s\"."),
             name);
         gtkMessageDialogAddDetails(dialog, _("%s"), removeError->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_error_free(removeError);
@@ -1491,6 +1505,8 @@ bool Session::rename(const char *oldName, const char *newName)
             _("Samoyed failed to rename session \"%s\" \"%s\"."),
             oldName, newName);
         gtkMessageDialogAddDetails(dialog, _("%s"), lockError);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(lockError);
@@ -1513,6 +1529,8 @@ bool Session::rename(const char *oldName, const char *newName)
             _("Samoyed failed to rename session \"%s\" \"%s\"."),
             oldName, newName);
         gtkMessageDialogAddDetails(dialog, _("%s"), lockError);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(lockError);
@@ -1561,6 +1579,8 @@ bool Session::rename(const char *oldName, const char *newName)
             oldSessionDirName.c_str(),
             newSessionDirName.c_str(),
             g_strerror(errno));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return false;
@@ -1620,6 +1640,8 @@ Session *Session::create(const char *name)
             _("Samoyed failed to create session \"%s\"."),
             name);
         gtkMessageDialogAddDetails(dialog, _("%s"), error);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(error);
@@ -1667,6 +1689,8 @@ Session *Session::create(const char *name)
                 _("Samoyed failed to remove the old session directory, \"%s\". "
                   "%s."),
                 sessionDirName.c_str(), error->message);
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
             gtk_dialog_run(GTK_DIALOG(dialog));
             g_error_free(error);
             delete session;
@@ -1689,6 +1713,8 @@ Session *Session::create(const char *name)
             _("Samoyed failed to create directory \"%s\" for session \"%s\". "
               "%s."),
             sessionDirName.c_str(), name, g_strerror(errno));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         delete session;
@@ -1728,6 +1754,8 @@ Session *Session::restore(const char *name)
             _("Samoyed failed to restore session \"%s\"."),
             name);
         gtkMessageDialogAddDetails(dialog, _("%s"), error);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(error);
