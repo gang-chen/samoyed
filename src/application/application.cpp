@@ -112,6 +112,8 @@ bool Application::makeUserDirectory()
                 _("Samoyed failed to create the user directory, \"%s\". %s. "
                   "Samoyed cannot run without the directory."),
                 m_userDirName.c_str(), g_strerror(errno));
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
             gtk_dialog_run(GTK_DIALOG(dialog));
             gtk_widget_destroy(dialog);
             return false;
