@@ -21,7 +21,7 @@ public:
         ACTION_RESTORE
     };
 
-    SessionChooserDialog(Action action);
+    SessionChooserDialog(Action action, GtkWindow *parent);
 
     ~SessionChooserDialog();
 
@@ -32,24 +32,32 @@ public:
     const char *sessionName() const { return m_sessionName.c_str(); }
 
 private:
+    enum Response
+    {
+        RESPONSE_NEW_SESSION = 1,
+        RESPONSE_RESTORE_SESSION,
+    };
+
     class Dialog: public boost::noncopyable
     {
     public:
         virtual ~Dialog() {}
-        virtual void run() = 0;
+        virtual int run() = 0;
         virtual const char *name() const = 0;
     };
 
     class NewSessionDialog: public Dialog
     {
     public:
-        NewSessionDialog();
+        NewSessionDialog(GtkWindow *parent);
         virtual ~NewSessionDialog();
-        virtual void run();
+        virtual int run();
         virtual const char *name() const;
 
     private:
-        static void onResponse(GtkDialog *dialog, int id, gpointer d);
+        static void onResponse(GtkDialog *gtkDialog,
+                               int response,
+                               gpointer dialog);
         GtkWidget *m_name;
         GtkWidget *m_dialog;
     };
@@ -57,13 +65,15 @@ private:
     class RestoreSessionDialog: public Dialog
     {
     public:
-        RestoreSessionDialog();
+        RestoreSessionDialog(GtkWindow *parent);
         virtual ~RestoreSessionDialog();
-        virtual void run();
+        virtual int run();
         virtual const char *name() const;
 
     private:
-        static void onResponse(GtkDialog *dialog, int id, gpointer d);
+        static void onResponse(GtkDialog *gtkDialog,
+                               int response,
+                               gpointer dialog);
         GtkListStore *m_store;
         GtkWidget *m_list;
         GtkWidget *m_dialog;
