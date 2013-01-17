@@ -98,6 +98,8 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
             dialog,
             _("The MIME type of file \"%s\" is unknown."),
             uri());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         return std::make_pair(NULL, NULL);
@@ -117,6 +119,8 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
             dialog,
             _("The MIME type of file \"%s\" is \"%s\", which is unsupported."),
             uri(), mimeType);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(mimeType);
@@ -219,7 +223,6 @@ bool File::closeEditor(Editor &editor)
             GTK_STOCK_NO, GTK_RESPONSE_NO,
             GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
             NULL);
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
         gtk_widget_set_tooltip_text(
             gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
                                                GTK_RESPONSE_YES),
@@ -232,6 +235,7 @@ bool File::closeEditor(Editor &editor)
             gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
                                                GTK_RESPONSE_CANCEL),
             _("Cancel closing the file"));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_CANCEL)
@@ -349,6 +353,8 @@ gboolean File::onLoadedInMainThread(gpointer param)
             dialog,
             _("%s."),
             file.m_ioError->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
     }
@@ -391,6 +397,8 @@ gboolean File::onSavedInMainThead(gpointer param)
             dialog,
             _("%s."),
             file.m_ioError->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
     }
