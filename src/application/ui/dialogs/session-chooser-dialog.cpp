@@ -74,14 +74,16 @@ bool readSessions(std::vector<std::string> &sessionNames,
 namespace Samoyed
 {
 
-void SessionChooserDialog::NewSessionDialog::onResponse(GtkDialog *dialog,
+void SessionChooserDialog::NewSessionDialog::onResponse(GtkDialog *gtkDialog,
                                                         gint response,
-                                                        gpointer d)
+                                                        gpointer dialog)
 {
-
+    if (response == GTK_RESPONSE_OK &&
+        !validateFileName(static_cast<NewSessionDialog *>(dialog)->name()))
+        g_signal_stop_emission_by_name(gtkDialog, "response");
 }
 
-SessionChooserDialog::NewSessionDialog::NewSessionDialog()
+SessionChooserDialog::NewSessionDialog::NewSessionDialog(GtkWindow *window)
 {
     GtkWidget *label = gtk_label_new_with_mnemonic(_("_Session name:"));
     m_name = gtk_entry_new();
@@ -96,7 +98,7 @@ SessionChooserDialog::NewSessionDialog::NewSessionDialog()
     gtk_container_set_column_spacing(GTK_CONTAINER(grid), LABEL_SPACING);
     m_dialog = gtk_dialog_new_with_buttons(
         _("New Session"),
-        NULL,
+        parent,
         GTK_DIALOG_MODAL,
         GTK_STOCK_OK, GTK_RESPONSE_OK,
         GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -137,6 +139,34 @@ int SessionChooserDialog::NewSessionDialog::run()
 const char *SessionChooserDialog::NewSessionDialog::name() const
 {
     return gtk_entry_get_text(GTK_ENTRY(m_name));
+}
+
+void
+SessionChooserDialog::RestoreSessionDialog::onResponse(GtkDialog *gtkDialog,
+                                                       gint response,
+                                                       gpointer dialog)
+{
+
+}
+
+SessionChooserDialog::RestoreSessionDialog::RestoreSessionDialog(
+    GtkWindow *parent)
+{
+
+}
+
+SessionChooserDialog::RestoreSessionDialog::~RestoreSessionDialog()
+{
+
+}
+
+int SessionChooserDialog::RestoreSessionDialog::run()
+{
+    return gtk_dialog_run(GTK_DIALOG(m_dialog));
+}
+
+const char *SessionChooserDialog::RestoreSessionDialog::name() const
+{
 }
 
 void SessionChooserDialog::onSwitchButtonClicked(GtkButton *button,
