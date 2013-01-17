@@ -56,7 +56,7 @@ private:
 
     private:
         static void onResponse(GtkDialog *gtkDialog,
-                               int response,
+                               gint response,
                                gpointer dialog);
         GtkWidget *m_name;
         GtkWidget *m_dialog;
@@ -72,7 +72,7 @@ private:
 
     private:
         static void onResponse(GtkDialog *gtkDialog,
-                               int response,
+                               gint response,
                                gpointer dialog);
         GtkListStore *m_store;
         GtkWidget *m_list;
