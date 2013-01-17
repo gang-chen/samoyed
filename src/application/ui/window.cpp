@@ -104,7 +104,7 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
     {
         // Closing the main window will quit the application.  Confirm it.
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget() : NULL,
+            GTK_WINDOW(m_window),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
