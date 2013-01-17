@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
         dialog,
         "Hello!\n\nHere are the contents of the README file.\n\n%s",
         readme ? readme : "Unavailable!");
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_CLOSE);
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
     g_free(readme);
