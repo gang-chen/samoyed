@@ -88,7 +88,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     if (!mimeType)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -109,7 +109,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
     if (!factory)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -210,7 +210,7 @@ bool File::closeEditor(Editor &editor)
     {
         // Ask the user.
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -343,7 +343,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     if (file.m_ioError)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -387,7 +387,7 @@ gboolean File::onSavedInMainThead(gpointer param)
         if (m_closing)
         m_closing = false;
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -443,7 +443,7 @@ bool File::load(bool userRequest)
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
