@@ -235,7 +235,7 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent)
     gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
 
     // Make the dialog.
-    GtkWidget *label = gtk_label_new_with_mnemonic(_("_Choose a session:"));
+    GtkWidget *label = gtk_label_new_with_mnemonic(_("Choose a _session:"));
     gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_list);
     GtkGrid *grid = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(grid),
