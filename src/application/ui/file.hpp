@@ -302,7 +302,7 @@ private:
     Saved m_saved;
     Edited m_edited;
 
-    SMYD_DEFINE_DOUBLY_LINKED(File)
+    SAMOYED_DEFINE_DOUBLY_LINKED(File)
 };
 
 }

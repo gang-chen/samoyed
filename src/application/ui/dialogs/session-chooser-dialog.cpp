@@ -3,8 +3,9 @@
 
 /*
 UNIT TEST BUILD
-g++ session-chooser-dialog.cpp -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o session-chooser-dialog
+g++ session-chooser-dialog.cpp ../../utilities/misc.cpp\
+ -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
+ -Werror -Wall -o session-chooser-dialog
 */
 
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
@@ -25,6 +26,7 @@ g++ session-chooser-dialog.cpp -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST\
 #include <string>
 #include <vector>
 #include <gtk/gtk.h>
+#include <glib/gi18n-lib.h>
 
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
 
@@ -106,7 +108,7 @@ bool readSessions(std::vector<std::string> &sessionNames,
     for (std::vector<std::string>::const_iterator it = sessionNames.begin();
          it != sessionNames.end();
          ++it)
-        sessionStates.push_back(Samoyed::Session::queryLockState(state));
+        sessionStates.push_back(Samoyed::Session::queryLockState(it->c_str()));
     return successful;
 #endif
 }
@@ -115,25 +117,65 @@ void NewSessionDialog::onResponse(GtkDialog *gtkDialog,
                                   gint response,
                                   gpointer dialog)
 {
-    if (response == GTK_RESPONSE_OK &&
-        !Samoyed::isValidFileName(
-             static_cast<NewSessionDialog *>(dialog)->name()))
-        g_signal_stop_emission_by_name(gtkDialog, "response");
+    if (response == GTK_RESPONSE_OK)
+    {
+        const char *sessionName =
+            static_cast<NewSessionDialog *>(dialog)->name();
+        if (!*sessionName)
+        {
+            GtkWidget *d = gtk_message_dialog_new(
+                GTK_WINDOW(gtkDialog),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("The new session name is empty. Type it in the input box."));
+            gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(d));
+            gtk_widget_destroy(d);
+            g_signal_stop_emission_by_name(gtkDialog, "response");
+            gtk_widget_grab_focus(
+                static_cast<NewSessionDialog *>(dialog)->m_name);
+        }
+        if (!Samoyed::isValidFileName(sessionName))
+        {
+            GtkWidget *d = gtk_message_dialog_new(
+                GTK_WINDOW(gtkDialog),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("The new session name \"%s\" is invalid. Correct it."),
+                sessionName);
+            Samoyed::gtkMessageDialogAddDetails(
+                d,
+                _("Only letters, digits, \"_\", \"-\", \"+\" and \".\" are "
+                  "allowed in session names."));
+            gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(d));
+            gtk_widget_destroy(d);
+            g_signal_stop_emission_by_name(gtkDialog, "response");
+            gtk_widget_grab_focus(
+                static_cast<NewSessionDialog *>(dialog)->m_name);
+        }
+    }
 }
 
 NewSessionDialog::NewSessionDialog(GtkWindow *parent)
 {
     GtkWidget *label = gtk_label_new_with_mnemonic(_("_Session name:"));
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
     m_name = gtk_entry_new();
+    gtk_widget_set_hexpand(m_name, TRUE);
     gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_name);
-    GtkGrid *grid = gtk_grid_new();
+    GtkWidget *grid = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             label, NULL,
                             GTK_POS_RIGHT, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             m_name, label,
                             GTK_POS_RIGHT, 1, 1);
-    gtk_container_set_column_spacing(GTK_CONTAINER(grid), LABEL_SPACING);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), Samoyed::LABEL_SPACING);
+    gtk_container_set_border_width(GTK_CONTAINER(grid),
+                                   Samoyed::CONTAINER_BORDER_WIDTH);
     m_dialog = gtk_dialog_new_with_buttons(
         _("New Session"),
         parent,
@@ -186,18 +228,37 @@ RestoreSessionDialog::onResponse(GtkDialog *gtkDialog,
 {
     if (response == GTK_RESPONSE_OK)
     {
-        char *sessionName = static_cast<RestoreSessionDialog *>(dialog)->name();
-        if (!sessionName || !Samoyed::isValidFileName(sessionName))
+        const char *sessionName =
+            static_cast<RestoreSessionDialog *>(dialog)->name();
+        if (!sessionName)
+        {
+            GtkWidget *d = gtk_message_dialog_new(
+                GTK_WINDOW(gtkDialog),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("No session is chosen. Choose one from the session list."));
+            gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(d));
+            gtk_widget_destroy(d);
             g_signal_stop_emission_by_name(gtkDialog, "response");
+            gtk_widget_grab_focus(
+                static_cast<RestoreSessionDialog *>(dialog)->m_list);
+        }
     }
 }
 
-RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent)
+RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
+    m_store(NULL),
+    m_list(NULL),
+    m_dialog(NULL)
 {
     // Read sessions.
     std::vector<std::string> sessionNames;
-    std::vector<Session::LockState> sessionStates;
+    std::vector<Samoyed::Session::LockState> sessionStates;
     readSessions(sessionNames, sessionStates);
+    if (sessionNames.empty())
+        return;
     m_store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_BOOLEAN);
     GtkTreeIter it;
     for (std::vector<std::string>::size_type i = 0;
@@ -231,20 +292,24 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent)
                                                       "active", 1,
                                                       NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
+    gtk_widget_set_hexpand(m_list, TRUE);
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(m_list));
     gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
 
     // Make the dialog.
     GtkWidget *label = gtk_label_new_with_mnemonic(_("Choose a _session:"));
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_list);
-    GtkGrid *grid = gtk_grid_new();
+    GtkWidget *grid = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             label, NULL,
                             GTK_POS_BOTTOM, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             m_list, label,
                             GTK_POS_BOTTOM, 1, 1);
-    gtk_container_set_row_spacing(GTK_CONTAINER(grid), CONTAINDER_SPACING);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), Samoyed::CONTAINER_SPACING);
+    gtk_container_set_border_width(GTK_CONTAINER(grid),
+                                   Samoyed::CONTAINER_BORDER_WIDTH);
     m_dialog = gtk_dialog_new_with_buttons(
         _("Restore Session"),
         parent,
@@ -277,12 +342,17 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent)
 
 RestoreSessionDialog::~RestoreSessionDialog()
 {
-    gtk_widget_destroy(m_dialog);
-    g_object_unref(m_store);
+    if (m_dialog)
+    {
+        gtk_widget_destroy(m_dialog);
+        g_object_unref(m_store);
+    }
 }
 
 int RestoreSessionDialog::run()
 {
+    if (!m_dialog)
+        return RESPONSE_NEW_SESSION;
     return gtk_dialog_run(GTK_DIALOG(m_dialog));
 }
 
@@ -312,7 +382,7 @@ void SessionChooserDialog::run()
         {
             NewSessionDialog *dialog = new NewSessionDialog(m_parent);
             int response = dialog->run();
-            if (response == GTK_RESPONSE_YES)
+            if (response == GTK_RESPONSE_OK)
             {
                 m_sessionName = dialog->name();
                 delete dialog;
@@ -328,7 +398,7 @@ void SessionChooserDialog::run()
         {
             RestoreSessionDialog *dialog = new RestoreSessionDialog(m_parent);
             int response = dialog->run();
-            if (response == GTK_RESPONSE_YES)
+            if (response == GTK_RESPONSE_OK)
             {
                 m_sessionName = dialog->name();
                 delete dialog;
@@ -351,23 +421,25 @@ int main(int argc, char *argv[])
 {
     gtk_init(&argc, &argv);
     Samoyed::SessionChooserDialog *dialog = new Samoyed::SessionChooserDialog(
-        Samoyed::SessionChooserDialog::ACTION_CREATE);
+        Samoyed::SessionChooserDialog::ACTION_CREATE,
+        NULL);
     dialog->run();
-    if (dialog->action() == ACTION_CANCEL)
+    if (dialog->action() == Samoyed::SessionChooserDialog::ACTION_CANCEL)
         printf("Canceled.\n");
-    else if (dialog->action() == ACTION_CREATE)
+    else if (dialog->action() == Samoyed::SessionChooserDialog::ACTION_CREATE)
         printf("Create session \"%s\".\n", dialog->sessionName());
-    else if (dialog->action() == ACTION_RESTORE)
+    else if (dialog->action() == Samoyed::SessionChooserDialog::ACTION_RESTORE)
         printf("Restore session \"%s\".\n", dialog->sessionName());
     delete dialog;
     dialog = new Samoyed::SessionChooserDialog(
-        Samoyed::SessionChooserDialog::ACTION_RESTORE);
+        Samoyed::SessionChooserDialog::ACTION_RESTORE,
+        NULL);
     dialog->run();
-    if (dialog->action() == ACTION_CANCEL)
+    if (dialog->action() == Samoyed::SessionChooserDialog::ACTION_CANCEL)
         printf("Canceled.\n");
-    else if (dialog->action() == ACTION_CREATE)
+    else if (dialog->action() == Samoyed::SessionChooserDialog::ACTION_CREATE)
         printf("Create session \"%s\".\n", dialog->sessionName());
-    else if (dialog->action() == ACTION_RESTORE)
+    else if (dialog->action() == Samoyed::SessionChooserDialog::ACTION_RESTORE)
         printf("Restore session \"%s\".\n", dialog->sessionName());
     delete dialog;
     return 0;

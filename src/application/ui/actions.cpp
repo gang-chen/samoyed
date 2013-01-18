@@ -1,150 +1,154 @@
 // Actions.
 // Copyright (C) 2012 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "actions.hpp"
 #include "window.hpp"
 #include <gtk/gtk.h>
+#include <glib/gi18n-lib.h>
 
 namespace
 {
 
-void createSession(GtkAction *action, Window *window)
+void createSession(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void switchSession(GtkAction *action, Window *window)
+void switchSession(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void manageSessions(GtkAction *action, Window *window)
+void manageSessions(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void quitSession(GtkAction *action, Window *window)
+void quitSession(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void createProject(GtkAction *action, Window *window)
+void createProject(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void openProject(GtkAction *action, Window *window)
+void openProject(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void closeProject(GtkAction *action, Window *window)
+void closeProject(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void closeAllProjects(GtkAction *action, Window *window)
+void closeAllProjects(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void createFile(GtkAction *action, Window *window)
+void createFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void createDirectory(GtkAction *action, Window *window)
+void createDirectory(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void configure(GtkAction *action, Window *window)
+void configure(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void manageConfigurations(GtkAction *action, Window *window)
+void manageConfigurations(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void openFile(GtkAction *action, Window *window)
+void openFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void openFileInNewEditor(GtkAction *action, Window *window)
+void openFileInNewEditor(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void saveFile(GtkAction *action, Window *window)
+void saveFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void saveAllFiles(GtkAction *action, Window *window)
+void saveAllFiles(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void reloadFile(GtkAction *action, Window *window)
+void reloadFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void closeFile(GtkAction *action, Window *window)
+void closeFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void closeAllFiles(GtkAction *action, Window *window)
+void closeAllFiles(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void setupPage(GtkAction *action, Window *window)
+void setupPage(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void previewPrintedFile(GtkAction *action, Window *window)
+void previewPrintedFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void printFile(GtkAction *action, Window *window)
+void printFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void undo(GtkAction *action, Window *window)
+void undo(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void redo(GtkAction *action, Window *window)
+void redo(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void cut(GtkAction *action, Window *window)
+void cut(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void copy(GtkAction *action, Window *window)
+void copy(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void paste(GtkAction *action, Window *window)
+void paste(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void deleteObject(GtkAction *action, Window *window)
+void deleteObject(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void editPreferences(GtkAction *action, Window *window)
+void editPreferences(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void createWindow(GtkAction *action, Window *window)
+void createWindow(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void createEditorGroup(GtkAction *action, Window *window)
+void createEditorGroup(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void enterFullScreen(GtkAction *action, Window *window)
+void enterFullScreen(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void showManual(GtkAction *action, Window *window)
+void showManual(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void showTutorial(GtkAction *action, Window *window)
+void showTutorial(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void showAbout(GtkAction *action, Window *window)
+void showAbout(GtkAction *action, Samoyed::Window *window)
 {
 }
 
@@ -209,7 +213,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Close all opened files"), G_CALLBACK(closeAllFiles) },
     { "file-page-setup", GTK_STOCK_PAGE_SETUP, N_("Page _Setup..."), NULL,
       N_("Set up the page settings for printing"), G_CALLBACK(setupPage) },
-    { "file-print-preview", GTK_STOCK_PRINT_REVIEW, N_("Print Pre_view"), NULL,
+    { "file-print-preview", GTK_STOCK_PRINT_PREVIEW, N_("Print Pre_view"), NULL,
       N_("Preview the printed file"), G_CALLBACK(previewPrintedFile) },
     { "file-print", GTK_STOCK_PRINT, N_("_Print"), "<ctrl>P",
       N_("Print the current file"), G_CALLBACK(printFile) },
@@ -252,6 +256,8 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     { "new-directory", GTK_STOCK_DIRECTORY, N_("_Directory"), NULL,
       N_("Create a directory"), G_CALLBACK(createDirectory) }
 };
+
+}
 
 namespace Samoyed
 {

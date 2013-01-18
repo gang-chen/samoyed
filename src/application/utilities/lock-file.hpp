@@ -54,7 +54,7 @@ private:
 
     pid_t m_lockingProcessId;
 
-    SMYD_DEFINE_DOUBLY_LINKED(LockFile)
+    SAMOYED_DEFINE_DOUBLY_LINKED(LockFile)
 };
 
 }

@@ -3,8 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -lboost_thread -pthread -Werror -Wall\
- -o manager
+g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -lboost_thread -pthread\
+ `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o manager
 */
 
 #ifdef SMYD_MANAGER_UNIT_TEST
@@ -41,6 +41,9 @@ public:
     typedef Samoyed::CastableString KeyHolder;
     Key key() const { return m_name.c_str(); }
     const char *name() const { return m_name.c_str(); }
+    void setFriend(const Samoyed::ReferencePointer<Person>& f) { m_friend = f; }
+    void setWeakFriend(const Samoyed::WeakPointer<Person>& weakFriend)
+    { m_weakFriend = weakFriend; }
 private:
     Person(const Key &name, unsigned long id, Samoyed::Manager<Person> &mgr):
         Samoyed::Managed<Person>(id, mgr),
@@ -53,6 +56,8 @@ private:
         printf("Destructing %s\n", name());
     }
     std::string m_name;
+    Samoyed::ReferencePointer<Person> m_friend;
+    Samoyed::WeakPointer<Person> m_weakFriend;
     template<class> friend class Samoyed::Manager;
 };
 
@@ -73,6 +78,18 @@ struct ThreadProc
             Samoyed::ReferencePointer<Person> p =
                 m_manager.reference(persons[i % 10]);
             printf("Thread %d is holding a reference to %s\n", m_id, p->name());
+            if (i == 3)
+            {
+                p->setFriend(m_manager.reference(persons[4]));
+                printf("Thread %d: %s and %s make friends\n",
+                       m_id, p->name(), persons[4]);
+            }
+            if (i == 6)
+            {
+                p->setWeakFriend(m_manager.reference(persons[8]));
+                printf("Thread %d: %s and %s make weak friends\n",
+                       m_id, p->name(), persons[8]);
+            }
             if (i == 1)
             {
                 w1 = Samoyed::WeakPointer<Person>(p);

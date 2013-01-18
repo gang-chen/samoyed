@@ -68,6 +68,9 @@ public:
         SHOW_TUTORIAL,
         SHOW_ABOUT,
 
+        POPUP_CREATE_FILE,
+        POPUP_CREATE_DIRECTORY,
+
         N_ACTIONS
     };
 

@@ -7,7 +7,8 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
  -Werror -Wall -o misc
 */
 
-#ifdef SMYD_MISC_UNIT_TEST
+#if defined(SMYD_MISC_UNIT_TEST) || \
+    defined(SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST)
 # define _(T) T
 #endif
 
@@ -19,6 +20,7 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 # include <assert.h>
 #endif
 #include <errno.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string>
@@ -28,6 +30,20 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 
 namespace Samoyed
 {
+
+bool isValidFileName(const char *fileName)
+{
+    for (; *fileName; ++fileName)
+    {
+        if (!isalnum(*fileName) &&
+            *fileName != '_' &&
+            *fileName != '-' &&
+            *fileName != '+' &&
+            *fileName != '.')
+            return false;
+    }
+    return true;
+}
 
 bool removeFileOrDirectory(const char *name, GError **error)
 {
@@ -82,6 +98,7 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_label_set_selectable(GTK_LABEL(label), TRUE);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_widget_set_valign(label, GTK_ALIGN_START);
 
     sw = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw),
@@ -113,6 +130,10 @@ int main(int argc, char *argv[])
     char *readme;
 
     gtk_init(&argc, &argv);
+
+    assert(Samoyed::isValidFileName("file-name_123.txt"));
+    assert(!Samoyed::isValidFileName(" "));
+    assert(!Samoyed::isValidFileName("*"));
 
     if (!g_mkdir("misc-test-dir", 0755) &&
         g_file_set_contents("misc-test-dir/file", "hello", -1, NULL))

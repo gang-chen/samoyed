@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <utility>
 #include <map>
+#include <vector>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
@@ -100,7 +101,8 @@ private:
         }
     }
 
-    void cacheObject(Object *object)
+    void cacheObject(Object *object,
+                     std::vector<Object *> &objectsToSwap)
     {
         // Cache the object.
         if (m_mruCachedObject)
@@ -122,7 +124,7 @@ private:
                 m_mruCachedObject = object->m_prevCached;
             m_lruCachedObject = object->m_nextCached;
             m_table.erase(object->key());
-            delete object;
+            objectsToSwap.push_back(object);
             --m_nCachedObjects;
         }
     }
@@ -135,12 +137,13 @@ private:
 
     void decreaseReference(Object *object)
     {
+        std::vector<Object *> objectsToSwap;
         bool del = false;
         {
             boost::mutex::scoped_lock lock(m_mutex);
             if (--object->m_refCount == 0)
             {
-                cacheObject(object);
+                cacheObject(object, objectsToSwap);
                 // If no one holds any reference to objects, it is safe to
                 // destroy the manager.
                 if (m_destroy &&
@@ -149,19 +152,30 @@ private:
                     del = true;
             }
         }
+        for (typename std::vector<Object *>::const_iterator it =
+                 objectsToSwap.begin();
+             it != objectsToSwap.end();
+             ++it)
+            delete *it;
         if (del)
             delete this;
     }
 
     void switchReference(Object *newObject, Object *oldObject)
     {
+        std::vector<Object *> objectsToSwap;
         if (newObject != oldObject)
         {
             boost::mutex::scoped_lock lock(m_mutex);
             if (--oldObject->m_refCount == 0)
-                cacheObject(oldObject);
+                cacheObject(oldObject, objectsToSwap);
             ++newObject->m_refCount;
         }
+        for (typename std::vector<Object *>::const_iterator it =
+                 objectsToSwap.begin();
+             it != objectsToSwap.end();
+             ++it)
+            delete *it;
     }
 
     Table m_table;

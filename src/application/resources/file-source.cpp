@@ -16,9 +16,6 @@
 #include <assert.h>
 #include <string>
 #include <deque>
-#ifdef ENABLE_NLS
-# include <libintl.h>
-#endif
 #include <boost/bind.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
