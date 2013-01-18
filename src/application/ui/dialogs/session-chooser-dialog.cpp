@@ -218,7 +218,7 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent)
     GtkTreeSelection *selection;
     m_list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
     renderer = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes("Name",
+    column = gtk_tree_view_column_new_with_attributes(_("Name"),
                                                       renderer,
                                                       "text", 0,
                                                       NULL);
@@ -226,7 +226,7 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent)
     renderer = gtk_cell_renderer_toggle_new();
     gtk_cell_renderer_toggle_set_activatable(
         GTK_CELL_RENDERER_TOGGLE(renderer), FALSE);
-    column = gtk_tree_view_column_new_with_attributes("Locked",
+    column = gtk_tree_view_column_new_with_attributes(_("Locked"),
                                                       renderer,
                                                       "active", 1,
                                                       NULL);
