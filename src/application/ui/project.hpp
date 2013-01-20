@@ -5,11 +5,10 @@
 #define SMYD_PROJECT_HPP
 
 #include "../utilities/misc.hpp"
-#include "../utilities/string-comparator.hpp"
 #include "../utilities/manager.hpp"
 #include <map>
 #include <string>
-#include <boost/noncopyable>
+#include <boost/utility.hpp>
 
 namespace Samoyed
 {
@@ -34,6 +33,10 @@ public:
     Project(const char *uri);
 
     bool close();
+
+    const char *uri() const { return m_uri.c_str(); }
+
+    const char *name() const { return m_name.c_str(); }
 
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;
@@ -60,7 +63,7 @@ private:
 
     bool m_closing;
 
-    ReferencePoint<ProjectConfiguration> m_config;
+    ReferencePointer<ProjectConfiguration> m_config;
 
     /**
      * The editors in the context of this project.
@@ -69,7 +72,7 @@ private:
     Editor *m_lastEditor;
     EditorTable m_editorTable;
 
-    SMYD_DEFINE_DOUBLY_LINKED(Project)
+    SAMOYED_DEFINE_DOUBLY_LINKED(Project)
 };
 
 }

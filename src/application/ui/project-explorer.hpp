@@ -6,6 +6,7 @@
 
 #include "pane.hpp"
 #include "../utilities/misc.hpp"
+#include <map>
 #include <gtk/gtk.h>
 
 namespace Samoyed

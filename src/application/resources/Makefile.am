@@ -14,3 +14,5 @@ libresources_la_SOURCES = \
 libresources_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
+
+libresources_la_CXXFLAGS = -Werror -Wall

@@ -9,11 +9,6 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
  -pthread -Werror -Wall -o text-file-loader
 */
 
-#ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
-# define _(T) T
-# define N_(T) T
-#endif
-
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -26,17 +21,21 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
 # include <stdio.h>
 # include <string.h>
 #else
+# include "manager.hpp"
 # include "../application.hpp"
-# include "../resources/project-configuration-manager.hpp"
 # include "../resources/project-configuration.hpp"
+# include "../resources/file-configuration.hpp"
 #endif
 #include <string>
 #include <boost/bind.hpp>
 #include <glib.h>
-#include <gio/gio.h>
 #ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
+# define _(T) T
 # include <glib/gstdio.h>
+#else
+# include <glib/gi18n-lib.h>
 #endif
+#include <gio/gio.h>
 
 namespace
 {

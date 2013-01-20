@@ -9,6 +9,8 @@
 #include "file-type-registry.hpp"
 #include "ui/project.hpp"
 #include "ui/file.hpp"
+#include "ui/window.hpp"
+#include "ui/splash-screen.hpp"
 #include "utilities/misc.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
@@ -23,6 +25,7 @@
 #include <boost/thread/thread.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <glib/gstdio.h>
 #include <gtk/gtk.h>
 
 namespace
@@ -133,7 +136,7 @@ bool Application::chooseSessionToStart(bool restore)
     while (!m_session)
     {
         // Pop up a dialog to let the user choose which session to start.
-        SessionChooserDialog dialog(action);
+        SessionChooserDialog dialog(action, NULL);
         dialog.run();
         if (dialog.action() == SessionChooserDialog::ACTION_RESTORE)
         {
@@ -212,7 +215,7 @@ CLEAN_UP:
     a->m_sessionName = NULL;
     a->m_newSessionName = NULL;
 
-    if (a->m_exitStatus == EXIT_FAILURE || !a->session)
+    if (a->m_exitStatus == EXIT_FAILURE || !a->m_session)
         gtk_main_quit();
     return FALSE;
 }
@@ -222,8 +225,6 @@ void Application::shutDown()
     assert(!m_session);
     assert(!m_creatingSession);
     assert(!m_switchingSession);
-    assert(!m_firstProject);
-    assert(!m_lastProject);
     assert(!m_firstFile);
     assert(!m_lastFile);
     assert(!m_firstWindow);
@@ -325,7 +326,8 @@ int Application::run(int argc, char *argv[])
     m_librariesDirName = SAMOYED_PKGLIBDIR;
     m_localeDirName = SAMOYED_LOCALEDIR;
 #endif
-    m_userDirName = g_get_home_dir() + G_DIR_SEPARATOR_S ".samoyed";
+    m_userDirName = std::string(g_get_home_dir()) +
+        G_DIR_SEPARATOR_S ".samoyed";
 
 #ifdef ENABLE_NLS
     bindtextdomain(GETTEXT_PACKAGE, localeDirectoryName());
@@ -377,14 +379,15 @@ int Application::run(int argc, char *argv[])
                                       GETTEXT_PACKAGE);
     g_option_context_add_group(optionContext, gtk_get_option_group(true));
     g_option_context_set_summary(
+        optionContext,
         _("The samoyed integrated development environment"));
     // Note that the following function will terminate this application if
     // "--help" is specified.
     GError *error = NULL;
-    if (!g_option_context_parse(optionContext, argc, argv, &error))
+    if (!g_option_context_parse(optionContext, &argc, &argv, &error))
     {
         g_option_context_free(optionContext);
-        g_printerr(error->message);
+        g_printerr(_("%s"), error->message);
         g_error_free(error);
         goto ERROR_OUT;
     }
@@ -423,16 +426,18 @@ int Application::run(int argc, char *argv[])
     }
 
     // Show the splash screen.
-    std::string splashImage = m_dataDirectory +
-        G_DIR_SEPARATOR_S "splash-screen.png";
-    m_splashScreen = new SplashScreen(_("Samoyed"), splashImage.c_str());
+    {
+        std::string splashImage = m_dataDirName +
+            G_DIR_SEPARATOR_S "splash-screen.png";
+        m_splashScreen = new SplashScreen(_("Samoyed"), splashImage.c_str());
+    }
     g_signal_connect(m_splashScreen->gtkWidget(),
                      "delete-event",
                      G_CALLBACK(onSplashScreenDeleteEvent),
                      this);
 
-    g_idle_add(G_CALLBACK(startUp), this);
-    g_idle_add(G_CALLBACK(checkTerminateRequest), this);
+    g_idle_add(startUp, this);
+    g_idle_add(checkTerminateRequest, this);
 
     // Enter the main event loop.
     if (m_session)
@@ -525,7 +530,7 @@ void Application::removeWindow(Window &window)
 void Application::onWindowClosed()
 {
     // Continue qutting the application if all windows are closed.
-    if (m_qutting && !m_firstWindow)
+    if (m_quitting && !m_firstWindow)
         continueQuitting();
 }
 

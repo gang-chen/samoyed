@@ -1,4 +1,4 @@
-SUBDIRS = dialogs
+SUBDIRS = bars dialogs
 
 noinst_LTLIBRARIES = libui.la
 
@@ -33,3 +33,5 @@ libui_la_SOURCES = \
 libui_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
+
+libui_la_CXXFLAGS = -Werror -Wall

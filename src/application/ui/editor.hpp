@@ -4,6 +4,7 @@
 #ifndef SMYD_EDITOR_HPP
 #define SMYD_EDITOR_HPP
 
+#include "file.hpp"
 #include "../utilities/misc.hpp"
 #include <string>
 #include <gtk/gtk.h>
@@ -11,10 +12,9 @@
 namespace Samoyed
 {
 
-class File;
 class Project;
 class EditorGroup;
-class File::EditPrimitive;
+class EditPrimitive;
 
 /**
  * An editor is used to edit an opened file in the context of an opend project.
@@ -28,14 +28,18 @@ public:
 
     virtual GtkWidget *gtkWidget() const = 0;
 
+    File &file() { return m_file; }
+    const File &file() const { return m_file; }
+
     bool close();
 
-    EditorGroup *editorGroup() const { return m_editorGroup; }
+    EditorGroup *editorGroup() const { return m_group; }
     int index() const { return m_index; }
+    void setIndex(int index) { m_index = index; }
 
     void addToGroup(EditorGroup &group, int index)
     {
-        m_group = group;
+        m_group = &group;
         m_index = index;
     }
 
@@ -45,11 +49,9 @@ public:
         m_index = -1;
     }
 
-    void resetIndex(int index) { m_index = index; }
+    virtual void onEdited(const File::EditPrimitive &edit) = 0;
 
-    virtual void onEdited(File::EditPrimitive &edit) = 0;
-
-    virtual void onFileEditedStateChanged() = 0;
+    virtual void onEditedStateChanged();
 
     virtual void freeze() = 0;
 
@@ -71,10 +73,8 @@ private:
 
     bool m_closing;
 
-    std::string m_title;
-
-    SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, File)
-    SMYD_DEFINE_DOUBLY_LINKED_IN(Editor, Project)
+    SAMOYED_DEFINE_DOUBLY_LINKED_IN(Editor, File)
+    SAMOYED_DEFINE_DOUBLY_LINKED_IN(Editor, Project)
 };
 
 }

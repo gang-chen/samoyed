@@ -18,10 +18,12 @@ namespace Samoyed
 class Session;
 class FileTypeRegistry;
 class Scheduler;
+class Worker;
 class Project;
 class File;
 template<class> class Manager;
 class FileSource;
+class ProjectConfiguration;
 class ProjectAstManager;
 class Window;
 class ProjectExplorer;
@@ -84,6 +86,9 @@ public:
 
     Manager<FileSource> &fileSourceManager() const
     { return *m_fileSourceManager; }
+
+    Manager<ProjectConfiguration> &projectConfigurationManager() const
+    { return *m_projectConfigManager; }
 
     ProjectAstManager &projectAstManager() const
     { return *m_projectAstManager; }
@@ -188,6 +193,8 @@ private:
     Scheduler *m_scheduler;
 
     Manager<FileSource> *m_fileSourceManager;
+
+    Manager<ProjectConfiguration> *m_projectConfigManager;
 
     ProjectAstManager *m_projectAstManager;
 

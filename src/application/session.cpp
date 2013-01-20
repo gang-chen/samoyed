@@ -11,7 +11,7 @@
 #include "ui/editor-group.hpp"
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
-#include "ui/file-recoverer.hpp"
+#include "ui/bars/file-recovery-bar.hpp"
 #include "utilities/misc.hpp"
 #include "utilities/lock-file.hpp"
 #include "utilities/signal.hpp"
@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <glib.h>
+#include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
@@ -1215,9 +1216,9 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
     }
 
     // Show the unsaved files.
-    FileRecoverer *recoverer =
-        new FileRecoverer(p->m_session.unsavedFileListUris());
-    Application::instance().currentWindow().addBar(*recoverer);
+    FileRecoveryBar *bar =
+        new FileRecoveryBar(p->m_session.unsavedFileListUris());
+    Application::instance().currentWindow().addBar(*bar);
     delete p;
     return FALSE;
 }

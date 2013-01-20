@@ -30,3 +30,5 @@ libutilities_la_SOURCES = \
 libutilities_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
+
+libutilities_la_CXXFLAGS = -Werror -Wall

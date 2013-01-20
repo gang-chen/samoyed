@@ -6,9 +6,8 @@
 
 #include <map>
 #include <string>
-#include <boost/utility>
+#include <boost/utility.hpp>
 #include <boost/function.hpp>
-#include <glib.h>
 
 namespace Samoyed
 {

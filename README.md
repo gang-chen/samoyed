@@ -7,7 +7,7 @@ productivity. Based on a comprehensive real-time multithreaded code analyzer, it
 helps programmers browse, understand, write and refactor code, find syntax
 errors and semantic defects in code and fix them.
 
-Samoyed can be extended by adding plug-ins.
+Samoyed is extensible with plug-ins.
 
 Samoyed supports GNU/Linux and Windows.
 

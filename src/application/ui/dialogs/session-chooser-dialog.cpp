@@ -8,10 +8,6 @@ g++ session-chooser-dialog.cpp ../../utilities/misc.cpp\
  -Werror -Wall -o session-chooser-dialog
 */
 
-#ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
-# define _(T) T
-#endif
-
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -25,8 +21,12 @@ g++ session-chooser-dialog.cpp ../../utilities/misc.cpp\
 #endif
 #include <string>
 #include <vector>
+#ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
+# define _(T) T
+#else
+# include <glib/gi18n-lib.h>
+#endif
 #include <gtk/gtk.h>
-#include <glib/gi18n-lib.h>
 
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
 

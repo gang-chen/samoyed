@@ -1,4 +1,4 @@
-AM_SILENT_RULES([yes])
+AC_PREREQ([2.63])
 
 m4_define(samoyed_major_version, 0)
 m4_define(samoyed_minor_version, 0)
@@ -55,6 +55,7 @@ AX_BOOST_THREAD
 AX_BOOST_REGEX
 
 PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.0.0])
+PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 
 AC_CONFIG_FILES([
 Makefile
@@ -64,8 +65,11 @@ src/Makefile
 src/application/Makefile
 src/application/resources/Makefile
 src/application/ui/Makefile
+src/application/ui/bars/Makefile
 src/application/ui/dialogs/Makefile
 src/application/utilities/Makefile
 src/launcher/Makefile
+src/plugins/Makefile
+src/plugins/terminal/Makefile
 ])
 AC_OUTPUT

@@ -7,11 +7,12 @@
 #include <utility>
 #include <boost/function.hpp>
 #include <glib.h>
+#include <gio/gio.h>
 
 namespace Samoyed
 {
 
-static char *FileTypeRegistry::getFileType(const char *uri)
+char *FileTypeRegistry::getFileType(const char *uri)
 {
     char *fileName = g_filename_from_uri(uri, NULL, NULL);
     if (!fileName)
@@ -27,9 +28,9 @@ static char *FileTypeRegistry::getFileType(const char *uri)
 
 FileTypeRegistry::~FileTypeRegistry()
 {
-    if (FileFactoryTable::const_iterator it = m_fileFactoryTable.begin();
-        it != m_fileFactoryTable.end();
-        ++it)
+    for (FileFactoryTable::const_iterator it = m_fileFactoryTable.begin();
+         it != m_fileFactoryTable.end();
+         ++it)
         delete it->second;
 }
 
@@ -40,7 +41,8 @@ void FileTypeRegistry::registerFileFactory(const char *mimeType,
                                              new FileFactory(factory)));
 }
 
-const FileFactory *FileTypeRegistry::getFileFactory(const char *mimeType) const
+const FileTypeRegistry::FileFactory *
+FileTypeRegistry::getFileFactory(const char *mimeType) const
 {
     FileFactoryTable::const_iterator it =
         m_fileFactoryTable.find(std::string(mimeType));

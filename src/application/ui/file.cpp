@@ -6,8 +6,9 @@
 #endif
 #include "file.hpp"
 #include "editor.hpp"
+#include "window.hpp"
 #include "../application.hpp"
-#include "../application.hpp/file-type-registry.hpp"
+#include "../file-type-registry.hpp"
 #include "../utilities/misc.hpp"
 #include "../utilities/file-loader.hpp"
 #include "../utilities/file-saver.hpp"
@@ -18,6 +19,7 @@
 #include <vector>
 #include <string>
 #include <glib.h>
+#include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 
 namespace
@@ -46,15 +48,7 @@ struct SavedParam
 namespace Samoyed
 {
 
-File::EditStack::~EditStack()
-{
-    for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
-         it != m_edits.rend();
-         ++it)
-        delete (*it);
-}
-
-Edit *File::EditStack::execute(File &file) const
+File::Edit *File::EditStack::execute(File &file) const
 {
     EditStack *undo = new EditStack;
     for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
@@ -80,6 +74,14 @@ bool File::EditStack::mergePush(EditPrimitive *edit)
     return false;
 }
 
+void File::EditStack::clear()
+{
+    for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
+         it != m_edits.rend();
+         ++it)
+        delete (*it);
+}
+
 std::pair<File *, Editor *> File::open(const char *uri, Project &project)
 {
     // Can't open an already opened file.
@@ -93,16 +95,16 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to open file \"%s\"."),
-            uri());
+            uri);
         gtkMessageDialogAddDetails(
             dialog,
             _("The MIME type of file \"%s\" is unknown."),
-            uri());
+            uri);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        return std::make_pair(NULL, NULL);
+        return std::pair<File *, Editor *>(NULL, NULL);
     }
     const FileTypeRegistry::FileFactory *factory =
         Application::instance().fileTypeRegistry().getFileFactory(mimeType);
@@ -114,27 +116,27 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to open file \"%s\"."),
-            uri());
+            uri);
         gtkMessageDialogAddDetails(
             dialog,
             _("The MIME type of file \"%s\" is \"%s\", which is unsupported."),
-            uri(), mimeType);
+            uri, mimeType);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_free(mimeType);
-        return std::make_pair(NULL, NULL);
+        return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(mimeType);
     File *file = (*factory)(uri);
     if (!file)
-        return std::make_pair(NULL, NULL);
+        return std::pair<File *, Editor *>(NULL, NULL);
     Editor *editor = file->createEditor(project);
     if (!editor)
     {
         delete file;
-        return std::make_pair(NULL, NULL);
+        return std::pair<File *, Editor *>(NULL, NULL);
     }
     return std::make_pair(file, editor);
 }
@@ -157,6 +159,7 @@ Editor *File::createEditor(Project &project)
         m_reopening = true;
     }
     editor->addToListInFile(m_firstEditor, m_lastEditor);
+    return editor;
 }
 
 void File::continueClosing()
@@ -292,7 +295,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
 {
     LoadedParam *p = static_cast<LoadedParam *>(param);
     File &file = p->m_file;
-    FileLoader &loader = p->m_loader();
+    FileLoader &loader = p->m_loader;
 
     assert(file.m_loading);
 
@@ -305,19 +308,19 @@ gboolean File::onLoadedInMainThread(gpointer param)
         file.unfreezeInternally();
         delete &loader;
         delete p;
-        load(false);
+        file.load(false);
         return FALSE;
     }
 
     // If we are closing the file, now we can finish closing.
     if (file.m_closing)
     {
-        assert(!file.m_reader);
+        assert(!file.m_loader);
         file.m_loading = false;
         file.unfreezeInternally();
-        delete &reader;
+        delete &loader;
         delete p;
-        continueClosing();
+        file.continueClosing();
         return FALSE;
     }
 
@@ -348,7 +351,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to load file \"%s\"."),
-            name());
+            file.name());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
@@ -362,11 +365,11 @@ gboolean File::onLoadedInMainThread(gpointer param)
     return FALSE;
 }
 
-gboolean File::onSavedInMainThead(gpointer param)
+gboolean File::onSavedInMainThread(gpointer param)
 {
     SavedParam *p = static_cast<SavedParam *>(param);
     File &file = p->m_file;
-    FileSaver &saver = p->m_saver();
+    FileSaver &saver = p->m_saver;
 
     assert(file.m_saving);
     file.m_saving = false;
@@ -384,15 +387,15 @@ gboolean File::onSavedInMainThead(gpointer param)
         delete &saver;
         delete p;
 
-        if (m_closing)
-        m_closing = false;
+        if (file.m_closing)
+        file.m_closing = false;
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to save file \"%s\"."),
-            name());
+            file.name());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
@@ -414,8 +417,8 @@ gboolean File::onSavedInMainThead(gpointer param)
         delete &saver;
         delete p;
 
-        if (m_closing)
-            continueClosing();
+        if (file.m_closing)
+            file.continueClosing();
     }
 
     return FALSE;
@@ -424,7 +427,7 @@ gboolean File::onSavedInMainThead(gpointer param)
 void File::onLoadedWrapper(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(onLoadedInMainThread),
+                    onLoadedInMainThread,
                     new LoadedParam(*this, static_cast<FileLoader &>(worker)),
                     NULL);
 }
@@ -432,7 +435,7 @@ void File::onLoadedWrapper(Worker &worker)
 void File::onSavedWrapper(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(onSavedInMainThread),
+                    onSavedInMainThread,
                     new SavedParam(*this, static_cast<FileSaver &>(worker)),
                     NULL);
 }
@@ -469,8 +472,9 @@ void File::save()
     assert(!frozen() && !m_superUndo);
     m_saving = true;
     freezeInternally();
-    Saver *saver = createSaver(Worker::defaultPriorityInCurrentThread(),
-                               boost::bind(&File::onSavedWrapper, this, _1));
+    FileSaver *saver =
+        createSaver(Worker::defaultPriorityInCurrentThread(),
+                    boost::bind(&File::onSavedWrapper, this, _1));
     Application::instance().scheduler().schedule(*saver);
 }
 
@@ -505,7 +509,7 @@ void File::redo()
 {
     assert(undoable());
     Edit *edit = m_redoHistory.top();
-    m_rndoHistory.pop();
+    m_redoHistory.pop();
     Edit *undo = edit->execute(*this);
     m_redoHistory.push(undo);
     increaseEditCount();
@@ -515,7 +519,6 @@ void File::beginEditGroup()
 {
     assert(editable() && !m_superUndo);
     m_superUndo = new EditStack;
-    return true;
 }
 
 void File::endEditGroup()
@@ -524,7 +527,6 @@ void File::endEditGroup()
     m_undoHistory.push(m_superUndo);
     m_superUndo = NULL;
     increaseEditCount();
-    return true;
 }
 
 void File::freeze()
@@ -595,7 +597,7 @@ void File::resetEditCount()
         for (Editor *editor = m_firstEditor;
              editor;
              editor = editor->nextInFile())
-            editor->onFileEditedStateChanged();
+            editor->onEditedStateChanged();
     }
 }
 
@@ -607,7 +609,7 @@ void File::increaseEditCount()
         for (Editor *editor = m_firstEditor;
              editor;
              editor = editor->nextInFile())
-            editor->onFileEditedStateChanged();
+            editor->onEditedStateChanged();
     }
 }
 
@@ -619,7 +621,7 @@ void File::decreaseEditCount()
         for (Editor *editor = m_firstEditor;
              editor;
              editor = editor->nextInFile())
-            editor->onFileEditedStateChanged();
+            editor->onEditedStateChanged();
     }
 }
 

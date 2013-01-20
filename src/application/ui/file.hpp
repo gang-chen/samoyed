@@ -6,6 +6,7 @@
 
 #include "../utilities/misc.hpp"
 #include "../utilities/revision.hpp"
+#include "../utilities/worker.hpp"
 #include <utility>
 #include <vector>
 #include <string>
@@ -68,7 +69,7 @@ public:
     class EditStack: public Edit
     {
     public:
-        virtual ~EditStack();
+        virtual ~EditStack() { clear(); }
 
         virtual Edit *execute(File &file) const;
 
@@ -90,6 +91,8 @@ public:
         bool mergePush(EditPrimitive *edit);
 
         void pop() { m_edits.pop_back(); }
+
+        void clear();
 
     private:
         std::vector<Edit *> m_edits;
@@ -265,6 +268,8 @@ private:
     const std::string m_name;
 
     bool m_closing;
+
+    bool m_reopening;
 
     bool m_loading;
 

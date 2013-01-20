@@ -27,7 +27,7 @@ const int SOURCE_FILE_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
 namespace Samoyed
 {
 
-Edit *SourceFile::Insertion::execute(File &file) const
+File::Edit *SourceFile::Insertion::execute(File &file) const
 {
     return static_cast<SourceFile &>(file).
         insertOnly(m_line, m_column, m_text.c_str(), m_text.length(), NULL);
@@ -38,20 +38,22 @@ bool SourceFile::Insertion::merge(File::EditPrimitive *edit)
     if (static_cast<SourceFile::EditPrimitive *>(edit)->type() !=
         TYPE_INSERTION)
         return false;
-    Insertion *inst = static_cast<Inertion *>(edit);
+    Insertion *ins = static_cast<Insertion *>(edit);
     if (m_line == ins->m_line && m_column == ins->m_column)
     {
         m_text.append(ins->m_text);
         return true;
     }
-    if (ins->m_text.length() > SOURCE_FILE_INSERTION_MERGE_LENGTH_THRESHOLD)
+    if (ins->m_text.length() >
+        static_cast<const std::string::size_type>(
+            SOURCE_FILE_INSERTION_MERGE_LENGTH_THRESHOLD))
         return false;
     const char *cp = ins->m_text.c_str();
     int line = ins->m_line;
     int column = ins->m_column;
     while (cp)
     {
-        if (cp == '\n')
+        if (*cp == '\n')
         {
             ++line;
             column = 0;
@@ -69,7 +71,7 @@ bool SourceFile::Insertion::merge(File::EditPrimitive *edit)
     return false;
 }
 
-Edit *SourceFile::Removal::execute(File &file) const
+File::Edit *SourceFile::Removal::execute(File &file) const
 {
     return static_cast<SourceFile &>(file).
         removeOnly(m_beginLine, m_beginColumn, m_endLine, m_endColumn, NULL);
@@ -83,7 +85,7 @@ bool SourceFile::Removal::merge(File::EditPrimitive *edit)
     if (m_beginLine == rem->m_beginLine)
     {
         if (m_beginColumn == rem->m_beginColumn &&
-            rem.m_beginLine == rem->m_endLine)
+            rem->m_beginLine == rem->m_endLine)
         {
             if (m_beginLine == m_endLine)
                 m_endColumn += rem->m_endColumn - rem->m_beginColumn;
@@ -99,7 +101,7 @@ bool SourceFile::Removal::merge(File::EditPrimitive *edit)
     return false;
 }
 
-Edit *SourceFile::TempInsertion::execute(File &file) const
+File::Edit *SourceFile::TempInsertion::execute(File &file) const
 {
     assert(0);
     return NULL;
@@ -136,7 +138,7 @@ void SourceFile::registerFileType()
 SourceFile::SourceFile(const char* uri):
     File(uri)
 {
-    m_source = Application::instance().fileSourceManager().get(uri);
+    m_source = Application::instance().fileSourceManager().reference(uri);
 }
 
 SourceFile::~SourceFile()
@@ -164,7 +166,7 @@ void SourceFile::onLoaded(FileLoader &loader)
     m_source->onFileLoaded(*this, buffer);
 }
 
-void SourceFile::onSaved(FileSaver &saver);
+void SourceFile::onSaved(FileSaver &saver)
 {
     m_source->onFileSaved(*this);
 }
@@ -177,11 +179,6 @@ int SourceFile::characterCount() const
 int SourceFile::lineCount() const
 {
     return static_cast<SourceEditor *>(editors())->lineCount();
-}
-
-char *SourceFile::text() const
-{
-    return static_cast<SourceEditor *>(editors())->text();
 }
 
 char *SourceFile::text(int beginLine, int beginColumn,
@@ -217,7 +214,7 @@ SourceFile::insertOnly(int line, int column, const char *text, int length,
     int newLineCount = lineCount();
     int endLine, endColumn;
     endLine = line + newLineCount - oldLineCount;
-    if (oldLineCount == newLineCoint)
+    if (oldLineCount == newLineCount)
         endColumn = column + Utf8::countCharacters(text, length);
     else
     {
@@ -225,7 +222,7 @@ SourceFile::insertOnly(int line, int column, const char *text, int length,
             length = strlen(text);
         const char *cp = text + length - 1;
         endColumn = 0;
-        while (cp != '\n')
+        while (*cp != '\n')
         {
             cp = Utf8::begin(cp - 1);
             ++endColumn;
@@ -241,7 +238,7 @@ SourceFile::removeOnly(int beginLine, int beginColumn,
                        int endLine, int endColumn,
                        SourceEditor *committer)
 {
-    char *removed = getText(beginLine, beginColumn, endLine, endColumn);
+    char *removed = text(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
     g_free(removed);
     onEdited(Removal(beginLine, beginColumn, endLine, endColumn), committer);
@@ -259,10 +256,10 @@ FileLoader *SourceFile::createLoader(unsigned int priority,
 FileSaver *SourceFile::createSaver(unsigned int priority,
                                    const Worker::Callback &callback)
 {
-    return new TextFileSaved(priority,
+    return new TextFileSaver(priority,
                              callback,
                              uri(),
-                             text(),
+                             text(0, 0, -1, -1),
                              characterCount());
 }
 

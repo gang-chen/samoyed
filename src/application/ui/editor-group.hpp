@@ -29,7 +29,7 @@ public:
 
     Editor &editor(int i) const { return *m_editors[i]; }
 
-    void addEditor(Editor &editor);
+    void addEditor(Editor &editor, int index);
 
     void removeEditor(Editor &editor);
 
@@ -41,13 +41,16 @@ public:
     void setCurrentEditorIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
-    void onEditorTitleChanged(Editor &editor);
+    void onEditorEditedStateChanged(Editor &editor);
 
 protected:
     virtual ~EditorGroup();
 
 private:
+    static void onCloseButtonClicked(GtkButton *button, gpointer editor);
+
     std::vector<Editor *> m_editors;
+    std::vector<GtkWidget *> m_titles;
 
     GtkWidget *m_notebook;
 };

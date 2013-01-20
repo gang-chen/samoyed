@@ -6,6 +6,7 @@
 #endif
 #include "project-explorer.hpp"
 #include "project.hpp"
+#include "../application.hpp"
 #include <utility>
 #include <map>
 
@@ -14,7 +15,6 @@ namespace Samoyed
 
 ProjectExplorer::ProjectExplorer():
     Pane(TYPE_PROJECT_EXPLORER),
-    m_closing(false),
     m_firstProject(NULL),
     m_lastProject(NULL)
 {

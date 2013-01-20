@@ -20,9 +20,6 @@ Editor::Editor(File &file, Project &project):
     m_closing(false)
 {
     m_project.addEditor(*this);
-    if (file.edited())
-        m_title = "*";
-    m_title += file.name();
 }
 
 Editor::~Editor()
@@ -48,14 +45,9 @@ bool Editor::close()
     return true;
 }
 
-void Editor::onFileEditedStateChanged()
+void Editor::onEditedStateChanged()
 {
-    if (m_file.edited())
-        m_title = "*";
-    else
-        m_title.clear();
-    m_title += m_file.name();
-    m_group->onEditorTitleChanged(*this);
+    m_group->onEditorEditedStateChanged(*this);
 }
 
 }

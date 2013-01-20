@@ -69,7 +69,7 @@ public:
 
         int line() const { return m_line; }
         int column() const { return m_column; }
-        const char *text() const { return m_text; }
+        const char *text() const { return m_text.c_str(); }
 
     private:
         int m_line;
@@ -103,7 +103,7 @@ public:
         virtual bool merge(File::EditPrimitive *edit);
 
         int beginLine() const { return m_beginLine; }
-        int beginColumn() const { return m_columnColumn; }
+        int beginColumn() const { return m_beginColumn; }
         int endLine() const { return m_endLine; }
         int endColumn() const { return m_endColumn; }
 
@@ -175,8 +175,8 @@ public:
      * text until the last column.
      * @return The text contents, in a memory chunk allocated by GTK+.
      */
-    char *getText(int beginLine, int beginColumn,
-                  int endLine, int endColumn) const;
+    char *text(int beginLine, int beginColumn,
+               int endLine, int endColumn) const;
 
     /**
      * @param line The line number of the insertion position, starting from 0.
@@ -223,13 +223,13 @@ protected:
 private:
     static File *create(const char *uri);
 
-    PrimitiveEdit *insertOnly(int line, int column,
-                              const char *text, int length,
-                              SourceEditor *committer);
+    Removal *insertOnly(int line, int column,
+                        const char *text, int length,
+                        SourceEditor *committer);
 
-    PrimitiveEdit *removeOnly(int beginLine, int beginColumn,
-                              int endLine, int endColumn,
-                              SourceEditor *committer);
+    Insertion *removeOnly(int beginLine, int beginColumn,
+                          int endLine, int endColumn,
+                          SourceEditor *committer);
 
     ReferencePointer<FileSource> m_source;
 };

@@ -37,9 +37,9 @@ public:
     virtual const Pane &currentPane() const
     { return m_children[m_currentIndex]->currentPane(); }
 
-    int position() const { return gtk_paned_get_position(m_paned); }
+    int position() const { return gtk_paned_get_position(GTK_PANED(m_paned)); }
     void setPosition(int position)
-    { gtk_paned_set_position(m_paned, position); }
+    { gtk_paned_set_position(GTK_PANED(m_paned), position); }
 
     int currentIndex() const { return m_currentIndex; }
     void setCurrentIndex(int currentIndex) { m_currentIndex = currentIndex; }

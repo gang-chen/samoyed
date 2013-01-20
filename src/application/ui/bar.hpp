@@ -4,6 +4,7 @@
 #ifndef SMYD_BAR_HPP
 #define SMYD_BAR_HPP
 
+#include "../utilities/misc.hpp"
 #include <boost/utility.hpp>
 #include <gtk/gtk.h>
 
@@ -21,9 +22,13 @@ public:
 
     virtual ~Bar() {}
 
-    virtual Orientation orientation() = 0;
+    virtual Orientation orientation() const = 0;
 
-    virtual GtkWidget *gtkWidget() = 0;
+    virtual GtkWidget *gtkWidget() const = 0;
+
+    SAMOYED_DEFINE_DOUBLY_LINKED(Bar)
+};
+
 }
 
 #endif

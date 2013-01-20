@@ -13,6 +13,7 @@
 #include "../application.hpp"
 #include "../utilities/misc.hpp"
 #include <assert.h>
+#include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -33,7 +34,7 @@ Window::Window(const Configuration &config, PaneBase &content):
     m_uiManager = gtk_ui_manager_new();
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
 
-    std::string uiFile(Application::instance().dataDirectory());
+    std::string uiFile(Application::instance().dataDirectoryName());
     uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
     // Ignore the possible failure, which implies the installation is broken.
     gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL);
@@ -53,12 +54,10 @@ Window::Window(const Configuration &config, PaneBase &content):
 
     GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
                                                         "/new-popup-menu");
-    GtkWidget *newIcon = gtk_image_new_from_file();
-    GtkWidget *newItem = gtk_menu_tool_button_new(newIcon, NULL);
-    gtk_tool_item_set_tooltip_text(GTK_TOOL_ITEM(newItem),
-                                   _("Create an object"));
-    gtk_tool_item_set_menu(GTK_TOOL_ITEM(newItem), newPopupMenu);
-    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), GTK_TOOL_ITEM(newItem), 0);
+    GtkToolItem *newItem = gtk_menu_tool_button_new_from_stock(GTK_STOCK_NEW);
+    gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(newItem), newPopupMenu);
+    gtk_tool_item_set_tooltip_text(newItem, _("Create an object"));
+    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);
 
     gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
                             m_toolbar, m_menuBar,
@@ -69,7 +68,7 @@ Window::Window(const Configuration &config, PaneBase &content):
                             GTK_POS_BOTTOM, 1, 1);
 
     gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
-                            m_content.gtkWidget(), NULL,
+                            m_content->gtkWidget(), NULL,
                             GTK_POS_RIGHT, 1, 1);
 
     g_signal_connect(m_window, "delete-event",
@@ -104,7 +103,7 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
     {
         // Closing the main window will quit the application.  Confirm it.
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(m_window),
+            GTK_WINDOW(w->m_window),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,

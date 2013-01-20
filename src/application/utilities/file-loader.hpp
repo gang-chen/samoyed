@@ -33,6 +33,8 @@ public:
 
     const Revision &revision() const { return m_revision; }
 
+    GError *error() const { return m_error; }
+
     GError *takeError()
     {
         GError *error = m_error;

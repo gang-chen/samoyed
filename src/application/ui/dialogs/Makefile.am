@@ -7,3 +7,5 @@ libdialogs_la_SOURCES = \
 libdialogs_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
+
+libdialogs_la_CXXFLAGS = -Werror -Wall

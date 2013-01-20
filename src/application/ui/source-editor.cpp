@@ -15,7 +15,6 @@ GtkTextTagTable* SourceEditor::s_sharedTagTable = NULL;
 void SourceEditor::createSharedData()
 {
     s_sharedTagTable = gtk_text_tag_table_new();
-    gtk_text_tag_table_add();
 }
 
 void SourceEditor::destroySharedData()

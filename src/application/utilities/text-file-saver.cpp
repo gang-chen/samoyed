@@ -9,11 +9,6 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
  -pthread -Werror -Wall -o text-file-saver
 */
 
-#ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
-# define _(T) T
-# define N_(T) T
-#endif
-
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -25,16 +20,19 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 # include <string.h>
 #else
 # include "../application.hpp"
-# include "../resources/project-configuration-manager.hpp"
 # include "../resources/project-configuration.hpp"
+# include "../resources/file-configuration.hpp"
 #endif
 #include <string>
 #include <boost/bind.hpp>
 #include <glib.h>
-#include <gio/gio.h>
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
+# define _(T) T
 # include <glib/gstdio.h>
+#else
+# include <glib/gi18n-lib.h>
 #endif
+#include <gio/gio.h>
 
 namespace
 {

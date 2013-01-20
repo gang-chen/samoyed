@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "split-pane.hpp"
+#include "window.hpp"
 #include <assert.h>
 #include <gtk/gtk.h>
 
@@ -15,16 +16,17 @@ SplitPane::SplitPane(Orientation orientation,
                      int position,
                      PaneBase &child1,
                      PaneBase &child2):
+    PaneBase(TYPE_SPLIT_PANE),
     m_orientation(orientation),
     m_currentIndex(0)
 {
     m_children[0] = &child1;
     m_children[1] = &child2;
-    m_paned = gtk_paned_new(orientation);
+    m_paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
     gtk_paned_add1(GTK_PANED(m_paned), child1.gtkWidget());
     gtk_paned_add2(GTK_PANED(m_paned), child2.gtkWidget());
     if (position != -1)
-        gtk_paned_set_position(m_paned, position);
+        gtk_paned_set_position(GTK_PANED(m_paned), position);
 }
 
 SplitPane::~SplitPane()
@@ -56,7 +58,7 @@ void SplitPane::onChildClosed(PaneBase *child)
     assert((window() && !parent()) || (!window() && parent()));
 
     // Mark the child as being removed.
-    int index = childIndex(child);
+    int index = childIndex(*child);
     m_children[index] = NULL;
 
     // Remove the remained child from this split pane.
@@ -113,21 +115,17 @@ SplitPane *SplitPane::split(Orientation orientation,
                             PaneBase &child1,
                             PaneBase &child2)
 {
-    PaneBase *originalPane, *newPane;
+    PaneBase *originalPane;
     Window *window;
     SplitPane *parent;
-    int index;
+    int index = 0;
 
     if (child1.window() || child1.parent())
-    {
         originalPane = &child1;
-        newPane = &child2;
-    }
     else
     {
         assert(child2.window() || child2.parent());
         originalPane = &child2;
-        newPane = &child1;
     }
     window = originalPane->window();
     parent = originalPane->parent();

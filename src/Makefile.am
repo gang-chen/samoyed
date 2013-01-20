@@ -1,1 +1,1 @@
-SUBDIRS = application launcher
+SUBDIRS = application launcher plugins

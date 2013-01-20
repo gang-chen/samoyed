@@ -9,6 +9,7 @@
 #include "file.hpp"
 #include "project-explorer.hpp"
 #include "../application.hpp"
+#include "../resources/project-configuration.hpp"
 #include <utility>
 #include <map>
 
@@ -72,7 +73,7 @@ void Project::addEditor(Editor &editor)
 
 void Project::removeEditor(Editor &editor)
 {
-    std::pair<EditorTable::iterator, EditorTale::iterator> range =
+    std::pair<EditorTable::iterator, EditorTable::iterator> range =
         m_editorTable.equal_range(editor.file().uri());
     for (EditorTable::iterator it = range.first; it != range.second; ++it)
         if (it->second == &editor)

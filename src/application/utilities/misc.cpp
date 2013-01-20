@@ -7,13 +7,8 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
  -Werror -Wall -o misc
 */
 
-#if defined(SMYD_MISC_UNIT_TEST) || \
-    defined(SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST)
-# define _(T) T
-#endif
-
 #ifdef HAVE_CONFIG_H
-# define <config.h>
+# include <config.h>
 #endif
 #include "misc.hpp"
 #ifdef SMYD_MISC_UNIT_TEST
@@ -25,6 +20,12 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 #include <stdio.h>
 #include <string>
 #include <glib.h>
+#if defined(SMYD_MISC_UNIT_TEST) || \
+    defined(SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST)
+# define _(T) T
+#else
+# include <glib/gi18n-lib.h>
+#endif
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
 

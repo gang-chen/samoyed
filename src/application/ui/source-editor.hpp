@@ -10,6 +10,8 @@
 namespace Samoyed
 {
 
+class SourceFile;
+
 /**
  * A source editor
  */
@@ -25,7 +27,22 @@ public:
 
     static void destroySharedData();
 
-    virtual GtkWidget *gtkWidget() const { return m_view; }
+    SourceEditor(SourceFile &file, Project &project);
+
+    int characterCount() const;
+
+    int lineCount() const;
+
+    char *text(int beginLine, int beginColumn,
+               int endLine, int endColumn) const;
+
+    virtual GtkWidget *gtkWidget() const { return GTK_WIDGET(m_view); }
+
+    virtual void onEdited(const File::EditPrimitive &edit);
+
+    virtual void freeze();
+
+    virtual void unfreeze();
 
 private:
     /**
