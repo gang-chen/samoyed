@@ -57,20 +57,9 @@ public:
         m_window = window;
     }
 
-    bool closing() const { return m_closing; }
-
     Type type() const { return m_type; }
 
-protected:
-    virtual ~PaneBase() {}
-
-    void setClosing(bool closing) { m_closing = closing; }
-
 private:
-    Type m_type;
-
-    bool m_closing;
-
     Window *m_window;
 
     SplitPane *m_parent;

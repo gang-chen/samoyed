@@ -26,7 +26,6 @@ class FileSource;
 class ProjectConfiguration;
 class ProjectAstManager;
 class Window;
-class ProjectExplorer;
 class SplashScreen;
 
 /**
@@ -66,7 +65,7 @@ public:
     void createSession();
 
     /**
-     * Request to switch to a different session.
+     * Request to switch to another session.
      */
     void switchSession();
 
@@ -107,6 +106,18 @@ public:
     void setThreadWorker(Worker *worker)
     { m_threadWorker.reset(worker); }
 
+    Project *findProject(const char *uri);
+    const Project *findProject(const char *uri) const;
+
+    void addProject(Project &project);
+
+    void removeProject(Project &project);
+
+    void onProjectClosed();
+
+    Project *projects() { return m_firstProject; }
+    const Project *projects() const { return m_firstProject; }
+
     File *findFile(const char *uri);
     const File *findFile(const char *uri) const;
 
@@ -128,17 +139,12 @@ public:
     void setCurrentWindow(Window &window) { m_currentWindow = &window; }
 
     /**
-     * @return The main window, i.e., the first window is the main window.
+     * @return The main window, i.e., the first window.
      */
     Window &mainWindow() const { return *m_firstWindow; }
 
     Window *windows() { return m_firstWindow; }
     const Window *windows() const { return m_firstWindow; }
-
-    ProjectExplorer &projectExplorer() const { return *m_projectExplorer; }
-
-    void setProjectExplorer(ProjectExplorer *projectExplorer)
-    { m_projectExplorer = projectExplorer; }
 
     const char *dataDirectoryName() const
     { return m_dataDirName.c_str(); }
@@ -153,27 +159,27 @@ public:
     { return m_userDirName.c_str(); }
 
 private:
+    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
+
     typedef std::map<ComparablePointer<const char *>, File *> FileTable;
 
     static gboolean onSplashScreenDeleteEvent(GtkWidget *widget,
                                               GdkEvent *event,
-                                              gpointer splash);
+                                              gpointer app);
 
     static gboolean checkTerminateRequest(gpointer app);
 
     static gboolean startUp(gpointer app);
 
-    bool makeUserDirectory();
+    void shutDown();
 
     bool chooseSessionToStart(bool restore);
 
     bool startSession();
 
-    void shutDown();
-
-    void quitEarly();
-
     void continueQuitting();
+
+    bool makeUserDirectory();
 
     /**
      * The sole application instance.
@@ -201,6 +207,10 @@ private:
     boost::thread::id m_mainThreadId;
 
     boost::thread_specific_ptr<Worker> m_threadWorker;
+
+    ProjectTable m_projectTable;
+    Project *m_firstProject;
+    Project *m_lastProject;
 
     FileTable m_fileTable;
     File *m_firstFile;

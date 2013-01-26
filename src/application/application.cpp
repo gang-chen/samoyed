@@ -56,6 +56,8 @@ Application::Application():
     m_fileSourceManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
+    m_firstProject(NULL),
+    m_lastProject(NULL),
     m_firstFile(NULL),
     m_lastFile(NULL),
     m_firstWindow(NULL),
@@ -75,54 +77,6 @@ Application::Application():
 Application::~Application()
 {
     s_instance = NULL;
-}
-
-void Application::quitEarly()
-{
-    delete m_splashScreen;
-    m_splashScreen = NULL;
-    g_free(m_sessionName);
-    g_free(m_newSessionName);
-    m_sessionName = NULL;
-    m_newSessionName = NULL;
-    gtk_main_quit();
-}
-
-gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
-                                                GdkEvent *event,
-                                                gpointer app)
-{
-    static_cast<Application *>(app)->quitEarly();
-    return TRUE;
-}
-
-bool Application::makeUserDirectory()
-{
-    // Check to see if the user directory exists.  If not, create it.
-    if (!g_file_test(m_userDirName.c_str(), G_FILE_TEST_EXISTS))
-    {
-        if (g_mkdir(m_userDirName.c_str(), 0755))
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                NULL,
-                GTK_DIALOG_DESTROY_WITH_PARENT,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to create the user directory to store user "
-                  "information. Quit."));
-            gtkMessageDialogAddDetails(
-                dialog,
-                _("Samoyed failed to create the user directory, \"%s\". %s. "
-                  "Samoyed cannot run without the directory."),
-                m_userDirName.c_str(), g_strerror(errno));
-            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                            GTK_RESPONSE_CLOSE);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return false;
-        }
-    }
-    return true;
 }
 
 bool Application::chooseSessionToStart(bool restore)
@@ -220,23 +174,6 @@ CLEAN_UP:
     return FALSE;
 }
 
-void Application::shutDown()
-{
-    assert(!m_session);
-    assert(!m_creatingSession);
-    assert(!m_switchingSession);
-    assert(!m_firstFile);
-    assert(!m_lastFile);
-    assert(!m_firstWindow);
-    assert(!m_lastWindow);
-    assert(!m_currentWindow);
-    assert(!m_quitting);
-    assert(!m_splashScreen);
-    assert(!m_sessionName);
-    assert(!m_newSessionName);
-    delete m_fileTypeRegistry;
-}
-
 void Application::continueQuitting()
 {
     assert(!m_firstWindow);
@@ -265,10 +202,39 @@ void Application::continueQuitting()
         gtk_main_quit();
 }
 
+void Application::shutDown()
+{
+    assert(!m_session);
+    assert(!m_creatingSession);
+    assert(!m_switchingSession);
+    assert(!m_firstProject);
+    assert(!m_lastProject);
+    assert(!m_firstFile);
+    assert(!m_lastFile);
+    assert(!m_firstWindow);
+    assert(!m_lastWindow);
+    assert(!m_currentWindow);
+    assert(!m_quitting);
+    assert(!m_splashScreen);
+    assert(!m_sessionName);
+    assert(!m_newSessionName);
+    delete m_fileTypeRegistry;
+}
+
 void Application::quit()
 {
+    // If we're starting up the application, just quit.
     if (m_splashScreen)
-        quitEarly();
+    {
+        delete m_splashScreen;
+        m_splashScreen = NULL;
+        g_free(m_sessionName);
+        g_free(m_newSessionName);
+        m_sessionName = NULL;
+        m_newSessionName = NULL;
+        gtk_main_quit();
+        return;
+    }
 
     // Save the current session.  If the user cancels quitting the session,
     // cancel quitting.
@@ -278,11 +244,20 @@ void Application::quit()
 
     m_quitting = true;
 
-    // Request to close all windows.  If the user cancels closing a window,
-    // cancel quitting.
-    for (Window *window = m_lastWindow, *prev;
-         window && m_quitting;
-         window = prev)
+    // Close all projects.
+    for (Project *project = m_firstProject, *next; project; project = next)
+    {
+        next = project->next();
+        if (!project->close())
+        {
+            m_quitting = false;
+            return false;
+        }
+    }
+    return true;
+
+    // Close all windows.
+    for (Window *window = m_lastWindow, *prev; window; window = prev)
     {
         prev = window->previous();
         if (!window->close())
@@ -291,6 +266,14 @@ void Application::quit()
             return;
         }
     }
+}
+
+gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
+                                                GdkEvent *event,
+                                                gpointer app)
+{
+    static_cast<Application *>(app)->quit();
+    return TRUE;
 }
 
 gboolean Application::checkTerminateRequest(gpointer app)
@@ -436,8 +419,8 @@ int Application::run(int argc, char *argv[])
                      G_CALLBACK(onSplashScreenDeleteEvent),
                      this);
 
-    g_idle_add(startUp, this);
     g_idle_add(checkTerminateRequest, this);
+    g_idle_add(startUp, this);
 
     // Enter the main event loop.
     if (m_session)
@@ -481,6 +464,40 @@ void Application::cancelQuitting()
     m_quitting = false;
     m_creatingSession = false;
     m_switchingSession = false;
+}
+
+Project *Application::findProject(const char *uri)
+{
+    ProjectTable::const_iterator it = m_projectTable.find(uri);
+    if (it == m_projectTable.end())
+        return NULL;
+    return it->second;
+}
+
+const Project *Application::findProject(const char *uri) const
+{
+    ProjectTable::const_iterator it = m_projectTable.find(uri);
+    if (it == m_projectTable.end())
+        return NULL;
+    return it->second;
+}
+
+void Application::addProject(Project &project)
+{
+    m_projectTable.insert(std::make_pair(project.uri(), &project));
+    project.addToList(m_firstProject, m_lastProject);
+}
+
+void Application::removeProject(Project &project)
+{
+    m_projectTable.erase(project.uri());
+    project.removeFromList(m_firstProject, m_lastProject);
+}
+
+void Application::onProjectClosed()
+{
+    if (m_quitting && !m_firstProject && !m_firstWindow)
+        continueQuitting();
 }
 
 File *Application::findFile(const char *uri)
@@ -529,9 +546,37 @@ void Application::removeWindow(Window &window)
 
 void Application::onWindowClosed()
 {
-    // Continue qutting the application if all windows are closed.
-    if (m_quitting && !m_firstWindow)
+    if (m_quitting && !m_firstProject && !m_firstWindow)
         continueQuitting();
+}
+
+bool Application::makeUserDirectory()
+{
+    // Check to see if the user directory exists.  If not, create it.
+    if (!g_file_test(m_userDirName.c_str(), G_FILE_TEST_EXISTS))
+    {
+        if (g_mkdir(m_userDirName.c_str(), 0755))
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to create the user directory to store user "
+                  "information. Quit."));
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to create the user directory, \"%s\". %s. "
+                  "Samoyed cannot run without the directory."),
+                m_userDirName.c_str(), g_strerror(errno));
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return false;
+        }
+    }
+    return true;
 }
 
 }
