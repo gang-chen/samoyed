@@ -4,21 +4,20 @@
 #ifndef SMYD_WINDOW_HPP
 #define SMYD_WINDOW_HPP
 
+#include "widget-container.hpp"
 #include "actions.hpp"
 #include "../utilities/misc.hpp"
-#include <boost/utility.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-class PaneBase;
 class Bar;
 
 /**
  * A window represents a top-level window.
  */
-class Window: public boost::noncopyable
+class Window: public WidgetContainer
 {
 public:
     struct Configuration
@@ -55,10 +54,7 @@ public:
     void addBar(Bar &bar);
     void removeBar(Bar &bar);
 
-    /**
-     * @return The underlying GTK+ widget.  Note that it is read-only.
-     */
-    GtkWidget *gtkWidget() const { return m_window; }
+    virtual GtkWidget *gtkWidget() const { return m_window; }
 
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,

@@ -4,42 +4,65 @@
 #ifndef SMYD_NOTEBOOK_HPP
 #define SMYD_NOTEBOOK_HPP
 
-#include "pane.hpp"
+#include "widget-container.hpp"
 #include <vector>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-class Page;
-
-class Notebook: public Pane
+class Notebook: public WidgetContainer
 {
 public:
-    int pageCount() const { return m_pages.size(); }
+    class XmlElement: public Widget::XmlElement
+    {
+    public:
+        virtual ~XmlElement();
+        static XmlElement *read(xmlNodePtr node);
+        virtual xmlNodePtr write() const;
+        virtual Widget *restore() const;
 
-    Page &page(int index) const { return *m_pages[index]; }
+    private:
+        std::vector<Widget::XmlElement *> m_children;
+        int m_currentIndex;
+    };
 
-    void addPage(Page &page, int index);
+    virtual GtkWidget *gtkWidget() const { return m_notebook; }
 
-    void removePage(Page &page);
+    virtual bool close();
 
-    void onPageClosed();
+    virtual XmlElement *save();
 
-    void onPageTitleChanged(Page &page);
+    virtual void addChild(Widget &child, int index);
+    virtual void removeChild(Widget &child);
 
-    int currentPageIndex() const
+    virtual void onChildClosed(Widget *child);
+
+    virtual int childCount() const { return m_children.size(); }
+
+    virtual int currentChildIndex() const
     { return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook)); }
-
-    void setCurrentPageIndex(int index)
+    virtual void setCurrentChildIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
-private:
-    static void onCloseButtonClicked(GtkButton *button, gpointer page);
+    virtual Widget &child(int index) { return *m_children[index]; }
+    virtual const Widget &child(int index) const { return *m_children[index]; }
 
-    std::vector<Page *> m_pages;
+    virtual int childIndex(const Widget *child) const;
+
+    void onChildTitleChanged(Widget &child);
+
+protected:
+    Notebook();
+
+    virtual ~Notebook();
+
+private:
+    static void onCloseButtonClicked(GtkButton *button, gpointer child);
 
     GtkWidget *m_notebook;
+
+    std::vector<Widget *> m_children;
 };
 
 }

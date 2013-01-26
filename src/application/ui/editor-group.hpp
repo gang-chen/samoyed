@@ -4,19 +4,12 @@
 #ifndef SMYD_EDITOR_GROUP_HPP
 #define SMYD_EDITOR_GROUP_HPP
 
-#include "pane.hpp"
-#include <vector>
-#include <gtk/gtk.h>
+#include "notebook.hpp"
 
 namespace Samoyed
 {
 
-class Editor;
-
-/**
- * A editor group is actually a GTK+ notebook containing editors.
- */
-class EditorGroup: public Pane
+class EditorGroup: public Notebook
 {
 public:
     EditorGroup();

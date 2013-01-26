@@ -1,10 +1,10 @@
 # Backup files produced by editors.
 *~
+.*
+!/.gitignore
 
 # Files created by IDEs.
 /samoyed.*
-/.*
-!/.gitignore
 
 # Files produced by autotools.
 /aclocal.m4

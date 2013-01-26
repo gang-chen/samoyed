@@ -4,14 +4,12 @@
 #ifndef SMYD_BAR_HPP
 #define SMYD_BAR_HPP
 
-#include "../utilities/misc.hpp"
-#include <boost/utility.hpp>
-#include <gtk/gtk.h>
+#include "widget.hpp"
 
 namespace Samoyed
 {
 
-class Bar: public boost::noncopyable
+class Bar: public Widget
 {
 public:
     enum Orientation
@@ -20,13 +18,7 @@ public:
         ORIENTATION_VERTICAL = GTK_ORIENTATION_VERTICAL
     };
 
-    virtual ~Bar() {}
-
     virtual Orientation orientation() const = 0;
-
-    virtual GtkWidget *gtkWidget() const = 0;
-
-    SAMOYED_DEFINE_DOUBLY_LINKED(Bar)
 };
 
 }
