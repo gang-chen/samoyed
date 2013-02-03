@@ -18,13 +18,14 @@ public:
     {
     public:
         virtual ~XmlElement();
-        static XmlElement *read(xmlNodePtr node);
         virtual xmlNodePtr write() const;
         virtual Widget *restore() const;
-
+        bool save(Notebook &notebook);
+    protected:
+        bool readInternally(xmlNodePtr node);
     private:
         std::vector<Widget::XmlElement *> m_children;
-        int m_currentIndex;
+        int m_currentChildIndex;
     };
 
     virtual GtkWidget *gtkWidget() const { return m_notebook; }

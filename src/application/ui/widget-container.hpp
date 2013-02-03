@@ -1,4 +1,4 @@
-// Widget container.
+// Container of homogeneous widgets.
 // Copyright (C) 2013 Gang Chen.
 
 #ifndef SMYD_WIDGET_CONTAINER_HPP
