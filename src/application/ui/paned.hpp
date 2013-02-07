@@ -5,7 +5,10 @@
 #define SMYD_PANED_HPP
 
 #include "widget-container.hpp"
+#include <list>
+#include <string>
 #include <gtk/gtk.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -22,44 +25,75 @@ public:
     class XmlElement: public Widget::XmlElement
     {
     public:
+        static bool registerReader();
+
+        XmlElement(const Paned &paned);
         virtual ~XmlElement();
-        static XmlElement *read(xmlNodePtr node);
         virtual xmlNodePtr write() const;
-        virtual Widget *restore() const;
+        virtual Widget *createWidget();
+        virtual bool restoreWidget(Widget &widget) const;
+
+        Paned::Orientation orientation() const { return m_orientation; }
+        Widget::XmlElement &child(int index) const
+        { return *m_children[index]; }
+        int position() const { return m_position; }
+        int currentChildIndex() const { return m_currentChildIndex; }
+
+    protected:
+        /**
+         * @throw std::runtime_error if any fatal error is found in the input
+         * XML file.
+         */
+        XmlElement(xmlDocPtr doc,
+                   xmlNodePtr node,
+                   std::list<std::string> &errors);
 
     private:
-        Orientation m_orientation;
-        int m_position;
+        static Widget::XmlElement *read(xmlDocPtr doc,
+                                        xmlNodePtr node,
+                                        std::list<std::string> &errors);
+
+        Paned::Orientation m_orientation;
         Widget::XmlElement *m_children[2];
+        int m_position;
         int m_currentChildIndex;
     };
 
-    static Paned *split(Orientation orientation, int position,
+    Paned(Orientation orientation, Widget &child1, Widget &child2);
+
+    /**
+     * @throw std::runtime_error if failing to create the paned widget.
+     */
+    Paned(const XmlElement &xmlElement);
+
+    virtual ~Paned();
+
+    static Paned *split(Orientation orientation,
                         Widget &child1, Widget &child2);
 
     virtual GtkWidget *gtkWidget() const { return m_paned; }
 
+    virtual Widget &current()
+    { return child(currentChildIndex()).current(); }
+
+    virtual const Widget &current() const
+    { return child(currentChildIndex()).current(); }
+
     virtual bool close();
 
-    virtual XmlElement *save();
+    virtual Widget::XmlElement *save() const;
 
-    // A paned container needs two children.  Actually children can only be
-    // replaced.
-    virtual void addChild(Widget &child, int index);
-    virtual void removeChild(Widget &child);
+    virtual void onChildClosed(const Widget *child);
 
-    virtual void onChildClosed(Widget *child);
+    int childCount() const { return 2; }
 
-    virtual int childCount() const { return 2; }
+    Widget &child(int index) { return *m_children[index]; }
+    const Widget &child(int index) const { return *m_children[index]; }
 
-    virtual int currentChildIndex() const { return m_currentChildIndex; }
-    virtual void setCurrentChildIndex(int index)
-    { m_currentChildIndex = index; }
+    int childIndex(const Widget *child) const;
 
-    virtual Widget &child(int index) { return *m_children[index]; }
-    virtual const Widget &child(int index) const { return *m_children[index]; }
-
-    virtual int childIndex(const Widget *child) const;
+    int currentChildIndex() const { return m_currentChildIndex; }
+    void setCurrentChildIndex(int index);
 
     Orientation orientation() const { return m_orientation; }
 
@@ -68,10 +102,8 @@ public:
     { gtk_paned_set_position(GTK_PANED(m_paned), position); }
 
 protected:
-    Paned(Orientation orientation, int position,
-          Widget &child1, Widget &child2);
-
-    virtual ~Paned();
+    void addChild(Widget &child, int index);
+    void removeChild(Widget &child);
 
 private:
     GtkWidget *m_paned;

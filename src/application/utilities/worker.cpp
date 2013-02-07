@@ -339,7 +339,6 @@ private:
         m_updatedTimes = 0;
     }
 
-
     const int m_id;
     const int m_sec;
     int m_times;

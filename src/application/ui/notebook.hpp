@@ -5,8 +5,11 @@
 #define SMYD_NOTEBOOK_HPP
 
 #include "widget-container.hpp"
+#include <list>
+#include <string>
 #include <vector>
 #include <gtk/gtk.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -17,46 +20,71 @@ public:
     class XmlElement: public Widget::XmlElement
     {
     public:
+        static bool registerReader();
+
+        XmlElement(const Notebook &notebook);
         virtual ~XmlElement();
         virtual xmlNodePtr write() const;
-        virtual Widget *restore() const;
-        bool save(Notebook &notebook);
+        virtual Widget *createWidget();
+        virtual bool restoreWidget(Widget &widget) const;
+
+        /**
+         * Remove a child.  When failing to create a child widget, we need to
+         * remove the XML element for the widget to keep the one-to-one map
+         * between the child widgets and XML elements.
+         */
+        void removeChild(int index);
+
     protected:
-        bool readInternally(xmlNodePtr node);
+        XmlElement(xmlDocPtr doc,
+                   xmlNodePtr node,
+                   std::list<std::string> &errors);
+
     private:
+        static Widget::XmlElement *read(xmlDocPtr doc,
+                                        xmlNodePtr node,
+                                        std::list<std::string> &errors);
+
         std::vector<Widget::XmlElement *> m_children;
         int m_currentChildIndex;
     };
 
+    Notebook();
+
+    Notebook(XmlElement &xmlElement);
+
+    virtual ~Notebook();
+
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
+
+    virtual Widget &current()
+    { return child(currentChildIndex()).current(); }
+
+    virtual const Widget &current() const
+    { return child(currentChildIndex()).current(); }
 
     virtual bool close();
 
-    virtual XmlElement *save();
+    virtual Widget::XmlElement *save() const;
 
-    virtual void addChild(Widget &child, int index);
-    virtual void removeChild(Widget &child);
+    virtual void onChildClosed(const Widget *child);
 
-    virtual void onChildClosed(Widget *child);
+    void addChild(Widget &child, int index);
+    void removeChild(Widget &child);
 
-    virtual int childCount() const { return m_children.size(); }
+    int childCount() const { return m_children.size(); }
 
-    virtual int currentChildIndex() const
+    Widget &child(int index) { return *m_children[index]; }
+    const Widget &child(int index) const { return *m_children[index]; }
+
+    int childIndex(const Widget *child) const;
+
+    int currentChildIndex() const
     { return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook)); }
-    virtual void setCurrentChildIndex(int index)
+    void setCurrentChildIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
-    virtual Widget &child(int index) { return *m_children[index]; }
-    virtual const Widget &child(int index) const { return *m_children[index]; }
-
-    virtual int childIndex(const Widget *child) const;
-
     void onChildTitleChanged(Widget &child);
-
-protected:
-    Notebook();
-
-    virtual ~Notebook();
 
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);

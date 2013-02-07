@@ -5,15 +5,93 @@
 # include <config.h>
 #endif
 #include "notebook.hpp"
+#include "widget.hpp"
+#include <assert.h>
+#include <stdlib.h>
+#include <list>
+#include <string>
+#include <vector>
+#include <glib.h>
+#include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
-#include <libxml/xmlstring.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
 
+bool Notebook::XmlElement::registerReader()
+{
+    return Widget::XmlElement::registerReader("notebook",
+                                              Widget::XmlElement::Reader(read));
+}
+
+Notebook::XmlElement::XmlElement(xmlDocPtr doc,
+                                 xmlNodePtr node,
+                                 std::list<std::string> &errors):
+    m_currentChildIndex(0)
+{
+    char *value;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   "current-child-index") == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1);
+            m_currentChildIndex = atoi(value);
+            xmlFree(value);
+        }
+        else
+        {
+            Widget::XmlElement *ch =
+                Widget::XmlElement::read(doc, child, errors);
+            if (ch)
+                m_children.push_back(ch);
+        }
+    }
+}
+
+Widget::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,
+                                               xmlNodePtr node,
+                                               std::list<std::string> &errors)
+{
+    return new XmlElement(doc, node, errors);
+}
+
+Notebook::XmlElement::XmlElement(const Notebook &notebook)
+{
+    m_children.reserve(notebook.childCount());
+    for (int i = 0; i < notebook.childCount(); ++i)
+        m_children.push_back(notebook.child(i).save());
+    m_currentChildIndex = notebook.currentChildIndex();
+}
+
+Widget *Notebook::XmlElement::createWidget()
+{
+    return new Notebook(*this);
+}
+
+bool Notebook::XmlElement::restoreWidget(Widget &widget) const
+{
+    static_cast<Notebook &>(widget).setCurrentChildIndex(m_currentChildIndex);
+}
+
+Notebook::XmlElement::~XmlElement()
+{
+    for (std::vector<Widget::XmlElement *>::size_type i = 0;
+         i < m_children.size();
+         ++i)
+        delete m_children[i];
+}
+
 Notebook::Notebook()
 {
     m_notebook = gtk_notebook_new();
+}
+
+Notebook::Notebook(XmlElement& xmlElement)
+{
+
 }
 
 Notebook::~Notebook()
@@ -44,7 +122,7 @@ bool Notebook::close()
     // changed if any child is closed.
     int index = currentChildIndex();
     std::vector<Widget *> children(m_children);
-    if (!children[currentChildIndex]->close())
+    if (!children[index]->close())
     {
         setClosing(false);
         return false;
