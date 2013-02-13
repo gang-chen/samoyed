@@ -30,6 +30,10 @@ public:
         virtual bool restoreWidget(Widget &widget) const;
 
     protected:
+        /**
+         * @throw std::runtime_error if any fatal error is found in the input
+         * XML file.
+         */
         XmlElement(xmlDocPtr doc,
                    xmlNodePtr node,
                    std::list<std::string> &errors);
@@ -45,6 +49,9 @@ public:
 
     WidgetWithBars();
 
+    /**
+     * @throw std::runtime_error if failing to create the widget.
+     */
     WidgetWithBars(XmlElement &xmlElement);
 
     virtual ~WidgetWithBars();
@@ -60,10 +67,17 @@ public:
 
     virtual void onChildClosed(const Widget *child);
 
-    void onBarClosed(const Bar *bar);
+    virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
     Widget &child() { return *m_child; }
     const Widget &child() const { return *m_child; }
+
+    void onBarClosed(const Bar *bar);
+
+protected:
+    void addChild(Widget &child);
+
+    void removeChild(Widget &child);
 
 private:
     GtkWidget *m_grid;

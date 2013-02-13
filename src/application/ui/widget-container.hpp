@@ -16,6 +16,13 @@ public:
      * @param child The closed and deleted child.
      */
     virtual void onChildClosed(const Widget *child) = 0;
+
+    /**
+     * Replace a child with a new one.
+     * @param oldChild The old child.
+     * @param newChild The new child.
+     */
+    virtual void replaceChild(Widget &oldChild, Widget &newChild) = 0;
 };
 
 }

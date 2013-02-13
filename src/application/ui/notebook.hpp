@@ -35,6 +35,11 @@ public:
          */
         void removeChild(int index);
 
+        int childCount() const { return m_children.size(); }
+        Widget::XmlElement &child(int index) const
+        { return *m_children[index]; }
+        int currentChildIndex() const { return m_currentChildIndex; }
+
     protected:
         XmlElement(xmlDocPtr doc,
                    xmlNodePtr node,
@@ -69,7 +74,10 @@ public:
 
     virtual void onChildClosed(const Widget *child);
 
+    virtual void replaceChild(Widget &oldChild, Widget &newChild);
+
     void addChild(Widget &child, int index);
+
     void removeChild(Widget &child);
 
     int childCount() const { return m_children.size(); }
@@ -85,6 +93,7 @@ public:
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
     void onChildTitleChanged(Widget &child);
+    void onChildDescriptionChanged(Widget &child);
 
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);

@@ -64,7 +64,7 @@ public:
     /**
      * @throw std::runtime_error if failing to create the paned widget.
      */
-    Paned(const XmlElement &xmlElement);
+    Paned(XmlElement &xmlElement);
 
     virtual ~Paned();
 
@@ -85,7 +85,7 @@ public:
 
     virtual void onChildClosed(const Widget *child);
 
-    int childCount() const { return 2; }
+    virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
     Widget &child(int index) { return *m_children[index]; }
     const Widget &child(int index) const { return *m_children[index]; }
@@ -102,7 +102,10 @@ public:
     { gtk_paned_set_position(GTK_PANED(m_paned), position); }
 
 protected:
+    Paned(Orientation orientation);
+
     void addChild(Widget &child, int index);
+
     void removeChild(Widget &child);
 
 private:
