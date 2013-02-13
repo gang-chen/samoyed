@@ -6,10 +6,8 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
-#include "pane-base.hpp"
 #include "project-explorer.hpp"
 #include "editor-group.hpp"
-#include "bar.hpp"
 #include "../application.hpp"
 #include "../utilities/misc.hpp"
 #include <assert.h>
@@ -19,17 +17,14 @@
 namespace Samoyed
 {
 
-Window::Window(const Configuration &config, PaneBase &content):
-    m_content(&content),
-    m_firstBar(NULL),
-    m_lastBar(NULL),
+Window::Window(const Configuration &config, Widget &child):
     m_window(NULL),
-    m_mainVBox(NULL),
-    m_mainHBox(NULL),
+    m_grid(NULL),
     m_menuBar(NULL),
     m_toolbar(NULL),
     m_uiManager(NULL),
-    m_actions(this)
+    m_actions(this),
+    m_child(NULL)
 {
     m_uiManager = gtk_ui_manager_new();
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
@@ -40,13 +35,12 @@ Window::Window(const Configuration &config, PaneBase &content):
     gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL);
 
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    m_mainVBox = gtk_grid_new();
-    m_mainHBox = gtk_grid_new();
+    m_grid = gtk_grid_new();
 
-    gtk_container_add(GTK_CONTAINER(m_window), m_mainVBox);
+    gtk_container_add(GTK_CONTAINER(m_window), m_grid);
 
     m_menuBar = gtk_ui_manager_get_widget(m_uiManager, "/main-menu-bar");
-    gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+    gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             m_menuBar, NULL,
                             GTK_POS_BOTTOM, 1, 1);
 
@@ -59,17 +53,11 @@ Window::Window(const Configuration &config, PaneBase &content):
     gtk_tool_item_set_tooltip_text(newItem, _("Create an object"));
     gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);
 
-    gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
+    gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             m_toolbar, m_menuBar,
                             GTK_POS_BOTTOM, 1, 1);
 
-    gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                            m_mainHBox, m_toolbar,
-                            GTK_POS_BOTTOM, 1, 1);
-
-    gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
-                            m_content->gtkWidget(), NULL,
-                            GTK_POS_RIGHT, 1, 1);
+    addChild(child);
 
     g_signal_connect(m_window, "delete-event",
                      G_CALLBACK(onDeleteEvent), this);
@@ -83,9 +71,7 @@ Window::Window(const Configuration &config, PaneBase &content):
 
 Window::~Window()
 {
-    assert(!m_content);
-    assert(!m_firstBar);
-    assert(!m_lastBar);
+    assert(!m_child);
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
@@ -128,49 +114,54 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
 
 bool Window::close()
 {
-    m_closing = true;
-    for (Bar *bar = m_firstBar, *next; bar; bar = next)
+    if (closing())
+        return true;
+
+    setClosing(true);
+    if (!m_child->close())
     {
-        next = bar->next();
-        delete bar;
+        setClosing(false);
+        return false;
     }
-    if (!m_content->close())
-    {
-        m_closing = false;
-        return TRUE;
-    }
-    return TRUE;
+    return true;
 }
 
-void Window::onContentClosed()
+Widget::XmlElement *Window::save() const
 {
-    assert(m_closing);
-    m_content = NULL;
+    return new XmlElement(*this);
+}
+
+void Window::addChild(Widget &child)
+{
+    assert(!child.parent());
+    assert(!m_child);
+    m_child = &child;
+    child.setParent(this);
+    gtk_grid_attach_next_to(GTK_GRID(m_grid),
+                            child.gtkWidget(), m_toolbar,
+                            GTK_POS_BOTTOM, 1, 1);
+}
+
+void Window::removeChild(Widget &child)
+{
+    assert(child.parent() == this);
+    m_child = NULL;
+    child.setParent(NULL);
+    gtk_container_remove(GTK_CONTANDER(m_grid), child.gtkWidget());
+}
+
+void Window::onChildClosed(Widget *child)
+{
+    assert(m_child == child);
+    assert(closing());
+    m_child = NULL;
     delete this;
 }
 
-void Window::setContent(PaneBase *content)
+void Window::replaceChild(Widget &oldChild, Widget &newChild)
 {
-    if (content)
-    {
-        assert(!m_content);
-        assert(!content->window());
-        assert(!content->parent());
-        m_content = content;
-        m_content->setWindow(this);
-        gtk_grid_attach_next_to(GTK_GRID(m_mainHBox),
-                                m_content->gtkWidget(), NULL,
-                                GTK_POS_RIGHT, 1, 1);
-    }
-    else
-    {
-        assert(m_content);
-        assert(m_content->window() == this);
-        assert(!m_content->parent());
-        gtk_container_remove(GTK_CONTAINER(m_mainHBox), m_content->gtkWidget());
-        m_content->setWindow(NULL);
-        m_content = NULL;
-    }
+    removeChild(oldChild);
+    addChild(newChild);
 }
 
 gboolean Window::onFocusInEvent(GtkWidget *widget,
@@ -179,24 +170,6 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 {
     Application::instance().setCurrentWindow(*static_cast<Window *>(window));
     return FALSE;
-}
-
-void Window::addBar(Bar &bar)
-{
-    bar.addToList(m_firstBar, m_lastBar);
-    if (bar.orientation() == Bar::ORIENTATION_HORIZONTAL)
-        gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                                bar.gtkWidget(), NULL,
-                                GTK_POS_TOP, 1, 1);
-    else
-        gtk_grid_attach_next_to(GTK_GRID(m_mainVBox),
-                                bar.gtkWidget(), NULL,
-                                GTK_POS_LEFT, 1, 1);
-}
-
-void Window::removeBar(Bar &bar)
-{
-    bar.removeFromList(m_firstBar, m_lastBar);
 }
 
 }

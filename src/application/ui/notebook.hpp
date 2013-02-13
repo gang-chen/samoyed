@@ -56,10 +56,6 @@ public:
 
     Notebook();
 
-    Notebook(XmlElement &xmlElement);
-
-    virtual ~Notebook();
-
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
 
     virtual Widget &current()
@@ -94,6 +90,11 @@ public:
 
     void onChildTitleChanged(Widget &child);
     void onChildDescriptionChanged(Widget &child);
+
+protected:
+    Notebook(XmlElement &xmlElement);
+
+    virtual ~Notebook();
 
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);

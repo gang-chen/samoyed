@@ -254,7 +254,6 @@ void Application::quit()
             return false;
         }
     }
-    return true;
 
     // Close all windows.
     for (Window *window = m_lastWindow, *prev; window; window = prev)
@@ -263,9 +262,10 @@ void Application::quit()
         if (!window->close())
         {
             m_quitting = false;
-            return;
+            return false;
         }
     }
+    return true;
 }
 
 gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,

@@ -211,28 +211,30 @@ Paned::Paned(Orientation orientation, Widget &child1, Widget &child2):
     m_orientation(orientation),
     m_currentChildIndex(0)
 {
-    m_children[0] = &child1;
-    m_children[1] = &child2;
+    m_children[0] = NULL;
+    m_children[1] = NULL;
     m_paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
-    gtk_paned_add1(GTK_PANED(m_paned), child1.gtkWidget());
-    gtk_paned_add2(GTK_PANED(m_paned), child2.gtkWidget());
+    addChild(child1, 0);
+    addChild(child2, 1);
 }
 
 Paned::Paned(const XmlElement &xmlElement)
 {
-    m_children[0] = xmlElement.child(0).createWidget();
-    if (!m_children[0])
+    m_children[0] = NULL;
+    m_children[1] = NULL;
+    Widget *child1 = xmlElement.child(0).createWidget();
+    if (!child1)
         throw std::runtime_error(std::string());
-    m_children[1] = xmlElement.child(1).createWidget();
-    if (!m_children[1])
+    Widget *child2 = xmlElement.child(1).createWidget();
+    if (!child2)
     {
-        delete m_children[0];
+        delete child1;
         throw std::runtime_error(std::string());
     }
     m_paned =
         gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
-    gtk_paned_add1(GTK_PANED(m_paned), m_children[0]->gtkWidget());
-    gtk_paned_add2(GTK_PANED(m_paned), m_children[1]->gtkWidget());
+    addChild(*child1, 0);
+    addChild(*child2, 1);
 }
 
 Paned::~Paned()

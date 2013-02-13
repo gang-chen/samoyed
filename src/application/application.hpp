@@ -159,7 +159,7 @@ public:
     { return m_userDirName.c_str(); }
 
 private:
-    typedef std::map<ComparablePointer<const char *>, Project*> ProjectTable;
+    typedef std::map<ComparablePointer<const char *>, Project *> ProjectTable;
 
     typedef std::map<ComparablePointer<const char *>, File *> FileTable;
 

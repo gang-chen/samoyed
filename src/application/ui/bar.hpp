@@ -9,6 +9,8 @@
 namespace Samoyed
 {
 
+class WidgetWithBars;
+
 class Bar: public Widget
 {
 public:
@@ -19,6 +21,9 @@ public:
     };
 
     virtual Orientation orientation() const = 0;
+
+private:
+    WidgetWithBars *m_parent;
 };
 
 }

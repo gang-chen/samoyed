@@ -12,8 +12,6 @@
 namespace Samoyed
 {
 
-class Bar;
-
 /**
  * A window represents a top-level window.
  */
@@ -38,23 +36,54 @@ public:
         {}
     };
 
-    Window(const Configuration &config, PaneBase &content);
+    class XmlElement: public Widget::XmlElement
+    {
+    public:
+        static bool registerReader();
 
-    bool close();
+        XmlElement(const Paned &paned);
+        virtual ~XmlElement();
+        virtual xmlNodePtr write() const;
+        virtual Widget *createWidget();
+        virtual bool restoreWidget(Widget &widget) const;
 
-    void onContentClosed();
+        Widget::XmlElement &child() const { return *m_child; }
 
-    Configuration configuration() const;
+    private:
+        /**
+         * @throw std::runtime_error if any fatal error is found in the input
+         * XML file.
+         */
+        XmlElement(xmlDocPtr doc,
+                   xmlNodePtr node,
+                   std::list<std::string> &errors);
 
-    PaneBase &content() { return *m_content; }
-    const PaneBase &content() const { return *m_content; }
+        static Widget::XmlElement *read(xmlDocPtr doc,
+                                        xmlNodePtr node,
+                                        std::list<std::string> &errors);
 
-    void setContent(PaneBase *content);
+        Widget::XmlElement *m_child;
+    };
 
-    void addBar(Bar &bar);
-    void removeBar(Bar &bar);
+    Window(const Configuration &config, Widget &child);
 
     virtual GtkWidget *gtkWidget() const { return m_window; }
+
+    virtual Widget &current() { return m_child->current(); }
+    virtual const Widget &current() const { return m_child->current(); }
+
+    virtual bool close();
+
+    virtual Widget::XmlElement *save() const;
+
+    virtual void onChildClosed(const Widget *child);
+
+    virtual void replaceChild(Widget &oldChild, Widget &newChild);
+
+    Widget &child() { return *m_child; }
+    const Widget &child() const { return *m_child; }
+
+    Configuration configuration() const;
 
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -65,23 +94,18 @@ private:
                                    GdkEvent *event,
                                    gpointer window);
 
-    ~Window();
+    virtual ~Window();
 
-    PaneBase *m_content;
+    void addChild(Widget &child);
 
-    Bar *m_firstBar;
-    Bar *m_lastBar;
-
-    bool m_closing;
+    void removeChild(Widget &child);
 
     /**
      * The GTK+ window.
      */
     GtkWidget *m_window;
 
-    GtkWidget *m_mainVBox;
-
-    GtkWidget *m_mainHBox;
+    GtkWidget *m_grid;
 
     GtkWidget *m_menuBar;
 
@@ -94,6 +118,8 @@ private:
     GtkUIManager *m_uiManager;
 
     Actions m_actions;
+
+    Widget *m_child;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };

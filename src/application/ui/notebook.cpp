@@ -67,10 +67,11 @@ xmlNodePtr Notebook::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>("current-child-index"),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
-    for (std::vector<Widget::XmlElement *>::size_type i = 0;
-         i < m_children.size();
-         ++i)
-        xmlAddChild(node, m_children[i]->write());
+    for (std::vector<Widget::XmlElement *>::const_iterator it =
+             m_children.begin();
+         it != m_children.end();
+         ++it)
+        xmlAddChild(node, (*it)->write());
     return node;
 }
 
@@ -97,12 +98,19 @@ bool Notebook::XmlElement::restoreWidget(Widget &widget) const
         m_children[i]->restoreWidget(notebook.child(i));
 }
 
+void Notebook::XmlElement::removeChild(int index)
+{
+    delete m_children[index];
+    m_children.erase(m_children.begin() + index);
+}
+
 Notebook::XmlElement::~XmlElement()
 {
-    for (std::vector<Widget::XmlElement *>::size_type i = 0;
-         i < m_children.size();
-         ++i)
-        delete m_children[i];
+    for (std::vector<Widget::XmlElement *>::const_iterator it =
+             m_children.begin();
+         it != m_children.end();
+         ++it)
+        delete *it;
 }
 
 Notebook::Notebook()
@@ -110,7 +118,7 @@ Notebook::Notebook()
     m_notebook = gtk_notebook_new();
 }
 
-Notebook::Notebook(XmlElement& xmlElement)
+Notebook::Notebook(XmlElement &xmlElement)
 {
     m_notebook = gtk_notebook_new();
     m_children.reserve(xmlElement.childCount());
@@ -118,7 +126,7 @@ Notebook::Notebook(XmlElement& xmlElement)
     {
         Widget *child = xmlElement.child(i).createWidget();
         if (!child)
-            xmlElement.registerReader(i);
+            xmlElement.removeChild(i);
         else
             addChild(*child);
     }
@@ -174,10 +182,18 @@ Widget::XmlElement *Notebook::save() const
     return new XmlElement(*this);
 }
 
+void Notebook::onChildClosed(Widget *child)
+{
+    m_children.erase(m_children.begin() + childIndex(child));
+    if (closing() && m_children.empty())
+        delete this;
+}
+
 void Notebook::addChild(Widget &child, int index)
 {
     assert(!child.parent());
     m_children.insert(m_children.begin() + index, &child);
+    child.setParent(this);
 
     // Create the tab label.
     GtkWidget *title = gtk_label_new(child.title());
@@ -206,14 +222,8 @@ void Notebook::removeChild(Widget &child)
 {
     assert(child.parent() == this);
     m_children.erase(m_children.begin() + childIndex(&child));
+    child.setParent(NULL);
     gtk_container_remove(GTK_CONTAINER(m_notebook), child.gtkWidget());
-}
-
-void Notebook::onChildClosed(Widget *child)
-{
-    m_children.erase(m_children.begin() + childIndex(child));
-    if (closing() && m_children.empty())
-        delete this;
 }
 
 void Notebook::replaceChild(Widget &oldChild, Widget &newChild)

@@ -59,17 +59,10 @@ public:
         int m_currentChildIndex;
     };
 
-    Paned(Orientation orientation, Widget &child1, Widget &child2);
-
-    /**
-     * @throw std::runtime_error if failing to create the paned widget.
-     */
-    Paned(XmlElement &xmlElement);
-
-    virtual ~Paned();
-
     static Paned *split(Orientation orientation,
                         Widget &child1, Widget &child2);
+
+    Paned(Orientation orientation, Widget &child1, Widget &child2);
 
     virtual GtkWidget *gtkWidget() const { return m_paned; }
 
@@ -103,6 +96,13 @@ public:
 
 protected:
     Paned(Orientation orientation);
+
+    /**
+     * @throw std::runtime_error if failing to create the paned widget.
+     */
+    Paned(XmlElement &xmlElement);
+
+    virtual ~Paned();
 
     void addChild(Widget &child, int index);
 
