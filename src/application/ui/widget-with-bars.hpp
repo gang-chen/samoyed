@@ -6,11 +6,8 @@
 
 #include "widget-container.hpp"
 #include "bar.hpp"
-#include "../utilities/misc.hpp"
 #include <list>
-#include <map>
 #include <string>
-#include <vector>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -57,7 +54,7 @@ public:
                                         std::list<std::string> &errors);
 
         Widget::XmlElement *m_child;
-        std::vector<Bar::XmlElement *> m_bars;
+        std::list<Bar::XmlElement *> m_bars;
     };
 
     WidgetWithBars();
@@ -80,16 +77,11 @@ public:
 
     void onBarClosed(const Bar *bar);
 
-    Bar *findBar(const char *name);
-    const Bar *findBar(const char *name) const;
-
     void addBar(Bar &bar);
 
     void removeBar(Bar &bar);
 
 protected:
-    typedef std::map<ComparablePointer<const char *>, Bar *> BarTable;
-
     /**
      * @throw std::runtime_error if failing to create the widget.
      */
@@ -108,7 +100,7 @@ private:
 
     Widget *m_child;
 
-    BarTable m_barTable;
+    std::list<Bar *> m_bars;
 };
 
 }

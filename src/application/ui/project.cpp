@@ -7,7 +7,6 @@
 #include "project.hpp"
 #include "editor.hpp"
 #include "file.hpp"
-#include "project-explorer.hpp"
 #include "../application.hpp"
 #include "../resources/project-configuration.hpp"
 #include <utility>
@@ -16,15 +15,16 @@
 namespace Samoyed
 {
 
-Project::Project(const char *uri)
+Project::Project(const char *uri):
+    m_uri(uri)
 {
-    Application::instance().projectExplorer().addProject(*this);
+    Application::instance().addProject(*this);
 }
 
 Project::~Project()
 {
-    Application::instance().projectExplorer().removeProject(*this);
-    Application::instance().projectExplorer().onProjectClosed();
+    Application::instance().removeProject(*this);
+    Application::instance().onProjectClosed();
 }
 
 bool Project::close()

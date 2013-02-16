@@ -26,16 +26,7 @@ public:
     class XmlElement
     {
     public:
-        typedef
-        boost::function<Widget::XmlElement *(xmlDocPtr doc,
-                                             xmlNodePtr node,
-                                             std::list<std::string> &errors)>
-            Reader;
-
         virtual ~XmlElement() {}
-
-        static bool registerReader(const char *className,
-                                   const Reader &reader);
 
         /**
          * Read the information from an XML node and store it in an XML element.
@@ -66,6 +57,16 @@ public:
          * @return True if successful.
          */
         virtual bool restoreWidget(Widget &widget) const = 0;
+
+    protected:
+        typedef
+        boost::function<Widget::XmlElement *(xmlDocPtr doc,
+                                             xmlNodePtr node,
+                                             std::list<std::string> &errors)>
+            Reader;
+
+        static bool registerReader(const char *className,
+                                   const Reader &reader);
 
     private:
         static std::map<std::string, Reader> s_readerRegistry;
