@@ -10,6 +10,7 @@
 #include <list>
 #include <stdexcept>
 #include <string>
+#include <vector>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -27,7 +28,8 @@ bool WidgetWithBars::XmlElement::registerReader()
 WidgetWithBars::XmlElement::XmlElement(xmlDocPtr doc,
                                        xmlNodePtr node,
                                        std::list<std::string> &errors):
-    m_child(NULL)
+    m_child(NULL),
+    m_currentChildIndex(0)
 {
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
@@ -40,6 +42,14 @@ WidgetWithBars::XmlElement::XmlElement(xmlDocPtr doc,
                 if (b)
                     m_bars.push_back(b);
             }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        "current-child-index") == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1);
+            m_currentChildIndex = atoi(value);
+            xmlFree(value);
         }
         else
         {
@@ -99,6 +109,12 @@ xmlNodePtr WidgetWithBars::XmlElement::write() const
 {
     xmlNodePtr node =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>("widget-with-bars"));
+    char *cp;
+    cp = g_strdup_printf("%d", m_currentChildIndex);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>("current-child-index"),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
     xmlNodePtr bars = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>("bars"));
     for (std::vector<Bar::XmlElement *>::const_iterator it = m_bars.begin();
@@ -112,11 +128,10 @@ xmlNodePtr WidgetWithBars::XmlElement::write() const
 WidgetWithBars::XmlElement::XmlElement(const WidgetWithBars &widget)
 {
     m_child = widget.child().save();
-    m_bars.reserve(widget.m_barTable.size());
-    for (BarTable::const_iterator it = widget.m_barTable.begin();
-         it != widget.m_barTable.end();
-         ++it)
-        m_bars.push_back(it->second->save());
+    m_bars.reserve(widget.barCount());
+    for (int i = 0; i < widget.barCount(); ++i)
+        m_bars.push_back(widget.bar(i).save());
+    m_currentChildIndex = widget.currentChildIndex();
 }
 
 Widget *WidgetWithBars::XmlElement::createWidget()
@@ -136,6 +151,7 @@ Widget *WidgetWithBars::XmlElement::createWidget()
 bool WidgetWithBars::XmlElement::restoreWidget(Widget &widget) const
 {
     WidgetWithBars &w = static_cast<WidgetWithBars &>(widget);
+    w.setCurrentChildIndex(m_currentChildIndex);
 }
 
 void WidgetWithBars::XmlElement::removeBar(int index)
@@ -153,18 +169,21 @@ WidgetWithBars::XmlElement::~XmlElement()
         delete *it;
 }
 
-WidgetWithBars::WidgetWithBars():
-    m_child(NULL)
+WidgetWithBars::WidgetWithBars(Widget &child):
+    m_child(NULL),
+    m_currentChildIndex(0)
 {
     m_verticalGrid = gtk_grid_new();
     m_horizontalGrid = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(m_verticalGrid),
                             m_horizontalGrid, NULL,
                             GTK_POS_BOTTOM, 1, 1);
+    addChild(child);
 }
 
 WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
-    m_child(NULL)
+    m_child(NULL),
+    m_currentChildIndex(0)
 {
     Widget *child = xmlElement.child().createWidget();
     if (!child)
@@ -180,11 +199,6 @@ WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
         Bar *bar = xmlElement.child(i).createWidget();
         if (!bar)
             xmlElement.removeBar(i);
-        else if (findBar(*bar))
-        {
-            xmlElement.removeBar(i);
-            delete bar;
-        }
         else
             addBar(*bar);
     }
@@ -193,8 +207,22 @@ WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
 WidgetWithBars::~WidgetWithBars()
 {
     assert(!m_child);
-    assert(m_barTable.empty());
+    assert(m_bars.empty());
     gtk_widget_destroy(m_verticalGrid);
+}
+
+Widget &WidgetWithBars::current()
+{
+    if (m_currentChildIndex == 0)
+        return m_child->current();
+    return m_bars[m_currentChildIndex - 1]->current();
+}
+
+const Widget &WidgetWithBars::current() const
+{
+    if (m_currentChildIndex == 0)
+        return m_child->current();
+    return m_bars[m_currentChildIndex - 1]->current();
 }
 
 bool WidgetWithBars::close()
@@ -204,12 +232,7 @@ bool WidgetWithBars::close()
 
     setClosing(true);
 
-    std::vector<Bar *> bars;
-    bars.reserve(m_barTable.size());
-    for (BarTable::const_iterator it = m_barTable.begin();
-         it != m_barTable.end();
-         ++it)
-        bars.push_back(it->second);
+    std::vector<Bar *> bars(bars);
     for (std::vector<Bar *>::const_iterator it = bars.begin();
          it != bars.end();
          ++it)
@@ -235,10 +258,11 @@ Widget::XmlElement *WidgetWithBars::save() const
 
 void WidgetWithBars::onChildClosed(Widget *child)
 {
-    assert(m_child == child);
-    assert(closing());
-    m_child = NULL;
-    if (m_barTable.empty())
+    if (child == m_child)
+        m_child = NULL;
+    else
+        m_bars.erase(m_bars.begin() + barIndex(static_cast<Bar *>(child)));
+    if (closing() && !m_child && m_bars.empty())
         delete this;
 }
 
@@ -251,6 +275,9 @@ void WidgetWithBars::addChild(Widget &child)
     gtk_grid_attach_next_to(GTK_GRID(m_horizontalGrid),
                             child.gtkWidget(), NULL,
                             GTK_POS_RIGHT, 1, 1);
+    m_childFocusInEventHandlerId =
+        g_signal_connect(child.gtkWidget(), "focus-in-event",
+                         G_CALLBACK(onChildFocusInEvent), this);
 }
 
 void WidgetWithBars::removeChild(Widget &child)
@@ -258,7 +285,10 @@ void WidgetWithBars::removeChild(Widget &child)
     assert(child.parent() == this);
     m_child = NULL;
     child.setParent(NULL);
+    g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(m_horizontalGrid), child.gtkWidget());
+    g_signal_handler_disconnect(child.gtkWidget(),
+                                m_childFocusInEventHandlerId);
 }
 
 void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)
@@ -267,12 +297,11 @@ void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)
     addChild(newChild);
 }
 
-void WidgetWithBars::onBarClosed(const Bar *bar)
-{
-}
-
 void WidgetWithBars::addBar(Bar &bar)
 {
+    assert(!bar.parent());
+    m_bars.push_back(&bar);
+    bar.setParent(this);
     if (bar.orientation() == Bar::ORIENTATION_HORIZONTAL)
         gtk_grid_attach_next_to(GTK_GRID(m_verticalGrid),
                                 bar.gtkWidget(), NULL,
@@ -281,10 +310,50 @@ void WidgetWithBars::addBar(Bar &bar)
         gtk_grid_attach_next_to(GTK_GRID(m_horizontalGrid),
                                 bar.gtkWidget(), NULL,
                                 GTK_POS_LEFT, 1, 1);
+    m_barFocusInEventHandlerIds.push_back(
+        g_signal_connect(child.gtkWidget(), "focus-in-event",
+                         G_CALLBACK(onChildFocusInEvent), this));
 }
 
 void WidgetWithBars::removeBar(Bar &bar)
 {
+    assert(bar.parent() == this);
+    int index = barIndex(&bar);
+    m_bars.erase(m_bars.begin() + index);
+    bar.setParent(NULL);
+    g_object_ref(bar.gtkWidget());
+    if (bar.orientation() == Bar::ORIENTATION_HORIZONTAL)
+        gtk_container_remove(GTK_CONTAINER(m_verticalGrid), bar.gtkWidget());
+    else
+        gtk_container_remove(GTK_CONTAINER(m_horizontalGrid), bar.gtkWidget());
+    g_signal_handler_disconnect(child.gtkWidget(),
+                                m_barFocusInEventHandlerIds[index]);
+    m_barFocusInEventHandlerIds.erase(m_barFocusInEventHandlerIds.begin() +
+                                      index);
+}
+
+int WidgetWithBars::barIndex(const Bar *bar) const
+{
+    for (std::vector<Bar *>::size_type i = 0; i < m_bars.size(); ++i)
+        if (m_bars[i] == bar)
+            return i;
+    return -1;
+}
+
+gboolean WidgetWithBars::onChildFocusInEvent(GtkWidget *child,
+                                             GdkEvent *event,
+                                             gpointer widget)
+{
+    WidgetWithBars *w = static_cast<WidgetWithBars *>(widget);
+    if (w->m_child->gtkWidget() == child)
+        setCurrentChildIndex(0);
+    else
+    {
+        for (std::vector<Bar *>::size_type i = 0; i < m_bars.size(); ++i)
+            if (m_bars[i]->gtkWidget() == child)
+                setCurrentChildIndex(i);
+    }
+    return FALSE;
 }
 
 }

@@ -97,6 +97,10 @@ protected:
     virtual ~Notebook();
 
 private:
+    static void switchPage(GtkNotebook *notebook,
+                           GtkWidget *page,
+                           guint index,
+                           gpointer nb);
     static void onCloseButtonClicked(GtkButton *button, gpointer child);
 
     GtkWidget *m_notebook;

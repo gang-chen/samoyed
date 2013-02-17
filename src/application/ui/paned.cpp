@@ -275,17 +275,31 @@ void Paned::addChild(Widget &child, int index)
     m_children[index] = &child;
     child.setParent(this);
     if (index == 0)
+    {
         gtk_paned_add1(GTK_PANED(m_paned), child.gtkWidget());
+        m_childFocusInEventHandlerIds[0] =
+            g_signal_connect(child.gtkWidget(), "focus-in-event",
+                             G_CALLBACK(onChildFocusInEvent), this);
+    }
     else
+    {
         gtk_paned_add2(GTK_PANED(m_paned), child.gtkWidget());
+        m_childFocusInEventHandlerIds[1] =
+            g_signal_connect(child.gtkWidget(), "focus-in-event",
+                             G_CALLBACK(onChildFocusInEvent), this);
+    }
 }
 
 void Paned::removeChild(Widget &child)
 {
     assert(child.parent() == this);
-    m_children[childIndex(child)] = NULL;
+    int index = childIndex(child);
+    m_children[index] = NULL;
     child.setParent(NULL);
+    g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
+    g_signal_handler_disconnect(child.gtkWidget(),
+                                m_childFocusInEventHandlerIds[index]);
 }
 
 void Paned::onChildClosed(Widget *child)
@@ -297,11 +311,7 @@ void Paned::onChildClosed(Widget *child)
     // Remove the remained child from this paned widget.
     Widget *remained = m_children[1 - index];
     assert(remained);
-    g_object_ref(remained->gtkWidget());
     removeChild(*remained);
-
-    // Keep the GTK+ widget alive.  We will destroy it by ourselves.
-    g_object_ref(gtkWidget());
 
     // Replace this paned widget with the remained child.
     assert(parent());
@@ -338,7 +348,6 @@ Paned *Paned::split(Orientation orientation, Widget &child1, Widget &child2)
     Paned *paned = new Paned(orientation);
 
     // Replace the original widget with the paned widget.
-    g_object_ref(original->gtkWidget());
     parent->replaceChild(*original, *paned);
 
     // Add the two widgets to the paned widget.
@@ -357,9 +366,15 @@ int Paned::childIndex(const Widget *child) const
     return -1;
 }
 
-void Paned::setCurrentChildIndex(int index)
+gboolean Paned::onChildFocusInEvent(GtkWidget *child,
+                                    GdkEvent *event,
+                                    gpointer paned)
 {
-    m_currentChildIndex = index;
+    if (m_children[0]->gtkWidget() == child)
+        setCurrentChildIndex(0);
+    else
+        setCurrentChildIndex(1);
+    return FALSE;
 }
 
 }

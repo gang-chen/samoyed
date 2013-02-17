@@ -8,6 +8,7 @@
 #include "bar.hpp"
 #include <list>
 #include <string>
+#include <vector>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -38,6 +39,7 @@ public:
         Widget::XmlElement &child() const { return *m_child; }
         int barCount() const { return m_bars.size(); }
         Bar::XmlElement &bar(int index) const { return *m_bars[index]; }
+        int currentChildIndex() const { return m_currentChildIndex; }
 
     protected:
         /**
@@ -54,15 +56,16 @@ public:
                                         std::list<std::string> &errors);
 
         Widget::XmlElement *m_child;
-        std::list<Bar::XmlElement *> m_bars;
+        std::vector<Bar::XmlElement *> m_bars;
+        int m_currentChildIndex;
     };
 
-    WidgetWithBars();
+    WidgetWithBars(Widget &child);
 
     virtual GtkWidget *gtkWidget() const { return m_verticalGrid; }
 
-    virtual Widget &current() { return m_child->current(); }
-    virtual const Widget &current() const { return m_child->current(); }
+    virtual Widget &current();
+    virtual const Widget &current() const;
 
     virtual bool close();
 
@@ -75,11 +78,19 @@ public:
     Widget &child() { return *m_child; }
     const Widget &child() const { return *m_child; }
 
-    void onBarClosed(const Bar *bar);
-
     void addBar(Bar &bar);
 
     void removeBar(Bar &bar);
+
+    int barCount() const { return m_bars.size(); }
+
+    Bar &bar(int index) { return *m_bars[index]; }
+    const Bar &bar(int index) const { return *m_bars[index]; }
+
+    int barIndex(const Bar *bar) const;
+
+    int currentChildIndex() const { return m_currentChildIndex; }
+    void setCurrentChildIndex(int index) { m_currentChildIndex = index; }
 
 protected:
     /**
@@ -94,13 +105,23 @@ protected:
     void removeChild(Widget &child);
 
 private:
+    static gboolean onChildFocusInEvent(GtkWidget *child,
+                                        GdkEvent *event,
+                                        gpointer widget);
+
     GtkWidget *m_verticalGrid;
 
     GtkWidget *m_horizontalGrid;
 
     Widget *m_child;
 
-    std::list<Bar *> m_bars;
+    std::vector<Bar *> m_bars;
+
+    int m_currentChildIndex;
+
+    unsigned long m_childFocusInEventHandlerId;
+
+    std::vector<unsigned long> m_barFocusInEventHandlerIds;
 };
 
 }

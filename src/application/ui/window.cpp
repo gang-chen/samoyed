@@ -147,6 +147,7 @@ void Window::removeChild(Widget &child)
     assert(child.parent() == this);
     m_child = NULL;
     child.setParent(NULL);
+    g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTANDER(m_grid), child.gtkWidget());
 }
 

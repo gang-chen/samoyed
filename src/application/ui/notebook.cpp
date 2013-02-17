@@ -116,6 +116,8 @@ Notebook::XmlElement::~XmlElement()
 Notebook::Notebook()
 {
     m_notebook = gtk_notebook_new();
+    g_signal_connect(m_notebook, "switch-page",
+                     G_CALLBACK(switchPage), this);
 }
 
 Notebook::Notebook(XmlElement &xmlElement)
@@ -130,6 +132,8 @@ Notebook::Notebook(XmlElement &xmlElement)
         else
             addChild(*child);
     }
+    g_signal_connect(m_notebook, "switch-page",
+                     G_CALLBACK(switchPage), this);
 }
 
 Notebook::~Notebook()
@@ -223,6 +227,7 @@ void Notebook::removeChild(Widget &child)
     assert(child.parent() == this);
     m_children.erase(m_children.begin() + childIndex(&child));
     child.setParent(NULL);
+    g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(m_notebook), child.gtkWidget());
 }
 
@@ -257,6 +262,14 @@ void Notebook::onChildDescriptionChanged(Widget &child)
                                    child.gtkWidget());
     GtkLabel *title = gtk_grid_get_child_at(GTK_GRID(tabLabel), 0, 0);
     gtk_widget_set_tooltip_text(title, child.description());
+}
+
+void Notebook::switchPage(GtkNotebook *notebook,
+                          GtkWidget *page,
+                          guint index,
+                          gpointer nb)
+{
+    static_cast<Notebook *>(nb)->setCurrentChildIndex(index);
 }
 
 }

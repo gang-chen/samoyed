@@ -19,9 +19,6 @@ public:
     };
 
     virtual Orientation orientation() const = 0;
-
-protected:
-    virtual ~Bar();
 };
 
 }

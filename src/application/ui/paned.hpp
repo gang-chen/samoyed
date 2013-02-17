@@ -86,7 +86,7 @@ public:
     int childIndex(const Widget *child) const;
 
     int currentChildIndex() const { return m_currentChildIndex; }
-    void setCurrentChildIndex(int index);
+    void setCurrentChildIndex(int index) { m_currentChildIndex = index; }
 
     Orientation orientation() const { return m_orientation; }
 
@@ -109,6 +109,10 @@ protected:
     void removeChild(Widget &child);
 
 private:
+    static gboolean onChildFocusInEvent(GtkWidget *child,
+                                        GdkEvent *event,
+                                        gpointer paned);
+
     GtkWidget *m_paned;
 
     Orientation m_orientation;
@@ -116,6 +120,8 @@ private:
     Widget *m_children[2];
 
     int m_currentChildIndex;
+
+    unsigned long m_childFocusInEventHandlerIds[2];
 };
 
 }
