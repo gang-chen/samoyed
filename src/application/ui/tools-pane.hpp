@@ -10,8 +10,8 @@ namespace Samoyed
 {
 
 /**
- * A tools pane is a notebook that contains windows of various tools.  It is
- * usually at the bottom of a window.
+ * A tools pane is a notebook that contains widgets provided by various tools.
+ * It is usually at the bottom of a window.
  */
 class ToolsPane: public Notebook
 {
