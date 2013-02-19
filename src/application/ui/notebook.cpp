@@ -132,8 +132,6 @@ Notebook::Notebook(XmlElement &xmlElement)
         else
             addChild(*child);
     }
-    g_signal_connect(m_notebook, "switch-page",
-                     G_CALLBACK(switchPage), this);
 }
 
 Notebook::~Notebook()
@@ -262,14 +260,6 @@ void Notebook::onChildDescriptionChanged(Widget &child)
                                    child.gtkWidget());
     GtkLabel *title = gtk_grid_get_child_at(GTK_GRID(tabLabel), 0, 0);
     gtk_widget_set_tooltip_text(title, child.description());
-}
-
-void Notebook::switchPage(GtkNotebook *notebook,
-                          GtkWidget *page,
-                          guint index,
-                          gpointer nb)
-{
-    static_cast<Notebook *>(nb)->setCurrentChildIndex(index);
 }
 
 }
