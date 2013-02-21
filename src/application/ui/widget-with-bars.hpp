@@ -15,6 +15,9 @@
 namespace Samoyed
 {
 
+/**
+ * A widget with bars contains a main child and one or more bars.
+ */
 class WidgetWithBars: public WidgetContainer
 {
 public:
@@ -36,7 +39,7 @@ public:
          */
         void removeBar(int index);
 
-        Widget::XmlElement &child() const { return *m_child; }
+        Widget::XmlElement &mainChild() const { return *m_mainChild; }
         int barCount() const { return m_bars.size(); }
         Bar::XmlElement &bar(int index) const { return *m_bars[index]; }
         int currentChildIndex() const { return m_currentChildIndex; }
@@ -55,12 +58,12 @@ public:
                                         xmlNodePtr node,
                                         std::list<std::string> &errors);
 
-        Widget::XmlElement *m_child;
+        Widget::XmlElement *m_mainChild;
         std::vector<Bar::XmlElement *> m_bars;
         int m_currentChildIndex;
     };
 
-    WidgetWithBars(Widget &child);
+    WidgetWithBars(const char *name, Widget &mainChild);
 
     virtual GtkWidget *gtkWidget() const { return m_verticalGrid; }
 
@@ -71,12 +74,26 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    virtual void onChildClosed(const Widget *child);
+    virtual void onChildClosed(const Widget &child);
 
+    /**
+     * Only the main child may be replaced.
+     */
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    Widget &child() { return *m_child; }
-    const Widget &child() const { return *m_child; }
+    virtual int childCount() const { return 1 + barCount(); }
+
+    virtual Widget &child(int index)
+    { return index == 1 ? *m_mainChild : *m_bars[index - 1]; }
+    virtual const Widget &child(int index) const
+    { return index == 1 ? *m_mainChild : *m_bars[index - 1]; }
+
+    virtual int currentChildIndex() const { return m_currentChildIndex; }
+    virtual void setCurrentChildIndex(int index)
+    { m_currentChildIndex = index; }
+
+    Widget &mainChild() { return *m_mainChild; }
+    const Widget &mainChild() const { return *m_mainChild; }
 
     void addBar(Bar &bar);
 
@@ -87,10 +104,7 @@ public:
     Bar &bar(int index) { return *m_bars[index]; }
     const Bar &bar(int index) const { return *m_bars[index]; }
 
-    int barIndex(const Bar *bar) const;
-
-    int currentChildIndex() const { return m_currentChildIndex; }
-    void setCurrentChildIndex(int index) { m_currentChildIndex = index; }
+    int barIndex(const Bar &bar) const;
 
 protected:
     /**
@@ -100,28 +114,27 @@ protected:
 
     virtual ~WidgetWithBars();
 
-    void addChild(Widget &child);
+    void addMainChild(Widget &child);
 
-    void removeChild(Widget &child);
+    void removeMainChild(Widget &child);
 
 private:
-    static gboolean onChildFocusInEvent(GtkWidget *child,
-                                        GdkEvent *event,
-                                        gpointer widget);
+    static void setFocusChild(GtkWidget *container,
+                              GtkWidget *child,
+                              gpointer widget);
 
     GtkWidget *m_verticalGrid;
 
     GtkWidget *m_horizontalGrid;
 
-    Widget *m_child;
+    Widget *m_mainChild;
 
     std::vector<Bar *> m_bars;
 
     int m_currentChildIndex;
 
-    unsigned long m_childFocusInEventHandlerId;
-
-    std::vector<unsigned long> m_barFocusInEventHandlerIds;
+    int m_rowCount;
+    int m_columnCount;
 };
 
 }

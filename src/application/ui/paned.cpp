@@ -205,6 +205,8 @@ Paned::Paned(Orientation orientation):
     m_children[0] = NULL;
     m_children[1] = NULL;
     m_paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(m_paned, "set-focus-child",
+                     G_CALLBACK(setFocusChild), this);
 }
 
 Paned::Paned(Orientation orientation, Widget &child1, Widget &child2):
@@ -214,6 +216,8 @@ Paned::Paned(Orientation orientation, Widget &child1, Widget &child2):
     m_children[0] = NULL;
     m_children[1] = NULL;
     m_paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(m_paned, "set-focus-child",
+                     G_CALLBACK(setFocusChild), this);
     addChild(child1, 0);
     addChild(child2, 1);
 }
@@ -233,6 +237,8 @@ Paned::Paned(const XmlElement &xmlElement)
     }
     m_paned =
         gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
+    g_signal_connect(m_paned, "set-focus-child",
+                     G_CALLBACK(setFocusChild), this);
     addChild(*child1, 0);
     addChild(*child2, 1);
 }
@@ -275,19 +281,9 @@ void Paned::addChild(Widget &child, int index)
     m_children[index] = &child;
     child.setParent(this);
     if (index == 0)
-    {
         gtk_paned_add1(GTK_PANED(m_paned), child.gtkWidget());
-        m_childFocusInEventHandlerIds[0] =
-            g_signal_connect(child.gtkWidget(), "focus-in-event",
-                             G_CALLBACK(onChildFocusInEvent), this);
-    }
     else
-    {
         gtk_paned_add2(GTK_PANED(m_paned), child.gtkWidget());
-        m_childFocusInEventHandlerIds[1] =
-            g_signal_connect(child.gtkWidget(), "focus-in-event",
-                             G_CALLBACK(onChildFocusInEvent), this);
-    }
 }
 
 void Paned::removeChild(Widget &child)
@@ -298,11 +294,9 @@ void Paned::removeChild(Widget &child)
     child.setParent(NULL);
     g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
-    g_signal_handler_disconnect(child.gtkWidget(),
-                                m_childFocusInEventHandlerIds[index]);
 }
 
-void Paned::onChildClosed(Widget *child)
+void Paned::onChildClosed(const Widget &child)
 {
     // Mark the child as being removed.
     int index = childIndex(child);
@@ -357,24 +351,18 @@ Paned *Paned::split(Orientation orientation, Widget &child1, Widget &child2)
     return paned;
 }
 
-int Paned::childIndex(const Widget *child) const
+void Paned::setFocusChild(GtkWidget *container,
+                          GtkWidget *child,
+                          gpointer paned)
 {
-    if (m_children[0] == child)
-        return 0;
-    if (m_children[1] == child)
-        return 1;
-    return -1;
-}
-
-gboolean Paned::onChildFocusInEvent(GtkWidget *child,
-                                    GdkEvent *event,
-                                    gpointer paned)
-{
-    if (m_children[0]->gtkWidget() == child)
-        setCurrentChildIndex(0);
+    Paned *p = static_cast<Paned *>(paned);
+    if (p->m_children[0]->gtkWidget() == child)
+        m_currentChildIndex = 0;
     else
-        setCurrentChildIndex(1);
-    return FALSE;
+    {
+        assert(p->m_children[1]->gtkWidget() == child);
+        m_currentChildIndex = 1;
+    }
 }
 
 }

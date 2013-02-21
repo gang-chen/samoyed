@@ -217,19 +217,6 @@ protected:
 
     virtual ~File();
 
-    // Functions implemented by derived classes and called by the base class.
-    virtual Editor *newEditor(Project &project) = 0;
-
-    virtual FileLoader *createLoader(unsigned int priority,
-                                     const Worker::Callback &callback) = 0;
-
-    virtual FileSaver *createSaver(unsigned int priority,
-                                   const Worker::Callback &callback) = 0;
-
-    virtual void onLoaded(FileLoader &loader) = 0;
-
-    virtual void onSaved(FileSaver &saver) = 0;
-
     /**
      * This function is called by a derived class to notify all editors except
      * the committer and observers after edited.
@@ -243,6 +230,19 @@ protected:
     void saveUndo(EditPrimitive *undo);
 
 private:
+    // Functions implemented by derived classes and called by the base class.
+    virtual Editor *newEditor(Project &project) = 0;
+
+    virtual FileLoader *createLoader(unsigned int priority,
+                                     const Worker::Callback &callback) = 0;
+
+    virtual FileSaver *createSaver(unsigned int priority,
+                                   const Worker::Callback &callback) = 0;
+
+    virtual void onLoaded(FileLoader &loader) = 0;
+
+    virtual void onSaved(FileSaver &saver) = 0;
+
     void continueClosing();
 
     void freezeInternally();

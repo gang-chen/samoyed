@@ -26,6 +26,8 @@ public:
     class XmlElement
     {
     public:
+        XmlElement(const Widget &widget): m_name(widget.name()) {}
+
         virtual ~XmlElement() {}
 
         /**
@@ -58,6 +60,8 @@ public:
          */
         virtual bool restoreWidget(Widget &widget) const = 0;
 
+        const char *name() const { return m_name.c_str(); }
+
     protected:
         typedef
         boost::function<Widget::XmlElement *(xmlDocPtr doc,
@@ -68,19 +72,49 @@ public:
         static bool registerReader(const char *className,
                                    const Reader &reader);
 
+        XmlElement(xmlDocPtr doc,
+                   xmlNodePtr node,
+                   std::list<std::string> &errors);
+
     private:
         static std::map<std::string, Reader> s_readerRegistry;
+
+        std::string m_name;
     };
+
+    Widget(const char *name): m_name(name), m_parent(NULL), m_closing(false) {}
+
+    /**
+     * A widget may be assigned a unique name, which is used to identify it.
+     * @return The name of the widget.
+     */
+    const char *name() const { return m_name.c_str(); }
+
+    /**
+     * @return The title of the widget, which may be shown in a title bar.
+     */
+    const char *title() const { return m_title.c_str(); }
+
+    /**
+     * @return A short description of the widget, which may be shown in a
+     * tooltip.
+     */
+    const char *description() const { return m_description.c_str(); }
+
+    void setTitle(const char *title) { m_title = title; }
+
+    void setDescription(const char *description)
+    { m_description = description; }
 
     /**
      * @return The underlying GTK+ widget.  Note that it is read-only.
      */
     virtual GtkWidget *gtkWidget() const = 0;
 
-    virtual const char *title() const { return ""; }
-
-    virtual const char *description() const { return ""; }
-
+    /**
+     * @return The current widget in this container if this is a container, or
+     * this widget.
+     */
     virtual Widget &current() { return *this; }
     virtual const Widget &current() const { return *this; }
 
@@ -93,18 +127,28 @@ public:
     virtual bool close() = 0;
 
     /**
-     * Save the configuration of this widget in an XML element.
+     * Save the configuration, state and history of this widget in an XML
+     * element.
      */
-    virtual XmlElement *save() const = 0;
+    virtual XmlElement *save() const;
+
+    /**
+     * Set this widget as the current widget.
+     */
+    void setCurrent();
 
 protected:
-    Widget(): m_parent(NULL), m_closing(false) {}
-
     virtual ~Widget();
 
     void setClosing(bool closing) { m_closing = closing; }
 
 private:
+    const std::string m_name;
+
+    std::string m_title;
+
+    std::string m_description;
+
     WidgetContainer *m_parent;
 
     bool m_closing;

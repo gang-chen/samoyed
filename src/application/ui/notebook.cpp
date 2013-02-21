@@ -113,11 +113,13 @@ Notebook::XmlElement::~XmlElement()
         delete *it;
 }
 
-Notebook::Notebook()
+std::map<std::string, std::vector<Notebook::WidgetFactory> >
+    Notebook::s_childRegistry;
+
+Notebook::Notebook(const char *name): WidgetContainer(name)
 {
     m_notebook = gtk_notebook_new();
-    g_signal_connect(m_notebook, "switch-page",
-                     G_CALLBACK(switchPage), this);
+    addChild(factory(name));
 }
 
 Notebook::Notebook(XmlElement &xmlElement)
@@ -184,11 +186,10 @@ Widget::XmlElement *Notebook::save() const
     return new XmlElement(*this);
 }
 
-void Notebook::onChildClosed(Widget *child)
+void Notebook::onChildClosed(const Widget &child)
 {
     m_children.erase(m_children.begin() + childIndex(child));
-    if (closing() && m_children.empty())
-        delete this;
+    WidgetContainer::onChildClosed(child);
 }
 
 void Notebook::addChild(Widget &child, int index)
@@ -234,14 +235,6 @@ void Notebook::replaceChild(Widget &oldChild, Widget &newChild)
     int index = childIndex(&oldChild);
     removeChild(oldChild);
     addChild(newChild, index);
-}
-
-int Notebook::childIndex(const Widget *child) const
-{
-    for (std::vector<Widget *>::size_type i = 0; i < m_children.size(); ++i)
-        if (m_children[i] == child)
-            return i;
-    return -1;
 }
 
 void Notebook::onChildTitleChanged(Widget &child)

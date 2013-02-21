@@ -40,10 +40,34 @@ Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,
     return it->second(doc, node, errors);
 }
 
+Widget::XmlElement::XmlElement(xmlDocPtr doc,
+                               xmlNodePtr node,
+                               std::list<std::string> &errors)
+{
+}
+
 Widget::~Widget()
 {
     if (m_parent)
-        m_parent->onChildClosed(this);
+        m_parent->onChildClosed(*this);
+}
+
+void Widget::setCurrent()
+{
+    // The purpose is to switch the current page in each notebook to the desired
+    // one.
+    Widget *child = this;
+    WidgetContainer *parent = child->parent();
+    while (parent)
+    {
+        parent->setCurrentChildIndex(parent->childIndex(*child));
+        child = parent;
+        parent = parent->parent();
+    }
+
+    // Set this widget as the current widget.
+    gtk_widget_grab_focus(gtkWidget());
+    gtk_window_present(GTK_WINDOW(child->gtkWidget()));
 }
 
 }

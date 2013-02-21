@@ -6,8 +6,10 @@
 
 #include "widget-container.hpp"
 #include <list>
+#include <map>
 #include <string>
 #include <vector>
+#include <boost/function.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -17,6 +19,8 @@ namespace Samoyed
 class Notebook: public WidgetContainer
 {
 public:
+    typedef boost::function<Widget *(const char *notebookName)> WidgetFactory;
+
     class XmlElement: public Widget::XmlElement
     {
     public:
@@ -54,15 +58,14 @@ public:
         int m_currentChildIndex;
     };
 
-    Notebook();
+    static bool registerChild(const char *notebookName,
+                              const WidgetFactory &childFactory);
+
+    static bool unregisterChild(const char *notebookName);
+
+    Notebook(const char *name);
 
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
-
-    virtual Widget &current()
-    { return child(currentChildIndex()).current(); }
-
-    virtual const Widget &current() const
-    { return child(currentChildIndex()).current(); }
 
     virtual bool close();
 
@@ -76,16 +79,16 @@ public:
 
     void removeChild(Widget &child);
 
-    int childCount() const { return m_children.size(); }
+    virtual int childCount() const { return m_children.size(); }
 
-    Widget &child(int index) { return *m_children[index]; }
-    const Widget &child(int index) const { return *m_children[index]; }
+    virtual Widget &child(int index) { return *m_children[index]; }
+    virtual const Widget &child(int index) const { return *m_children[index]; }
 
-    int childIndex(const Widget *child) const;
-
-    int currentChildIndex() const
+    // Assume the current child should be in the current page.
+    virtual int currentChildIndex() const
     { return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook)); }
-    void setCurrentChildIndex(int index)
+
+    virtual void setCurrentChildIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
     void onChildTitleChanged(Widget &child);
@@ -98,6 +101,8 @@ protected:
 
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);
+
+    static std::map<std::string, std::vector<WidgetFactory> > s_childRegistry;
 
     GtkWidget *m_notebook;
 

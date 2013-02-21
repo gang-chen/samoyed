@@ -65,6 +65,11 @@ public:
         Widget::XmlElement *m_child;
     };
 
+    /**
+     * Create and compose a window.
+     */
+    Window(const Configuration &config);
+
     Window(const Configuration &config, Widget &child);
 
     virtual GtkWidget *gtkWidget() const { return m_window; }

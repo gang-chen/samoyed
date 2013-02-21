@@ -5,15 +5,21 @@
 # include <config.h>
 #endif
 #include "bar.hpp"
-#include "widget-with-bars.hpp"
+#include <utility>
 
 namespace Samoyed
 {
 
-Bar::~Bar()
+std::map<std::string, Bar::BarFactory> Bar::s_barRegistry;
+
+bool Bar::registerBar(const char *name, const BarFactory &factory)
 {
-    assert(m_parent);
-    m_parent->onBarClosed(this);
+    s_barRegistry.insert(std::make_pair(name, factory));
+}
+
+bool Bar::unregisterBar(const char *name)
+{
+    s_barRegistry.erase(name);
 }
 
 }
