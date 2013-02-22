@@ -96,8 +96,8 @@ public:
     virtual void setCurrentChildIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
-    virtual void onChildTitleChanged(Widget &child);
-    virtual void onChildDescriptionChanged(Widget &child);
+    virtual void onChildTitleChanged(const Widget &child);
+    virtual void onChildDescriptionChanged(const Widget &child);
 
 protected:
     Notebook(XmlElement &xmlElement);
