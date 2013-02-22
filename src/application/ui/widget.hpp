@@ -85,7 +85,7 @@ public:
     Widget(const char *name): m_name(name), m_parent(NULL), m_closing(false) {}
 
     /**
-     * A widget may be assigned a unique name, which is used to identify it.
+     * A widget may be assigned a name, which is unique in its parent container.
      * @return The name of the widget.
      */
     const char *name() const { return m_name.c_str(); }
@@ -94,17 +94,13 @@ public:
      * @return The title of the widget, which may be shown in a title bar.
      */
     const char *title() const { return m_title.c_str(); }
+    void setTitle(const char *title);
 
     /**
-     * @return A short description of the widget, which may be shown in a
-     * tooltip.
+     * @return A description of the widget, which may be shown in a tooltip.
      */
     const char *description() const { return m_description.c_str(); }
-
-    void setTitle(const char *title) { m_title = title; }
-
-    void setDescription(const char *description)
-    { m_description = description; }
+    void setDescription(const char *description);
 
     /**
      * @return The underlying GTK+ widget.  Note that it is read-only.
