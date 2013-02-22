@@ -52,6 +52,20 @@ Widget::~Widget()
         m_parent->onChildClosed(*this);
 }
 
+void Widget::setTitle(const char *title)
+{
+    m_title = title;
+    if (m_parent)
+        m_parent->onChildTitleChanged(*this);
+}
+
+void Widget::setDescription(const char *description)
+{
+    m_description = description;
+    if (m_parent)
+        m_parent->onChildDescriptionChanged(*this);
+}
+
 void Widget::setCurrent()
 {
     // The purpose is to switch the current page in each notebook to the desired
