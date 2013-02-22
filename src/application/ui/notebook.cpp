@@ -237,7 +237,7 @@ void Notebook::replaceChild(Widget &oldChild, Widget &newChild)
     addChild(newChild, index);
 }
 
-void Notebook::onChildTitleChanged(Widget &child)
+void Notebook::onChildTitleChanged(const Widget &child)
 {
     GtkWidget *tabLabel =
         gtk_notebook_get_tab_label(GTK_NOTEBOOK(m_notebook),
@@ -246,7 +246,7 @@ void Notebook::onChildTitleChanged(Widget &child)
     gtk_label_set_text(GTK_LABEL(title), child.title());
 }
 
-void Notebook::onChildDescriptionChanged(Widget &child)
+void Notebook::onChildDescriptionChanged(const Widget &child)
 {
     GtkWidget *tabLabel =
         gtk_notebook_get_tab_label(GTK_NOTEBOOK(m_notebook),
