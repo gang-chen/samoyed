@@ -58,6 +58,11 @@ public:
         int m_currentChildIndex;
     };
 
+    /**
+     * Register a child to notebooks with the specific name.  If a notebook with
+     * the name is created, the registered children will be automatically
+     * created and added to the notebook.
+     */
     static bool registerChild(const char *notebookName,
                               const WidgetFactory &childFactory);
 
@@ -91,8 +96,8 @@ public:
     virtual void setCurrentChildIndex(int index)
     { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
 
-    void onChildTitleChanged(Widget &child);
-    void onChildDescriptionChanged(Widget &child);
+    virtual void onChildTitleChanged(Widget &child);
+    virtual void onChildDescriptionChanged(Widget &child);
 
 protected:
     Notebook(XmlElement &xmlElement);
