@@ -252,7 +252,7 @@ void WidgetWithBars::onChildClosed(const Widget &child)
     if (&child == m_mainChild)
         m_mainChild = NULL;
     else
-        m_bars.erase(m_bars.begin() + barIndex(static_cast<Bar *>(child)));
+        m_bars.erase(m_bars.begin() + barIndex(static_cast<Bar &>(child)));
     WidgetContainer.onChildClose(child);
 }
 
@@ -299,7 +299,7 @@ void WidgetWithBars::addBar(Bar &bar)
 void WidgetWithBars::removeBar(Bar &bar)
 {
     assert(bar.parent() == this);
-    int index = barIndex(&bar);
+    int index = barIndex(bar);
     m_bars.erase(m_bars.begin() + index);
     bar.setParent(NULL);
     g_object_ref(bar.gtkWidget());
@@ -309,10 +309,10 @@ void WidgetWithBars::removeBar(Bar &bar)
         gtk_container_remove(GTK_CONTAINER(m_horizontalGrid), bar.gtkWidget());
 }
 
-int WidgetWithBars::barIndex(const Bar *bar) const
+int WidgetWithBars::barIndex(const Bar &bar) const
 {
-    for (std::vector<Bar *>::size_type i = 0; i < m_bars.size(); ++i)
-        if (m_bars[i] == bar)
+    for (int i = 0; i < barCount(); ++i)
+        if (&this->bar(i) == &bar)
             return i;
     return -1;
 }
