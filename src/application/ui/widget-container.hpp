@@ -48,6 +48,10 @@ public:
     Widget *findChild(const char *name);
     const Widget *findChild(const char *name) const;
 
+    virtual void onChildTitleChanged(const Widget &child) {}
+    
+    virtual void onChildDescriptionChanged(const Widget &child) {}
+
 protected:
     void addChild(Widget &child);
 
