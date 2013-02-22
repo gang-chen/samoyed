@@ -132,9 +132,6 @@ private:
     std::vector<Bar *> m_bars;
 
     int m_currentChildIndex;
-
-    int m_rowCount;
-    int m_columnCount;
 };
 
 }
