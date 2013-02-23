@@ -6,8 +6,8 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
-#include "project-explorer.hpp"
-#include "editor-group.hpp"
+#include "widget-with-panes.hpp"
+#include "notebook.hpp"
 #include "../application.hpp"
 #include "../utilities/misc.hpp"
 #include <assert.h>
@@ -17,14 +17,43 @@
 namespace Samoyed
 {
 
-Window::Window(const Configuration &config, Widget &child):
-    m_window(NULL),
-    m_grid(NULL),
-    m_menuBar(NULL),
-    m_toolbar(NULL),
-    m_uiManager(NULL),
-    m_actions(this),
-    m_child(NULL)
+void Window::registerPane(const char *windowName,
+                          const char *paneName,
+                          Side side,
+                          bool create,
+                          const WidgetFactory &paneFactory)
+{
+    if (windowName[0] == '*' && windowName[1] == '\0')
+        s_managedPanes.insert(
+            std::make_pair(paneName,
+                           boost::make_tuple(side, create, paneFactory)));
+    else
+        s_managedPaneRegistry.insert(
+            std::make_pair(
+                windowName,
+                std::map<std::string,
+                         boost::tuple<Side, bool, WidgetFactory>())).
+            first->second.insert(
+                std::make_pair(paneName,
+                               boost::make_tuple(side, create, paneFactory)));
+}
+
+void Window::unregisterPane(const char *windowName, const char *paneName)
+{
+    if (windowName[0] == '*' && windowName[1] == '\0')
+        s_managedPanes.erase(paneName);
+    else
+    {
+        std::map<std::string,
+                 std::map<std::string,
+                          boost::tuple<Side, bool, WidgetFactory> >::iterator
+            it = s_managedPaneRegistry.find(windowName);
+        if (it != s_managedPaneRegistry.end())
+            it->second.erase(paneName);
+    }
+}
+
+void Window::initialize(const Configuration &config)
 {
     m_uiManager = gtk_ui_manager_new();
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
@@ -57,16 +86,26 @@ Window::Window(const Configuration &config, Widget &child):
                             m_toolbar, m_menuBar,
                             GTK_POS_BOTTOM, 1, 1);
 
-    addChild(child);
-
     g_signal_connect(m_window, "delete-event",
                      G_CALLBACK(onDeleteEvent), this);
     g_signal_connect(m_window, "focus-in-event",
                      G_CALLBACK(onFocusInEvent), this);
 
-    gtk_widget_show_all(m_window);
-
     Application::instance().addWindow(*this);
+}
+
+Window::Window(const char *name, const Configuration &config, Widget &child):
+    Widget(name),
+    m_window(NULL),
+    m_grid(NULL),
+    m_menuBar(NULL),
+    m_toolbar(NULL),
+    m_child(NULL),
+    m_uiManager(NULL),
+    m_actions(this)
+{
+    initialize(config);
+    addChild(child);
 }
 
 Window::~Window()

@@ -19,7 +19,8 @@ namespace Samoyed
 class Notebook: public WidgetContainer
 {
 public:
-    typedef boost::function<Widget *(const char *notebookName)> WidgetFactory;
+    typedef boost::function<Widget *(const char *containerName,
+                                     const char *widgetName)> WidgetFactory;
 
     class XmlElement: public Widget::XmlElement
     {
@@ -59,14 +60,20 @@ public:
     };
 
     /**
-     * Register a child to notebooks with the specific name.  If a notebook with
-     * the name is created, the registered children will be automatically
-     * created and added to the notebook.
+     * Register a default child to notebooks with the specific name.  If a
+     * notebook with the name is created, the registered default children will
+     * be automatically created and added to the notebook.
+     * @param notebookName The name of the notebooks of interest, or "*" to
+     * register to all notebooks.
+     * @param childName The name of the default child to be registered.
+     * @param childFactory The factory creating the default child.
      */
-    static bool registerChild(const char *notebookName,
-                              const WidgetFactory &childFactory);
+    static void registerDefaultChild(const char *notebookName,
+                                     const char *childName,
+                                     const WidgetFactory &childFactory);
 
-    static bool unregisterChild(const char *notebookName);
+    static void unregisterDefaultChild(const char *notebookName,
+                                       const char *childName);
 
     Notebook(const char *name);
 
@@ -107,7 +114,10 @@ protected:
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);
 
-    static std::map<std::string, std::vector<WidgetFactory> > s_childRegistry;
+    static std::map<std::string, std::map<std::string, WidgetFactory> >
+        s_defaultChildRegistry;
+
+    static std::map<std::string, WidgetFactory> s_defaultChildren;
 
     GtkWidget *m_notebook;
 

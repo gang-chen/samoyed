@@ -260,6 +260,7 @@ void WidgetWithBars::addMainChild(Widget &child)
 {
     assert(!child.parent());
     assert(!m_child);
+    WidgetContainer::addChild(child);
     m_mainChild = &child;
     child.setParent(this);
     gtk_grid_attach(GTK_GRID(m_horizontalGrid), child.gtkWidget(), 0, 0, 1, 1);
@@ -269,6 +270,7 @@ void WidgetWithBars::removeMainChild(Widget &child)
 {
     assert(&child == m_mainChild);
     assert(child.parent() == this);
+    WidgetContainer::removeChild(child);
     m_mainChild = NULL;
     child.setParent(NULL);
     g_object_ref(child.gtkWidget());
@@ -277,6 +279,7 @@ void WidgetWithBars::removeMainChild(Widget &child)
 
 void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)
 {
+    // Only the main child can be replaced.
     removeMainChild(oldChild);
     addMainChild(newChild);
 }
@@ -284,6 +287,7 @@ void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)
 void WidgetWithBars::addBar(Bar &bar)
 {
     assert(!bar.parent());
+    WidgetContainer::addChild(bar);
     m_bars.push_back(&bar);
     bar.setParent(this);
     if (bar.orientation() == Bar::ORIENTATION_HORIZONTAL)
@@ -299,6 +303,7 @@ void WidgetWithBars::addBar(Bar &bar)
 void WidgetWithBars::removeBar(Bar &bar)
 {
     assert(bar.parent() == this);
+    WidgetContainer::removeChild(bar);
     int index = barIndex(bar);
     m_bars.erase(m_bars.begin() + index);
     bar.setParent(NULL);

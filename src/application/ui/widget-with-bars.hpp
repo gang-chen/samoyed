@@ -16,7 +16,8 @@ namespace Samoyed
 {
 
 /**
- * A widget with bars contains a main child and one or more bars.
+ * A widget with bars contains a main child and one or more bars around the main
+ * child.
  */
 class WidgetWithBars: public WidgetContainer
 {
@@ -67,18 +68,12 @@ public:
 
     virtual GtkWidget *gtkWidget() const { return m_verticalGrid; }
 
-    virtual Widget &current();
-    virtual const Widget &current() const;
-
     virtual bool close();
 
     virtual Widget::XmlElement *save() const;
 
     virtual void onChildClosed(const Widget &child);
 
-    /**
-     * Only the main child may be replaced.
-     */
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
     virtual int childCount() const { return 1 + barCount(); }

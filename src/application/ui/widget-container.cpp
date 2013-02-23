@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "widget-container.hpp"
+#include <utility>
 
 namespace Samoyed
 {
@@ -22,6 +23,32 @@ int WidgetContainer::childIndex(const Widget &child) const
         if (&this->child(i) == &child)
             return i;
     return -1;
+}
+
+Widget *WidgetContainer::findChild(const char *name)
+{
+    WidgetTable::const_iterator it = m_childTable.find(name);
+    if (it == m_childTable.end())
+        return NULL;
+    return it->second;
+}
+
+const Widget *WidgetContainer::findChild(const char *name) const
+{
+    WidgetTable::const_iterator it = m_childTable.find(name);
+    if (it == m_childTable.end())
+        return NULL;
+    return it->second;
+}
+
+void WidgetContainer::addChild(Widget &child)
+{
+    m_childTable.insert(std::make_pair(child.name(), &child));
+}
+
+void WidgetContainer::removeChild(Widget &child)
+{
+    m_childTable.erase(child.name());
 }
 
 }

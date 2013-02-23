@@ -7,7 +7,13 @@
 #include "widget-container.hpp"
 #include "actions.hpp"
 #include "../utilities/misc.hpp"
+#include <list>
+#include <map>
+#include <string>
+#include <boost/function.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <gtk/gtk.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -18,6 +24,16 @@ namespace Samoyed
 class Window: public WidgetContainer
 {
 public:
+    typedef boost::function<Widget *(widgetName)> WidgetFactory;
+
+    enum Side
+    {
+        SIDE_TOP,
+        SIDE_LEFT,
+        SIDE_RIGHT,
+        SIDE_BOTTOM
+    };
+
     struct Configuration
     {
         int m_screenIndex;
@@ -66,16 +82,30 @@ public:
     };
 
     /**
-     * Create and compose a window.
+     * Register an automatically managed pane to windows with the specific name.
+     * @param windowWindow The name of the windows of interest, or "*" to
+     * register to all windows.
+     * @param paneName The name of the pane to be registered.
+     * @param side The side of window where the pane will be.
+     * @param create True to automatically create the pane when a window is
+     * created.
+     * @param paneFactory The factory creating the pane.
      */
-    Window(const Configuration &config);
+    static void registerPane(const char *windowName,
+                             const char *paneName,
+                             Side side,
+                             bool create,
+                             const WidgetFactory &paneFactory);
 
-    Window(const Configuration &config, Widget &child);
+    static void unregisterPane(const char *windowName, const char *paneName);
+
+    /**
+     * @param child The child widget, which will be the widget in the center
+     * and an indirect child if some side panes are created.
+     */
+    Window(const char *name, const Configuration &config, Widget &child);
 
     virtual GtkWidget *gtkWidget() const { return m_window; }
-
-    virtual Widget &current() { return m_child->current(); }
-    virtual const Widget &current() const { return m_child->current(); }
 
     virtual bool close();
 
@@ -85,10 +115,17 @@ public:
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    Widget &child() { return *m_child; }
-    const Widget &child() const { return *m_child; }
+    virtual int childCount() const { return 1; }
+
+    virtual Widget &child(int index) { return *m_child; }
+    virtual const Widget &child(int index) const { return *m_child; }
+
+    virtual int currentChildIndex() const { return 0; }
+    virtual void setCurrentChildIndex(int index) {}
 
     Configuration configuration() const;
+
+    void split(Widget &child, Side side);
 
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -99,11 +136,25 @@ private:
                                    GdkEvent *event,
                                    gpointer window);
 
+    Window(XmlElement &xmlElement);
+
     virtual ~Window();
+
+    void initialize(const Configuration &config);
 
     void addChild(Widget &child);
 
     void removeChild(Widget &child);
+
+    bool findPane(const char *name, Widget &widget);
+
+    static std::map<std::string,
+                    std::map<std::string,
+                             boost::tuple<Side, bool, WidgetFactory> > >
+        s_managedPaneRegistry;
+
+    static std::map<std::string, boost::tuple<Side, bool, WidgetFactory> >
+        s_managedPanes;
 
     /**
      * The GTK+ window.
@@ -116,6 +167,8 @@ private:
 
     GtkWidget *m_toolbar;
 
+    Widget *m_child;
+
     /**
      * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in
      * this window.
@@ -123,8 +176,6 @@ private:
     GtkUIManager *m_uiManager;
 
     Actions m_actions;
-
-    Widget *m_child;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };

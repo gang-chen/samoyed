@@ -59,10 +59,13 @@ public:
         int m_currentChildIndex;
     };
 
-    static Paned *split(Orientation orientation,
+    static Paned *split(const char *name,
+                        Orientation orientation,
                         Widget &child1, Widget &child2);
 
-    Paned(Orientation orientation, Widget &child1, Widget &child2);
+    Paned(const char *name,
+          Orientation orientation,
+          Widget &child1, Widget &child2);
 
     virtual GtkWidget *gtkWidget() const { return m_paned; }
 
@@ -90,7 +93,7 @@ public:
     { gtk_paned_set_position(GTK_PANED(m_paned), position); }
 
 protected:
-    Paned(Orientation orientation);
+    Paned(const char *name, Orientation orientation);
 
     /**
      * @throw std::runtime_error if failing to create the paned widget.

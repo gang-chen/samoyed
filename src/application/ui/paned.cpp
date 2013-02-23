@@ -198,7 +198,8 @@ Paned::XmlElement::~XmlElement()
     delete m_children[1];
 }
 
-Paned::Paned(Orientation orientation):
+Paned::Paned(const char *name, Orientation orientation):
+    WidgetContainer(name),
     m_orientation(orientation),
     m_currentChildIndex(0)
 {
@@ -209,7 +210,10 @@ Paned::Paned(Orientation orientation):
                      G_CALLBACK(setFocusChild), this);
 }
 
-Paned::Paned(Orientation orientation, Widget &child1, Widget &child2):
+Paned::Paned(const char *name,
+             Orientation orientation,
+             Widget &child1, Widget &child2):
+    WidgetContainer(name),
     m_orientation(orientation),
     m_currentChildIndex(0)
 {
@@ -278,6 +282,7 @@ void Paned::addChild(Widget &child, int index)
 {
     assert(!child.parent());
     assert(!m_children[index]);
+    WidgetContainer::addChild(child);
     m_children[index] = &child;
     child.setParent(this);
     if (index == 0)
@@ -289,6 +294,7 @@ void Paned::addChild(Widget &child, int index)
 void Paned::removeChild(Widget &child)
 {
     assert(child.parent() == this);
+    WidgetContainer::removeChild(child);
     int index = childIndex(child);
     m_children[index] = NULL;
     child.setParent(NULL);
@@ -322,7 +328,9 @@ void Paned::replaceChild(Widget &oldChild, Widget &newChild)
     addChild(newChild, index);
 }
 
-Paned *Paned::split(Orientation orientation, Widget &child1, Widget &child2)
+Paned *Paned::split(const char *name,
+                    Orientation orientation,
+                    Widget &child1, Widget &child2)
 {
     Widget *original;
     WidgetContainer *parent;
@@ -339,7 +347,7 @@ Paned *Paned::split(Orientation orientation, Widget &child1, Widget &child2)
     index = parent->childIndex(original);
 
     // Create a paned widget to hold the two widgets.
-    Paned *paned = new Paned(orientation);
+    Paned *paned = new Paned(name, orientation);
 
     // Replace the original widget with the paned widget.
     parent->replaceChild(*original, *paned);

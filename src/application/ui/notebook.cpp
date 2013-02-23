@@ -8,8 +8,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <list>
+#include <map>
 #include <string>
 #include <vector>
+#include <utility>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -113,13 +115,58 @@ Notebook::XmlElement::~XmlElement()
         delete *it;
 }
 
-std::map<std::string, std::vector<Notebook::WidgetFactory> >
-    Notebook::s_childRegistry;
+std::map<std::string, std::map<std::string, Notebook::WidgetFactory> >
+    Notebook::s_defaultChildRegistry;
+
+std::map<std::string, Notebook::WidgetFactory> Notebook::s_defaultChildren;
+
+void Notebook::registerDefaultChild(const char *notebookName,
+                                    const char *childName,
+                                    const WidgetFactory &childFactory)
+{
+    if (notebookName[0] == '*' && notebookName[1] == '\0')
+        s_defaultChildren.insert(std::make_pair(childName, childFactory));
+    else
+        s_defaultChildRegistry.insert(
+            std::make_pair(notebookName,
+                           std::map<std::string, WidgetFactory>())).first->
+            second.insert(std::make_pair(childName, childFactory));
+}
+
+void Notebook::unregisterDefaultChild(const char *notebookName,
+                                      const char *childName)
+{
+    if (notebookName[0] == '*' && notebookName[1] == '\0')
+        s_defaultChildren.erase(childName);
+    else
+    {
+        std::map<std::string,
+                 std::map<std::string, WidgetFactory> >::iterator it =
+            s_defaultChildRegistry.find(notebookName);
+        if (it != s_defaultChildRegistry.end())
+            it->second.erase(childName);
+    }
+}
 
 Notebook::Notebook(const char *name): WidgetContainer(name)
 {
     m_notebook = gtk_notebook_new();
-    addChild(factory(name));
+    std::map<std::string,
+        std::map<std::string, WidgetFactory>::const_iterator it =
+        s_defaultChildRegistry.find(name);
+    if (it != s_defaultChildRegistry.end())
+    {
+        for (std::map<std::string, WidgetFactory>::const_iterator it2 =
+                 it->second.begin();
+             it2 != it->second.end();
+             ++it2)
+            addChild(it2->second(name, it2->first.c_str()));
+    }
+    for (std::map<std::string, WidgetFactory>::const_iterator it2 =
+             s_defaultChildren.begin();
+         it2 != s_defaultChildren.end();
+         ++it2)
+        addChild(it2->second(name, it2->first.c_str()));
 }
 
 Notebook::Notebook(XmlElement &xmlElement)
@@ -195,6 +242,7 @@ void Notebook::onChildClosed(const Widget &child)
 void Notebook::addChild(Widget &child, int index)
 {
     assert(!child.parent());
+    WidgetContainer::addChild(child);
     m_children.insert(m_children.begin() + index, &child);
     child.setParent(this);
 
@@ -224,6 +272,7 @@ void Notebook::addChild(Widget &child, int index)
 void Notebook::removeChild(Widget &child)
 {
     assert(child.parent() == this);
+    WidgetContainer::removeChild(child);
     m_children.erase(m_children.begin() + childIndex(&child));
     child.setParent(NULL);
     g_object_ref(child.gtkWidget());
