@@ -114,7 +114,8 @@ public:
     virtual Widget &current() { return *this; }
     virtual const Widget &current() const { return *this; }
 
-    WidgetContainer *parent() const { return m_parent; }
+    WidgetContainer *parent() { return m_parent; }
+    const WidgetContainer *parent() const { return m_parent; }
 
     void setParent(WidgetContainer *parent) { m_parent = parent; }
 

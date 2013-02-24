@@ -11,15 +11,25 @@
 #include <map>
 #include <string>
 #include <boost/function.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
 
+class WidgetWithBars;
+class Notebook;
+
 /**
- * A window represents a top-level window.
+ * A window represents a top-level window.  A window is a container that manages
+ * its contents by itself.  A window contains a binary tree of panes.  The pane
+ * in the center is called the main area, and the panes around it are side
+ * panes that can be shown or hidden.  The main area is a widget with bars and
+ * contains a binary tree of editor groups, each of which contains various
+ * editors.  Generally, editors are used to edit various files, bars are used
+ * to perform temporary tasks on the associated editors, and side panes are the
+ * user interfaces of tools running all the time.  All side panes need to be
+ * registered so that they can be managed automatically.
  */
 class Window: public WidgetContainer
 {
@@ -49,6 +59,23 @@ public:
             m_fullScreen(false),
             m_maximized(true),
             m_toolbarVisible(true)
+        {}
+    };
+
+    struct PaneRecord
+    {
+        std::string m_name;
+        WidgetFactory m_factory;
+        Side m_side;
+        bool m_createByDefault;
+        PaneRecord(const char *name,
+                   const WidgetFactory &factory,
+                   Side side,
+                   bool createByDefault):
+            m_name(name),
+            m_factory(factory),
+            m_side(side),
+            m_createByDefault(createByDefault)
         {}
     };
 
@@ -82,28 +109,26 @@ public:
     };
 
     /**
-     * Register an automatically managed pane to windows with the specific name.
+     * Register an automatically managed side pane to windows with the specific
+     * name.
      * @param windowWindow The name of the windows of interest, or "*" to
      * register to all windows.
      * @param paneName The name of the pane to be registered.
-     * @param side The side of window where the pane will be.
-     * @param create True to automatically create the pane when a window is
-     * created.
      * @param paneFactory The factory creating the pane.
+     * @param side The side of window where the pane will be.
+     * @param createByDefault True to automatically create the pane when a
+     * window is created.
      */
-    static void registerPane(const char *windowName,
+    static void registerSidePane(const char *windowName,
                              const char *paneName,
-                             Side side,
-                             bool create,
-                             const WidgetFactory &paneFactory);
+                             const WidgetFactory &paneFactory,
+                             Side sideToDock,
+                             bool createByDefault);
 
-    static void unregisterPane(const char *windowName, const char *paneName);
+    static void unregisterSidePane(const char *windowName,
+                                   const char *paneName);
 
-    /**
-     * @param child The child widget, which will be the widget in the center
-     * and an indirect child if some side panes are created.
-     */
-    Window(const char *name, const Configuration &config, Widget &child);
+    Window(const char *name, const Configuration &config);
 
     virtual GtkWidget *gtkWidget() const { return m_window; }
 
@@ -125,7 +150,19 @@ public:
 
     Configuration configuration() const;
 
-    void split(Widget &child, Side side);
+    WidgetWithBars &mainArea() { return m_mainArea; }
+    const WidgetWithBars &mainArea() const { return m_mainArea; }
+
+    Notebook &currentEditorGroup();
+    const Notebook &currentEditorGroup() const;
+
+    /**
+     * Split the current editor group into two.
+     * @param side The side of the current editor group where the new editor
+     * group will adjoin.
+     * @return The new editor group.
+     */
+    Notebook *splitCurrentEditorGroup(Side side);
 
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -146,15 +183,13 @@ private:
 
     void removeChild(Widget &child);
 
-    bool findPane(const char *name, Widget &widget);
+    bool findSidePane(const char *name, Widget *&pane);
 
-    static std::map<std::string,
-                    std::map<std::string,
-                             boost::tuple<Side, bool, WidgetFactory> > >
-        s_managedPaneRegistry;
+    void addSidePane(Widget &pane);
 
-    static std::map<std::string, boost::tuple<Side, bool, WidgetFactory> >
-        s_managedPanes;
+    static std::map<std::string, std::vector<PaneRecord> > s_sidePaneRegistry;
+
+    static std::vector<PaneRecord> s_sidePanes;
 
     /**
      * The GTK+ window.
@@ -168,6 +203,8 @@ private:
     GtkWidget *m_toolbar;
 
     Widget *m_child;
+
+    Widget *m_mainArea;
 
     /**
      * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in

@@ -152,7 +152,7 @@ Notebook::Notebook(const char *name): WidgetContainer(name)
 {
     m_notebook = gtk_notebook_new();
     std::map<std::string,
-        std::map<std::string, WidgetFactory>::const_iterator it =
+             std::map<std::string, WidgetFactory>::const_iterator it =
         s_defaultChildRegistry.find(name);
     if (it != s_defaultChildRegistry.end())
     {
@@ -160,13 +160,13 @@ Notebook::Notebook(const char *name): WidgetContainer(name)
                  it->second.begin();
              it2 != it->second.end();
              ++it2)
-            addChild(it2->second(name, it2->first.c_str()));
+            addChild(*it2->second(it2->first.c_str()));
     }
     for (std::map<std::string, WidgetFactory>::const_iterator it2 =
              s_defaultChildren.begin();
          it2 != s_defaultChildren.end();
          ++it2)
-        addChild(it2->second(name, it2->first.c_str()));
+        addChild(*it2->second(it2->first.c_str()));
 }
 
 Notebook::Notebook(XmlElement &xmlElement)

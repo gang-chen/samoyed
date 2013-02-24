@@ -19,8 +19,7 @@ namespace Samoyed
 class Notebook: public WidgetContainer
 {
 public:
-    typedef boost::function<Widget *(const char *containerName,
-                                     const char *widgetName)> WidgetFactory;
+    typedef boost::function<Widget *(const char *widgetName)> WidgetFactory;
 
     class XmlElement: public Widget::XmlElement
     {

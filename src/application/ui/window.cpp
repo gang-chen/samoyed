@@ -6,50 +6,65 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
-#include "widget-with-panes.hpp"
+#include "paned.hpp"
+#include "widget-with-bars.hpp"
 #include "notebook.hpp"
 #include "../application.hpp"
 #include "../utilities/misc.hpp"
 #include <assert.h>
+#include <string.h>
+#include <utility>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-void Window::registerPane(const char *windowName,
-                          const char *paneName,
-                          Side side,
-                          bool create,
-                          const WidgetFactory &paneFactory)
+std::map<std::string, std::vector<Window::PaneRecord> >
+    Window::s_sidePaneRegistry;
+
+std::vector<Window::PaneRecord> Window::s_sidePanes;
+
+void Window::registerSidePane(const char *windowName,
+                              const char *paneName,
+                              const WidgetFactory &paneFactory,
+                              Side side,
+                              bool createByDefault)
 {
     if (windowName[0] == '*' && windowName[1] == '\0')
-        s_managedPanes.insert(
-            std::make_pair(paneName,
-                           boost::make_tuple(side, create, paneFactory)));
+        s_sidePanes.push_back(
+            PaneRecord(paneName, paneFactory, side, createByDefault));
     else
-        s_managedPaneRegistry.insert(
-            std::make_pair(
-                windowName,
-                std::map<std::string,
-                         boost::tuple<Side, bool, WidgetFactory>())).
-            first->second.insert(
-                std::make_pair(paneName,
-                               boost::make_tuple(side, create, paneFactory)));
+        s_sidePaneRegistry.insert(
+            std::make_pair(windowName, std::vector<PaneRecord>())).
+            first->second.push_back(
+                PaneRecord(paneName, paneFactory, side, createByDefault));
 }
 
-void Window::unregisterPane(const char *windowName, const char *paneName)
+void Window::unregisterSidePane(const char *windowName, const char *paneName)
 {
+    std::vector<PaneRecord> *panes = NULL;
     if (windowName[0] == '*' && windowName[1] == '\0')
-        s_managedPanes.erase(paneName);
+        panes = &s_sidePanes;
     else
     {
-        std::map<std::string,
-                 std::map<std::string,
-                          boost::tuple<Side, bool, WidgetFactory> >::iterator
-            it = s_managedPaneRegistry.find(windowName);
-        if (it != s_managedPaneRegistry.end())
-            it->second.erase(paneName);
+        std::map<std::string, std::vector<PaneRecord> >::iterator
+            it = s_sidePaneRegistry.find(windowName);
+        if (it != s_sidePaneRegistry.end())
+            panes = &it->second;
+    }
+    if (panes)
+    {
+        for (std::vector<PaneRecord>::iterator it = panes->begin();
+             it != panes->end();
+             ++it)
+        {
+            if (it->m_name == paneName)
+            {
+                panes->erase(it);
+                break;
+            }
+        }
     }
 }
 
@@ -90,11 +105,9 @@ void Window::initialize(const Configuration &config)
                      G_CALLBACK(onDeleteEvent), this);
     g_signal_connect(m_window, "focus-in-event",
                      G_CALLBACK(onFocusInEvent), this);
-
-    Application::instance().addWindow(*this);
 }
 
-Window::Window(const char *name, const Configuration &config, Widget &child):
+Window::Window(const char *name, const Configuration &config):
     Widget(name),
     m_window(NULL),
     m_grid(NULL),
@@ -105,7 +118,34 @@ Window::Window(const char *name, const Configuration &config, Widget &child):
     m_actions(this)
 {
     initialize(config);
-    addChild(child);
+
+    // Create the initial editor group and the main area.
+    Notebook *editorGroup = new Notebook("Editor Group");
+    m_mainArea = new WidgetWithBars("Main Area", *editorGroup);
+    addChild(*mainArea);
+
+    // Create the default side panes.
+    for (std::vector<PaneRecord>::const_iterator it = s_sidePanes.begin();
+         it != s_sidePanes.end();
+         ++it)
+    {
+        if (it->m_createByDefault)
+            addSidePane(*it->m_factory(it->m_name.c_str()), it->m_side);
+    }
+    std::map<std::string, std::vector<PaneRecord> >::const_iterator it =
+        s_sidePaneRegistry.find(name);
+    if (it != s_sidePaneRegistry.end())
+    {
+        for (std::vector<PaneRecord>::const_iterator it2 = it->second.begin();
+             it2 != it->second.end();
+             ++it2)
+        {
+            if (it2->m_createByDefault)
+                addSidePane(*it2->m_factory(it2->m_name.c_str()), it2->m_side);
+        }
+    }
+
+    Application::instance().addWindow(*this);
 }
 
 Window::~Window()
@@ -210,6 +250,163 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 {
     Application::instance().setCurrentWindow(*static_cast<Window *>(window));
     return FALSE;
+}
+
+Notebook &Window::currentEditorGroup()
+{
+    Widget *current = &this->current();
+    while (strcmp(current->name(), "Editor Group") != 0)
+        current = current->parent();
+    return static_cast<Notebook &>(*current);
+}
+
+const Notebook &Window::currentEditorGroup() const
+{
+    const Widget *current = &this->current();
+    while (strcmp(current->name(), "Editor Group") != 0)
+        current = current->parent();
+    return static_cast<const Notebook &>(*current);
+}
+
+Notebook *Window::splitCurrentEditorGroup(Side side)
+{
+    Widget &current = currentEditorGroup();
+    Notebook *newEditorGroup = new Notebook("Editor Group");
+    switch (side)
+    {
+    case SIDE_TOP:
+        Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+                     *newEditorGroup, current);
+        break;
+    case SIDE_BOTTOM:
+        Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+                     current, *newEditorGroup);
+        break;
+    case SIDE_LEFT:
+        Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+                     *newEditorGroup, current);
+        break;
+    case SIDE_RIGHT:
+        Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+                     current, *newEditorGroup);
+        break;
+    }
+    return newEditorGroup;
+}
+
+bool Window::findSidePane(const char *name, Widget *&pane)
+{
+    pane = m_child;
+    std::vector<PaneRecord> *panes = &s_sidePanes;
+    std::vector<PaneRecord>::const_iterator it = panes->begin();
+    while (strcmp(pane->name(), "Paned") == 0)
+    {
+        Paned *paned = static_cast<Paned *>(pane);
+        for (;;)
+        {
+            if (it == panes->end())
+            {
+                assert(panes == &s_sidePanes);
+                std::map<std::string, std::vector<PaneRecord> >::const_iterator
+                    it2 = s_sidePaneRegistry.find(name());
+                assert(it2 != s_sidePaneRegistry.end());
+                panes = &it2->second;
+                it = panes->begin();
+            }
+            assert(it != panes->end());
+            if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL)
+            {
+                if (it->m_side == SIDE_LEFT)
+                {
+                    if (it->m_name == paned->child(0).name())
+                    {
+                        if (it->m_name == name)
+                        {
+                            pane = &paned->child(0);
+                            return true;
+                        }
+                        pane = &paned->child(1);
+                        ++it;
+                        break;
+                    }
+                }
+                else if (it->m_side == SIDE_RIGHT)
+                {
+                    if (it->m_name == paned->child(1).name())
+                    {
+                        if (it->m_name == name)
+                        {
+                            pane = &paned->child(1);
+                            return true;
+                        }
+                        pane = &paned->child(0);
+                        ++it;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (it->m_side == SIDE_TOP)
+                {
+                    if (it->m_name == paned->child(0).name())
+                    {
+                        if (it->m_name == name)
+                        {
+                            pane = &paned->child(0);
+                            return true;
+                        }
+                        pane = &paned->child(1);
+                        ++it;
+                        break;
+                    }
+                }
+                else if (it->m_side == SIDE_BOTTOM)
+                {
+                    if (it->m_name == paned->child(1).name())
+                    {
+                        if (it->m_name == name)
+                        {
+                            pane = &paned->child(1);
+                            return true;
+                        }
+                        pane = &paned->child(0);
+                        ++it;
+                        break;
+                    }
+                }
+            }
+            if (it->m_name == name)
+                return false;
+            ++it;
+        }
+    }
+    return false;
+}
+
+void Window::addSidePane(Widget &pane, Side side)
+{
+    Widget *existing;
+    findSidePane(pane.name(), existing);
+    switch (side)
+    {
+    case SIDE_TOP:
+        Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+                     pane, existing);
+        break;
+    case SIDE_BOTTOM:
+        Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+                     existing, pane);
+        break;
+    case SIDE_LEFT:
+        Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+                     pane, existing);
+        break;
+    case SIDE_RIGHT:
+        Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+                     existing, pane);
+        break;
+    }
 }
 
 }
