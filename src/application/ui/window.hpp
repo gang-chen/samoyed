@@ -26,10 +26,11 @@ class Notebook;
  * in the center is called the main area, and the panes around it are side
  * panes that can be shown or hidden.  The main area is a widget with bars and
  * contains a binary tree of editor groups, each of which contains various
- * editors.  Generally, editors are used to edit various files, bars are used
- * to perform temporary tasks on the associated editors, and side panes are the
- * user interfaces of tools running all the time.  All side panes need to be
- * registered so that they can be managed automatically.
+ * editors.  Generally, editors are used to edit or browse various files, bars
+ * are the user interfaces of tools performing temporary tasks on the associated
+ * editors, and side panes are the user interfaces of tools running all the
+ * time.  All side panes need to be registered so that they can be managed
+ * automatically.
  */
 class Window: public WidgetContainer
 {
@@ -122,7 +123,7 @@ public:
     static void registerSidePane(const char *windowName,
                              const char *paneName,
                              const WidgetFactory &paneFactory,
-                             Side sideToDock,
+                             Side side,
                              bool createByDefault);
 
     static void unregisterSidePane(const char *windowName,
@@ -150,8 +151,8 @@ public:
 
     Configuration configuration() const;
 
-    WidgetWithBars &mainArea() { return m_mainArea; }
-    const WidgetWithBars &mainArea() const { return m_mainArea; }
+    WidgetWithBars &mainArea() { return *m_mainArea; }
+    const WidgetWithBars &mainArea() const { return *m_mainArea; }
 
     Notebook &currentEditorGroup();
     const Notebook &currentEditorGroup() const;
@@ -163,6 +164,10 @@ public:
      * @return The new editor group.
      */
     Notebook *splitCurrentEditorGroup(Side side);
+
+    Widget *findSidePane(const char *name);
+    
+    Widget *createSidePane(const char *name);
 
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -183,9 +188,9 @@ private:
 
     void removeChild(Widget &child);
 
-    bool findSidePane(const char *name, Widget *&pane);
+    bool findSidePaneInternally(const char *name, Widget *&pane);
 
-    void addSidePane(Widget &pane);
+    void addSidePane(Widget &pane, Side side);
 
     static std::map<std::string, std::vector<PaneRecord> > s_sidePaneRegistry;
 
@@ -204,7 +209,7 @@ private:
 
     Widget *m_child;
 
-    Widget *m_mainArea;
+    WidgetWithBars *m_mainArea;
 
     /**
      * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in
