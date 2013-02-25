@@ -148,12 +148,6 @@ Widget *WidgetWithBars::XmlElement::createWidget()
     return widget;
 }
 
-bool WidgetWithBars::XmlElement::restoreWidget(Widget &widget) const
-{
-    WidgetWithBars &w = static_cast<WidgetWithBars &>(widget);
-    w.setCurrentChildIndex(m_currentChildIndex);
-}
-
 void WidgetWithBars::XmlElement::removeBar(int index)
 {
     delete m_bars[index];
@@ -185,8 +179,8 @@ WidgetWithBars::WidgetWithBars(const char *name, Widget &mainChild):
 }
 
 WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
-    m_mainChild(NULL),
-    m_currentChildIndex(0)
+    WidgetContainer(xmlElement),
+    m_mainChild(NULL)
 {
     Widget *mainChild = xmlElement.mainChild().createWidget();
     if (!mainChild)
@@ -207,6 +201,7 @@ WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
         else
             addBar(*bar);
     }
+    setCurrentChildIndex(xmlElement.currentChildIndex());
 }
 
 WidgetWithBars::~WidgetWithBars()

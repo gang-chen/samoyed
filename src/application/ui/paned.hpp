@@ -36,8 +36,8 @@ public:
         Paned::Orientation orientation() const { return m_orientation; }
         Widget::XmlElement &child(int index) const
         { return *m_children[index]; }
-        int position() const { return m_position; }
         int currentChildIndex() const { return m_currentChildIndex; }
+        int position() const { return m_position; }
 
     protected:
         /**
@@ -55,8 +55,8 @@ public:
 
         Paned::Orientation m_orientation;
         Widget::XmlElement *m_children[2];
-        int m_position;
         int m_currentChildIndex;
+        int m_position;
     };
 
     static Paned *split(const char *name,

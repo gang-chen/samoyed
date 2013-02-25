@@ -19,6 +19,7 @@ namespace Samoyed
 
 class WidgetWithBars;
 class Notebook;
+class Paned;
 
 /**
  * A window represents a top-level window.  A window is a container that manages
@@ -63,23 +64,6 @@ public:
         {}
     };
 
-    struct PaneRecord
-    {
-        std::string m_name;
-        WidgetFactory m_factory;
-        Side m_side;
-        bool m_createByDefault;
-        PaneRecord(const char *name,
-                   const WidgetFactory &factory,
-                   Side side,
-                   bool createByDefault):
-            m_name(name),
-            m_factory(factory),
-            m_side(side),
-            m_createByDefault(createByDefault)
-        {}
-    };
-
     class XmlElement: public Widget::XmlElement
     {
     public:
@@ -119,12 +103,14 @@ public:
      * @param side The side of window where the pane will be.
      * @param createByDefault True to automatically create the pane when a
      * window is created.
+     * @param defaultSize The default size of the pane.
      */
     static void registerSidePane(const char *windowName,
-                             const char *paneName,
-                             const WidgetFactory &paneFactory,
-                             Side side,
-                             bool createByDefault);
+                                 const char *paneName,
+                                 const WidgetFactory &paneFactory,
+                                 Side side,
+                                 bool createByDefault,
+                                 int defaultSize);
 
     static void unregisterSidePane(const char *windowName,
                                    const char *paneName);
@@ -166,10 +152,44 @@ public:
     Notebook *splitCurrentEditorGroup(Side side);
 
     Widget *findSidePane(const char *name);
-    
+
     Widget *createSidePane(const char *name);
 
+    void saveSidePaneState(const char *name);
+
 private:
+    struct SidePaneRecord
+    {
+        std::string m_name;
+        WidgetFactory m_factory;
+        Side m_side;
+        bool m_createByDefault;
+        int m_defaultSize;
+        SidePaneRecord(const char *name,
+                       const WidgetFactory &factory,
+                       Side side,
+                       bool createByDefault,
+                       int defaultSize):
+            m_name(name),
+            m_factory(factory),
+            m_side(side),
+            m_createByDefault(createByDefault),
+            m_defaultSize(defaultSize)
+        {}
+    };
+
+    struct SidePaneState
+    {
+        Widget::XmlElement *m_xmlElement;
+        int m_size;
+        SidePaneState(): m_xmlElement(NULL) {}
+        SidePaneState(Widget::XmlElement *XmlElement, int size):
+            m_xmlElement(xmlElement),
+            m_size(size)
+        {}
+        ~SidePaneState() { delete m_xmlElement; }
+    };
+
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
                                   gpointer window);
@@ -190,11 +210,12 @@ private:
 
     bool findSidePaneInternally(const char *name, Widget *&pane);
 
-    void addSidePane(Widget &pane, Side side);
+    Paned *addSidePane(Widget &pane, Side side, int size);
 
-    static std::map<std::string, std::vector<PaneRecord> > s_sidePaneRegistry;
+    static std::map<std::string, std::vector<SidePaneRecord> >
+        s_sidePaneRegistry;
 
-    static std::vector<PaneRecord> s_sidePanes;
+    static std::vector<SidePaneRecord> s_sidePaneRegistryForAll;
 
     /**
      * The GTK+ window.
@@ -210,6 +231,10 @@ private:
     Widget *m_child;
 
     WidgetWithBars *m_mainArea;
+
+    std::vector<SidePaneRecord> m_sidePaneRecords;
+
+    std::map<std::string, SidePaneState> m_sidePaneStates;
 
     /**
      * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in

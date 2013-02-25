@@ -29,7 +29,8 @@ bool Notebook::XmlElement::registerReader()
 Notebook::XmlElement::XmlElement(xmlDocPtr doc,
                                  xmlNodePtr node,
                                  std::list<std::string> &errors):
-    m_currentChildIndex(0)
+    m_currentChildIndex(0),
+    m_closeButtonsExist(true)
 {
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
@@ -40,6 +41,14 @@ Notebook::XmlElement::XmlElement(xmlDocPtr doc,
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1);
             m_currentChildIndex = atoi(value);
+            xmlFree(value);
+        }
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   "close-buttons-exist") == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1);
+            m_closeButtonsExist = atoi(value);
             xmlFree(value);
         }
         else
@@ -69,6 +78,11 @@ xmlNodePtr Notebook::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>("current-child-index"),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
+    cp = g_strdup_printf("%d", m_closeButtonsExist);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>("close-buttons-exist"),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
     for (std::vector<Widget::XmlElement *>::const_iterator it =
              m_children.begin();
          it != m_children.end();
@@ -90,16 +104,6 @@ Widget *Notebook::XmlElement::createWidget()
     return new Notebook(*this);
 }
 
-bool Notebook::XmlElement::restoreWidget(Widget &widget) const
-{
-    Notebook &notebook = static_cast<Notebook &>(widget);
-    notebook.setCurrentChildIndex(m_currentChildIndex);
-    for (std::vector<Widget::XmlElement *>::size_type i = 0;
-         i < m_children.size();
-         ++i)
-        m_children[i]->restoreWidget(notebook.child(i));
-}
-
 void Notebook::XmlElement::removeChild(int index)
 {
     delete m_children[index];
@@ -118,14 +122,16 @@ Notebook::XmlElement::~XmlElement()
 std::map<std::string, std::map<std::string, Notebook::WidgetFactory> >
     Notebook::s_defaultChildRegistry;
 
-std::map<std::string, Notebook::WidgetFactory> Notebook::s_defaultChildren;
+std::map<std::string, Notebook::WidgetFactory>
+    Notebook::s_defaultChildRegistryForAll;
 
 void Notebook::registerDefaultChild(const char *notebookName,
                                     const char *childName,
                                     const WidgetFactory &childFactory)
 {
     if (notebookName[0] == '*' && notebookName[1] == '\0')
-        s_defaultChildren.insert(std::make_pair(childName, childFactory));
+        s_defaultChildRegistryForAll.insert(
+            std::make_pair(childName, childFactory));
     else
         s_defaultChildRegistry.insert(
             std::make_pair(notebookName,
@@ -137,7 +143,7 @@ void Notebook::unregisterDefaultChild(const char *notebookName,
                                       const char *childName)
 {
     if (notebookName[0] == '*' && notebookName[1] == '\0')
-        s_defaultChildren.erase(childName);
+        s_defaultChildRegistryForAll.erase(childName);
     else
     {
         std::map<std::string,
@@ -148,7 +154,9 @@ void Notebook::unregisterDefaultChild(const char *notebookName,
     }
 }
 
-Notebook::Notebook(const char *name): WidgetContainer(name)
+Notebook::Notebook(const char *name, bool createCloseButtons):
+    WidgetContainer(name),
+    m_createCloseButtons(createCloseButtons)
 {
     m_notebook = gtk_notebook_new();
     std::map<std::string,
@@ -163,13 +171,14 @@ Notebook::Notebook(const char *name): WidgetContainer(name)
             addChild(*it2->second(it2->first.c_str()));
     }
     for (std::map<std::string, WidgetFactory>::const_iterator it2 =
-             s_defaultChildren.begin();
-         it2 != s_defaultChildren.end();
+             s_defaultChildRegistryForAll.begin();
+         it2 != s_defaultChildRegistryForAll.end();
          ++it2)
         addChild(*it2->second(it2->first.c_str()));
 }
 
-Notebook::Notebook(XmlElement &xmlElement)
+Notebook::Notebook(XmlElement &xmlElement):
+    WidgetContainer(xmlElement)
 {
     m_notebook = gtk_notebook_new();
     m_children.reserve(xmlElement.childCount());
@@ -181,6 +190,8 @@ Notebook::Notebook(XmlElement &xmlElement)
         else
             addChild(*child);
     }
+    setCurrentChildIndex(xmlElement.currentChildIndex());
+    m_createCloseButtons = xmlElement.closeButtonsExist();
 }
 
 Notebook::~Notebook()
@@ -249,20 +260,29 @@ void Notebook::addChild(Widget &child, int index)
     // Create the tab label.
     GtkWidget *title = gtk_label_new(child.title());
     gtk_widget_set_tooltip_text(title, child.description());
-    GtkWidget *closeImage = gtk_image_new_from_stock(GTK_STOCK_CLOSE,
-                                                     GTK_ICON_SIZE_MENU);
-    GtkWidget *closeButton = gtk_button_new();
-    gtk_container_add(GTK_CONTAINER(closeButton), closeImage);
-    gtk_widget_set_tooltip_text(closeButton, _("Close this editor"));
-    g_signal_connect(closeButton, "clicked",
-                     G_CALLBACK(onCloseButtonClicked), &child);
-    GtkWidget *tabLabel = gtk_grid_new();
-    gtk_grid_attach_next_to(GTK_GRID(tabLabel),
-                            title, NULL,
-                            GTK_POS_RIGHT, 1, 1);
-    gtk_grid_attach_next_to(GTK_GRID(tabLabel),
-                            closeButton, title,
-                            GTK_POS_RIGHT, 1, 1);
+    GtkWidget *tabLabel;
+    if (m_createCloseButtons)
+    {
+        GtkWidget *closeImage = gtk_image_new_from_stock(GTK_STOCK_CLOSE,
+                                                         GTK_ICON_SIZE_MENU);
+        GtkWidget *closeButton = gtk_button_new();
+        gtk_container_add(GTK_CONTAINER(closeButton), closeImage);
+        gtk_widget_set_tooltip_text(closeButton, _("Close this editor"));
+        g_signal_connect(closeButton, "clicked",
+                         G_CALLBACK(onCloseButtonClicked), &child);
+        tabLabel = gtk_grid_new();
+        gtk_grid_attach_next_to(GTK_GRID(tabLabel),
+                                title, NULL,
+                                GTK_POS_RIGHT, 1, 1);
+        gtk_grid_attach_next_to(GTK_GRID(tabLabel),
+                                closeButton, title,
+                                GTK_POS_RIGHT, 1, 1);
+    }
+    else
+        tabLabel = title;
+
+    // Show the child widget before adding it to the notebook.
+    gtk_widget_show(child->gtkWidget());
     gtk_notebook_insert_page(GTK_NOTEBOOK(m_notebook),
                              child.gtkWidget(),
                              tabLabel,
@@ -291,7 +311,11 @@ void Notebook::onChildTitleChanged(const Widget &child)
     GtkWidget *tabLabel =
         gtk_notebook_get_tab_label(GTK_NOTEBOOK(m_notebook),
                                    child.gtkWidget());
-    GtkLabel *title = gtk_grid_get_child_at(GTK_GRID(tabLabel), 0, 0);
+    GtkWidget *title;
+    if (m_createCloseButtons)
+        title = gtk_grid_get_child_at(GTK_GRID(tabLabel), 0, 0);
+    else
+        title = tabLabel;
     gtk_label_set_text(GTK_LABEL(title), child.title());
 }
 
@@ -300,7 +324,11 @@ void Notebook::onChildDescriptionChanged(const Widget &child)
     GtkWidget *tabLabel =
         gtk_notebook_get_tab_label(GTK_NOTEBOOK(m_notebook),
                                    child.gtkWidget());
-    GtkLabel *title = gtk_grid_get_child_at(GTK_GRID(tabLabel), 0, 0);
+    GtkWidget *title;
+    if (m_createCloseButtons)
+        title = gtk_grid_get_child_at(GTK_GRID(tabLabel), 0, 0);
+    else
+        title = tabLabel;
     gtk_widget_set_tooltip_text(title, child.description());
 }
 

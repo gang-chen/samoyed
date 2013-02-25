@@ -28,8 +28,8 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
                               xmlNodePtr node,
                               std::list<std::string> &errors):
     m_orientation(Paned::ORIENTATION_HORIZONTAL),
-    m_position(-1),
-    m_currentChildIndex(0)
+    m_currentChildIndex(0),
+    m_position(-1)
 {
     m_children[0] = NULL;
     m_children[1] = NULL;
@@ -57,19 +57,19 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "position") == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1);
-            m_position = atoi(value);
-            xmlFree(value);
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
                         "current-child-index") == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1);
             m_currentChildIndex = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        "position") == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1);
+            m_position = atoi(value);
             xmlFree(value);
         }
         else
@@ -144,14 +144,14 @@ xmlNodePtr Paned::XmlElement::write() const
                     Samoyed::SplitPane::ORIENTATION_HORIZONTAL ?
                     reinterpret_cast<const xmlChar *>("horizontal") :
                     reinterpret_cast<const xmlChar *>("vertical"));
-    cp = g_strdup_printf("%d", m_position);
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("position"),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
     cp = g_strdup_printf("%d", m_currentChildIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>("current-child-index"),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
+    cp = g_strdup_printf("%d", m_position);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>("position"),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
     xmlAddChild(node, m_children[0]->write());
@@ -164,8 +164,8 @@ Paned::XmlElement::XmlElement(const Paned &paned)
     m_orientation = paned.orientation();
     m_children[0] = paned.child(0).save();
     m_children[1] = paned.child(1).save();
-    m_position = paned.position();
     m_currentChildIndex = paned.currentChildIndex();
+    m_position = paned.position();
 }
 
 Widget *Paned::XmlElement::createWidget()
@@ -180,16 +180,6 @@ Widget *Paned::XmlElement::createWidget()
         return NULL;
     }
     return paned;
-}
-
-bool Paned::XmlElement::restoreWidget(Widget &widget) const
-{
-    Paned &paned = static_cast<Paned &>(widget);
-    if (m_position >= 0)
-        paned.setPosition(m_position);
-    paned.setCurrentChildIndex(m_currentChildIndex);
-    return m_children[0]->restoreWidget(paned.child(0)) &&
-           m_children[1]->restoreWidget(paned.child(1));
 }
 
 Paned::XmlElement::~XmlElement()
@@ -226,7 +216,8 @@ Paned::Paned(const char *name,
     addChild(child2, 1);
 }
 
-Paned::Paned(const XmlElement &xmlElement)
+Paned::Paned(const XmlElement &xmlElement):
+    WidgetContainer(xmlElement)
 {
     m_children[0] = NULL;
     m_children[1] = NULL;
@@ -245,6 +236,9 @@ Paned::Paned(const XmlElement &xmlElement)
                      G_CALLBACK(setFocusChild), this);
     addChild(*child1, 0);
     addChild(*child2, 1);
+    m_currentChildIndex = xmlElement.currentChildIndex();
+    if (xmlElement.m_position >= 0)
+        setPosition(xmlElement.position());
 }
 
 Paned::~Paned()

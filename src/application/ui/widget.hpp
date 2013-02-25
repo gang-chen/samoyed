@@ -53,13 +53,6 @@ public:
          */
         virtual Widget *createWidget() = 0;
 
-        /**
-         * Restore the widget, its child widgets and bars.
-         * @param widget The widget created from this XML element.
-         * @return True if successful.
-         */
-        virtual bool restoreWidget(Widget &widget) const = 0;
-
         const char *name() const { return m_name.c_str(); }
 
     protected:

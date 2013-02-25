@@ -43,6 +43,7 @@ public:
         Widget::XmlElement &child(int index) const
         { return *m_children[index]; }
         int currentChildIndex() const { return m_currentChildIndex; }
+        bool closeButtonExists() const { return m_closeButtonExists; }
 
     protected:
         XmlElement(xmlDocPtr doc,
@@ -56,6 +57,7 @@ public:
 
         std::vector<Widget::XmlElement *> m_children;
         int m_currentChildIndex;
+        bool m_closeButtonsExist;
     };
 
     /**
@@ -74,7 +76,7 @@ public:
     static void unregisterDefaultChild(const char *notebookName,
                                        const char *childName);
 
-    Notebook(const char *name);
+    Notebook(const char *name, bool createCloseButton);
 
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
 
@@ -116,11 +118,13 @@ private:
     static std::map<std::string, std::map<std::string, WidgetFactory> >
         s_defaultChildRegistry;
 
-    static std::map<std::string, WidgetFactory> s_defaultChildren;
+    static std::map<std::string, WidgetFactory> s_defaultChildRegistryForAll;
 
     GtkWidget *m_notebook;
 
     std::vector<Widget *> m_children;
+
+    bool m_createCloseButtons;
 };
 
 }
