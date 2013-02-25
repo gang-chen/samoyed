@@ -294,7 +294,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     return newEditorGroup;
 }
 
-bool Window::findSidePane(const char *name, Widget *&pane)
+bool Window::findSidePaneInternally(const char *name, Widget *&pane)
 {
     pane = m_child;
     std::vector<PaneRecord> *panes = &s_sidePanes;
@@ -387,7 +387,7 @@ bool Window::findSidePane(const char *name, Widget *&pane)
 void Window::addSidePane(Widget &pane, Side side)
 {
     Widget *existing;
-    findSidePane(pane.name(), existing);
+    findSidePaneInternally(pane.name(), existing);
     switch (side)
     {
     case SIDE_TOP:
@@ -407,6 +407,46 @@ void Window::addSidePane(Widget &pane, Side side)
                      existing, pane);
         break;
     }
+}
+
+Widget *Window::findSidePane(const char *name)
+{
+    Widget *pane;
+    if (findSidePaneInternally(name, pane))
+        return pane;
+    return NULL;
+}
+
+Widget *Window::createSidePane(const char *name)
+{
+    for (std::vector<PaneRecord>::const_iterator it = s_sidePanes.begin();
+         it != s_sidePanes.end();
+         ++it)
+    {
+        if (it->m_name == name)
+        {
+            Widget *pane = it->m_factory(name);
+            addSidePane(*pane, it->m_side);
+            return pane;
+        }
+    }
+    std::map<std::string, std::vector<PaneRecord> >::const_iterator it =
+        s_sidePaneRegistry.find(name);
+    if (it != s_sidePaneRegistry.end())
+    {
+        for (std::vector<PaneRecord>::const_iterator it2 = it->second.begin();
+             it2 != it->second.end();
+             ++it2)
+        {
+            if (it2->m_name == name)
+            {
+                Widget *pane = it2->m_factory(name);
+                addSidePane(*pane, it2->m_side);
+                return pane;
+            }
+        }
+    }
+    return NULL;
 }
 
 }
