@@ -6,7 +6,7 @@ of easy-to-use, instant and reliable services to improve programming
 productivity.  It features advanced code assistant based on comprehensive
 real-time multithreaded code analysis.
 
-Samoyed is extensible with plug-ins.
+Samoyed is extensible with plugins.
 
 Samoyed supports GNU/Linux and Windows.
 
