@@ -2,7 +2,7 @@ Samoyed
 =======
 
 Samoyed is a C/C++ integrated development environment that provides a rich set
-of easy-to-use, instant and reliable services to improve programming
+of easy-to-use, instant and reliable services for improving development
 productivity.  It features advanced code assistant based on comprehensive
 real-time multithreaded code analysis.
 
