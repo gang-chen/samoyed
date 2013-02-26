@@ -21,8 +21,6 @@ public:
 
     static char *getFileType(const char *uri);
 
-    ~FileTypeRegistry();
-
     void registerFileFactory(const char *mimeType, const FileFactory &factory);
 
     const FileFactory *getFileFactory(const char *mimeType) const;
