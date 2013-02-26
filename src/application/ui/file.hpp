@@ -38,6 +38,12 @@ class File: public boost::noncopyable
 public:
     class EditPrimitive;
 
+    typedef boost::signals2::signal<void (const File &file)> Close;
+    typedef boost::signals2::signal<void (const File &file)> Loaded;
+    typedef boost::signals2::signal<void (const File &file)> Saved;
+    typedef boost::signals2::signal<void (const File &file,
+                                          const EditPrimitive &edit)> Edited;
+
     class Edit
     {
     public:
@@ -97,12 +103,6 @@ public:
     private:
         std::vector<Edit *> m_edits;
     };
-
-    typedef boost::signals2::signal<void (const File &file)> Close;
-    typedef boost::signals2::signal<void (const File &file)> Loaded;
-    typedef boost::signals2::signal<void (const File &file)> Saved;
-    typedef boost::signals2::signal<void (const File &file,
-                                          const EditPrimitive &edit)> Edited;
 
     static std::pair<File *, Editor *> open(const char *uri, Project &project);
 

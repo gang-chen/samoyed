@@ -10,7 +10,7 @@
 #include <list>
 #include <map>
 #include <string>
-#include <boost/function.hpp>
+#include <boost/signals2/signal.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -30,13 +30,13 @@ class Paned;
  * editors.  Generally, editors are used to edit or browse various files, bars
  * are the user interfaces of tools performing temporary tasks on the associated
  * editors, and side panes are the user interfaces of tools running all the
- * time.  All side panes need to be registered so that they can be managed
- * automatically.
+ * time.
  */
 class Window: public WidgetContainer
 {
 public:
-    typedef boost::function<Widget *(widgetName)> WidgetFactory;
+    typedef boost::signals2::signal<void (const Window &)> Created;
+    typedef boost::signals2::signal<void (const Widget &)> SidePaneCreated;
 
     enum Side
     {
@@ -93,27 +93,15 @@ public:
         Widget::XmlElement *m_child;
     };
 
-    /**
-     * Register an automatically managed side pane to windows with the specific
-     * name.
-     * @param windowWindow The name of the windows of interest, or "*" to
-     * register to all windows.
-     * @param paneName The name of the pane to be registered.
-     * @param paneFactory The factory creating the pane.
-     * @param side The side of window where the pane will be.
-     * @param createByDefault True to automatically create the pane when a
-     * window is created.
-     * @param defaultSize The default size of the pane.
-     */
-    static void registerSidePane(const char *windowName,
-                                 const char *paneName,
-                                 const WidgetFactory &paneFactory,
-                                 Side side,
-                                 bool createByDefault,
-                                 int defaultSize);
+    static boost::signals2::connection
+    addCreatedCallback(const Created::slot_type &callback)
+    { return s_created.connect(callback); }
 
-    static void unregisterSidePane(const char *windowName,
-                                   const char *paneName);
+    static boost::signals2::connection
+    addSidePaneCreatedCallback(const SidePaneCreated::slot_type &callback)
+    { return s_sidePaneCreated.connect(callback); }
+
+    static void setupDefaultSidePanes();
 
     Window(const char *name, const Configuration &config);
 
@@ -137,6 +125,18 @@ public:
 
     Configuration configuration() const;
 
+    Widget *findSidePane(const char *name);
+    const Widget *findSidePane(const char *name) const;
+
+    /**
+     * Add a side pane.
+     * @param pane The side pane to be added.
+     * @param neighbor The widget that will be the neighbor of the side pane.
+     * @param side The side the neighbor where the side pane will adjoin.
+     * @param size The requested size of the side pane.
+     */
+    void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
+
     WidgetWithBars &mainArea() { return *m_mainArea; }
     const WidgetWithBars &mainArea() const { return *m_mainArea; }
 
@@ -151,45 +151,7 @@ public:
      */
     Notebook *splitCurrentEditorGroup(Side side);
 
-    Widget *findSidePane(const char *name);
-
-    Widget *createSidePane(const char *name);
-
-    void saveSidePaneState(const char *name);
-
 private:
-    struct SidePaneRecord
-    {
-        std::string m_name;
-        WidgetFactory m_factory;
-        Side m_side;
-        bool m_createByDefault;
-        int m_defaultSize;
-        SidePaneRecord(const char *name,
-                       const WidgetFactory &factory,
-                       Side side,
-                       bool createByDefault,
-                       int defaultSize):
-            m_name(name),
-            m_factory(factory),
-            m_side(side),
-            m_createByDefault(createByDefault),
-            m_defaultSize(defaultSize)
-        {}
-    };
-
-    struct SidePaneState
-    {
-        Widget::XmlElement *m_xmlElement;
-        int m_size;
-        SidePaneState(): m_xmlElement(NULL) {}
-        SidePaneState(Widget::XmlElement *XmlElement, int size):
-            m_xmlElement(xmlElement),
-            m_size(size)
-        {}
-        ~SidePaneState() { delete m_xmlElement; }
-    };
-
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
                                   gpointer window);
@@ -202,20 +164,14 @@ private:
 
     virtual ~Window();
 
-    void initialize(const Configuration &config);
+    void setup(const Configuration &config);
 
     void addChild(Widget &child);
 
     void removeChild(Widget &child);
 
-    bool findSidePaneInternally(const char *name, Widget *&pane);
-
-    Paned *addSidePane(Widget &pane, Side side, int size);
-
-    static std::map<std::string, std::vector<SidePaneRecord> >
-        s_sidePaneRegistry;
-
-    static std::vector<SidePaneRecord> s_sidePaneRegistryForAll;
+    Created s_created;
+    SidePaneCreated s_sidePaneCreated;
 
     /**
      * The GTK+ window.

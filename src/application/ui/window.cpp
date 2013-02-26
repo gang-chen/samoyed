@@ -6,6 +6,7 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
+#include "widget-container.hpp"
 #include "paned.hpp"
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
@@ -13,65 +14,15 @@
 #include "../utilities/misc.hpp"
 #include <assert.h>
 #include <string.h>
-#include <utility>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-std::map<std::string, std::vector<Window::SidePaneRecord> >
-    Window::s_sidePaneRegistry;
+Window::Created Window::s_created;
 
-std::vector<Window::SidePaneRecord> Window::s_sidePaneRegistryForAll;
-
-void Window::registerSidePane(const char *windowName,
-                              const char *paneName,
-                              const WidgetFactory &paneFactory,
-                              Side side,
-                              bool createByDefault,
-                              int defaultSize)
-{
-    if (windowName[0] == '*' && windowName[1] == '\0')
-        s_sidePaneRegistryForAll.push_back(
-            SidePaneRecord(paneName, paneFactory, side,
-                           createByDefault, defaultSize));
-    else
-        s_sidePaneRegistry.insert(
-            std::make_pair(windowName, std::vector<PaneRecord>())).
-            first->second.push_back(
-                SidePaneRecord(paneName, paneFactory, side,
-                               createByDefault, defaultSize));
-}
-
-void Window::unregisterSidePane(const char *windowName, const char *paneName)
-{
-    std::vector<SidePaneRecord> *panes = NULL;
-    if (windowName[0] == '*' && windowName[1] == '\0')
-        panes = &s_sidePaneRegistryForAll;
-    else
-    {
-        std::map<std::string, std::vector<SidePaneRecord> >::iterator
-            it = s_sidePaneRegistry.find(windowName);
-        if (it != s_sidePaneRegistry.end())
-            panes = &it->second;
-    }
-    if (panes)
-    {
-        for (std::vector<SidePaneRecord>::iterator it = panes->begin();
-             it != panes->end();
-             ++it)
-        {
-            if (it->m_name == paneName)
-            {
-                panes->erase(it);
-                break;
-            }
-        }
-    }
-}
-
-void Window::initialize(const Configuration &config)
+void Window::setup(const Configuration &config)
 {
     m_uiManager = gtk_ui_manager_new();
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
@@ -120,36 +71,17 @@ Window::Window(const char *name, const Configuration &config):
     m_uiManager(NULL),
     m_actions(this)
 {
-    initialize(config);
+    setup(config);
 
     // Create the initial editor group and the main area.
-    Notebook *editorGroup = new Notebook("Editor Group",
-                                         true, true,
-                                         "Editor Group");
+    Notebook *editorGroup = new Notebook("Editor Group", "Editor Group",
+                                         true, true);
     m_mainArea = new WidgetWithBars("Main Area", *editorGroup);
     addChild(*mainArea);
 
-    // Create the default side panes.
-    for (std::vector<SidePaneRecord>::const_iterator it =
-            s_sidePaneRegistryForAll.begin();
-         it != s_sidePaneRegistryForAll.end();
-         ++it)
-        m_sidePaneRecords.push_back(SidePane(*it));
-    std::map<std::string, std::vector<SidePaneRecord> >::const_iterator it =
-        s_sidePaneRegistry.find(name);
-    if (it != s_sidePaneRegistry.end())
-        m_sidePaneRecords.push_back(SidePane(*it));
-    for (std::vector<SidePaneRecord>::const_iterator it =
-            m_sidePaneRecords.begin();
-         it != m_sidePaneRecords.end();
-         ++it)
-    {
-        if (it->m_createByDefault)
-            addSidePane(*it->m_factory(it->m_name.c_str()),
-                        it->m_side, it->m_defaultSize);
-    }
-
     Application::instance().addWindow(*this);
+
+    s_created(*this);
 }
 
 Window::~Window()
@@ -258,6 +190,71 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
     return FALSE;
 }
 
+Widget *Window::findSidePane(const char *name)
+{
+    Widget *pane;
+    WidgetContainer *container = m_mainArea->parent();
+    while (container != this)
+    {
+        pane = container->findChild(name);
+        if (pane)
+            return pane;
+        container = container->parent();
+    }
+    return NULL;
+}
+
+const Widget *Window::findSidePane(const char *name) const
+{
+    const Widget *pane;
+    const WidgetContainer *container = m_mainArea->parent();
+    while (container != this)
+    {
+        pane = container->findChild(name);
+        if (pane)
+            return pane;
+        container = container->parent();
+    }
+    return NULL;
+}
+
+void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
+{
+    Paned *paned;
+    int handleSize;
+    switch (side)
+    {
+    case SIDE_TOP:
+        paned = Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+                             pane, neighbor);
+        paned->setPosition(size);
+        break;
+    case SIDE_BOTTOM:
+        paned = Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+                             neighbor, pane);
+        gtk_widget_style_get(paned->gtkWidget(),
+                             "handle-size", &handleSize,
+                             NULL);
+        paned->setPosition(gtk_widget_get_allocated_height(paned->gtkWidget()) -
+                           size - handleSize);
+        break;
+    case SIDE_LEFT:
+        paned = Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+                             pane, neighbor);
+        paned->setPosition(size);
+        break;
+    case SIDE_RIGHT:
+        paned = Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+                             neighbor, pane);
+        gtk_widget_style_get(paned->gtkWidget(),
+                             "handle-size", &handleSize,
+                             NULL);
+        paned->setPosition(gtk_widget_get_allocated_width(paned->gtkWidget()) -
+                           size - handleSize);
+        break;
+    }
+}
+
 Notebook &Window::currentEditorGroup()
 {
     Widget *current = &this->current();
@@ -304,179 +301,9 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     return newEditorGroup;
 }
 
-bool Window::findSidePaneInternally(const char *name, Widget *&pane)
+void Window::setupDefaultSidePanes()
 {
-    pane = m_child;
-    std::vector<SidePaneRecord>::const_iterator it = m_sidePaneRecords.begin();
-    while (strcmp(pane->name(), "Paned") == 0)
-    {
-        Paned *paned = static_cast<Paned *>(pane);
-        for (;;)
-        {
-            assert(it != m_sidePaneRecords.end());
-            if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL)
-            {
-                if (it->m_side == SIDE_LEFT)
-                {
-                    if (it->m_name == paned->child(0).name())
-                    {
-                        if (it->m_name == name)
-                        {
-                            pane = &paned->child(0);
-                            return true;
-                        }
-                        pane = &paned->child(1);
-                        ++it;
-                        break;
-                    }
-                }
-                else if (it->m_side == SIDE_RIGHT)
-                {
-                    if (it->m_name == paned->child(1).name())
-                    {
-                        if (it->m_name == name)
-                        {
-                            pane = &paned->child(1);
-                            return true;
-                        }
-                        pane = &paned->child(0);
-                        ++it;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                if (it->m_side == SIDE_TOP)
-                {
-                    if (it->m_name == paned->child(0).name())
-                    {
-                        if (it->m_name == name)
-                        {
-                            pane = &paned->child(0);
-                            return true;
-                        }
-                        pane = &paned->child(1);
-                        ++it;
-                        break;
-                    }
-                }
-                else if (it->m_side == SIDE_BOTTOM)
-                {
-                    if (it->m_name == paned->child(1).name())
-                    {
-                        if (it->m_name == name)
-                        {
-                            pane = &paned->child(1);
-                            return true;
-                        }
-                        pane = &paned->child(0);
-                        ++it;
-                        break;
-                    }
-                }
-            }
-            if (it->m_name == name)
-                return false;
-            ++it;
-        }
-    }
-    return false;
-}
-
-Paned *Window::addSidePane(Widget &pane, Side side, int size)
-{
-    Widget *existing;
-    Paned *paned;
-    int handleSize;
-    findSidePaneInternally(pane.name(), existing);
-    switch (side)
-    {
-    case SIDE_TOP:
-        paned = Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
-                             pane, existing);
-        paned->setPosition(size);
-        break;
-    case SIDE_BOTTOM:
-        paned = Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
-                             existing, pane);
-        gtk_widget_style_get(paned->gtkWidget(),
-                             "handle-size", &handleSize,
-                             NULL));
-        paned->setPosition(gtk_widget_get_allocated_height(paned->gtkWidget()) -
-                           size - handleSize);
-        break;
-    case SIDE_LEFT:
-        paned = Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
-                             pane, existing);
-        paned->setPosition(size);
-        break;
-    case SIDE_RIGHT:
-        paned = Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
-                             existing, pane);
-        gtk_widget_style_get(paned->gtkWidget(),
-                             "handle-size", &handleSize,
-                             NULL));
-        paned->setPosition(gtk_widget_get_allocated_width(paned->gtkWidget()) -
-                           size - handleSize);
-        break;
-    }
-    return paned;
-}
-
-Widget *Window::findSidePane(const char *name)
-{
-    Widget *pane;
-    if (findSidePaneInternally(name, pane))
-        return pane;
-    return NULL;
-}
-
-Widget *Window::createSidePane(const char *name)
-{
-    Widget *pane = NULL;
-    Paned *paned;
-    for (std::vector<PaneRecordRecord>::const_iterator it =
-             m_sidePaneRecords.begin();
-         it != m_sidePaneRecords.end();
-         ++it)
-    {
-        if (it->m_name == name)
-        {
-            std::map<std::string, SidePaneState>::const_iterator it2 =
-                m_sidePaneStates.find(name);
-            if (it2 != m_sidePaneStates.end())
-            {
-                pane = it2->m_xmlElement->createWidget();
-                addSidePane(*pane, it->m_side, it2->m_size);
-            }
-            else
-            {
-                pane = it->m_factory(name);
-                addSidePane(*pane, it->m_side, it->m_defaultSize);
-            }
-        }
-    }
-    return pane;
-}
-
-void Window::saveSidePaneState(const char *name)
-{
-    Widget *pane;
-    if (!findSidePane(name, pane))
-        return;
-    Widget::XmlElement *xmlElement = pane->save();
-    int size;
-    Paned *paned = static_cast<Paned *>(pane->parent());
-    if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL)
-        size = gtk_widget_get_allocated_width(pane->gtkWidget());
-    else
-        size = gtk_widget_get_allocated_height(pane->gtkWidget());
-    std::map<std::string, SidePaneState>::iterator it =
-        m_sidePaneStates.insert(std::make_pair(name, SidePaneState())).second;
-    delete it->second.m_xmlElement;
-    it->second.m_xmlElement = xmlElement;
-    it->second.m_size = size;
+    // Setup the navigation pane and tools pane.
 }
 
 }

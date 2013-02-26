@@ -8,10 +8,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <list>
-#include <map>
 #include <string>
 #include <vector>
-#include <utility>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -119,62 +117,11 @@ Notebook::XmlElement::~XmlElement()
         delete *it;
 }
 
-std::map<std::string, std::map<std::string, Notebook::WidgetFactory> >
-    Notebook::s_defaultChildRegistry;
-
-std::map<std::string, Notebook::WidgetFactory>
-    Notebook::s_defaultChildRegistryForAll;
-
-void Notebook::registerDefaultChild(const char *notebookName,
-                                    const char *childName,
-                                    const WidgetFactory &childFactory)
-{
-    if (notebookName[0] == '*' && notebookName[1] == '\0')
-        s_defaultChildRegistryForAll.insert(
-            std::make_pair(childName, childFactory));
-    else
-        s_defaultChildRegistry.insert(
-            std::make_pair(notebookName,
-                           std::map<std::string, WidgetFactory>())).first->
-            second.insert(std::make_pair(childName, childFactory));
-}
-
-void Notebook::unregisterDefaultChild(const char *notebookName,
-                                      const char *childName)
-{
-    if (notebookName[0] == '*' && notebookName[1] == '\0')
-        s_defaultChildRegistryForAll.erase(childName);
-    else
-    {
-        std::map<std::string,
-                 std::map<std::string, WidgetFactory> >::iterator it =
-            s_defaultChildRegistry.find(notebookName);
-        if (it != s_defaultChildRegistry.end())
-            it->second.erase(childName);
-    }
-}
-
 Notebook::Notebook(const char *name, bool createCloseButtons):
     WidgetContainer(name),
     m_createCloseButtons(createCloseButtons)
 {
     m_notebook = gtk_notebook_new();
-    std::map<std::string,
-             std::map<std::string, WidgetFactory>::const_iterator it =
-        s_defaultChildRegistry.find(name);
-    if (it != s_defaultChildRegistry.end())
-    {
-        for (std::map<std::string, WidgetFactory>::const_iterator it2 =
-                 it->second.begin();
-             it2 != it->second.end();
-             ++it2)
-            addChild(*it2->second(it2->first.c_str()));
-    }
-    for (std::map<std::string, WidgetFactory>::const_iterator it2 =
-             s_defaultChildRegistryForAll.begin();
-         it2 != s_defaultChildRegistryForAll.end();
-         ++it2)
-        addChild(*it2->second(it2->first.c_str()));
 }
 
 Notebook::Notebook(XmlElement &xmlElement):

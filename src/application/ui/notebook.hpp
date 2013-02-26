@@ -6,10 +6,8 @@
 
 #include "widget-container.hpp"
 #include <list>
-#include <map>
 #include <string>
 #include <vector>
-#include <boost/function.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -60,23 +58,10 @@ public:
         bool m_closeButtonsExist;
     };
 
-    /**
-     * Register a default child to notebooks with the specific name.  If a
-     * notebook with the name is created, the registered default children will
-     * be automatically created and added to the notebook.
-     * @param notebookName The name of the notebooks of interest, or "*" to
-     * register to all notebooks.
-     * @param childName The name of the default child to be registered.
-     * @param childFactory The factory creating the default child.
-     */
-    static void registerDefaultChild(const char *notebookName,
-                                     const char *childName,
-                                     const WidgetFactory &childFactory);
-
-    static void unregisterDefaultChild(const char *notebookName,
-                                       const char *childName);
-
-    Notebook(const char *name, bool createCloseButton);
+    Notebook(const char *name,
+             const char *groupName,
+             bool createCloseButton,
+             bool canDragChildren);
 
     virtual GtkWidget *gtkWidget() const { return m_notebook; }
 
@@ -114,11 +99,6 @@ protected:
 
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);
-
-    static std::map<std::string, std::map<std::string, WidgetFactory> >
-        s_defaultChildRegistry;
-
-    static std::map<std::string, WidgetFactory> s_defaultChildRegistryForAll;
 
     GtkWidget *m_notebook;
 

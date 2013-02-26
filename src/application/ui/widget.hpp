@@ -17,13 +17,13 @@ namespace Samoyed
 
 class WidgetContainer;
 
-class Widget
+class Widget: public boost::noncopyable
 {
 public:
     /**
      * An XML element used to save and restore a widget.
      */
-    class XmlElement
+    class XmlElement: public boost::noncopyable
     {
     public:
         XmlElement(const Widget &widget): m_name(widget.name()) {}
@@ -128,6 +128,12 @@ public:
     void setCurrent();
 
 protected:
+    Widget(XmlElement &xmlElement):
+        m_name(xmlElement.name()),
+        m_parent(NULL),
+        m_closing(false)
+    {}
+
     virtual ~Widget();
 
     void setClosing(bool closing) { m_closing = closing; }
