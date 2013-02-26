@@ -25,7 +25,7 @@ public:
 
     void registerFileFactory(const char *mimeType, const FileFactory &factory);
 
-    const FileFactory &getFileFactory(const char *mimeType) const;
+    const FileFactory *getFileFactory(const char *mimeType) const;
 
 private:
     typedef std::map<std::string, FileFactory> FileFactoryTable;
