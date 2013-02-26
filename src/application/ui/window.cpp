@@ -123,7 +123,9 @@ Window::Window(const char *name, const Configuration &config):
     initialize(config);
 
     // Create the initial editor group and the main area.
-    Notebook *editorGroup = new Notebook("Editor Group");
+    Notebook *editorGroup = new Notebook("Editor Group",
+                                         true, true,
+                                         "Editor Group");
     m_mainArea = new WidgetWithBars("Main Area", *editorGroup);
     addChild(*mainArea);
 
@@ -259,7 +261,7 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 Notebook &Window::currentEditorGroup()
 {
     Widget *current = &this->current();
-    while (strcmp(current->name(), "Editor Group") != 0)
+    while (strncmp(current->name(), "Editor Group", 12) != 0)
         current = current->parent();
     return static_cast<Notebook &>(*current);
 }
@@ -267,7 +269,7 @@ Notebook &Window::currentEditorGroup()
 const Notebook &Window::currentEditorGroup() const
 {
     const Widget *current = &this->current();
-    while (strcmp(current->name(), "Editor Group") != 0)
+    while (strncmp(current->name(), "Editor Group", 12) != 0)
         current = current->parent();
     return static_cast<const Notebook &>(*current);
 }
@@ -275,7 +277,11 @@ const Notebook &Window::currentEditorGroup() const
 Notebook *Window::splitCurrentEditorGroup(Side side)
 {
     Widget &current = currentEditorGroup();
-    Notebook *newEditorGroup = new Notebook("Editor Group");
+    Notebook *newEditorGroup =
+        new Notebook(strcmp(current.name(), "Editor Group") == 0 ?
+                     "Editor Group 2" : "Editor Group",
+                     true, true,
+                     "Editor Group");
     switch (side)
     {
     case SIDE_TOP:
@@ -468,6 +474,7 @@ void Window::saveSidePaneState(const char *name)
         size = gtk_widget_get_allocated_height(pane->gtkWidget());
     std::map<std::string, SidePaneState>::iterator it =
         m_sidePaneStates.insert(std::make_pair(name, SidePaneState())).second;
+    delete it->second.m_xmlElement;
     it->second.m_xmlElement = xmlElement;
     it->second.m_size = size;
 }
