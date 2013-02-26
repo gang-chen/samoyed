@@ -26,19 +26,10 @@ char *FileTypeRegistry::getFileType(const char *uri)
     return mimeType;
 }
 
-FileTypeRegistry::~FileTypeRegistry()
-{
-    for (FileFactoryTable::const_iterator it = m_fileFactoryTable.begin();
-         it != m_fileFactoryTable.end();
-         ++it)
-        delete it->second;
-}
-
 void FileTypeRegistry::registerFileFactory(const char *mimeType,
                                            const FileFactory &factory)
 {
-    m_fileFactoryTable.insert(std::make_pair(std::string(mimeType),
-                                             new FileFactory(factory)));
+    m_fileFactoryTable.insert(std::make_pair(mimeType, factory));
 }
 
 const FileTypeRegistry::FileFactory *
@@ -48,7 +39,7 @@ FileTypeRegistry::getFileFactory(const char *mimeType) const
         m_fileFactoryTable.find(std::string(mimeType));
     if (it == m_fileFactoryTable.end())
         return NULL;
-    return it->second;
+    return &it->second;
 }
 
 }
