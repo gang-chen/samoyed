@@ -17,7 +17,7 @@ class File;
 class FileTypeRegistry: public boost::noncopyable
 {
 public:
-    typedef boost::function<File *(const char *)> FileFactory;
+    typedef boost::function<File *(const char *uri)> FileFactory;
 
     static char *getFileType(const char *uri);
 
@@ -25,10 +25,10 @@ public:
 
     void registerFileFactory(const char *mimeType, const FileFactory &factory);
 
-    const FileFactory *getFileFactory(const char *mimeType) const;
+    const FileFactory &getFileFactory(const char *mimeType) const;
 
 private:
-    typedef std::map<std::string, FileFactory*> FileFactoryTable;
+    typedef std::map<std::string, FileFactory> FileFactoryTable;
 
     FileFactoryTable m_fileFactoryTable;
 };
