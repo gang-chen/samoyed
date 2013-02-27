@@ -188,10 +188,6 @@ private:
 
     WidgetWithBars *m_mainArea;
 
-    std::vector<SidePaneRecord> m_sidePaneRecords;
-
-    std::map<std::string, SidePaneState> m_sidePaneStates;
-
     /**
      * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in
      * this window.
