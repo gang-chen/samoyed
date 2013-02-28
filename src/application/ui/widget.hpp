@@ -75,13 +75,25 @@ public:
         std::string m_name;
     };
 
-    Widget(const char *name): m_name(name), m_parent(NULL), m_closing(false) {}
+    Widget(const char *name):
+        m_name(name),
+        m_gtkWidget(NULL),
+        m_parent(NULL),
+        m_closing(false)
+    {}
 
     /**
      * A widget may be assigned a name, which is unique in its parent container.
      * @return The name of the widget.
      */
     const char *name() const { return m_name.c_str(); }
+
+    /**
+     * @return The underlying GTK+ widget.
+     */
+    GtkWidget *gtkWidget() const { return m_gtkWidget; }
+
+    static Widget *getFromGtkWidget(GtkWidget *gtkWidget);
 
     /**
      * @return The title of the widget, which may be shown in a title bar.
@@ -94,11 +106,6 @@ public:
      */
     const char *description() const { return m_description.c_str(); }
     void setDescription(const char *description);
-
-    /**
-     * @return The underlying GTK+ widget.
-     */
-    GtkWidget *gtkWidget() const { return m_gtkWidget; }
 
     /**
      * @return The current widget in this container if this is a container, or
