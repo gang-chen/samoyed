@@ -93,19 +93,28 @@ public:
         Widget::XmlElement *m_child;
     };
 
+    /**
+     * Add a callback that will be called whenever a new window is created.  The
+     * callback is usually used to create default side panes.
+     */
     static boost::signals2::connection
     addCreatedCallback(const Created::slot_type &callback)
     { return s_created.connect(callback); }
 
+    /**
+     * Add a callback that will be called whenever a new side pane is created.
+     * The callback is usually used to create default contents of a side pane.
+     */
     static boost::signals2::connection
     addSidePaneCreatedCallback(const SidePaneCreated::slot_type &callback)
     { return s_sidePaneCreated.connect(callback); }
 
+    /**
+     * Setup default side panes, which are the navigation pane and tools pane.
+     */
     static void setupDefaultSidePanes();
 
     Window(const char *name, const Configuration &config);
-
-    virtual GtkWidget *gtkWidget() const { return m_window; }
 
     virtual bool close();
 
@@ -164,7 +173,7 @@ private:
 
     virtual ~Window();
 
-    void setup(const Configuration &config);
+    void build(const Configuration &config);
 
     void addChild(Widget &child);
 
@@ -172,11 +181,6 @@ private:
 
     Created s_created;
     SidePaneCreated s_sidePaneCreated;
-
-    /**
-     * The GTK+ window.
-     */
-    GtkWidget *m_window;
 
     GtkWidget *m_grid;
 
