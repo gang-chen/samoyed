@@ -96,9 +96,9 @@ public:
     void setDescription(const char *description);
 
     /**
-     * @return The underlying GTK+ widget.  Note that it is read-only.
+     * @return The underlying GTK+ widget.
      */
-    virtual GtkWidget *gtkWidget() const = 0;
+    GtkWidget *gtkWidget() const { return m_gtkWidget; }
 
     /**
      * @return The current widget in this container if this is a container, or
@@ -136,10 +136,14 @@ protected:
 
     virtual ~Widget();
 
+    void setGtkWidget(GtkWidget *gtkWidget);
+
     void setClosing(bool closing) { m_closing = closing; }
 
 private:
     const std::string m_name;
+
+    GtkWidget *m_gtkWidget;
 
     std::string m_title;
 
