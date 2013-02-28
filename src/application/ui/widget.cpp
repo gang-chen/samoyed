@@ -6,6 +6,7 @@
 #endif
 #include "widget.hpp"
 #include "widget-container.hpp"
+#include <assert.h>
 #include <list>
 #include <map>
 #include <string>
@@ -48,6 +49,8 @@ Widget::XmlElement::XmlElement(xmlDocPtr doc,
 
 Widget::~Widget()
 {
+    if (m_gtkWidget)
+        gtk_widget_destroy(m_gtkWidget);
     if (m_parent)
         m_parent->onChildClosed(*this);
 }
@@ -82,6 +85,20 @@ void Widget::setCurrent()
     // Set this widget as the current widget.
     gtk_widget_grab_focus(gtkWidget());
     gtk_window_present(GTK_WINDOW(child->gtkWidget()));
+}
+
+void Widget::setGtkWidget(GtkWidget *gtkWidget)
+{
+    // Cannot change the GTK+ widget.
+    assert(!m_gtkWidget);
+    m_gtkWidget = gtkWidget;
+    g_object_set_data(G_OBJECT(gtkWidget), "samoyed-widget", this);
+}
+
+Widget *Widget::getFromGtkWidget(GtkWidget *gtkWidget)
+{
+    return static_cast<Widget *>(g_object_get_data(G_OBJECT(gtkWidget),
+                                                   "samoyed-widget"));
 }
 
 }
