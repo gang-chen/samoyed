@@ -10,19 +10,51 @@
 #include "paned.hpp"
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
+#include "project-explorer.hpp"
 #include "../application.hpp"
 #include "../utilities/misc.hpp"
 #include <assert.h>
 #include <string.h>
+#include <algorithm>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
+
+namespace
+{
+
+const int MAX_SIDE_PANE_WIDTH = ;
+const int MIN_SIDE_PANE_WIDTH = ;
+const int MAX_SIDE_PANE_HEIGHT = ;
+const int MIN_SIDE_PANE_HEIGHT = ;
+
+Widget *createNavigationPane(Window &window)
+{
+    Notebook *pane = new Notebook("Navigation Pane");
+    addSidePane(*pane, window.mainArea(), SIDE_LEFT,
+                window.defaultSidePaneWidth());
+}
+
+Widget *createToolsPane(Window &window)
+{
+    Notebook *pane = new Notebook("Tools Pane");
+    addSidePane(*pane, window.mainArea(), SIDE_RIGHT,
+                window.defaultSidePaneHeight());
+}
+
+void addProjectExplorer(Widget &pane, Window &window)
+{
+    ProjectExplorer *explorer = new ProjectExplorer("Project Explorer");
+    static_cast<Notebook &>(pane).addChild(*explorer);
+}
+
+}
 
 namespace Samoyed
 {
 
 Window::Created Window::s_created;
 
-void Window::setup(const Configuration &config)
+void Window::build(const Configuration &config)
 {
     m_uiManager = gtk_ui_manager_new();
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
@@ -32,10 +64,10 @@ void Window::setup(const Configuration &config)
     // Ignore the possible failure, which implies the installation is broken.
     gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL);
 
-    m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     m_grid = gtk_grid_new();
 
-    gtk_container_add(GTK_CONTAINER(m_window), m_grid);
+    gtk_container_add(GTK_CONTAINER(window), m_grid);
 
     m_menuBar = gtk_ui_manager_get_widget(m_uiManager, "/main-menu-bar");
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
@@ -55,10 +87,12 @@ void Window::setup(const Configuration &config)
                             m_toolbar, m_menuBar,
                             GTK_POS_BOTTOM, 1, 1);
 
-    g_signal_connect(m_window, "delete-event",
+    g_signal_connect(window, "delete-event",
                      G_CALLBACK(onDeleteEvent), this);
-    g_signal_connect(m_window, "focus-in-event",
+    g_signal_connect(window, "focus-in-event",
                      G_CALLBACK(onFocusInEvent), this);
+
+    setGtkWidget(window);
 }
 
 Window::Window(const char *name, const Configuration &config):
@@ -71,7 +105,7 @@ Window::Window(const char *name, const Configuration &config):
     m_uiManager(NULL),
     m_actions(this)
 {
-    setup(config);
+    build(config);
 
     // Create the initial editor group and the main area.
     Notebook *editorGroup = new Notebook("Editor Group", "Editor Group",
@@ -90,8 +124,6 @@ Window::~Window()
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
-    gtk_widget_destroy(m_window);
-    Application::instance().onWindowClosed();
 }
 
 gboolean Window::onDeleteEvent(GtkWidget *widget,
@@ -251,8 +283,8 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
                              NULL);
         paned->setPosition(gtk_widget_get_allocated_width(paned->gtkWidget()) -
                            size - handleSize);
-        break;
     }
+    s_sidePaneAdded(pane, *this);
 }
 
 Notebook &Window::currentEditorGroup()
@@ -277,8 +309,8 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     Notebook *newEditorGroup =
         new Notebook(strcmp(current.name(), "Editor Group") == 0 ?
                      "Editor Group 2" : "Editor Group",
-                     true, true,
-                     "Editor Group");
+                     "Editor Group",
+                     true, true);
     switch (side)
     {
     case SIDE_TOP:
@@ -296,14 +328,22 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     case SIDE_RIGHT:
         Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
                      current, *newEditorGroup);
-        break;
     }
     return newEditorGroup;
 }
 
 void Window::setupDefaultSidePanes()
 {
-    // Setup the navigation pane and tools pane.
+    addCreatedCallback(createNavigationPane);
+    addSidePaneAddedCallback(addProjectExplorer);
+    addCreatedCallback(createToolsPane);
+}
+
+int Window::defaultSidePaneWidth() const
+{
+    Configuration config = window.configuration();
+    int size = config.m_x / 4;
+    size = std::min(std::max(size, MIN))
 }
 
 }
