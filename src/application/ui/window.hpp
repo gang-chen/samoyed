@@ -38,6 +38,10 @@ public:
     typedef boost::signals2::signal<void (const Window &)> Created;
     typedef boost::signals2::signal<void (const Widget &)> SidePaneCreated;
 
+    const char *NAVIGATION_PANE_NAME = "Navigation Pane";
+    const char *TOOLS_PANE_NAME = "Tools Pane";
+    const char *PROJECT_EXPLORER_NAME = "Project Explorer";
+
     enum Side
     {
         SIDE_TOP,
@@ -95,19 +99,27 @@ public:
 
     /**
      * Add a callback that will be called whenever a new window is created.  The
-     * callback is usually used to create default side panes.
+     * callback typically creates default side panes.
      */
     static boost::signals2::connection
     addCreatedCallback(const Created::slot_type &callback)
     { return s_created.connect(callback); }
 
     /**
-     * Add a callback that will be called whenever a new side pane is created.
-     * The callback is usually used to create default contents of a side pane.
+     * Add a callback that will be called whenever a navigation pane is created.
+     * The callback typically creates default contents of a navigation pane.
      */
     static boost::signals2::connection
-    addSidePaneCreatedCallback(const SidePaneCreated::slot_type &callback)
-    { return s_sidePaneCreated.connect(callback); }
+    addNavigationPaneCreatedCallback(const SidePaneCreated::slot_type &callback)
+    { return s_navigationPaneCreated.connect(callback); }
+
+    /**
+     * Add a callback that will be called whenever a tools pane is created.  The
+     * callback typically creates default contents of a tools pane.
+     */
+    static boost::signals2::connection
+    addToolsPaneCreatedCallback(const SidePaneCreated::slot_type &callback)
+    { return s_toolsPaneCreated.connect(callback); }
 
     /**
      * Setup default side panes, which are the navigation pane and tools pane.
@@ -146,6 +158,15 @@ public:
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
 
+    Notebook &navigationPane()
+    { static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME); }
+    const Notebook &navigationPane() const
+    { static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME); }
+    Notebook &toolsPane()
+    { static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME); }
+    const Notebook &toolsPane() const
+    { static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME); }
+
     WidgetWithBars &mainArea() { return *m_mainArea; }
     const WidgetWithBars &mainArea() const { return *m_mainArea; }
 
@@ -169,6 +190,10 @@ private:
                                    GdkEvent *event,
                                    gpointer window);
 
+    static void createNavigationPane(Window &window);
+    static void createToolsPane(Window &window);
+    static void createProjectExplorer(Widget &pane);
+
     Window(XmlElement &xmlElement);
 
     virtual ~Window();
@@ -180,7 +205,8 @@ private:
     void removeChild(Widget &child);
 
     Created s_created;
-    SidePaneCreated s_sidePaneCreated;
+    SidePaneCreated s_navigationPaneCreated;
+    SidePaneCreated s_toolsPaneCreated;
 
     GtkWidget *m_grid;
 

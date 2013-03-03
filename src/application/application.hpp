@@ -113,8 +113,6 @@ public:
 
     void removeProject(Project &project);
 
-    void onProjectClosed();
-
     Project *projects() { return m_firstProject; }
     const Project *projects() const { return m_firstProject; }
 
@@ -132,16 +130,9 @@ public:
 
     void removeWindow(Window &window);
 
-    void onWindowClosed();
-
     Window &currentWindow() const { return *m_currentWindow; }
 
     void setCurrentWindow(Window &window) { m_currentWindow = &window; }
-
-    /**
-     * @return The main window, i.e., the first window.
-     */
-    Window &mainWindow() const { return *m_firstWindow; }
 
     Window *windows() { return m_firstWindow; }
     const Window *windows() const { return m_firstWindow; }

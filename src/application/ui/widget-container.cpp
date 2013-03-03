@@ -5,14 +5,15 @@
 # include <config.h>
 #endif
 #include "widget-container.hpp"
+#include <assert.h>
 #include <utility>
 
 namespace Samoyed
 {
 
-void WidgetContainer::onChildClosed(const Widget &child)
+void WidgetContainer::removeChild(Widget &child)
 {
-    removeChild(child);
+    removeChildInternally(child);
     if (closing() && childCount() == 0)
         delete this;
 }
@@ -41,13 +42,17 @@ const Widget *WidgetContainer::findChild(const char *name) const
     return it->second;
 }
 
-void WidgetContainer::addChild(Widget &child)
+void WidgetContainer::addChildInternally(Widget &child)
 {
+    assert(!child.parent());
+    child.setParent(this);
     m_childTable.insert(std::make_pair(child.name(), &child));
 }
 
-void WidgetContainer::removeChild(Widget &child)
+void WidgetContainer::removeChildInternally(Widget &child)
 {
+    assert(child.parent() == this);
+    child.setParent(NULL);
     m_childTable.erase(child.name());
 }
 

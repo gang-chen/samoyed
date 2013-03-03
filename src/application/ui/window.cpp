@@ -19,40 +19,16 @@
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 
-namespace
-{
-
-const int MAX_SIDE_PANE_WIDTH = ;
-const int MIN_SIDE_PANE_WIDTH = ;
-const int MAX_SIDE_PANE_HEIGHT = ;
-const int MIN_SIDE_PANE_HEIGHT = ;
-
-Widget *createNavigationPane(Window &window)
-{
-    Notebook *pane = new Notebook("Navigation Pane");
-    addSidePane(*pane, window.mainArea(), SIDE_LEFT,
-                window.defaultSidePaneWidth());
-}
-
-Widget *createToolsPane(Window &window)
-{
-    Notebook *pane = new Notebook("Tools Pane");
-    addSidePane(*pane, window.mainArea(), SIDE_RIGHT,
-                window.defaultSidePaneHeight());
-}
-
-void addProjectExplorer(Widget &pane, Window &window)
-{
-    ProjectExplorer *explorer = new ProjectExplorer("Project Explorer");
-    static_cast<Notebook &>(pane).addChild(*explorer);
-}
-
-}
+#define MAIN_AREA_NAME "Main Area"
+#define EDITOR_GROUP_NAME "Editor Group"
+#define PANED_NAME "Paned"
 
 namespace Samoyed
 {
 
 Window::Created Window::s_created;
+Window::SidePaneCreated Window::s_navigationPaneCreated;
+Window::SidePaneCreated Window::s_toolsPaneCreated;
 
 void Window::build(const Configuration &config)
 {
@@ -108,9 +84,9 @@ Window::Window(const char *name, const Configuration &config):
     build(config);
 
     // Create the initial editor group and the main area.
-    Notebook *editorGroup = new Notebook("Editor Group", "Editor Group",
+    Notebook *editorGroup = new Notebook(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME,
                                          true, true);
-    m_mainArea = new WidgetWithBars("Main Area", *editorGroup);
+    m_mainArea = new WidgetWithBars(MAIN_AREA_NAME, *editorGroup);
     addChild(*mainArea);
 
     Application::instance().addWindow(*this);
@@ -124,6 +100,8 @@ Window::~Window()
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
+    gtk_widget_destroy(gtkWidget());
+    Application::instance().onWindowClosed();
 }
 
 gboolean Window::onDeleteEvent(GtkWidget *widget,
@@ -257,12 +235,12 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
     switch (side)
     {
     case SIDE_TOP:
-        paned = Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
                              pane, neighbor);
         paned->setPosition(size);
         break;
     case SIDE_BOTTOM:
-        paned = Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
                              neighbor, pane);
         gtk_widget_style_get(paned->gtkWidget(),
                              "handle-size", &handleSize,
@@ -271,12 +249,12 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
                            size - handleSize);
         break;
     case SIDE_LEFT:
-        paned = Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
                              pane, neighbor);
         paned->setPosition(size);
         break;
     case SIDE_RIGHT:
-        paned = Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
                              neighbor, pane);
         gtk_widget_style_get(paned->gtkWidget(),
                              "handle-size", &handleSize,
@@ -290,7 +268,7 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
 Notebook &Window::currentEditorGroup()
 {
     Widget *current = &this->current();
-    while (strncmp(current->name(), "Editor Group", 12) != 0)
+    while (strncmp(current->name(), EDITOR_GROUP_NAME, 12) != 0)
         current = current->parent();
     return static_cast<Notebook &>(*current);
 }
@@ -298,7 +276,7 @@ Notebook &Window::currentEditorGroup()
 const Notebook &Window::currentEditorGroup() const
 {
     const Widget *current = &this->current();
-    while (strncmp(current->name(), "Editor Group", 12) != 0)
+    while (strncmp(current->name(), EDITOR_GROUP_NAME, 12) != 0)
         current = current->parent();
     return static_cast<const Notebook &>(*current);
 }
@@ -307,43 +285,67 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 {
     Widget &current = currentEditorGroup();
     Notebook *newEditorGroup =
-        new Notebook(strcmp(current.name(), "Editor Group") == 0 ?
-                     "Editor Group 2" : "Editor Group",
-                     "Editor Group",
+        new Notebook(strcmp(current.name(), EDITOR_GROUP_NAME) == 0 ?
+                     EDITOR_GROUP_NAME " 2" : EDITOR_GROUP_NAME,
+                     EDITOR_GROUP_NAME,
                      true, true);
     switch (side)
     {
     case SIDE_TOP:
-        Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
                      *newEditorGroup, current);
         break;
     case SIDE_BOTTOM:
-        Paned::split("Paned", Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
                      current, *newEditorGroup);
         break;
     case SIDE_LEFT:
-        Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
                      *newEditorGroup, current);
         break;
     case SIDE_RIGHT:
-        Paned::split("Paned", Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
                      current, *newEditorGroup);
     }
     return newEditorGroup;
 }
 
+void createNavigationPane(Window &window)
+{
+    Notebook *pane = new Notebook(NAVIGATION_PANE_NAME);
+    gtk_widget_set_size_request(pane->gtkWidget(),
+                                WIDGET_WIDTH_REQUEST,
+                                WIDGET_HEIGHT_REQUEST);
+    s_navigationPaneCreated(*pane);
+    Samoyed::Window::Configuration config = window.configuration();
+    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
+}
+
+void createToolsPane(Window &window)
+{
+    Notebook *pane = new Notebook(TOOLS_PANE_NAME);
+    gtk_widget_set_size_request(pane->gtkWidget(),
+                                WIDGET_WIDTH_REQUEST,
+                                WIDGET_HEIGHT_REQUEST);
+    s_toolsPaneCreated(*pane);
+    Samoyed::Window::Configuration config = window.configuration();
+    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
+}
+
+void createProjectExplorer(Widget &pane)
+{
+    ProjectExplorer *explorer = new ProjectExplorer(PROJECT_EXPLORER_NAME);
+    gtk_widget_set_size_request(explorer->gtkWidget(),
+                                WIDGET_WIDTH_REQUEST,
+                                WIDGET_HEIGHT_REQUEST);
+    static_cast<Notebook &>(pane).addChild(*explorer);
+}
+
 void Window::setupDefaultSidePanes()
 {
     addCreatedCallback(createNavigationPane);
-    addSidePaneAddedCallback(addProjectExplorer);
+    addNavigationPaneCreatedCallback(createProjectExplorer);
     addCreatedCallback(createToolsPane);
-}
-
-int Window::defaultSidePaneWidth() const
-{
-    Configuration config = window.configuration();
-    int size = config.m_x / 4;
-    size = std::min(std::max(size, MIN))
 }
 
 }

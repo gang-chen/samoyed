@@ -60,7 +60,7 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
                         "current-child-index") == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1);
+                xmlNodeListGetString(doc, child->children, 1));
             m_currentChildIndex = atoi(value);
             xmlFree(value);
         }
@@ -115,6 +115,11 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
         delete m_children[0];
         throw std::runtime_error(std::string());
     }
+
+    if (m_currentChildIndex < 0)
+        m_currentChildIndex = 0;
+    else if (m_currentChildIndex > 1)
+        m_currentChildIndex = 1;
 }
 
 Widget::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
@@ -195,9 +200,10 @@ Paned::Paned(const char *name, Orientation orientation):
 {
     m_children[0] = NULL;
     m_children[1] = NULL;
-    m_paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
-    g_signal_connect(m_paned, "set-focus-child",
+    GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
+    setGtkWidget(paned);
 }
 
 Paned::Paned(const char *name,
@@ -209,11 +215,12 @@ Paned::Paned(const char *name,
 {
     m_children[0] = NULL;
     m_children[1] = NULL;
-    m_paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
-    g_signal_connect(m_paned, "set-focus-child",
+    GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
-    addChild(child1, 0);
-    addChild(child2, 1);
+    setGtkWidget(paned);
+    addChildInternally(child1, 0);
+    addChildInternally(child2, 1);
 }
 
 Paned::Paned(const XmlElement &xmlElement):
@@ -230,12 +237,13 @@ Paned::Paned(const XmlElement &xmlElement):
         delete child1;
         throw std::runtime_error(std::string());
     }
-    m_paned =
+    GtkWidget *paned =
         gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
-    g_signal_connect(m_paned, "set-focus-child",
+    g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
-    addChild(*child1, 0);
-    addChild(*child2, 1);
+    setGtkWidget(paned);
+    addChildInternally(*child1, 0);
+    addChildInternally(*child2, 1);
     m_currentChildIndex = xmlElement.currentChildIndex();
     if (xmlElement.m_position >= 0)
         setPosition(xmlElement.position());
@@ -244,7 +252,7 @@ Paned::Paned(const XmlElement &xmlElement):
 Paned::~Paned()
 {
     assert(!m_children[0] && !m_children[1]);
-    gtk_widget_destroy(m_paned);
+    gtk_widget_destroy(gtkWidget());
 }
 
 bool Paned::close()
@@ -272,40 +280,35 @@ Widget::XmlElement *Paned::save() const
     return new XmlElement(*this);
 }
 
-void Paned::addChild(Widget &child, int index)
+void Paned::addChildInternally(Widget &child, int index)
 {
-    assert(!child.parent());
     assert(!m_children[index]);
-    WidgetContainer::addChild(child);
+    WidgetContainer::addChildInternally(child);
     m_children[index] = &child;
-    child.setParent(this);
     if (index == 0)
-        gtk_paned_add1(GTK_PANED(m_paned), child.gtkWidget());
+        gtk_paned_add1(GTK_PANED(gtkWidget()), child.gtkWidget());
     else
-        gtk_paned_add2(GTK_PANED(m_paned), child.gtkWidget());
+        gtk_paned_add2(GTK_PANED(gtkWidget()), child.gtkWidget());
+}
+
+void Paned::removeChildInternally(Widget &child)
+{
+    int index = childIndex(child);
+    m_children[index] = NULL;
+    g_object_ref(child.gtkWidget());
+    gtk_container_remove(GTK_CONTAINER(gtkWidget()), child.gtkWidget());
+    WidgetContainer::removeChildInternally(child);
 }
 
 void Paned::removeChild(Widget &child)
 {
-    assert(child.parent() == this);
-    WidgetContainer::removeChild(child);
     int index = childIndex(child);
-    m_children[index] = NULL;
-    child.setParent(NULL);
-    g_object_ref(child.gtkWidget());
-    gtk_container_remove(GTK_CONTAINER(m_paned), child.gtkWidget());
-}
-
-void Paned::onChildClosed(const Widget &child)
-{
-    // Mark the child as being removed.
-    int index = childIndex(child);
-    m_children[index] = NULL;
+    removeChildInternally(child);
 
     // Remove the remained child from this paned widget.
     Widget *remained = m_children[1 - index];
     assert(remained);
-    removeChild(*remained);
+    removeChildInternally(*remained);
 
     // Replace this paned widget with the remained child.
     assert(parent());
@@ -317,9 +320,9 @@ void Paned::onChildClosed(const Widget &child)
 
 void Paned::replaceChild(Widget &oldChild, Widget &newChild)
 {
-    int index = childIndex(&oldChild);
-    removeChild(oldChild);
-    addChild(newChild, index);
+    int index = childIndex(oldChild);
+    removeChildInternally(oldChild);
+    addChildInternally(newChild, index);
 }
 
 Paned *Paned::split(const char *name,
@@ -338,7 +341,7 @@ Paned *Paned::split(const char *name,
         original = &child2;
     }
     parent = original->parent();
-    index = parent->childIndex(original);
+    index = parent->childIndex(*original);
 
     // Create a paned widget to hold the two widgets.
     Paned *paned = new Paned(name, orientation);
@@ -347,8 +350,8 @@ Paned *Paned::split(const char *name,
     parent->replaceChild(*original, *paned);
 
     // Add the two widgets to the paned widget.
-    paned->addChild(child1, 0);
-    paned->addChild(child2, 1);
+    paned->addChildInternally(child1, 0);
+    paned->addChildInternally(child2, 1);
 
     return paned;
 }

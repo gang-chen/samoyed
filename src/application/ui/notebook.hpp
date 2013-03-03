@@ -37,11 +37,14 @@ public:
          */
         void removeChild(int index);
 
+        const char *groupName() const
+        { return m_groupName.empty() ? NULL : m_groupName.c_str(); }
+        bool createCloseButtons() const { return m_createCloseButtons; }
+        bool canDragChildren() const { return m_canDragChildren; }
         int childCount() const { return m_children.size(); }
         Widget::XmlElement &child(int index) const
         { return *m_children[index]; }
         int currentChildIndex() const { return m_currentChildIndex; }
-        bool closeButtonExists() const { return m_closeButtonExists; }
 
     protected:
         XmlElement(xmlDocPtr doc,
@@ -53,29 +56,26 @@ public:
                                         xmlNodePtr node,
                                         std::list<std::string> &errors);
 
+        std::string m_groupName;
+        bool m_closeButtonsExist;
+        bool m_canDragChildren;
         std::vector<Widget::XmlElement *> m_children;
         int m_currentChildIndex;
-        bool m_closeButtonsExist;
     };
 
     Notebook(const char *name,
              const char *groupName,
-             bool createCloseButton,
+             bool createCloseButtons,
              bool canDragChildren);
-
-    virtual GtkWidget *gtkWidget() const { return m_notebook; }
 
     virtual bool close();
 
     virtual Widget::XmlElement *save() const;
 
-    virtual void onChildClosed(const Widget *child);
+    void addChild(Widget &child, int index)
+    { addChildInternally(child, index); }
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
-
-    void addChild(Widget &child, int index);
-
-    void removeChild(Widget &child);
 
     virtual int childCount() const { return m_children.size(); }
 
@@ -84,10 +84,10 @@ public:
 
     // Assume the current child should be in the current page.
     virtual int currentChildIndex() const
-    { return gtk_notebook_get_current_page(GTK_NOTEBOOK(m_notebook)); }
+    { return gtk_notebook_get_current_page(GTK_NOTEBOOK(gtkWidget())); }
 
     virtual void setCurrentChildIndex(int index)
-    { gtk_notebook_set_current_page(GTK_NOTEBOOK(m_notebook), index); }
+    { gtk_notebook_set_current_page(GTK_NOTEBOOK(gtkWidget()), index); }
 
     virtual void onChildTitleChanged(const Widget &child);
     virtual void onChildDescriptionChanged(const Widget &child);
@@ -97,14 +97,24 @@ protected:
 
     virtual ~Notebook();
 
+    void addChildInternally(Widget &child, int index);
+
+    virtual void removeChildInternally(Widget &child);
+
 private:
     static void onCloseButtonClicked(GtkButton *button, gpointer child);
 
-    GtkWidget *m_notebook;
-
-    std::vector<Widget *> m_children;
+    static void onPageReordered(GtkWidget *widget, GtkWidget *child, int index,
+                                gpointer notebook);
+    static void onPageAdded(GtkWidget *widget, GtkWidget *child, int index,
+                            gpointer notebook);
+    static void onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
+                              gpointer notebook);
 
     bool m_createCloseButtons;
+    bool m_canDragChildren;
+
+    std::vector<Widget *> m_children;
 };
 
 }

@@ -81,8 +81,8 @@ const int CONTAINER_SPACING = 6;
 const int LABEL_SPACING = 12;
 const int TEXT_WIDTH_REQUEST = 400;
 const int TEXT_HEIGHT_REQUEST = 300;
-const int SIDE_PANE_WIDTH_REQUEST = 100;
-const int SIDE_PANE_HEIGHT_REQUEST = 100;
+const int WIDGET_WIDTH_REQUEST = 100;
+const int WIDGET_HEIGHT_REQUEST = 100;
 
 template<bool INT> class IntOrNil
 {

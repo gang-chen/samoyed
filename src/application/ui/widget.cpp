@@ -34,10 +34,8 @@ Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,
     std::map<std::string, Reader>::const_iterator it =
         s_readerRegistry.find(className);
     if (it == s_readerRegistry.end())
-    {
         // Silently ignore the unknown widget class.
         return NULL;
-    }
     return it->second(doc, node, errors);
 }
 
@@ -49,10 +47,9 @@ Widget::XmlElement::XmlElement(xmlDocPtr doc,
 
 Widget::~Widget()
 {
-    if (m_gtkWidget)
-        gtk_widget_destroy(m_gtkWidget);
     if (m_parent)
-        m_parent->onChildClosed(*this);
+        m_parent->removeChild(*this);
+    gtk_widget_destroy(m_gtkWidget);
 }
 
 void Widget::setTitle(const char *title)

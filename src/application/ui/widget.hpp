@@ -89,10 +89,13 @@ public:
     const char *name() const { return m_name.c_str(); }
 
     /**
-     * @return The underlying GTK+ widget.
+     * @return The underlying GTK+ widget, which is owned by this widget.
      */
     GtkWidget *gtkWidget() const { return m_gtkWidget; }
 
+    /**
+     * @return The widget object that owns the GTK+ widget.
+     */
     static Widget *getFromGtkWidget(GtkWidget *gtkWidget);
 
     /**

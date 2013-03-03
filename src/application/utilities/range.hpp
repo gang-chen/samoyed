@@ -13,7 +13,7 @@ namespace Samoyed
  * A range represents the range of the characters impacted by a change to a
  * source file.
  *
- * Usually, a range records the byte offset of the inclusive first impacted
+ * Typically, a range records the byte offset of the inclusive first impacted
  * character and the byte offset of the exclusive last impacted character.
  * There are two exceptions.  One is to represent the range impacted by a
  * removal of some characters.  Actually, no character in the changed file was

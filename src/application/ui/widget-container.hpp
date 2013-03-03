@@ -22,16 +22,8 @@ public:
     virtual const Widget &current() const
     { return child(currentChildIndex()).current(); }
 
-    /**
-     * @param child The closed child, which may be destructed.
-     */
-    virtual void onChildClosed(const Widget &child);
+    virtual void removeChild(Widget &child);
 
-    /**
-     * Replace a child with a new one.
-     * @param oldChild The old child.
-     * @param newChild The new child.
-     */
     virtual void replaceChild(Widget &oldChild, Widget &newChild) = 0;
 
     virtual int childCount() const = 0;
@@ -53,9 +45,9 @@ public:
     virtual void onChildDescriptionChanged(const Widget &child) {}
 
 protected:
-    void addChild(Widget &child);
+    void addChildInternally(Widget &child);
 
-    void removeChild(Widget &child);
+    virtual void removeChildInternally(Widget &child);
 
 private:
     typedef std::map<ComparablePointer<const char *>, Widget *> WidgetTable;

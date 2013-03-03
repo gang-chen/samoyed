@@ -492,10 +492,6 @@ void Application::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
-}
-
-void Application::onProjectClosed()
-{
     if (m_quitting && !m_firstProject && !m_firstWindow)
         continueQuitting();
 }
@@ -537,15 +533,9 @@ void Application::addWindow(Window &window)
 
 void Application::removeWindow(Window &window)
 {
-    // Assert that the main window is the last one to be closed.
-    assert(&window != m_firstWindow || m_firstWindow == m_lastWindow);
     window.removeFromList(m_firstWindow, m_lastWindow);
     if (&window == m_currentWindow)
         m_currentWindow = m_firstWindow;
-}
-
-void Application::onWindowClosed()
-{
     if (m_quitting && !m_firstProject && !m_firstWindow)
         continueQuitting();
 }

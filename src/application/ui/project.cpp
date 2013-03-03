@@ -24,7 +24,6 @@ Project::Project(const char *uri):
 Project::~Project()
 {
     Application::instance().removeProject(*this);
-    Application::instance().onProjectClosed();
 }
 
 bool Project::close()

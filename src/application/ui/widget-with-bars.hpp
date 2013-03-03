@@ -66,13 +66,9 @@ public:
 
     WidgetWithBars(const char *name, Widget &mainChild);
 
-    virtual GtkWidget *gtkWidget() const { return m_verticalGrid; }
-
     virtual bool close();
 
     virtual Widget::XmlElement *save() const;
-
-    virtual void onChildClosed(const Widget &child);
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
@@ -90,9 +86,9 @@ public:
     Widget &mainChild() { return *m_mainChild; }
     const Widget &mainChild() const { return *m_mainChild; }
 
-    void addBar(Bar &bar);
+    void addBar(Bar &bar) { addBarInternally(bar); }
 
-    void removeBar(Bar &bar);
+    void removeBar(Bar &bar) { removeChild(bar); }
 
     int barCount() const { return m_bars.size(); }
 
@@ -112,6 +108,12 @@ protected:
     void addMainChild(Widget &child);
 
     void removeMainChild(Widget &child);
+
+    void addBarInternally(Bar &bar);
+
+    void removeBarInternally(Bar &bar);
+
+    virtual void removeChildInternally(Widget &child);
 
 private:
     static void setFocusChild(GtkWidget *container,

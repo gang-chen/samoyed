@@ -67,13 +67,11 @@ public:
           Orientation orientation,
           Widget &child1, Widget &child2);
 
-    virtual GtkWidget *gtkWidget() const { return m_paned; }
-
     virtual bool close();
 
     virtual Widget::XmlElement *save() const;
 
-    virtual void onChildClosed(const Widget &child);
+    virtual void removeChild(Widget &child);
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
@@ -88,9 +86,10 @@ public:
 
     Orientation orientation() const { return m_orientation; }
 
-    int position() const { return gtk_paned_get_position(GTK_PANED(m_paned)); }
+    int position() const
+    { return gtk_paned_get_position(GTK_PANED(gtkWidget())); }
     void setPosition(int position)
-    { gtk_paned_set_position(GTK_PANED(m_paned), position); }
+    { gtk_paned_set_position(GTK_PANED(gtkWidget()), position); }
 
 protected:
     Paned(const char *name, Orientation orientation);
@@ -102,16 +101,14 @@ protected:
 
     virtual ~Paned();
 
-    void addChild(Widget &child, int index);
+    void addChildInternally(Widget &child, int index);
 
-    void removeChild(Widget &child);
+    void removeChildInternally(Widget &child);
 
 private:
     static void setFocusChild(GtkWidget *container,
                               GtkWidget *child,
                               gpointer paned);
-
-    GtkWidget *m_paned;
 
     Orientation m_orientation;
 
