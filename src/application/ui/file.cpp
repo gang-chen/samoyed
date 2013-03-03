@@ -9,7 +9,7 @@
 #include "window.hpp"
 #include "../application.hpp"
 #include "../file-type-registry.hpp"
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include "../utilities/file-loader.hpp"
 #include "../utilities/file-saver.hpp"
 #include "../utilities/scheduler.hpp"

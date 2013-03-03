@@ -5,7 +5,7 @@
 #define SMYD_FILE_SOURCE_HPP
 
 #include "../utilities/managed.hpp"
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include "../utilities/revision.hpp"
 #include "../utilities/worker.hpp"
 #include "../utilities/manager.hpp"

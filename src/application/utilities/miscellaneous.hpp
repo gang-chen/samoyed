@@ -1,8 +1,8 @@
 // Miscellaneous utilities.
 // Copyright (C) 2011 Gang Chen.
 
-#ifndef SMYD_MISC_HPP
-#define SMYD_MISC_HPP
+#ifndef SMYD_MISCELLANEOUS_HPP
+#define SMYD_MISCELLANEOUS_HPP
 
 #include <string.h>
 #include <string>
@@ -76,6 +76,14 @@ private: \
 namespace Samoyed
 {
 
+const int CONTAINER_BORDER_WIDTH = 12;
+const int CONTAINER_SPACING = 6;
+const int LABEL_SPACING = 12;
+const int TEXT_WIDTH_REQUEST = 400;
+const int TEXT_HEIGHT_REQUEST = 300;
+const int SIDE_PANE_WIDTH_REQUEST = 100;
+const int SIDE_PANE_HEIGHT_REQUEST = 100;
+
 template<bool INT> class IntOrNil
 {
 public:
@@ -135,12 +143,6 @@ public:
 private:
     std::string m_string;
 };
-
-const int CONTAINER_BORDER_WIDTH = 12;
-const int CONTAINER_SPACING = 6;
-const int LABEL_SPACING = 12;
-const int TEXT_WIDTH_REQUEST = 400;
-const int TEXT_HEIGHT_REQUEST = 300;
 
 bool isValidFileName(const char *fileName);
 

@@ -11,7 +11,7 @@
 #include "ui/file.hpp"
 #include "ui/window.hpp"
 #include "ui/splash-screen.hpp"
-#include "utilities/misc.hpp"
+#include "utilities/miscellaneous.hpp"
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"

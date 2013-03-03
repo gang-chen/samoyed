@@ -74,7 +74,7 @@ src/application/ui/splash-screen
 src/application/utilities/buffer
 src/application/utilities/lock-file
 src/application/utilities/manager
-src/application/utilities/misc
+src/application/utilities/miscellaneous
 src/application/utilities/range
 src/application/utilities/revision
 src/application/utilities/signal

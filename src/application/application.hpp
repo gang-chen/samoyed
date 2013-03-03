@@ -4,7 +4,7 @@
 #ifndef SMYD_APPLICATION_HPP
 #define SMYD_APPLICATION_HPP
 
-#include "utilities/misc.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <map>
 #include <string>
 #include <boost/utility.hpp>

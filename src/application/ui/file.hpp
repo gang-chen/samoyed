@@ -4,7 +4,7 @@
 #ifndef SMYD_FILE_HPP
 #define SMYD_FILE_HPP
 
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include "../utilities/revision.hpp"
 #include "../utilities/worker.hpp"
 #include <utility>

@@ -6,7 +6,7 @@
 
 #include "widget.hpp"
 #include "file.hpp"
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include <string>
 #include <gtk/gtk.h>
 

@@ -3,15 +3,15 @@
 
 /*
 UNIT TEST BUILD
-g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
- -Werror -Wall -o misc
+g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o miscellaneous
 */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "misc.hpp"
-#ifdef SMYD_MISC_UNIT_TEST
+#include "miscellaneous.hpp"
+#ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # include <assert.h>
 #endif
 #include <errno.h>
@@ -20,7 +20,7 @@ g++ misc.cpp -DSMYD_MISC_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
 #include <stdio.h>
 #include <string>
 #include <glib.h>
-#if defined(SMYD_MISC_UNIT_TEST) || \
+#if defined(SMYD_MISCELLANEOUS_UNIT_TEST) || \
     defined(SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST)
 # define _(T) T
 #else
@@ -124,7 +124,7 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 
 }
 
-#ifdef SMYD_MISC_UNIT_TEST
+#ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 
 int main(int argc, char *argv[])
 {

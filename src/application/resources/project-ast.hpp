@@ -5,7 +5,7 @@
 #define SMYD_PROJECT_AST_HPP
 
 #include "../utilities/managed.hpp"
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include "../utilities/manager.hpp"
 #include <string>
 

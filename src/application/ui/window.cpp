@@ -12,7 +12,7 @@
 #include "notebook.hpp"
 #include "project-explorer.hpp"
 #include "../application.hpp"
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include <assert.h>
 #include <string.h>
 #include <algorithm>

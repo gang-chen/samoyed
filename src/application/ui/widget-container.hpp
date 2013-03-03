@@ -5,7 +5,7 @@
 #define SMYD_WIDGET_CONTAINER_HPP
 
 #include "widget.hpp"
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include <map>
 
 namespace Samoyed

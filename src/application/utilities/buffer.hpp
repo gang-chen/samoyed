@@ -4,7 +4,7 @@
 #ifndef SMYD_BUFFER_HPP
 #define SMYD_BUFFER_HPP
 
-#include "misc.hpp"
+#include "miscellaneous.hpp"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

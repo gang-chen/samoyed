@@ -4,7 +4,7 @@
 #ifndef SMYD_LOCK_FILE_HPP
 #define SMYD_LOCK_FILE_HPP
 
-#include "misc.hpp"
+#include "miscellaneous.hpp"
 #include <string>
 #include <unistd.h>
 

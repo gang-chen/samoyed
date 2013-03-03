@@ -14,7 +14,7 @@ g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -lboost_thread -pthread\
 #endif
 #include "manager.hpp"
 #include "managed.hpp"
-#include "misc.hpp"
+#include "miscellaneous.hpp"
 #include <stdio.h>
 #include <string>
 #include <boost/thread/thread.hpp>

@@ -12,7 +12,7 @@
 #include "ui/editor.hpp"
 #include "ui/file.hpp"
 #include "ui/bars/file-recovery-bar.hpp"
-#include "utilities/misc.hpp"
+#include "utilities/miscellaneous.hpp"
 #include "utilities/lock-file.hpp"
 #include "utilities/signal.hpp"
 #include "utilities/scheduler.hpp"

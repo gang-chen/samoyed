@@ -4,7 +4,7 @@
 #ifndef SMYD_PROJECT_HPP
 #define SMYD_PROJECT_HPP
 
-#include "../utilities/misc.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include "../utilities/manager.hpp"
 #include <map>
 #include <string>
