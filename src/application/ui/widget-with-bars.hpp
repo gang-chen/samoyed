@@ -73,7 +73,7 @@ public:
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
     virtual int childCount() const
-    { return (m_mainChilde ? 1 : 0) + barCount(); }
+    { return (m_mainChild ? 1 : 0) + barCount(); }
 
     virtual Widget &child(int index)
     { return index == 0 ? *m_mainChild : *m_bars[index - 1]; }
