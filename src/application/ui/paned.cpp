@@ -252,7 +252,6 @@ Paned::Paned(const XmlElement &xmlElement):
 Paned::~Paned()
 {
     assert(!m_children[0] && !m_children[1]);
-    gtk_widget_destroy(gtkWidget());
 }
 
 bool Paned::close()
