@@ -173,8 +173,8 @@ void Window::removeChildInternally(Widget &child)
 
 void Window::replaceChild(Widget &oldChild, Widget &newChild)
 {
-    removeChild(oldChild);
-    addChild(newChild);
+    removeChildInternally(oldChild);
+    addChildInternally(newChild);
 }
 
 gboolean Window::onFocusInEvent(GtkWidget *widget,
@@ -302,7 +302,7 @@ void Window::createNavigationPane(Window &window)
                                 WIDGET_WIDTH_REQUEST,
                                 WIDGET_HEIGHT_REQUEST);
     s_navigationPaneCreated(*pane);
-    Samoyed::Window::Configuration config = window.configuration();
+    Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
 }
 
@@ -313,7 +313,7 @@ void Window::createToolsPane(Window &window)
                                 WIDGET_WIDTH_REQUEST,
                                 WIDGET_HEIGHT_REQUEST);
     s_toolsPaneCreated(*pane);
-    Samoyed::Window::Configuration config = window.configuration();
+    Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
 }
 
@@ -323,7 +323,7 @@ void Window::createProjectExplorer(Widget &pane)
     gtk_widget_set_size_request(explorer->gtkWidget(),
                                 WIDGET_WIDTH_REQUEST,
                                 WIDGET_HEIGHT_REQUEST);
-    static_cast<Notebook &>(pane).addChild(*explorer);
+    static_cast<Notebook &>(pane).addChild(*explorer, 0);
 }
 
 void Window::setupDefaultSidePanes()
