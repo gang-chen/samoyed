@@ -31,6 +31,10 @@ class Paned;
  * are the user interfaces of tools performing temporary tasks on the associated
  * editors, and side panes are the user interfaces of tools running all the
  * time.
+ *
+ * When a window is created, two side panes are created and added to the window.
+ * One is a navigation pane, which contains a project explorer.  The other is a
+ * tools pane.
  */
 class Window: public WidgetContainer
 {
@@ -132,8 +136,6 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    virtual void onChildClosed(const Widget *child);
-
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
     virtual int childCount() const { return 1; }
@@ -159,13 +161,23 @@ public:
     void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
 
     Notebook &navigationPane()
-    { static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME); }
+    { return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME)); }
     const Notebook &navigationPane() const
-    { static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME); }
+    { return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME)); }
     Notebook &toolsPane()
-    { static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME); }
+    { return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME)); }
     const Notebook &toolsPane() const
-    { static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME); }
+    { return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME)); }
+    ProjectExplorer &projectExplorer()
+    {
+        return static_cast<ProjectExplorer &>(
+            *navigationPane().findChild(PROJECT_EXPLORER_NAME));
+    }
+    const ProjectExplorer &projectExplorer() const
+    {
+        return static_cast<ProjectExplorer &>(
+            *navigationPane().findChild(PROJECT_EXPLORER_NAME));
+    }
 
     WidgetWithBars &mainArea() { return *m_mainArea; }
     const WidgetWithBars &mainArea() const { return *m_mainArea; }
@@ -200,9 +212,9 @@ private:
 
     void build(const Configuration &config);
 
-    void addChild(Widget &child);
+    void addChildInternally(Widget &child);
 
-    void removeChild(Widget &child);
+    virtual void removeChildInternally(Widget &child);
 
     Created s_created;
     SidePaneCreated s_navigationPaneCreated;
