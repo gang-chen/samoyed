@@ -39,8 +39,8 @@ class Paned;
 class Window: public WidgetContainer
 {
 public:
-    typedef boost::signals2::signal<void (const Window &)> Created;
-    typedef boost::signals2::signal<void (const Widget &)> SidePaneCreated;
+    typedef boost::signals2::signal<void (Window &)> Created;
+    typedef boost::signals2::signal<void (Widget &)> SidePaneCreated;
 
     const char *NAVIGATION_PANE_NAME = "Navigation Pane";
     const char *TOOLS_PANE_NAME = "Tools Pane";
