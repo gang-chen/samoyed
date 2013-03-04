@@ -153,6 +153,7 @@ Notebook::Notebook(const char *name, const char *groupName,
     m_canDragChildren(canDragChildren)
 {
     GtkWidget *notebook = gtk_notebook_new();
+    gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
     if (groupName)
         gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), groupName);
     if (m_canDragChildren)
@@ -173,6 +174,7 @@ Notebook::Notebook(XmlElement &xmlElement):
     m_canDragChildren(xmlElement.canDragChildren())
 {
     GtkWidget *notebook = gtk_notebook_new();
+    gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
     if (xmlElement.groupName())
         gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook),
                                     xmlElement.groupName());
@@ -202,7 +204,6 @@ Notebook::Notebook(XmlElement &xmlElement):
 Notebook::~Notebook()
 {
     assert(m_children.empty());
-    gtk_widget_destroy(gtkWidget());
 }
 
 void Notebook::onCloseButtonClicked(GtkButton *button, gpointer child)
@@ -303,7 +304,7 @@ void Notebook::replaceChild(Widget &oldChild, Widget &newChild)
 {
     int index = childIndex(&oldChild);
     removeChildInternally(oldChild);
-    addChild(newChild, index);
+    addChildInternally(newChild, index);
 }
 
 void Notebook::onChildTitleChanged(const Widget &child)
@@ -336,15 +337,9 @@ void Notebook::onPageReordered(GtkWidget *widget, GtkWidget *child, int index,
                                gpointer notebook)
 {
     Notebook *nb = static_cast<Notebook *>(notebook);
-    int oldIndex;
-    Widget *ch;
-    for (oldIndex = 0; oldIndex < childCount(); ++oldIndex)
-        if (child(oldIndex).gtkWidget() == child)
-        {
-            ch = &child(oldIndex);
-            break;
-        }
-    nb->m_children.erase(nb->m_children.begin() + oldIndex);
+    Widget *ch = Widget::getFromGtkWidget(child);
+    assert(ch);
+    nb->m_children.erase(nb->m_children.begin() + childIndex(*ch));
     nb->m_children.insert(nb->m_children.begin() + index, ch);
 }
 
@@ -353,6 +348,7 @@ void Notebook::onPageAdded(GtkWidget *widget, GtkWidget *child, int index,
 {
     Notebook *nb = static_cast<Notebook *>(notebook);
     Widget *ch = Widget::getFromGtkWidget(child);
+    assert(ch);
     nb->WidgetContainer::addChildInternally(*ch);
     m_children.insert(m_children.begin() + index, ch);
 }
@@ -362,7 +358,8 @@ void Notebook::onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
 {
     Notebook *nb = static_cast<Notebook *>(notebook);
     Widget *ch = Widget::getFromGtkWidget(child);
-    m_children.erase(m_children.begin() + childIndex(ch));
+    assert(ch);
+    m_children.erase(m_children.begin() + index);
     nb->WidgetContainer::removeChildInternally(*ch);
 }
 
