@@ -121,8 +121,6 @@ private:
                               GtkWidget *child,
                               gpointer widget);
 
-    GtkWidget *m_verticalGrid;
-
     GtkWidget *m_horizontalGrid;
 
     Widget *m_mainChild;
