@@ -138,7 +138,7 @@ public:
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    virtual int childCount() const { return 1; }
+    virtual int childCount() const { return m_child ? 1 : 0; }
 
     virtual Widget &child(int index) { return *m_child; }
     virtual const Widget &child(int index) const { return *m_child; }
