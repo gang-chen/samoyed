@@ -72,8 +72,7 @@ void Window::build(const Configuration &config)
 }
 
 Window::Window(const char *name, const Configuration &config):
-    Widget(name),
-    m_window(NULL),
+    Widget(name)
     m_grid(NULL),
     m_menuBar(NULL),
     m_toolbar(NULL),
@@ -100,8 +99,6 @@ Window::~Window()
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
-    gtk_widget_destroy(gtkWidget());
-    Application::instance().onWindowClosed();
 }
 
 gboolean Window::onDeleteEvent(GtkWidget *widget,
@@ -156,34 +153,22 @@ Widget::XmlElement *Window::save() const
     return new XmlElement(*this);
 }
 
-void Window::addChild(Widget &child)
+void Window::addChildInternally(Widget &child)
 {
-    assert(!child.parent());
     assert(!m_child);
     WidgetContainer::addChild(child);
     m_child = &child;
-    child.setParent(this);
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             child.gtkWidget(), m_toolbar,
                             GTK_POS_BOTTOM, 1, 1);
 }
 
-void Window::removeChild(Widget &child)
+void Window::removeChildInternally(Widget &child)
 {
-    assert(child.parent() == this);
-    WidgetContainer::removeChild(child);
     m_child = NULL;
-    child.setParent(NULL);
     g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTANDER(m_grid), child.gtkWidget());
-}
-
-void Window::onChildClosed(Widget *child)
-{
-    assert(m_child == child);
-    assert(closing());
-    m_child = NULL;
-    delete this;
+    WidgetContainer::removeChild(child);
 }
 
 void Window::replaceChild(Widget &oldChild, Widget &newChild)
@@ -310,7 +295,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     return newEditorGroup;
 }
 
-void createNavigationPane(Window &window)
+void Window::createNavigationPane(Window &window)
 {
     Notebook *pane = new Notebook(NAVIGATION_PANE_NAME);
     gtk_widget_set_size_request(pane->gtkWidget(),
@@ -321,7 +306,7 @@ void createNavigationPane(Window &window)
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
 }
 
-void createToolsPane(Window &window)
+void Window::createToolsPane(Window &window)
 {
     Notebook *pane = new Notebook(TOOLS_PANE_NAME);
     gtk_widget_set_size_request(pane->gtkWidget(),
@@ -332,7 +317,7 @@ void createToolsPane(Window &window)
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
 }
 
-void createProjectExplorer(Widget &pane)
+void Window::createProjectExplorer(Widget &pane)
 {
     ProjectExplorer *explorer = new ProjectExplorer(PROJECT_EXPLORER_NAME);
     gtk_widget_set_size_request(explorer->gtkWidget(),
