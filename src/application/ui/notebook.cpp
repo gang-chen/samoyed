@@ -35,7 +35,15 @@ Notebook::XmlElement::XmlElement(xmlDocPtr doc,
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   "create-close-buttons") == 0)
+                   "group-name") == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_groupName = value;
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        "create-close-buttons") == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -89,6 +97,10 @@ xmlNodePtr Notebook::XmlElement::write() const
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>("notebook"));
     char *cp;
+    if (groupName())
+        xmlNewTextChild(node, NULL,
+                        reinterpret_cast<const xmlChar *>("group-name"),
+                        reinterpret_cast<const xmlChar *>(groupName()));
     cp = g_strdup_printf("%d", m_createCloseButtons);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>("create-close-buttons"),
@@ -114,6 +126,8 @@ xmlNodePtr Notebook::XmlElement::write() const
 
 Notebook::XmlElement::XmlElement(const Notebook &notebook)
 {
+    if (notebook.groupName())
+        m_groupName = notebook.groupName();
     m_createCloseButtons = notebook.createCloseButtons();
     m_canDragChildren = notebook.canDragChildren();
     m_children.reserve(notebook.childCount());
