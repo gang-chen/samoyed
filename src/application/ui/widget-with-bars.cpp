@@ -220,7 +220,6 @@ WidgetWithBars::~WidgetWithBars()
 {
     assert(!m_mainChild);
     assert(m_bars.empty());
-    gtk_widget_destroy(gtkWidget());
 }
 
 bool WidgetWithBars::close()
