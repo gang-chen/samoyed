@@ -92,6 +92,12 @@ public:
     virtual void onChildTitleChanged(const Widget &child);
     virtual void onChildDescriptionChanged(const Widget &child);
 
+    const char *groupName() const
+    { return gtk_notebook_get_group_name(GTK_NOTEBOOK(gtkWidget())); }
+
+    bool createCloseButtons() const { return m_createCloseButtons; }
+    bool canDragChildren() const { return m_canDragChildren; }
+
 protected:
     Notebook(XmlElement &xmlElement);
 
