@@ -42,9 +42,9 @@ public:
     typedef boost::signals2::signal<void (Window &)> Created;
     typedef boost::signals2::signal<void (Widget &)> SidePaneCreated;
 
-    const char *NAVIGATION_PANE_NAME = "Navigation Pane";
-    const char *TOOLS_PANE_NAME = "Tools Pane";
-    const char *PROJECT_EXPLORER_NAME = "Project Explorer";
+    static const char *NAVIGATION_PANE_NAME = "Navigation Pane";
+    static const char *TOOLS_PANE_NAME = "Tools Pane";
+    static const char *PROJECT_EXPLORER_NAME = "Project Explorer";
 
     enum Side
     {

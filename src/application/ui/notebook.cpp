@@ -7,6 +7,7 @@
 #include "notebook.hpp"
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <list>
 #include <string>
 #include <vector>
@@ -14,6 +15,8 @@
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
+
+#define NOTEBOOK "notebook"
 
 namespace Samoyed
 {
@@ -136,7 +139,7 @@ Notebook::XmlElement::XmlElement(const Notebook &notebook)
     m_currentChildIndex = notebook.currentChildIndex();
 }
 
-Widget *Notebook::XmlElement::createWidget()
+Widget *Notebook::XmlElement::restore()
 {
     return new Notebook(*this);
 }
@@ -180,6 +183,7 @@ Notebook::Notebook(const char *name, const char *groupName,
                          G_CALLBACK(onPageRemoved), this);
     }
     setGtkWidget(notebook);
+    gtk_widget_show_all(notebook);
 }
 
 Notebook::Notebook(XmlElement &xmlElement):
@@ -202,6 +206,8 @@ Notebook::Notebook(XmlElement &xmlElement):
                          G_CALLBACK(onPageRemoved), this);
     }
     setGtkWidget(notebook);
+    if (xmlElement.visible())
+        gtk_widget_show_all(notebook);
     m_children.reserve(xmlElement.childCount());
     for (int i = 0; i < xmlElement.childCount(); ++i)
     {

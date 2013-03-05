@@ -7,6 +7,7 @@
 #include "widget-with-bars.hpp"
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <list>
 #include <stdexcept>
 #include <string>
@@ -16,12 +17,16 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
+#define WIDGET_WITH_BARS "widget-with-bars"
+#define BARS "bars"
+#define 
+
 namespace Samoyed
 {
 
 bool WidgetWithBars::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader("widget-with-bars",
+    return Widget::XmlElement::registerReader(WIDGET_WITH_BARS,
                                               Widget::XmlElement::Reader(read));
 }
 
@@ -34,7 +39,8 @@ WidgetWithBars::XmlElement::XmlElement(xmlDocPtr doc,
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
-        if (strcmp(reinterpret_cast<const char *>(child->name), "bars") == 0)
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   WIDGET_WITH_BARS "." BARS) == 0)
         {
             for (xmlNodePtr bar = child->children; bar; bar = bar->next)
             {
@@ -44,7 +50,7 @@ WidgetWithBars::XmlElement::XmlElement(xmlDocPtr doc,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "current-child-index") == 0)
+                        WIDGET_WITH_BARS "." CURRENT_CHILD_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -113,15 +119,18 @@ WidgetWithBars::XmlElement::read(xmlDocPtr doc,
 xmlNodePtr WidgetWithBars::XmlElement::write() const
 {
     xmlNodePtr node =
-        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>("widget-with-bars"));
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS));
     char *cp;
     cp = g_strdup_printf("%d", m_currentChildIndex);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("current-child-index"),
+                    reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS "."
+                                                      CURRENT_CHILD_INDEX),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
-    xmlNodePtr bars = xmlNewNode(NULL,
-                                 reinterpret_cast<const xmlChar *>("bars"));
+    xmlNodePtr bars =
+        xmlNewNode(NULL,
+                   reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS "."
+                                                     BARS));
     for (std::vector<Bar::XmlElement *>::const_iterator it = m_bars.begin();
          it != m_bars.end();
          ++it)
@@ -139,7 +148,7 @@ WidgetWithBars::XmlElement::XmlElement(const WidgetWithBars &widget)
     m_currentChildIndex = widget.currentChildIndex();
 }
 
-Widget *WidgetWithBars::XmlElement::createWidget()
+Widget *WidgetWithBars::XmlElement::restore()
 {
     WidgetWithBars *widget;
     try
@@ -185,6 +194,7 @@ WidgetWithBars::WidgetWithBars(const char *name, Widget &mainChild):
     g_signal_connect(m_horizontalGrid, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(verticalGrid);
+    gtk_widget_show_all(verticalGrid);
     addMainChild(mainChild);
 }
 
@@ -203,6 +213,8 @@ WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
     g_signal_connect(m_horizontalGrid, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(verticalGrid);
+    if (xmlElement.visible())
+        gtk_widget_show_all(verticalGrid);
     addMainChild(*mainChild);
     m_bars.reserve(xmlElement.barCount());
     for (int i = 0; i < xmlElement.barCount(); ++i)

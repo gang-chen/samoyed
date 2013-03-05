@@ -7,6 +7,7 @@
 #include "paned.hpp"
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <list>
 #include <stdexcept>
 #include <string>

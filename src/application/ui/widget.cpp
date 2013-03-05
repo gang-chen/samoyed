@@ -7,11 +7,16 @@
 #include "widget.hpp"
 #include "widget-container.hpp"
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 #include <list>
 #include <map>
 #include <string>
 #include <utility>
 #include <libxml/tree.h>
+
+#define WIDGET "widget"
+#define VISIBLE "visible"
 
 namespace Samoyed
 {
@@ -43,6 +48,26 @@ Widget::XmlElement::XmlElement(xmlDocPtr doc,
                                xmlNodePtr node,
                                std::list<std::string> &errors)
 {
+    char *value;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   WIDGET "." NAME) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_name = value;
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        WIDGET "." VISIBLE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_visible = atoi(value);
+            xmlFree(value);
+        }
+    }
 }
 
 Widget::~Widget()

@@ -30,7 +30,7 @@ public:
         XmlElement(const WidgetWithBars &widget);
         virtual ~XmlElement();
         virtual xmlNodePtr write() const;
-        virtual Widget *createWidget();
+        virtual Widget *restore();
         virtual bool restoreWidget(Widget &widget) const;
 
         /**

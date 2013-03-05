@@ -26,7 +26,10 @@ public:
     class XmlElement: public boost::noncopyable
     {
     public:
-        XmlElement(const Widget &widget): m_name(widget.name()) {}
+        XmlElement(const Widget &widget):
+            m_name(widget.name()),
+            m_visible(gtk_widget_get_visible(widget.gtkWidget()))
+        {}
 
         virtual ~XmlElement() {}
 
@@ -48,12 +51,14 @@ public:
         virtual xmlNodePtr write() const = 0;
 
         /**
-         * Create a widget, its child widgets and bars from this XML element.
-         * @return The created widget, or NULL if failed.
+         * Restore a widget, its child widgets and bars from this XML element.
+         * @return The restored widget, or NULL if failed.
          */
-        virtual Widget *createWidget() = 0;
+        virtual Widget *restore() = 0;
 
         const char *name() const { return m_name.c_str(); }
+
+        bool visible() const { return m_visible; }
 
     protected:
         typedef
@@ -73,6 +78,7 @@ public:
         static std::map<std::string, Reader> s_readerRegistry;
 
         std::string m_name;
+        bool m_visible;
     };
 
     Widget(const char *name):
