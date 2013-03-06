@@ -3,7 +3,7 @@
 
 /*
 UNIT TEST BUILD
-g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST\
+g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
  `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o miscellaneous
 */
 
@@ -20,8 +20,7 @@ g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include <stdio.h>
 #include <string>
 #include <glib.h>
-#if defined(SMYD_MISCELLANEOUS_UNIT_TEST) || \
-    defined(SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST)
+#ifdef SMYD_UNIT_TEST
 # define _(T) T
 #else
 # include <glib/gi18n-lib.h>
