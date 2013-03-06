@@ -301,9 +301,6 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 void Window::createNavigationPane(Window &window)
 {
     Notebook *pane = new Notebook(NAVIGATION_PANE_NAME);
-    gtk_widget_set_size_request(pane->gtkWidget(),
-                                WIDGET_WIDTH_REQUEST,
-                                WIDGET_HEIGHT_REQUEST);
     s_navigationPaneCreated(*pane);
     Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
@@ -312,9 +309,6 @@ void Window::createNavigationPane(Window &window)
 void Window::createToolsPane(Window &window)
 {
     Notebook *pane = new Notebook(TOOLS_PANE_NAME);
-    gtk_widget_set_size_request(pane->gtkWidget(),
-                                WIDGET_WIDTH_REQUEST,
-                                WIDGET_HEIGHT_REQUEST);
     s_toolsPaneCreated(*pane);
     Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
