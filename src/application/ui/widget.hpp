@@ -26,11 +26,6 @@ public:
     class XmlElement: public boost::noncopyable
     {
     public:
-        XmlElement(const Widget &widget):
-            m_name(widget.name()),
-            m_visible(gtk_widget_get_visible(widget.gtkWidget()))
-        {}
-
         virtual ~XmlElement() {}
 
         /**
@@ -51,10 +46,16 @@ public:
         virtual xmlNodePtr write() const = 0;
 
         /**
-         * Restore a widget, its child widgets and bars from this XML element.
+         * Restore a widget and its child widgets from this XML element.
          * @return The restored widget, or NULL if failed.
          */
-        virtual Widget *restore() = 0;
+        virtual Widget *restoreWidget() = 0;
+
+        /**
+         * Save the information on a widget into this XML element.
+         * @return The created XML element storing the information.
+         */
+        static XmlElement *saveWidget(const Widget &widget);
 
         const char *name() const { return m_name.c_str(); }
 
@@ -70,9 +71,13 @@ public:
         static bool registerReader(const char *className,
                                    const Reader &reader);
 
-        XmlElement(xmlDocPtr doc,
-                   xmlNodePtr node,
-                   std::list<std::string> &errors);
+        XmlElement(): m_visible(true) {}
+
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        void saveWidgetInternally(const Widget &widget);
 
     private:
         static std::map<std::string, Reader> s_readerRegistry;
