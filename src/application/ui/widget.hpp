@@ -86,13 +86,6 @@ public:
         bool m_visible;
     };
 
-    Widget(const char *name):
-        m_name(name),
-        m_gtkWidget(NULL),
-        m_parent(NULL),
-        m_closing(false)
-    {}
-
     /**
      * A widget may be assigned a name, which is unique in its parent container.
      * @return The name of the widget.
@@ -149,20 +142,20 @@ public:
     void setCurrent();
 
 protected:
-    Widget(XmlElement &xmlElement):
-        m_name(xmlElement.name()),
-        m_parent(NULL),
-        m_closing(false)
-    {}
+    Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}
 
     virtual ~Widget();
+
+    bool build();
+
+    bool restore(XmlElement &xmlElement);
 
     void setGtkWidget(GtkWidget *gtkWidget);
 
     void setClosing(bool closing) { m_closing = closing; }
 
 private:
-    const std::string m_name;
+    std::string m_name;
 
     GtkWidget *m_gtkWidget;
 
