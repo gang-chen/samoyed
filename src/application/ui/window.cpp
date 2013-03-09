@@ -10,7 +10,6 @@
 #include "paned.hpp"
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
-#include "project-explorer.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <assert.h>
@@ -314,19 +313,9 @@ void Window::createToolsPane(Window &window)
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
 }
 
-void Window::createProjectExplorer(Widget &pane)
-{
-    ProjectExplorer *explorer = new ProjectExplorer(PROJECT_EXPLORER_NAME);
-    gtk_widget_set_size_request(explorer->gtkWidget(),
-                                WIDGET_WIDTH_REQUEST,
-                                WIDGET_HEIGHT_REQUEST);
-    static_cast<Notebook &>(pane).addChild(*explorer, 0);
-}
-
 void Window::setupDefaultSidePanes()
 {
     addCreatedCallback(createNavigationPane);
-    addNavigationPaneCreatedCallback(createProjectExplorer);
     addCreatedCallback(createToolsPane);
 }
 

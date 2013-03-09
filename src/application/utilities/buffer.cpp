@@ -3,7 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ buffer.cpp -DSMYD_BUFFER_UNIT_TEST -Werror -Wall -o buffer
+g++ buffer.cpp -DSMYD_BUFFER_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o buffer
 */
 
 #ifdef SMYD_BUFFER_UNIT_TEST

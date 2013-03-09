@@ -3,16 +3,11 @@
 
 /*
 UNIT TEST BUILD
-g++ worker.cpp -DSMYD_WORKER_UNIT_TEST\
+g++ worker.cpp -DSMYD_UNIT_TEST -DSMYD_WORKER_UNIT_TEST\
  `pkg-config --cflags --libs glib-2.0` -I../../../libs -lboost_thread -pthread\
  -Werror -Wall -o worker
 */
 
-#if defined(SMYD_WORKER_UNIT_TEST) || \
-    defined(SMYD_TEXT_FILE_LOADER_UNIT_TEST) || \
-    defined(SMYD_TEXT_FILE_SAVER_UNIT_TEST)
-# define SMYD_UNIT_TEST 1
-#endif
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif

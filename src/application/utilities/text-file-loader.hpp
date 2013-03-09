@@ -21,8 +21,10 @@ class TextFileLoader: public FileLoader
 public:
     TextFileLoader(unsigned int priority,
                    const Callback &callback,
-                   const char *uri):
+                   const char *uri,
+                   const char *encoding):
         FileLoader(priority, callback, uri),
+        m_encoding(encoding),
         m_buffer(NULL)
     {}
 
@@ -40,6 +42,8 @@ public:
     virtual char *description() const;
 
 private:
+    std::string m_encoding;
+
     TextBuffer *m_buffer;
 };
 

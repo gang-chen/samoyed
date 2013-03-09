@@ -22,10 +22,12 @@ public:
                   const Callback &callback,
                   const char *uri,
                   char *text,
-                  int length):
+                  int length,
+                  const char *encoding):
         FileSaver(priority, callback, uri),
         m_text(text),
-        m_length(length)
+        m_length(length),
+        m_encoding(encoding)
     {}
 
     virtual ~TextFileSaver()
@@ -39,6 +41,8 @@ private:
     char *m_text;
 
     int m_length;
+
+    std::string m_encoding;
 };
 
 }

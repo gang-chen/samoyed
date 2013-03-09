@@ -4,8 +4,8 @@
 /*
 UNIT TEST BUILD
 g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
-  -DSMYD_TEXT_FILE_LOADER_UNIT_TEST\
- `pkg-config --cflags --libs glib-2.0 gio-2.0` -I../../../libs -lboost_thread\
+ -DSMYD_UNIT_TEST -DSMYD_TEXT_FILE_LOADER_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0` -I../../../libs -lboost_thread\
  -pthread -Werror -Wall -o text-file-loader
 */
 
@@ -20,11 +20,6 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
 # include <assert.h>
 # include <stdio.h>
 # include <string.h>
-#else
-# include "manager.hpp"
-# include "../application.hpp"
-# include "../resources/project-configuration.hpp"
-# include "../resources/file-configuration.hpp"
 #endif
 #include <string>
 #include <boost/bind.hpp>
@@ -44,25 +39,6 @@ namespace
 const int BUFFER_SIZE = 17;
 #else
 const int BUFFER_SIZE = 10000;
-#endif
-
-#ifndef SMYD_TEXT_FILE_LOADER_UNIT_TEST
-
-bool getFileEncodingFromProjectConfiguration(
-    const char *fileUri,
-    Samoyed::ProjectConfiguration &prjConfig,
-    std::string &fileEncoding)
-{
-    Samoyed::FileConfiguration *fileConfig =
-        prjConfig.findFileConfiguration(fileUri);
-    if (fileConfig)
-    {
-        fileEncoding = fileConfig->encoding();
-        return true;
-    }
-    return false;
-}
-
 #endif
 
 }
@@ -85,19 +61,6 @@ bool TextFileLoader::step()
     char buffer[BUFFER_SIZE];
     char *cp;
 
-#ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
-    std::string encoding(strrchr(uri(), '.') + 1);
-#else
-    // Get the external character encoding of the file from the configuration of
-    // a project containing the file.  Assume the file is contained in one or
-    // more projects, and the encoding configurations are identical in these
-    // projects.
-    std::string encoding("UTF-8");
-    Application::instance().projectConfigurationManager().iterate(
-        boost::bind(getFileEncodingFromProjectConfiguration,
-                    uri(), _1, boost::ref(encoding)));
-#endif
-
     // Open the file.
     file = g_file_new_for_uri(uri());
     fileStream = g_file_read(file, NULL, &m_error);
@@ -105,12 +68,12 @@ bool TextFileLoader::step()
         goto CLEAN_UP;
 
     // Open the encoding converter and setup the input stream.
-    if (encoding == "UTF-8")
+    if (m_encoding == "UTF-8")
         stream = G_INPUT_STREAM(fileStream);
     else
     {
         encodingConverter =
-            g_charset_converter_new("UTF-8", encoding.c_str(), &m_error);
+            g_charset_converter_new("UTF-8", m_encoding.c_str(), &m_error);
         if (m_error)
             goto CLEAN_UP;
         converterStream =
@@ -253,7 +216,7 @@ int main()
         return -1;
     }
     Samoyed::TextFileLoader *loader1 =
-        new Samoyed::TextFileLoader(1, onDone, uri1);
+        new Samoyed::TextFileLoader(1, onDone, uri1, "GBK");
     g_free(uri1);
 
     std::string fileName2(pwd);
@@ -270,7 +233,7 @@ int main()
         return -1;
     }
     Samoyed::TextFileLoader *loader2 =
-        new Samoyed::TextFileLoader(1, onDone, uri2);
+        new Samoyed::TextFileLoader(1, onDone, uri2, "UTF-8");
     g_free(uri2);
 
     std::string fileName3(pwd);
@@ -287,7 +250,7 @@ int main()
         return -1;
     }
     Samoyed::TextFileLoader *loader3 =
-        new Samoyed::TextFileLoader(1, onDone, uri3);
+        new Samoyed::TextFileLoader(1, onDone, uri3, "UTF-8");
     g_free(uri3);
 
     scheduler.schedule(*loader1);

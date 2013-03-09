@@ -3,9 +3,9 @@
 
 /*
 UNIT TEST BUILD
-g++ session-chooser-dialog.cpp ../../utilities/misc.cpp\
- -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
- -Werror -Wall -o session-chooser-dialog
+g++ session-chooser-dialog.cpp ../../utilities/miscellaneous.cpp\
+ -DSMYD_UNIT_TEST -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o session-chooser-dialog
 */
 
 #ifdef HAVE_CONFIG_H
@@ -15,7 +15,7 @@ g++ session-chooser-dialog.cpp ../../utilities/misc.cpp\
 #ifndef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
 # include "../../session.hpp"
 #endif
-#include "../../utilities/misc.hpp"
+#include "../../utilities/miscellaneous.hpp"
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
 # include <stdio.h>
 #endif

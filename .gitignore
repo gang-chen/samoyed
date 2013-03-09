@@ -81,5 +81,5 @@ src/application/utilities/signal
 src/application/utilities/text-buffer
 src/application/utilities/utf8
 src/application/utilities/worker
-src/application/utilities/text-buffer-loader
-src/application/utilities/text-buffer-saver
+src/application/utilities/text-file-loader
+src/application/utilities/text-file-saver

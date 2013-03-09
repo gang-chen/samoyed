@@ -7,27 +7,24 @@ libui_la_SOURCES = \
     editor-group.cpp \
     editor.cpp \
     file.cpp \
-    pane.cpp \
-    project-explorer.cpp \
     project.cpp \
     source-editor.cpp \
     source-file.cpp \
     splash-screen.cpp \
     split-pane.cpp \
+    widget.cpp \
     window.cpp \
     actions.hpp \
     bar.hpp \
     editor-group.hpp \
     editor.hpp \
     file.hpp \
-    pane-base.hpp \
-    pane.hpp \
-    project-explorer.hpp \
     project.hpp \
     source-editor.hpp \
     source-file.hpp \
     splash-screen.hpp \
     split-pane.hpp \
+    widget.hpp \
     window.hpp
 
 libui_la_CPPFLAGS = \

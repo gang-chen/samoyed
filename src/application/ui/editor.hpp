@@ -21,11 +21,9 @@ class Project;
 class Editor: public Widget
 {
 public:
-    Editor(File &file, Project &project);
+    Editor(File &file, Project *project);
 
     virtual ~Editor();
-
-    virtual GtkWidget *gtkWidget() const = 0;
 
     File &file() { return m_file; }
     const File &file() const { return m_file; }
@@ -49,7 +47,7 @@ private:
     /**
      * The project where the editor is.
      */
-    Project &m_project;
+    Project *m_project;
 
     SAMOYED_DEFINE_DOUBLY_LINKED_IN(Editor, File)
     SAMOYED_DEFINE_DOUBLY_LINKED_IN(Editor, Project)

@@ -148,6 +148,8 @@ bool isValidFileName(const char *fileName);
 
 bool removeFileOrDirectory(const char *name, GError **error);
 
+char *getFileType(const char *uri);
+
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
 
 }

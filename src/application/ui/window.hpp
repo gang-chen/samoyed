@@ -33,8 +33,8 @@ class Paned;
  * time.
  *
  * When a window is created, two side panes are created and added to the window.
- * One is a navigation pane, which contains a project explorer.  The other is a
- * tools pane.
+ * One is the navigation pane, which is to the left of the main area.  The other
+ * is the tools pane, which is to the right of the main area.
  */
 class Window: public WidgetContainer
 {
@@ -44,7 +44,6 @@ public:
 
     static const char *NAVIGATION_PANE_NAME = "Navigation Pane";
     static const char *TOOLS_PANE_NAME = "Tools Pane";
-    static const char *PROJECT_EXPLORER_NAME = "Project Explorer";
 
     enum Side
     {
@@ -168,16 +167,6 @@ public:
     { return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME)); }
     const Notebook &toolsPane() const
     { return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME)); }
-    ProjectExplorer &projectExplorer()
-    {
-        return static_cast<ProjectExplorer &>(
-            *navigationPane().findChild(PROJECT_EXPLORER_NAME));
-    }
-    const ProjectExplorer &projectExplorer() const
-    {
-        return static_cast<ProjectExplorer &>(
-            *navigationPane().findChild(PROJECT_EXPLORER_NAME));
-    }
 
     WidgetWithBars &mainArea() { return *m_mainArea; }
     const WidgetWithBars &mainArea() const { return *m_mainArea; }

@@ -4,8 +4,8 @@
 /*
 UNIT TEST BUILD
 g++ text-file-saver.cpp worker.cpp revision.cpp\
- -DSMYD_TEXT_FILE_SAVER_UNIT_TEST\
- `pkg-config --cflags --libs glib-2.0 gio-2.0` -I../../../libs -lboost_thread\
+ -DSMYD_UNIT_TEST -DSMYD_TEXT_FILE_SAVER_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0` -I../../../libs -lboost_thread\
  -pthread -Werror -Wall -o text-file-saver
 */
 
@@ -18,10 +18,6 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 # include "scheduler.hpp"
 # include <stdio.h>
 # include <string.h>
-#else
-# include "../application.hpp"
-# include "../resources/project-configuration.hpp"
-# include "../resources/file-configuration.hpp"
 #endif
 #include <string>
 #include <boost/bind.hpp>
@@ -34,30 +30,6 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 #endif
 #include <gio/gio.h>
 
-namespace
-{
-
-#ifndef SMYD_TEXT_FILE_SAVER_UNIT_TEST
-
-bool getFileEncodingFromProjectConfiguration(
-    const char *fileUri,
-    Samoyed::ProjectConfiguration &prjConfig,
-    std::string &fileEncoding)
-{
-    Samoyed::FileConfiguration *fileConfig =
-        prjConfig.findFileConfiguration(fileUri);
-    if (fileConfig)
-    {
-        fileEncoding = fileConfig->encoding();
-        return true;
-    }
-    return false;
-}
-
-#endif
-
-}
-
 namespace Samoyed
 {
 
@@ -68,19 +40,6 @@ bool TextFileSaver::step()
     GCharsetConverter *encodingConverter = NULL;
     GOutputStream *converterStream = NULL;
     GOutputStream *stream = NULL;
-
-#ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
-    std::string encoding(strrchr(uri(), '.') + 1);
-#else
-    // Get the external character encoding of the file from the configuration of
-    // a project containing the file.  Assume the file is contained in one or
-    // more projects, and the encoding configurations are identical in these
-    // projects.
-    std::string encoding("UTF-8");
-    Application::instance().projectConfigurationManager().iterate(
-        boost::bind(getFileEncodingFromProjectConfiguration,
-                    uri(), _1, boost::ref(encoding)));
-#endif
 
     // Open the file.
     file = g_file_new_for_uri(uri());
@@ -94,12 +53,12 @@ bool TextFileSaver::step()
         goto CLEAN_UP;
 
     // Open the encoding converter and setup the input stream.
-    if (encoding == "UTF-8")
+    if (m_encoding == "UTF-8")
         stream = G_OUTPUT_STREAM(fileStream);
     else
     {
         encodingConverter =
-            g_charset_converter_new(encoding.c_str(), "UTF-8", &m_error);
+            g_charset_converter_new(m_encoding.c_str(), "UTF-8", &m_error);
         if (m_error)
             goto CLEAN_UP;
         converterStream =
@@ -178,7 +137,7 @@ void onDone(Samoyed::Worker &worker)
     }
     if (strcmp(strrchr(saver.uri(), '.'), ".GBK") == 0)
         assert(strcmp(text, TEXT_GBK) == 0);
-    else if (strcmp(strrchr(saver.uri(), '.'), "UTF-8") == 0)
+    else if (strcmp(strrchr(saver.uri(), '.'), ".UTF-8") == 0)
         assert(strcmp(text, TEXT_UTF8) == 0);
     else
         assert(0);
@@ -206,12 +165,12 @@ int main()
     }
     char *textUtf8 = g_strdup(TEXT_UTF8);
     Samoyed::TextFileSaver *saver1 =
-        new Samoyed::TextFileSaver(1, onDone, uri1, textUtf8, -1);
+        new Samoyed::TextFileSaver(1, onDone, uri1, textUtf8, -1, "GBK");
     g_free(uri1);
 
     std::string fileName2(pwd);
     fileName2 += G_DIR_SEPARATOR_S "text-file-saver-test.UTF-8";
-    char *uri2 = g_filename_to_uri(fileName1.c_str(), NULL, NULL);
+    char *uri2 = g_filename_to_uri(fileName2.c_str(), NULL, NULL);
     if (!uri2)
     {
         printf("File name to URI conversion error.\n");
@@ -219,7 +178,7 @@ int main()
     }
     char *text2Utf8 = g_strdup(TEXT_UTF8);
     Samoyed::TextFileSaver *saver2 =
-        new Samoyed::TextFileSaver(1, onDone, uri2, text2Utf8, -1);
+        new Samoyed::TextFileSaver(1, onDone, uri2, text2Utf8, -1, "UTF-8");
     g_free(uri2);
 
     scheduler.schedule(*saver1);

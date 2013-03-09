@@ -10,7 +10,9 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <map>
 #include <boost/utility.hpp>
+#include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
 
@@ -104,9 +106,9 @@ public:
         std::vector<Edit *> m_edits;
     };
 
-    static std::pair<File *, Editor *> open(const char *uri, Project &project);
+    static std::pair<File *, Editor *> open(const char *uri, Project *project);
 
-    Editor *createEditor(Project &project);
+    Editor *createEditor(Project *project);
 
     /**
      * @return False iff the user cancels closing the editor.
@@ -213,6 +215,16 @@ public:
     { return m_edited.connect(callback); }
 
 protected:
+    typedef boost::function<File *(const char *uri)> Factory;
+
+    struct TypeRecord
+    {
+        std::string m_description;
+        Factory m_factory;
+    };
+
+    static bool registerType(const char *mimeType, const TypeRecord &record);
+
     File(const char *uri);
 
     virtual ~File();
@@ -231,7 +243,7 @@ protected:
 
 private:
     // Functions implemented by derived classes and called by the base class.
-    virtual Editor *newEditor(Project &project) = 0;
+    virtual Editor *newEditor(Project *project) = 0;
 
     virtual FileLoader *createLoader(unsigned int priority,
                                      const Worker::Callback &callback) = 0;
@@ -263,6 +275,8 @@ private:
 
     void onSavedWrapper(Worker &worker);
 
+    static std::map<std::string, TypeRecord> s_typeRegistry;
+
     const std::string m_uri;
 
     const std::string m_name;
@@ -286,7 +300,7 @@ private:
     EditStack *m_superUndo;
 
     /**
-     * The number of edits performed since the latest loading or saving.
+     * The number of edits performed since the last loading or saving.
      */
     int m_editCount;
 

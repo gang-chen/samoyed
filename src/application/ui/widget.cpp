@@ -15,7 +15,6 @@
 #include <utility>
 #include <libxml/tree.h>
 
-#define WIDGET "widget"
 #define VISIBLE "visible"
 
 namespace Samoyed
@@ -27,8 +26,7 @@ std::map<std::string, Widget::XmlElement::Reader>
 bool Widget::XmlElement::registerWidget(const char *className,
                                         const Reader &reader)
 {
-    return s_readerRegistry.insert(std::make_pair(std::string(className),
-                                                  reader)).second;
+    return s_readerRegistry.insert(std::make_pair(className, reader)).second;
 }
 
 Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,
@@ -52,7 +50,7 @@ Widget::XmlElement::XmlElement(xmlDocPtr doc,
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   WIDGET "." NAME) == 0)
+                   NAME) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -60,7 +58,7 @@ Widget::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        WIDGET "." VISIBLE) == 0)
+                        VISIBLE) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));

@@ -146,7 +146,7 @@ protected:
 
     virtual ~Widget();
 
-    bool build();
+    bool initialize();
 
     bool restore(XmlElement &xmlElement);
 

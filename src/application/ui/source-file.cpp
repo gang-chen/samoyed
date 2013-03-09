@@ -7,13 +7,8 @@
 #include "source-file.hpp"
 #include "source-editor.hpp"
 #include "../application.hpp"
-#include "../file-type-registry.hpp"
 #include "../resources/file-source.hpp"
 #include "../utilities/manager.hpp"
-#include "../utilities/utf8.hpp"
-#include "../utilities/text-buffer.hpp"
-#include "../utilities/text-file-loader.hpp"
-#include "../utilities/text-file-saver.hpp"
 #include <assert.h>
 #include <string.h>
 
@@ -123,7 +118,7 @@ Editor *SourceFile::newEditor(Project &project)
     return new SourceEditor(*this, project);
 }
 
-void SourceFile::registerFileType()
+void SourceFile::registerType()
 {
     Application::instance().fileTypeRegistry().
         registerFileFactory("text/x-csrc", create);
@@ -135,7 +130,7 @@ void SourceFile::registerFileType()
         registerFileFactory("text/x-c++hdr", create);
 }
 
-SourceFile::SourceFile(const char* uri):
+SourceFile::SourceFile(const char *uri, const char *encoding):
     File(uri)
 {
     m_source = Application::instance().fileSourceManager().reference(uri);

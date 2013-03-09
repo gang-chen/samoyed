@@ -8,7 +8,6 @@
 #include "editor.hpp"
 #include "window.hpp"
 #include "../application.hpp"
-#include "../file-type-registry.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/file-loader.hpp"
 #include "../utilities/file-saver.hpp"
@@ -82,11 +81,18 @@ void File::EditStack::clear()
         delete (*it);
 }
 
-std::pair<File *, Editor *> File::open(const char *uri, Project &project)
+std::map<std::string, File::TypeRecord> File::s_typeRegistry;
+
+bool File::registerType(const char *mimeType, const TypeRecord &record)
+{
+    return s_typeRegistry.insert(std::make_pair(mimeType, record)).second;
+}
+
+std::pair<File *, Editor *> File::open(const char *uri, Project *project)
 {
     // Can't open an already opened file.
     assert(!Application::instance().findFile(uri));
-    char *mimeType = FileTypeRegistry::getFileType(uri);
+    char *mimeType = getFileType(uri);
     if (!mimeType)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -106,9 +112,9 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
         gtk_widget_destroy(dialog);
         return std::pair<File *, Editor *>(NULL, NULL);
     }
-    const FileTypeRegistry::FileFactory *factory =
-        Application::instance().fileTypeRegistry().getFileFactory(mimeType);
-    if (!factory)
+    std::map<std::string, TypeRecord>::const_iterator it =
+        s_typeRegistry.find(mimeType);
+    if (it == s_typeRegistry.end())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -129,10 +135,10 @@ std::pair<File *, Editor *> File::open(const char *uri, Project &project)
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(mimeType);
-    File *file = (*factory)(uri);
+    File *file = it->second.m_factory(uri);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
-    Editor *editor = file->createEditor(project);
+    Editor *editor = file->createEditor();
     if (!editor)
     {
         delete file;
