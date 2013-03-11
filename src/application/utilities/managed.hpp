@@ -25,14 +25,14 @@ class Managed: public boost::noncopyable
 {
 protected:
     Managed(unsigned long id, Manager<Object> &manager):
-        m_refCount(0),
+        m_refCount(1),
         m_id(id),
         m_manager(manager),
         m_nextCached(NULL),
         m_prevCached(NULL)
     {}
 
-    ~Managed()
+    virtual ~Managed()
     { assert(m_refCount == 0); }
 
 private:
