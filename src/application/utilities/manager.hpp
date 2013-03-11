@@ -88,8 +88,8 @@ public:
         }
     }
 
-private:
-    ~Manager()
+protected:
+    virtual ~Manager()
     {
         // Delete all cached objects.
         for (typename Table::const_iterator it = m_table.begin();
@@ -390,8 +390,8 @@ ReferencePointer<Object> Manager<Object>::reference(const Key& key)
             object->m_prevCached = NULL;
             --m_nCachedObjects;
         }
+        ++object->m_refCount;
     }
-    ++object->m_refCount;
     return ReferencePointer<Object>(object, 0);
 }
 
