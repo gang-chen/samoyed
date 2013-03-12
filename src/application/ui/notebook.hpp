@@ -17,18 +17,15 @@ namespace Samoyed
 class Notebook: public WidgetContainer
 {
 public:
-    typedef boost::function<Widget *(const char *widgetName)> WidgetFactory;
-
     class XmlElement: public Widget::XmlElement
     {
     public:
         static bool registerReader();
 
-        XmlElement(const Notebook &notebook);
         virtual ~XmlElement();
         virtual xmlNodePtr write() const;
-        virtual Widget *createWidget();
-        virtual bool restoreWidget(Widget &widget) const;
+        static XmlElement *saveWidget(const Notebook &notebook);
+        virtual Widget *restoreWidget();
 
         /**
          * Remove a child.  When failing to create a child widget, we need to
@@ -47,9 +44,17 @@ public:
         int currentChildIndex() const { return m_currentChildIndex; }
 
     protected:
-        XmlElement(xmlDocPtr doc,
-                   xmlNodePtr node,
-                   std::list<std::string> &errors);
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        void saveWidgetInternally(const Notebook &notebook);
+
+        XmlElement():
+            m_createCloseButtons(false),
+            m_canDragChildren(false),
+            m_currentChildIndex(0)
+        {}
 
     private:
         static Widget::XmlElement *read(xmlDocPtr doc,
@@ -57,7 +62,7 @@ public:
                                         std::list<std::string> &errors);
 
         std::string m_groupName;
-        bool m_closeButtonsExist;
+        bool m_createCloseButtons;
         bool m_canDragChildren;
         std::vector<Widget::XmlElement *> m_children;
         int m_currentChildIndex;

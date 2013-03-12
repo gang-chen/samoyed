@@ -15,7 +15,10 @@
 #include <utility>
 #include <libxml/tree.h>
 
+#define WIDGET "widget"
+#define NAME "name"
 #define VISIBLE "visible"
+#define SAMOYED_WIDGET "samoyed-widget"
 
 namespace Samoyed
 {
@@ -42,9 +45,9 @@ Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,
     return it->second(doc, node, errors);
 }
 
-Widget::XmlElement::XmlElement(xmlDocPtr doc,
-                               xmlNodePtr node,
-                               std::list<std::string> &errors)
+bool Widget::XmlElement::readInternally(xmlDocPtr doc,
+                                        xmlNodePtr node,
+                                        std::list<std::string> &errors)
 {
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
@@ -66,6 +69,38 @@ Widget::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
     }
+    return true;
+}
+
+xmlNodePtr Widget::XmlElement::write() const
+{
+    xmlNodePtr node = xmlNewNode(NULL,
+                                 reinterpret_cast<const xmlChar *>(WIDGET));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(NAME),
+                    reinterpret_cast<const xmlChar *>(m_name.c_str()));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(VISIBLE),
+                    reinterpret_cast<const xmlChar *>(m_visible ? "1" : "0"));
+    return node;
+}
+
+void Widget::XmlElement::saveWidgetInternally(const Widget &widget)
+{
+    m_name = widget.name();
+    m_visible = gtk_widget_get_visible(widget.gtkWidget());
+}
+
+bool Widget::setup(const char *name)
+{
+    m_name = name;
+    return true;
+}
+
+bool Widget::restore(XmlElement &xmlElement)
+{
+    m_name = xmlElement.name();
+    return true;
 }
 
 Widget::~Widget()
@@ -112,13 +147,13 @@ void Widget::setGtkWidget(GtkWidget *gtkWidget)
     // Cannot change the GTK+ widget.
     assert(!m_gtkWidget);
     m_gtkWidget = gtkWidget;
-    g_object_set_data(G_OBJECT(gtkWidget), "samoyed-widget", this);
+    g_object_set_data(G_OBJECT(gtkWidget), SAMOYED_WIDGET, this);
 }
 
 Widget *Widget::getFromGtkWidget(GtkWidget *gtkWidget)
 {
     return static_cast<Widget *>(g_object_get_data(G_OBJECT(gtkWidget),
-                                                   "samoyed-widget"));
+                                                   SAMOYED_WIDGET));
 }
 
 }

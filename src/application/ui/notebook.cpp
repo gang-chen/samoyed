@@ -16,29 +16,34 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
+#define WIDGET "widget"
 #define NOTEBOOK "notebook"
+#define GROUP_NAME "group-name"
 
 namespace Samoyed
 {
 
 bool Notebook::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader("notebook",
+    return Widget::XmlElement::registerReader(NOTEBOOK,
                                               Widget::XmlElement::Reader(read));
 }
 
-Notebook::XmlElement::XmlElement(xmlDocPtr doc,
-                                 xmlNodePtr node,
-                                 std::list<std::string> &errors):
-    m_createCloseButtons(false),
-    m_canDragChildren(false),
-    m_currentChildIndex(0)
+bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
+                                          xmlNodePtr node,
+                                          std::list<std::string> &errors)
 {
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   "group-name") == 0)
+                   WIDGET) == 0)
+        {
+            if (!Widget::XmlElement::readInternally(doc, child, errors))
+                return false;
+        }
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   GROUP_NAME) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -46,7 +51,7 @@ Notebook::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "create-close-buttons") == 0)
+                        CREATE_CLOSE_BUTTONS) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -54,7 +59,7 @@ Notebook::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "can-drag-children") == 0)
+                        CAN_DRAG_CHILDREN) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -62,19 +67,25 @@ Notebook::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "current-child-index") == 0)
+                        CURRENT_CHILD_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
             m_currentChildIndex = atoi(value);
             xmlFree(value);
         }
-        else
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CHILDREN) == 0)
         {
-            Widget::XmlElement *ch =
-                Widget::XmlElement::read(doc, child, errors);
-            if (ch)
-                m_children.push_back(ch);
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
+            {
+                Widget::XmlElement *ch =
+                    Widget::XmlElement::read(doc, grandChild, errors);
+                if (ch)
+                    m_children.push_back(ch);
+            }
         }
     }
     if (m_currentChildIndex < 0)
@@ -92,38 +103,46 @@ Widget::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,
                                                xmlNodePtr node,
                                                std::list<std::string> &errors)
 {
-    return new XmlElement(doc, node, errors);
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(doc, node, errors))
+    {
+        delete element;
+        return NULL;
+    }
+    return element;
 }
 
 xmlNodePtr Notebook::XmlElement::write() const
 {
-    xmlNodePtr node = xmlNewNode(NULL,
-                                 reinterpret_cast<const xmlChar *>("notebook"));
     char *cp;
+    xmlNodePtr node = xmlNewNode(NULL,
+                                 reinterpret_cast<const xmlChar *>(NOTEBOOK));
+    xmlAddChild(node, Widget::XmlElement::write());
     if (groupName())
         xmlNewTextChild(node, NULL,
-                        reinterpret_cast<const xmlChar *>("group-name"),
+                        reinterpret_cast<const xmlChar *>(GROUP_NAME),
                         reinterpret_cast<const xmlChar *>(groupName()));
-    cp = g_strdup_printf("%d", m_createCloseButtons);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("create-close-buttons"),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
-    cp = g_strdup_printf("%d", m_canDragChildren);
+                    reinterpret_cast<const xmlChar *>(CREATE_CLOSE_BUTTONS),
+                    reinterpret_cast<const xmlChar *>(m_createCloseButtons ?
+                                                      "1" : "0"));
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("can-drag-children"),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+                    reinterpret_cast<const xmlChar *>(CAN_DRAG_CHILDREN),
+                    reinterpret_cast<const xmlChar *>(m_canDragChildren ?
+                                                      "1" : "0"));
     cp = g_strdup_printf("%d", m_currentChildIndex);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("current-child-index"),
+                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
+    xmlNodePtr children =
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
     for (std::vector<Widget::XmlElement *>::const_iterator it =
              m_children.begin();
          it != m_children.end();
          ++it)
-        xmlAddChild(node, (*it)->write());
+        xmlAddChild(children, (*it)->write());
+    xmlAddChild(node, children);
     return node;
 }
 

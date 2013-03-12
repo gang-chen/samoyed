@@ -12,8 +12,6 @@
 namespace Samoyed
 {
 
-class FileConfiguration;
-
 class ProjectConfiguration: public Managed<ProjectConfiguration>
 {
 public:
@@ -22,9 +20,6 @@ public:
     Key key() const { return m_uri.c_str(); }
 
     const char *uri() const { return m_uri.c_str(); }
-
-    FileConfiguration *findFileConfiguration(const char *fileUri);
-    const FileConfiguration *findFileConfiguration(const char *fileUri) const;
 
 private:
     ProjectConfiguration(const Key &uri,

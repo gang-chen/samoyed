@@ -14,8 +14,6 @@ namespace Samoyed
 class WidgetContainer: public Widget
 {
 public:
-    WidgetContainer(const char *name): Widget(name) {}
-
     virtual Widget &current()
     { return child(currentChildIndex()).current(); }
 

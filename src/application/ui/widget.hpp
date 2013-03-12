@@ -43,19 +43,13 @@ public:
         /**
          * Write to an XML node.
          */
-        virtual xmlNodePtr write() const = 0;
+        virtual xmlNodePtr write() const;
 
         /**
          * Restore a widget and its child widgets from this XML element.
          * @return The restored widget, or NULL if failed.
          */
         virtual Widget *restoreWidget() = 0;
-
-        /**
-         * Save the information on a widget into this XML element.
-         * @return The created XML element storing the information.
-         */
-        static XmlElement *saveWidget(const Widget &widget);
 
         const char *name() const { return m_name.c_str(); }
 
@@ -131,10 +125,9 @@ public:
     virtual bool close() = 0;
 
     /**
-     * Save the configuration, state and history of this widget in an XML
-     * element.
+     * Save the information on this widget in an XML element.
      */
-    virtual XmlElement *save() const;
+    virtual XmlElement *save() const = 0;
 
     /**
      * Set this widget as the current widget.
@@ -146,7 +139,7 @@ protected:
 
     virtual ~Widget();
 
-    bool initialize();
+    bool setup(const char *name);
 
     bool restore(XmlElement &xmlElement);
 
@@ -155,9 +148,9 @@ protected:
     void setClosing(bool closing) { m_closing = closing; }
 
 private:
-    std::string m_name;
-
     GtkWidget *m_gtkWidget;
+
+    std::string m_name;
 
     std::string m_title;
 

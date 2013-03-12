@@ -9,43 +9,51 @@
 #include <stdlib.h>
 #include <string.h>
 #include <list>
-#include <stdexcept>
 #include <string>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
+#define WIDGET "widget"
+#define PANED "paned"
+#define ORIENTATION "orientation"
+#define HORIZONTAL "horizontal"
+#define VERTICAL "vertical"
+#define CURRENT_CHILD_INDEX "current-child-index"
+#define POSITION "position"
+#define CHILDREN "children"
+
 namespace Samoyed
 {
 
 bool Paned::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader("paned",
+    return Widget::XmlElement::registerReader(PANED,
                                               Widget::XmlElement::Reader(read));
 }
 
-Paned::XmlElement::XmlElement(xmlDocPtr doc,
-                              xmlNodePtr node,
-                              std::list<std::string> &errors):
-    m_orientation(Paned::ORIENTATION_HORIZONTAL),
-    m_currentChildIndex(0),
-    m_position(-1)
+bool Paned::XmlElement::readInternally(xmlDocPtr doc,
+                                       xmlNodePtr node,
+                                       std::list<std::string> &errors):
 {
-    m_children[0] = NULL;
-    m_children[1] = NULL;
-
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   "orientation") == 0)
+                   WIDGET) == 0)
+        {
+            if (!Widget::XmlElement::readInternally(doc, child, errors))
+                return false;
+        }
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   ORIENTATION) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            if (strcmp(value, "horizontal") == 0)
+            if (strcmp(value, HORIZONTAL) == 0)
                 m_orientation = Paned::ORIENTATION_HORIZONTAL;
-            else if (strcmp(value, "vertical") == 0)
+            else if (strcmp(value, VERTICAL) == 0)
                 m_orientation = Paned::ORIENTATOIN_VERTICAL;
             else
             {
@@ -58,7 +66,7 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "current-child-index") == 0)
+                        CURRENT_CHILD_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -66,33 +74,39 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "position") == 0)
+                        POSITION) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1);
+                xmlNodeListGetString(doc, child->children, 1));
             m_position = atoi(value);
             xmlFree(value);
         }
-        else
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CHILDREN) == 0)
         {
-            Widget::XmlElement *ch =
-                Widget::XmlElement::read(doc, child, errors);
-            if (ch)
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
             {
-                if (m_children[1])
+                Widget::XmlElement *ch =
+                    Widget::XmlElement::read(doc, grandChild, errors);
+                if (ch)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: More than two children contained by the "
-                          "paned widget.\n"),
-                        child->line);
-                    errors.push_back(std::string(cp));
-                    g_free(cp);
-                    delete ch;
+                    if (m_children[1])
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: More than two children contained by "
+                              "the paned widget.\n"),
+                            grandChild->line);
+                        errors.push_back(std::string(cp));
+                        g_free(cp);
+                        delete ch;
+                    }
+                    else if (m_children[0])
+                        m_children[1] = ch;
+                    else
+                        m_children[0] = ch;
                 }
-                else if (m_children[0])
-                    m_children[1] = ch;
-                else
-                    m_children[0] = ch;
             }
         }
     }
@@ -104,7 +118,7 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
             node->line);
         errors.push_back(std::string(cp));
         g_free(cp);
-        throw std::runtime_error(std::string());
+        return false;
     }
     if (!m_children[1])
     {
@@ -113,27 +127,24 @@ Paned::XmlElement::XmlElement(xmlDocPtr doc,
             node->line);
         errors.push_back(std::string(cp));
         g_free(cp);
-        delete m_children[0];
-        throw std::runtime_error(std::string());
+        return false;
     }
 
     if (m_currentChildIndex < 0)
         m_currentChildIndex = 0;
     else if (m_currentChildIndex > 1)
         m_currentChildIndex = 1;
+    return true;
 }
 
 Widget::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
                                             xmlNodePtr node,
                                             std::list<std::string> &errors)
 {
-    XmlElement *element;
-    try
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(doc, node, errors))
     {
-        element = new XmlElement(doc, node, errors);
-    }
-    catch (const std::runtime_error &exception)
-    {
+        delete element;
         return NULL;
     }
     return element;
@@ -141,31 +152,35 @@ Widget::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr Paned::XmlElement::write() const
 {
-    xmlNodePtr node = xmlNewNode(NULL,
-                                 reinterpret_cast<const xmlChar *>("paned"));
     char *cp;
+    xmlNodePtr node = xmlNewNode(NULL,
+                                 reinterpret_cast<const xmlChar *>(PANED));
+    xmlAddChild(node, Widget::XmlElement::write());
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("orientation"),
+                    reinterpret_cast<const xmlChar *>(ORIENTATION),
                     m_orientation ==
                     Samoyed::SplitPane::ORIENTATION_HORIZONTAL ?
-                    reinterpret_cast<const xmlChar *>("horizontal") :
-                    reinterpret_cast<const xmlChar *>("vertical"));
+                    reinterpret_cast<const xmlChar *>(HORIZONTAL) :
+                    reinterpret_cast<const xmlChar *>(VERTICAL));
     cp = g_strdup_printf("%d", m_currentChildIndex);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("current-child-index"),
+                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
     cp = g_strdup_printf("%d", m_position);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>("position"),
+                    reinterpret_cast<const xmlChar *>(POSITION),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
-    xmlAddChild(node, m_children[0]->write());
-    xmlAddChild(node, m_children[1]->write());
+    xmlNodePtr children =
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
+    xmlAddChild(children, m_children[0]->write());
+    xmlAddChild(children, m_children[1]->write());
+    xmlAddChild(node, children);
     return node;
 }
 
-Paned::XmlElement::XmlElement(const Paned &paned)
+void Paned::XmlElement::saveWidgetInternally(const Paned &paned)
 {
     m_orientation = paned.orientation();
     m_children[0] = paned.child(0).save();
@@ -174,15 +189,19 @@ Paned::XmlElement::XmlElement(const Paned &paned)
     m_position = paned.position();
 }
 
-Widget *Paned::XmlElement::createWidget()
+Paned::XmlElement *Paned::XmlElement::saveWidget(const Paned &paned)
 {
-    Paned *paned;
-    try
+    XmlElement *element = new XmlElement;
+    element->saveWidgetInternally(paned);
+    return element;
+}
+
+Widget *Paned::XmlElement::restoreWidget()
+{
+    Paned *paned = new Paned;
+    if (!paned->restore(*this))
     {
-        paned = new Paned(*this);
-    }
-    catch (const std::runtime_error &exception)
-    {
+        delete paned;
         return NULL;
     }
     return paned;
@@ -207,15 +226,12 @@ Paned::Paned(const char *name, Orientation orientation):
     setGtkWidget(paned);
 }
 
-Paned::Paned(const char *name,
-             Orientation orientation,
-             Widget &child1, Widget &child2):
-    WidgetContainer(name),
-    m_orientation(orientation),
-    m_currentChildIndex(0)
+bool Paned::setup(const char *name,
+                  Orientation orientation,
+                  Widget &child1, Widget &child2)
 {
-    m_children[0] = NULL;
-    m_children[1] = NULL;
+    if (!Widget::setup(name))
+        return false;
     GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
     g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
@@ -224,27 +240,38 @@ Paned::Paned(const char *name,
     addChildInternally(child2, 1);
 }
 
-Paned::Paned(const XmlElement &xmlElement):
-    WidgetContainer(xmlElement)
+Paned *Paned::create(const char *name,
+                     Orientation orientation,
+                     Widget &child1, Widget &child2)
 {
-    m_children[0] = NULL;
-    m_children[1] = NULL;
-    Widget *child1 = xmlElement.child(0).createWidget();
-    if (!child1)
-        throw std::runtime_error(std::string());
-    Widget *child2 = xmlElement.child(1).createWidget();
-    if (!child2)
+    Paned *paned = new Paned;
+    if (!paned->setup(name, orientation, child1, child2))
     {
-        delete child1;
-        throw std::runtime_error(std::string());
+        delete paned;
+        return NULL;
     }
+    return paned;
+}
+
+bool Paned::restore(XmlElement &xmlElement)
+{
+    if (!Widget::restore(xmlElement))
+        return false;
     GtkWidget *paned =
         gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
     g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(paned);
-    addChildInternally(*child1, 0);
-    addChildInternally(*child2, 1);
+    if (visible())
+        gtk_widget_show_all(paned);
+    Widget *child = xmlElement.child(0).restoreWidget();
+    if (!child)
+        return false;
+    addChildInternally(*child, 0);
+    child = xmlElement.child(1).createWidget();
+    if (!child)
+        return false;
+    addChildInternally(*child, 1);
     m_currentChildIndex = xmlElement.currentChildIndex();
     if (xmlElement.m_position >= 0)
         setPosition(xmlElement.position());
@@ -277,7 +304,7 @@ bool Paned::close()
 
 Widget::XmlElement *Paned::save() const
 {
-    return new XmlElement(*this);
+    return XmlElement::saveWidget(*this);
 }
 
 void Paned::addChildInternally(Widget &child, int index)
@@ -331,20 +358,33 @@ Paned *Paned::split(const char *name,
 {
     Widget *original;
     WidgetContainer *parent;
-    int index;
+    int index, newChildIndex;
 
     if (child1.parent())
+    {
         original = &child1;
+        newChildIndex = 1;
+    }
     else
     {
         assert(child2.parent());
         original = &child2;
+        newChildIndex = 0;
     }
     parent = original->parent();
     index = parent->childIndex(*original);
 
     // Create a paned widget to hold the two widgets.
-    Paned *paned = new Paned(name, orientation);
+    Paned *paned = new Paned;
+    if (!paned->Widget::setup(name))
+    {
+        delete paned;
+        return NULL;
+    }
+    GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(paned, "set-focus-child",
+                     G_CALLBACK(setFocusChild), paned);
+    paned->setGtkWidget(paned);
 
     // Replace the original widget with the paned widget.
     parent->replaceChild(*original, *paned);
@@ -352,6 +392,7 @@ Paned *Paned::split(const char *name,
     // Add the two widgets to the paned widget.
     paned->addChildInternally(child1, 0);
     paned->addChildInternally(child2, 1);
+    paned->m_currentChildIndex = newChildIndex;
 
     return paned;
 }

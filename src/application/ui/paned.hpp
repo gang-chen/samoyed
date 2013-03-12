@@ -27,11 +27,10 @@ public:
     public:
         static bool registerReader();
 
-        XmlElement(const Paned &paned);
         virtual ~XmlElement();
         virtual xmlNodePtr write() const;
-        virtual Widget *createWidget();
-        virtual bool restoreWidget(Widget &widget) const;
+        static XmlElement *saveWidget(const Paned &paned);
+        virtual Widget *restoreWidget();
 
         Paned::Orientation orientation() const { return m_orientation; }
         Widget::XmlElement &child(int index) const
@@ -40,13 +39,20 @@ public:
         int position() const { return m_position; }
 
     protected:
-        /**
-         * @throw std::runtime_error if any fatal error is found in the input
-         * XML file.
-         */
-        XmlElement(xmlDocPtr doc,
-                   xmlNodePtr node,
-                   std::list<std::string> &errors);
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        void saveWidgetInternally(const Paned &paned);
+
+        XmlElement():
+            m_orientation(Paned::ORIENTATION_HORIZONTAL),
+            m_currentChildIndex(0),
+            m_position(-1)
+        {
+            m_children[0] = NULL;
+            m_children[1] = NULL;
+        }
 
     private:
         static Widget::XmlElement *read(xmlDocPtr doc,
@@ -59,13 +65,13 @@ public:
         int m_position;
     };
 
+    static Paned *create(const char *name,
+                         Orientation orientation,
+                         Widget &child1, Widget &child2);
+
     static Paned *split(const char *name,
                         Orientation orientation,
                         Widget &child1, Widget &child2);
-
-    Paned(const char *name,
-          Orientation orientation,
-          Widget &child1, Widget &child2);
 
     virtual bool close();
 
@@ -92,14 +98,21 @@ public:
     { gtk_paned_set_position(GTK_PANED(gtkWidget()), position); }
 
 protected:
-    Paned(const char *name, Orientation orientation);
-
-    /**
-     * @throw std::runtime_error if failing to create the paned widget.
-     */
-    Paned(XmlElement &xmlElement);
+    Paned():
+        m_orientation(ORIENTATION_HORIZONTAL),
+        m_currentChildIndex(0)
+    {
+        m_children[0] = NULL;
+        m_children[1] = NULL;
+    }
 
     virtual ~Paned();
+
+    bool setup(const char *name,
+               Orientation orientation,
+               Widget &child1, Widget &child2);
+
+    bool restore(XmlElement &xmlElement);
 
     void addChildInternally(Widget &child, int index);
 

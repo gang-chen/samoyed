@@ -51,7 +51,7 @@ private:
     {
         printf("Constructing %s\n", this->name());
     }
-    ~Person()
+    virtual ~Person()
     {
         printf("Destructing %s\n", name());
     }
