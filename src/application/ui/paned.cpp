@@ -43,7 +43,8 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    WIDGET) == 0)
         {
-            if (!Widget::XmlElement::readInternally(doc, child, errors))
+            if (!WidgetContainer::XmlElement::readInternally(doc, child,
+                                                             errors))
                 return false;
         }
         if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -155,7 +156,7 @@ xmlNodePtr Paned::XmlElement::write() const
     char *cp;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(PANED));
-    xmlAddChild(node, Widget::XmlElement::write());
+    xmlAddChild(node, WidgetContainer::XmlElement::write());
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(ORIENTATION),
                     m_orientation ==
@@ -182,7 +183,7 @@ xmlNodePtr Paned::XmlElement::write() const
 
 void Paned::XmlElement::saveWidgetInternally(const Paned &paned)
 {
-    Widget::XmlElement::saveWidgetInternally(paned);
+    WidgetContainer::XmlElement::saveWidgetInternally(paned);
     m_orientation = paned.orientation();
     m_children[0] = paned.child(0).save();
     m_children[1] = paned.child(1).save();
@@ -231,7 +232,7 @@ bool Paned::setup(const char *name,
                   Orientation orientation,
                   Widget &child1, Widget &child2)
 {
-    if (!Widget::setup(name))
+    if (!WidgetContainer::setup(name))
         return false;
     GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
     g_signal_connect(paned, "set-focus-child",
@@ -256,7 +257,7 @@ Paned *Paned::create(const char *name,
 
 bool Paned::restore(XmlElement &xmlElement)
 {
-    if (!Widget::restore(xmlElement))
+    if (!WidgetContainer::restore(xmlElement))
         return false;
     GtkWidget *paned =
         gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
