@@ -43,7 +43,8 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    WIDGET) == 0)
         {
-            if (!Widget::XmlElement::readInternally(doc, child, errors))
+            if (!WidgetContainer::XmlElement::readInternally(doc,
+                                                             child, errors))
                 return false;
         }
         if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -121,7 +122,7 @@ xmlNodePtr Notebook::XmlElement::write() const
     char *cp;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(NOTEBOOK));
-    xmlAddChild(node, Widget::XmlElement::write());
+    xmlAddChild(node, WidgetContainer::XmlElement::write());
     if (groupName())
         xmlNewTextChild(node, NULL,
                         reinterpret_cast<const xmlChar *>(GROUP_NAME),
@@ -152,7 +153,7 @@ xmlNodePtr Notebook::XmlElement::write() const
 
 void Notebook::XmlElement::saveWidgetInternally(const Notebook &notebook)
 {
-    Widget::XmlElement::saveWidgetInternally(notebook);
+    WidgetContainer::XmlElement::saveWidgetInternally(notebook);
     if (notebook.groupName())
         m_groupName = notebook.groupName();
     m_createCloseButtons = notebook.createCloseButtons();
@@ -203,7 +204,7 @@ Notebook::XmlElement::~XmlElement()
 bool Notebook::setup(const char *name, const char *groupName,
                      bool createCloseButtons, bool canDragChildren)
 {
-    if (!Widget::setup(name))
+    if (!WidgetContainer::setup(name))
         return false;
     GtkWidget *notebook = gtk_notebook_new();
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
@@ -238,7 +239,7 @@ Notebook *Notebook::create(const char *name, const char *groupName,
 
 bool Notebook::restore(XmlElement &xmlElement)
 {
-    if (!Widget::restore(xmlElement))
+    if (!WidgetContainer::restore(xmlElement))
         return false;
     GtkWidget *notebook = gtk_notebook_new();
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
