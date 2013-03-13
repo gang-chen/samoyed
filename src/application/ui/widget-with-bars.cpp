@@ -20,6 +20,7 @@
 #define WIDGET_WITH_BARS "widget-with-bars"
 #define MAIN_CHILD "main-child"
 #define BARS "bars"
+#define CURRENT_CHILD_INDEX "current-child-index"
 
 namespace Samoyed
 {
@@ -133,11 +134,7 @@ xmlNodePtr WidgetWithBars::XmlElement::write() const
     char *cp;
     xmlNodePtr node =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS));
-    cp = g_strdup_printf("%d", m_currentChildIndex);
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+    xmlAddChild(node, WidgetContainer::XmlElement::write());
     xmlNodePtr mainChild =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(MAIN_CHILD));
     xmlAddChild(mainChild, m_mainChild->write());
@@ -149,6 +146,11 @@ xmlNodePtr WidgetWithBars::XmlElement::write() const
          ++it)
         xmlAddChild(bars, (*it)->write());
     xmlAddChild(node, bars);
+    cp = g_strdup_printf("%d", m_currentChildIndex);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
     return node;
 }
 
@@ -252,7 +254,10 @@ bool WidgetWithBars::restore(XmlElement &xmlElement)
     {
         Bar *bar = xmlElement.bar(i).createWidget();
         if (!bar)
+        {
             xmlElement.removeBar(i);
+            --i;
+        }
         else
             addBar(*bar);
     }
