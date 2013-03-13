@@ -20,9 +20,9 @@
 #define ORIENTATION "orientation"
 #define HORIZONTAL "horizontal"
 #define VERTICAL "vertical"
+#define CHILDREN "children"
 #define CURRENT_CHILD_INDEX "current-child-index"
 #define POSITION "position"
-#define CHILDREN "children"
 
 namespace Samoyed
 {
@@ -67,22 +67,6 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        CURRENT_CHILD_INDEX) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_currentChildIndex = atoi(value);
-            xmlFree(value);
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        POSITION) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_position = atoi(value);
-            xmlFree(value);
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CHILDREN) == 0)
         {
             for (xmlNodePtr grandChild = child->children;
@@ -109,6 +93,22 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                         m_children[0] = ch;
                 }
             }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CURRENT_CHILD_INDEX) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_currentChildIndex = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        POSITION) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_position = atoi(value);
+            xmlFree(value);
         }
     }
 
@@ -163,6 +163,11 @@ xmlNodePtr Paned::XmlElement::write() const
                     Samoyed::SplitPane::ORIENTATION_HORIZONTAL ?
                     reinterpret_cast<const xmlChar *>(HORIZONTAL) :
                     reinterpret_cast<const xmlChar *>(VERTICAL));
+    xmlNodePtr children =
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
+    xmlAddChild(children, m_children[0]->write());
+    xmlAddChild(children, m_children[1]->write());
+    xmlAddChild(node, children);
     cp = g_strdup_printf("%d", m_currentChildIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
@@ -173,11 +178,6 @@ xmlNodePtr Paned::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>(POSITION),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
-    xmlNodePtr children =
-        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
-    xmlAddChild(children, m_children[0]->write());
-    xmlAddChild(children, m_children[1]->write());
-    xmlAddChild(node, children);
     return node;
 }
 
@@ -279,8 +279,8 @@ bool Paned::restore(XmlElement &xmlElement)
         gtk_widget_show_all(paned);
     addChildInternally(*child1, 0);
     addChildInternally(*child2, 1);
-    m_currentChildIndex = xmlElement.currentChildIndex();
-    if (xmlElement.m_position >= 0)
+    setCurrentChildIndex(xmlElement.currentChildIndex());
+    if (xmlElement.position() >= 0)
         setPosition(xmlElement.position());
     return true;
 }
