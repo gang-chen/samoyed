@@ -68,10 +68,10 @@ public:
         int m_currentChildIndex;
     };
 
-    Notebook(const char *name,
-             const char *groupName,
-             bool createCloseButtons,
-             bool canDragChildren);
+    static Notebook *create(const char *name,
+                            const char *groupName,
+                            bool createCloseButtons,
+                            bool canDragChildren);
 
     virtual bool close();
 
@@ -104,9 +104,16 @@ public:
     bool canDragChildren() const { return m_canDragChildren; }
 
 protected:
-    Notebook(XmlElement &xmlElement);
+    Notebook(): m_createCloseButtons(false), m_canDragChildren(false) {}
 
     virtual ~Notebook();
+
+    bool setup(const char *name,
+               const char *groupName,
+               bool createCloseButtons,
+               bool canDragChildren);
+
+    bool restore(XmlElement &xmlElement);
 
     void addChildInternally(Widget &child, int index);
 
