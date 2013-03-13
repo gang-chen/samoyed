@@ -27,11 +27,10 @@ public:
     public:
         static bool registerReader();
 
-        XmlElement(const WidgetWithBars &widget);
         virtual ~XmlElement();
         virtual xmlNodePtr write() const;
-        virtual Widget *restore();
-        virtual bool restoreWidget(Widget &widget) const;
+        static XmlElement *saveWidget(const WidgetWithBars &widget);
+        virtual Widget *restoreWidget();
 
         /**
          * Remove a bar.  When failing to create a bar, we need to remove the
@@ -46,13 +45,13 @@ public:
         int currentChildIndex() const { return m_currentChildIndex; }
 
     protected:
-        /**
-         * @throw std::runtime_error if any fatal error is found in the input
-         * XML file.
-         */
-        XmlElement(xmlDocPtr doc,
-                   xmlNodePtr node,
-                   std::list<std::string> &errors);
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        void saveWidgetInternally(const WidgetWithBars &widget);
+
+        XmlElement(): m_mainChild(NULL), m_currentChildIndex(0) {}
 
     private:
         static Widget::XmlElement *read(xmlDocPtr doc,
@@ -64,7 +63,7 @@ public:
         int m_currentChildIndex;
     };
 
-    WidgetWithBars(const char *name, Widget &mainChild);
+    static WidgetWithBars *create(const char *name, Widget &mainChild);
 
     virtual bool close();
 
@@ -99,12 +98,17 @@ public:
     int barIndex(const Bar &bar) const;
 
 protected:
-    /**
-     * @throw std::runtime_error if failing to create the widget.
-     */
-    WidgetWithBars(XmlElement &xmlElement);
+    WidgetWithBars():
+        m_horizontalGrid(NULL),
+        m_mainChild(NULL),
+        m_currentChildIndex(0)
+    {}
 
     virtual ~WidgetWithBars();
+
+    bool setup(const char *name, Widget &mainChild);
+
+    bool restore(XmlElement &xmlElement);
 
     void addMainChild(Widget &child);
 
