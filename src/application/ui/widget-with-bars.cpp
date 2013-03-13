@@ -16,9 +16,10 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
+#define WIDGET "widget"
 #define WIDGET_WITH_BARS "widget-with-bars"
+#define MAIN_CHILD "main-child"
 #define BARS "bars"
-#define 
 
 namespace Samoyed
 {
@@ -29,52 +30,66 @@ bool WidgetWithBars::XmlElement::registerReader()
                                               Widget::XmlElement::Reader(read));
 }
 
-WidgetWithBars::XmlElement::XmlElement(xmlDocPtr doc,
-                                       xmlNodePtr node,
-                                       std::list<std::string> &errors):
-    m_mainChild(NULL),
-    m_currentChildIndex(0)
+bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
+                                                xmlNodePtr node,
+                                                std::list<std::string> &errors)
 {
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   WIDGET_WITH_BARS "." BARS) == 0)
+                   WIDGET) == 0)
         {
-            for (xmlNodePtr bar = child->children; bar; bar = bar->next)
+            if (!WidgetContainer::XmlElement::readInternally(doc, child,
+                                                             errors))
+                return false;
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        MAIN_CHILD) == 0)
+        {
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
             {
-                Bar::XmlElement *b = Bar::XmlElement::read(doc, bar, errors);
-                if (b)
-                    m_bars.push_back(b);
+                Wodget::XmlElement *ch =
+                    Widget::XmlElement::read(doc, grandChild, errors);
+                if (ch)
+                {
+                    if (m_mainChild)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: More than one main children contained "
+                              "by the bin.\n"),
+                            grandChild->line);
+                        errors.push_back(std::string(cp));
+                        g_free(cp);
+                        delete ch;
+                    }
+                    else
+                        m_mainChild = ch;
+                }
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        WIDGET_WITH_BARS "." CURRENT_CHILD_INDEX) == 0)
+                        BARS) == 0)
+        {
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
+            {
+                Bar::XmlElement *bar =
+                    Bar::XmlElement::read(doc, grandChild, errors);
+                if (bar)
+                    m_bars.push_back(bar);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CURRENT_CHILD_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
             m_currentChildIndex = atoi(value);
             xmlFree(value);
-        }
-        else
-        {
-            Widget::XmlElement *ch
-                = Widget::XmlElement::read(doc, child, errors);
-            if (ch)
-            {
-                if (m_mainChild)
-                {
-                    cp = g_strdup_printf(
-                        _("Line %d: More than one main children contained by "
-                          "the bin.\n"),
-                        child->line);
-                    errors.push_back(std::string(cp));
-                    g_free(cp);
-                    delete ch;
-                }
-                else
-                    m_mainChild = ch;
-            }
         }
     }
 
@@ -96,6 +111,7 @@ WidgetWithBars::XmlElement::XmlElement(xmlDocPtr doc,
         m_currentChildIndex = 0;
     else if (m_currentChildIndex == barCount() + 1)
         m_currentChildIndex = barCount();
+    return true;
 }
 
 Widget::XmlElement *
@@ -103,13 +119,10 @@ WidgetWithBars::XmlElement::read(xmlDocPtr doc,
                                  xmlNodePtr node,
                                  std::list<std::string> &errors)
 {
-    XmlElement *element;
-    try
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(doc, node, errors))
     {
-        element = new XmlElement(doc, node, errors);
-    }
-    catch (const std::runtime_error &exception)
-    {
+        delete element;
         return NULL;
     }
     return element;
@@ -117,29 +130,32 @@ WidgetWithBars::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr WidgetWithBars::XmlElement::write() const
 {
+    char *cp;
     xmlNodePtr node =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS));
-    char *cp;
     cp = g_strdup_printf("%d", m_currentChildIndex);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS "."
-                                                      CURRENT_CHILD_INDEX),
+                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
+    xmlNodePtr mainChild =
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(MAIN_CHILD));
+    xmlAddChild(mainChild, m_mainChild->write());
+    xmlAddChild(node, mainChild);
     xmlNodePtr bars =
-        xmlNewNode(NULL,
-                   reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS "."
-                                                     BARS));
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(BARS));
     for (std::vector<Bar::XmlElement *>::const_iterator it = m_bars.begin();
          it != m_bars.end();
          ++it)
         xmlAddChild(bars, (*it)->write());
     xmlAddChild(node, bars);
-    xmlAddChild(node, m_mainChild->write());
+    return node;
 }
 
-WidgetWithBars::XmlElement::XmlElement(const WidgetWithBars &widget)
+void
+WidgetWithBars::XmlElement::saveWidgetInternally(const WidgetWithBars &widget)
 {
+    WidgetContainer::XmlElement::saveWidgetInternally(widget);
     m_mainChild = widget.mainChild().save();
     m_bars.reserve(widget.barCount());
     for (int i = 0; i < widget.barCount(); ++i)
@@ -147,15 +163,20 @@ WidgetWithBars::XmlElement::XmlElement(const WidgetWithBars &widget)
     m_currentChildIndex = widget.currentChildIndex();
 }
 
-Widget *WidgetWithBars::XmlElement::restore()
+WidgetWithBars::XmlElement *
+WidgetWithBars::XmlElement::saveWidget(const WidgetWithBars &widget)
 {
-    WidgetWithBars *widget;
-    try
+    XmlElement *element = new XmlElement;
+    element->saveWidgetInternally(widget);
+    return element;
+}
+
+Widget *WidgetWithBars::XmlElement::restoreWidget()
+{
+    WidgetWithBars *widget = new WidgetWithBars;
+    if (!widget->restore(*this))
     {
-        widget = new WidgetWithBars(*this);
-    }
-    catch (const std::runtime_error &exception)
-    {
+        delete widget;
         return NULL;
     }
     return widget;
@@ -180,11 +201,10 @@ WidgetWithBars::XmlElement::~XmlElement()
         delete *it;
 }
 
-WidgetWithBars::WidgetWithBars(const char *name, Widget &mainChild):
-    WidgetContainer(name),
-    m_mainChild(NULL),
-    m_currentChildIndex(0)
+bool WidgetWithBars::setup(const char *name, Widget &mainChild)
 {
+    if (!WidgetContainer::setup(name))
+        return false;
     GtkWidget *verticalGrid = gtk_grid_new();
     m_horizontalGrid = gtk_grid_new();
     gtk_grid_attach(GTK_GRID(verticalGrid), m_horizontalGrid, 0, 0, 1, 1);
@@ -195,15 +215,27 @@ WidgetWithBars::WidgetWithBars(const char *name, Widget &mainChild):
     setGtkWidget(verticalGrid);
     gtk_widget_show_all(verticalGrid);
     addMainChild(mainChild);
+    return true;
 }
 
-WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
-    WidgetContainer(xmlElement),
-    m_mainChild(NULL)
+WidgetWithBars *WidgetWithBars::create(const char *name, Widget &mainChild)
 {
-    Widget *mainChild = xmlElement.mainChild().createWidget();
+    WidgetWithBars *widget = new WidgetWithBars;
+    if (!widget->setup(name, mainChild))
+    {
+        delete widget;
+        return NULL;
+    }
+    return widget;
+}
+
+bool WidgetWithBars::restore(XmlElement &xmlElement)
+{
+    if (!WidgetContaienr::restore(xmlElement))
+        return false;
+    Widget *mainChild = xmlElement.mainChild().restoreWidget();
     if (!mainChild)
-        throw std::runtime_error(std::string());
+        return false;
     GtkWidget *verticalGrid = gtk_grid_new();
     m_horizontalGrid = gtk_grid_new();
     gtk_grid_attach(GTK_GRID(verticalGrid), m_horizontalGrid, 0, 0, 1, 1);
@@ -225,6 +257,7 @@ WidgetWithBars::WidgetWithBars(XmlElement &xmlElement):
             addBar(*bar);
     }
     setCurrentChildIndex(xmlElement.currentChildIndex());
+    return true;
 }
 
 WidgetWithBars::~WidgetWithBars()
@@ -261,7 +294,7 @@ bool WidgetWithBars::close()
 
 Widget::XmlElement *WidgetWithBars::save() const
 {
-    return new XmlElement(*this);
+    return XmlElement::saveWidget(*this);
 }
 
 void WidgetWithBars::addMainChild(Widget &child)
