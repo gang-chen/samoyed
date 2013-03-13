@@ -21,8 +21,8 @@
 #define GROUP_NAME "group-name"
 #define CREATE_CLOSE_BUTTONS "creaet-close-buttons"
 #define CAN_DRAG_CHILDREN "can-drag-children"
-#define CURRENT_CHILD_INDEX "current-child-index"
 #define CHILDREN "children"
+#define CURRENT_CHILD_INDEX "current-child-index"
 
 namespace Samoyed
 {
@@ -47,7 +47,7 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                                                              child, errors))
                 return false;
         }
-        if (strcmp(reinterpret_cast<const char *>(child->name),
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
                    GROUP_NAME) == 0)
         {
             value = reinterpret_cast<char *>(
@@ -72,14 +72,6 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        CURRENT_CHILD_INDEX) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_currentChildIndex = atoi(value);
-            xmlFree(value);
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CHILDREN) == 0)
         {
             for (xmlNodePtr grandChild = child->children;
@@ -91,6 +83,14 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                 if (ch)
                     m_children.push_back(ch);
             }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CURRENT_CHILD_INDEX) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_currentChildIndex = atoi(value);
+            xmlFree(value);
         }
     }
     if (m_currentChildIndex < 0)
@@ -135,11 +135,6 @@ xmlNodePtr Notebook::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>(CAN_DRAG_CHILDREN),
                     reinterpret_cast<const xmlChar *>(m_canDragChildren ?
                                                       "1" : "0"));
-    cp = g_strdup_printf("%d", m_currentChildIndex);
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
     xmlNodePtr children =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
     for (std::vector<Widget::XmlElement *>::const_iterator it =
@@ -148,6 +143,11 @@ xmlNodePtr Notebook::XmlElement::write() const
          ++it)
         xmlAddChild(children, (*it)->write());
     xmlAddChild(node, children);
+    cp = g_strdup_printf("%d", m_currentChildIndex);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
     return node;
 }
 
