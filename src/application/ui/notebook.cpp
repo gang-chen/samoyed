@@ -223,6 +223,7 @@ bool Notebook::setup(const char *name, const char *groupName,
     }
     setGtkWidget(notebook);
     gtk_widget_show_all(notebook);
+    return true;
 }
 
 Notebook *Notebook::create(const char *name, const char *groupName,
@@ -263,14 +264,18 @@ bool Notebook::restore(XmlElement &xmlElement)
     m_children.reserve(xmlElement.childCount());
     for (int i = 0; i < xmlElement.childCount(); ++i)
     {
-        Widget *child = xmlElement.child(i).createWidget();
+        Widget *child = xmlElement.child(i).restoreWidget();
         if (!child)
+        {
             xmlElement.removeChild(i);
+            --i;
+        }
         else
             addChild(*child);
     }
     if (childCount())
         setCurrentChildIndex(xmlElement.currentChildIndex());
+    return true;
 }
 
 Notebook::~Notebook()
