@@ -182,6 +182,7 @@ xmlNodePtr Paned::XmlElement::write() const
 
 void Paned::XmlElement::saveWidgetInternally(const Paned &paned)
 {
+    Widget::XmlElement::saveWidgetInternally(paned);
     m_orientation = paned.orientation();
     m_children[0] = paned.child(0).save();
     m_children[1] = paned.child(1).save();
@@ -262,7 +263,7 @@ bool Paned::restore(XmlElement &xmlElement)
     g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(paned);
-    if (visible())
+    if (xmlElement.visible())
         gtk_widget_show_all(paned);
     Widget *child = xmlElement.child(0).restoreWidget();
     if (!child)
