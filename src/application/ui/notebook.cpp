@@ -19,6 +19,10 @@
 #define WIDGET "widget"
 #define NOTEBOOK "notebook"
 #define GROUP_NAME "group-name"
+#define CREATE_CLOSE_BUTTONS "creaet-close-buttons"
+#define CAN_DRAG_CHILDREN "can-drag-children"
+#define CURRENT_CHILD_INDEX "current-child-index"
+#define CHILDREN "children"
 
 namespace Samoyed
 {
@@ -146,8 +150,9 @@ xmlNodePtr Notebook::XmlElement::write() const
     return node;
 }
 
-Notebook::XmlElement::XmlElement(const Notebook &notebook)
+void Notebook::XmlElement::saveWidgetInternally(const Notebook &notebook)
 {
+    Widget::XmlElement::saveWidgetInternally(notebook);
     if (notebook.groupName())
         m_groupName = notebook.groupName();
     m_createCloseButtons = notebook.createCloseButtons();
@@ -158,9 +163,22 @@ Notebook::XmlElement::XmlElement(const Notebook &notebook)
     m_currentChildIndex = notebook.currentChildIndex();
 }
 
-Widget *Notebook::XmlElement::restore()
+Notebook::XmlElement *Notebook::XmlElement::saveWidget(const Notebook &notebook)
 {
-    return new Notebook(*this);
+    XmlElement *element = new XmlElement;
+    element->saveWidgetInternally(notebook);
+    return element;
+}
+
+Widget *Notebook::XmlElement::restoreWidget()
+{
+    Notebook *notebook = new Notebook;
+    if (!notebook->restore(*this))
+    {
+        delete notebook;
+        return NULL;
+    }
+    return notebook;
 }
 
 void Notebook::XmlElement::removeChild(int index)
@@ -182,16 +200,17 @@ Notebook::XmlElement::~XmlElement()
         delete *it;
 }
 
-Notebook::Notebook(const char *name, const char *groupName,
-                   bool createCloseButtons, bool canDragChildren):
-    WidgetContainer(name),
-    m_createCloseButtons(createCloseButtons),
-    m_canDragChildren(canDragChildren)
+bool Notebook::setup(const char *name, const char *groupName,
+                     bool createCloseButtons, bool canDragChildren)
 {
+    if (!Widget::setup(name))
+        return false;
     GtkWidget *notebook = gtk_notebook_new();
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
     if (groupName)
         gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), groupName);
+    m_createCloseButtons = createCloseButtons;
+    m_canDragChildren = canDragChildren;
     if (m_canDragChildren)
     {
         g_signal_connect(notebook, "page-reordered",
@@ -205,16 +224,29 @@ Notebook::Notebook(const char *name, const char *groupName,
     gtk_widget_show_all(notebook);
 }
 
-Notebook::Notebook(XmlElement &xmlElement):
-    WidgetContainer(xmlElement),
-    m_createCloseButtons(xmlElement.createCloseButtons()),
-    m_canDragChildren(xmlElement.canDragChildren())
+Notebook *Notebook::create(const char *name, const char *groupName,
+                           bool createCloseButtons, bool canDragChildren)
 {
+    Notebook *notebook = new Notebook;
+    if (!notebook->setup(name, groupName, createCloseButtons, canDragChildren))
+    {
+        delete notebook;
+        return NULL;
+    }
+    return notebook;
+}
+
+bool Notebook::restore(XmlElement &xmlElement)
+{
+    if (!Widget::restore(xmlElement))
+        return false;
     GtkWidget *notebook = gtk_notebook_new();
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
     if (xmlElement.groupName())
         gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook),
                                     xmlElement.groupName());
+    m_createCloseButtons = xmlElement.createCloseButtons();
+    m_canDragChildren = xmlElement.canDragChildren();
     if (m_canDragChildren)
     {
         g_signal_connect(notebook, "page-reordered",
@@ -286,7 +318,7 @@ bool Notebook::close()
 
 Widget::XmlElement *Notebook::save() const
 {
-    return new XmlElement(*this);
+    return XmlElement::saveWidget(*this);
 }
 
 void Notebook::addChildInternally(Widget &child, int index)
