@@ -240,6 +240,7 @@ bool Paned::setup(const char *name,
     setGtkWidget(paned);
     addChildInternally(child1, 0);
     addChildInternally(child2, 1);
+    return true;
 }
 
 Paned *Paned::create(const char *name,
@@ -266,17 +267,21 @@ bool Paned::restore(XmlElement &xmlElement)
     setGtkWidget(paned);
     if (xmlElement.visible())
         gtk_widget_show_all(paned);
-    Widget *child = xmlElement.child(0).restoreWidget();
-    if (!child)
+    Widget *child1 = xmlElement.child(0).restoreWidget();
+    if (!child1)
         return false;
-    addChildInternally(*child, 0);
-    child = xmlElement.child(1).createWidget();
-    if (!child)
+    Widget *child2 = xmlElement.child(1).restoreWidget();
+    if (!child2)
+    {
+        delete child1;
         return false;
-    addChildInternally(*child, 1);
+    }
+    addChildInternally(*child1, 0);
+    addChildInternally(*child2, 1);
     m_currentChildIndex = xmlElement.currentChildIndex();
     if (xmlElement.m_position >= 0)
         setPosition(xmlElement.position());
+    return true;
 }
 
 Paned::~Paned()
