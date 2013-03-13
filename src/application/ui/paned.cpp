@@ -47,8 +47,8 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                                                              errors))
                 return false;
         }
-        if (strcmp(reinterpret_cast<const char *>(child->name),
-                   ORIENTATION) == 0)
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        ORIENTATION) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -238,6 +238,7 @@ bool Paned::setup(const char *name,
     g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(paned);
+    gtk_widget_show_all(paned);
     addChildInternally(child1, 0);
     addChildInternally(child2, 1);
     return true;
@@ -260,13 +261,6 @@ bool Paned::restore(XmlElement &xmlElement)
 {
     if (!WidgetContainer::restore(xmlElement))
         return false;
-    GtkWidget *paned =
-        gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
-    g_signal_connect(paned, "set-focus-child",
-                     G_CALLBACK(setFocusChild), this);
-    setGtkWidget(paned);
-    if (xmlElement.visible())
-        gtk_widget_show_all(paned);
     Widget *child1 = xmlElement.child(0).restoreWidget();
     if (!child1)
         return false;
@@ -276,6 +270,13 @@ bool Paned::restore(XmlElement &xmlElement)
         delete child1;
         return false;
     }
+    GtkWidget *paned =
+        gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
+    g_signal_connect(paned, "set-focus-child",
+                     G_CALLBACK(setFocusChild), this);
+    setGtkWidget(paned);
+    if (xmlElement.visible())
+        gtk_widget_show_all(paned);
     addChildInternally(*child1, 0);
     addChildInternally(*child2, 1);
     m_currentChildIndex = xmlElement.currentChildIndex();
