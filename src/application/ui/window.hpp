@@ -76,27 +76,29 @@ public:
     public:
         static bool registerReader();
 
-        XmlElement(const Paned &paned);
         virtual ~XmlElement();
         virtual xmlNodePtr write() const;
-        virtual Widget *createWidget();
-        virtual bool restoreWidget(Widget &widget) const;
+        static XmlElement *saveWidget(const Window &window);
+        virtual Widget *restoreWidget();
 
+        const Configuration &configuration() const { return m_configuration; }
         Widget::XmlElement &child() const { return *m_child; }
 
-    private:
-        /**
-         * @throw std::runtime_error if any fatal error is found in the input
-         * XML file.
-         */
-        XmlElement(xmlDocPtr doc,
-                   xmlNodePtr node,
-                   std::list<std::string> &errors);
+    protected:
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
 
+        void saveWidgetInternally(const Window &window);
+
+        XmlElement(): m_child(NULL) {}
+
+    private:
         static Widget::XmlElement *read(xmlDocPtr doc,
                                         xmlNodePtr node,
                                         std::list<std::string> &errors);
 
+        Configuration m_configuration;
         Widget::XmlElement *m_child;
     };
 
@@ -129,7 +131,7 @@ public:
      */
     static void setupDefaultSidePanes();
 
-    Window(const char *name, const Configuration &config);
+    static Window *create(const char *name, const Configuration &config);
 
     virtual bool close();
 
@@ -182,6 +184,27 @@ public:
      */
     Notebook *splitCurrentEditorGroup(Side side);
 
+protected:
+    Window():
+        m_grid(NULL),
+        m_menuBar(NULL),
+        m_toolbar(NULL),
+        m_child(NULL),
+        m_mainArea(NULL),
+        m_uiManager(NULL),
+        m_actions(this)
+    {}
+
+    virtual ~Window();
+
+    bool setup(const char *name, const Configuration &config);
+
+    bool restore(XmlElement &xmlElement);
+
+    void addChildInternally(Widget &child);
+
+    virtual void removeChildInternally(Widget &child);
+
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
@@ -190,20 +213,16 @@ private:
     static gboolean onFocusInEvent(GtkWidget *widget,
                                    GdkEvent *event,
                                    gpointer window);
+    static void onSidePaneToggled(GtkCheckMenuItem *menuItem, gpointer window);
 
     static void createNavigationPane(Window &window);
     static void createToolsPane(Window &window);
     static void createProjectExplorer(Widget &pane);
 
-    Window(XmlElement &xmlElement);
+    bool build(const Configuration &config);
 
-    virtual ~Window();
-
-    void build(const Configuration &config);
-
-    void addChildInternally(Widget &child);
-
-    virtual void removeChildInternally(Widget &child);
+    void createMenuItemForSidePane(const char *name, bool visible);
+    void createMenuItemsForSidePanesRecursively(const Widget &widget);
 
     Created s_created;
     SidePaneCreated s_navigationPaneCreated;

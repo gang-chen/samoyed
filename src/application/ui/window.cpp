@@ -15,11 +15,25 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <algorithm>
 #include <list>
 #include <string>
-#include <algorithm>
+#include <vector>
+#include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
+#include <libxml/tree.h>
+
+#define WIDGET "widget"
+#define WINDOW "window"
+#define SCREEN_INDEX "screen-index"
+#define X "x"
+#define Y "y"
+#define WIDTH "width"
+#define HEIGHT "height"
+#define FULL_SCREEN "full-screen"
+#define MAXIMIZED "maximized"
+#define TOOLBAR_VISIBLE "toolbar-visible"
 
 #define MAIN_AREA_NAME "Main Area"
 #define EDITOR_GROUP_NAME "Editor Group"
@@ -32,15 +46,232 @@ Window::Created Window::s_created;
 Window::SidePaneCreated Window::s_navigationPaneCreated;
 Window::SidePaneCreated Window::s_toolsPaneCreated;
 
-void Window::build(const Configuration &config)
+bool Window::XmlElement::registerReader()
+{
+    return Widget::XmlElement::registerReader(WINDOW,
+                                              Widget::XmlElement::Reader(read));
+}
+
+bool Window::XmlElement::readInternally(xmlDocPtr doc,
+                                        xmlNodePtr node,
+                                        std::list<std::string> &errors)
+{
+    char *value, *cp;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   WIDGET) == 0)
+        {
+            if (!WidgetContainer::XmlElement::readInternally(doc,
+                                                             child, errors))
+                return false;
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        SCREEN_INDEX) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_screenIndex = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        X) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_x = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        Y) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_y = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        WIDTH) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_width = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        HEIGHT) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_height = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        FULL_SCREEN) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_fullScreen = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        MAXIMIZED) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_maximized = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        TOOLBAR_VISIBLE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_toolbarVisible = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CHILD) == 0)
+        {
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
+            {
+                Widget::XmlElement *ch =
+                    Widget::XmlElement::read(doc, grandChild, errors);
+                if (ch)
+                {
+                    if (m_child)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: More than one children contained by "
+                              "the bin.\n"),
+                            grandChild->line);
+                        errors.push_back(cp);
+                        g_free(cp);
+                        delete ch;
+                    }
+                    else
+                        m_child = ch;
+                }
+            }
+        }
+    }
+
+    if (!m_child)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: No main child contained by the bin.\n"),
+            node->line);
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
+    }
+    return true;
+}
+
+Widget::XmlElement *Window::XmlElement::read(xmlDocPtr doc,
+                                             xmlNodePtr node,
+                                             std::list<std::string> &errors)
+{
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(doc, node, errors))
+    {
+        delete element;
+        return NULL;
+    }
+    return element;
+}
+
+xmlNodePtr Window::XmlElement::write() const
+{
+    char *cp;
+    xmlNodePtr node =
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(WINDOW));
+    xmlAddChild(node, WidgetContainer::XmlElement::write());
+    cp = g_strdup_printf("%d", m_configuration.m_screenIndex);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(SCREEN_INDEX),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
+    cp = g_strdup_printf("%d", m_configuration.m_x);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(X),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
+    cp = g_strdup_printf("%d", m_configuration.m_y);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(Y),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
+    cp = g_strdup_printf("%d", m_configuration.m_width);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(WIDTH),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
+    cp = g_strdup_printf("%d", m_configuration.m_height);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(HEIGHT),
+                    reinterpret_cast<const xmlChar *>(cp));
+    g_free(cp);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(FULL_SCREEN),
+                    reinterpret_cast<const xmlChar *>(
+                        m_configuration.m_fullScreen ? "1" : "0"));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(MAXIMIZED),
+                    reinterpret_cast<const xmlChar *>(
+                        m_configuration.m_maximized ? "1" : "0"));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE),
+                    reinterpret_cast<const xmlChar *>(
+                        m_configuration.m_toolbarVisible ? "1" : "0"));
+    xmlNodePtr children =
+        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILD));
+    xmlAddChild(children, m_child->write());
+    xmlAddChild(node, children);
+    return node;
+}
+
+void Window::XmlElement::savewidgetInternally(const Window &window)
+{
+    WidgetContainer::XmlElement::savewidgetinternally(window);
+    m_configuration = window.configuration();
+    m_child = window.child(0).save();
+}
+
+Window::XmlElement *Window::XmlElement::saveWidget(const Window &window)
+{
+    XmlElement *element = new XmlElement;
+    element->saveWidgetInternally(window);
+    return element;
+}
+
+Widget *Window::XmlElement::restoreWidget()
+{
+    Window *window = new Window;
+    if (!window->restore(*this))
+    {
+        delete window;
+        return NULL;
+    }
+    return window;
+}
+
+Window::XmlElement::~XmlElement()
+{
+    delete m_child;
+}
+
+bool Window::build(const Configuration &config)
 {
     m_uiManager = gtk_ui_manager_new();
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
 
     std::string uiFile(Application::instance().dataDirectoryName());
     uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
-    // Ignore the possible failure, which implies the installation is broken.
-    gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL);
+    if (gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL) == 0)
+        return false;
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     m_grid = gtk_grid_new();
@@ -71,28 +302,79 @@ void Window::build(const Configuration &config)
                      G_CALLBACK(onFocusInEvent), this);
 
     setGtkWidget(window);
+
+    // Configure the window.
+    if (config.m_fullScreen)
+        gtk_window_fullscreen(window);
+    else if (config.m_maximized)
+        gtk_window_maximize(window);
+    else
+    {
+        gtk_window_move(window, config.m_x, config.m_y);
+        gtk_window_resize(window, config.m_width, config.m_height);
+    }
+
+    if (config.m_fullScreen)
+    {
+        // Hide the menu bar and toolbar.
+        gtk_widget_show(m_grid);
+        gtk_widget_show(window);
+    }
+    else if (config.m_toolbarVisible)
+        gtk_widget_show_all(window);
+    else
+    {
+        gtk_widget_show(m_menuBar);
+        gtk_widget_show(m_grid);
+        gtk_widget_show(window);
+    }
+
+    return true;
 }
 
-Window::Window(const char *name, const Configuration &config):
-    Widget(name)
-    m_grid(NULL),
-    m_menuBar(NULL),
-    m_toolbar(NULL),
-    m_child(NULL),
-    m_uiManager(NULL),
-    m_actions(this)
+bool Window::setup(const char *name, const Configuration &config)
 {
-    build(config);
+    if (!WidgetContainer::setup(name))
+        return false;
+    if (!build(config))
+        return false;
 
     // Create the initial editor group and the main area.
-    Notebook *editorGroup = new Notebook(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME,
-                                         true, true);
-    m_mainArea = new WidgetWithBars(MAIN_AREA_NAME, *editorGroup);
-    addChild(*mainArea);
+    Notebook *editorGroup =
+        Notebook::create(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME, true, true);
+    m_mainArea = WidgetWithBars::create(MAIN_AREA_NAME, *editorGroup);
+    addChild(*m_mainArea);
+}
 
+Window *Window::create(const char *name, const Configuration &config)
+{
+    Window *window = new Window;
+    if (!setup(name, config))
+    {
+        delete window;
+        return NULL;
+    }
+    Application::instance().addWindow(*this);
+    s_created(*this);
+    return window;
+}
+
+bool Window::restore(XmlElement &xmlElement)
+{
+    if (!WidgetContainer::restore(xmlElement))
+        return false;
+    Widget *child = xmlElement.child().restoreWidget();
+    if (!child)
+        return false;
+    if (!build(xmlElement.configuration()))
+        return false;
+    addChild(*child);
     Application::instance().addWindow(*this);
 
-    s_created(*this);
+    // Create menu items for the side panes.
+    createMenuItemsForSidePanesRecursively(*child);
+
+    return true;
 }
 
 Window::~Window()
@@ -152,7 +434,7 @@ bool Window::close()
 
 Widget::XmlElement *Window::save() const
 {
-    return new XmlElement(*this);
+    return Window::XmlElement::saveWidget(*this);
 }
 
 void Window::addChildInternally(Widget &child)
@@ -249,6 +531,10 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
         paned->setPosition(gtk_widget_get_allocated_width(paned->gtkWidget()) -
                            size - handleSize);
     }
+
+    // Add a menu item for showing or hiding the side pane.
+    createMenuItemForSidePane(pane.name(), true);
+
     s_sidePaneAdded(pane, *this);
 }
 
@@ -299,7 +585,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 
 void Window::createNavigationPane(Window &window)
 {
-    Notebook *pane = new Notebook(NAVIGATION_PANE_NAME);
+    Notebook *pane = Notebook::create(NAVIGATION_PANE_NAME);
     s_navigationPaneCreated(*pane);
     Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
@@ -307,7 +593,7 @@ void Window::createNavigationPane(Window &window)
 
 void Window::createToolsPane(Window &window)
 {
-    Notebook *pane = new Notebook(TOOLS_PANE_NAME);
+    Notebook *pane = Notebook::create(TOOLS_PANE_NAME);
     s_toolsPaneCreated(*pane);
     Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
@@ -317,6 +603,45 @@ void Window::setupDefaultSidePanes()
 {
     addCreatedCallback(createNavigationPane);
     addCreatedCallback(createToolsPane);
+}
+
+void Window::createMenuItemForSidePane(const char *name, bool visible)
+{
+    GtkWidget *item = gtk_check_menu_item_new_with_label(name);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), visible);
+    char *cp = g_strdup_printf(_("Show or hide %s"), name);
+    gtk_widget_set_tooltip_text(item, cp);
+    g_free(cp);
+    GtkWidget *viewMenu = gtk_ui_manager_get_widget(m_uiManager, "/view");
+    gtk_menu_shell_append(GTK_MENU_SHELL(viewMenu), item);
+    g_signal_connect(item, "toggled", G_CALLBACK(onSidePaneToggled), this);
+}
+
+void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
+{
+    if (&widget == m_mainArea)
+        return;
+    if (strcmp(widget.name(), PANED_NAME) == 0)
+    {
+        const Paned &paned = static_cast<const Paned &>(widget);
+        createMenuItemsForSidePanesRecursively(paned.child(0));
+        createMenuItemsForSidePanesRecursively(paned.child(1));
+        return;
+    }
+    createMenuItemForSidePane(widget.name(),
+                              gtk_widget_get_visible(widget.gtkWidget()));
+}
+
+void Window::onSidePaneToggled(GtkCheckMenuItem *menuItem, gpointer window)
+{
+    Window *win = static_cast<Window *>(window);
+    Widget *pane = win->findSidePane(
+        gtk_menu_item_get_label(GTK_MENU_ITEM(menuItem)));
+    assert(pane);
+    if (gtk_check_menu_item_get_active(menuItem))
+        gtk_widget_show(pane->gtkWidget());
+    else
+        gtk_widget_hide(pane->gtkWidget());
 }
 
 }

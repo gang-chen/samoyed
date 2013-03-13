@@ -4,19 +4,14 @@ lib_LTLIBRARIES = libsamoyed.la
 
 libsamoyed_la_SOURCES = \
     application.cpp \
-    file-type-registry.cpp \
-    session.cpp \
-    application.hpp \
-    file-type-registry.hpp \
-    session.hpp
+    application.hpp
 
 libsamoyed_la_CPPFLAGS = \
     -DSAMOYED_PKGDATADIR=\"$(pkgdatadir)\" \
     -DSAMOYED_PKGLIBDIR=\"$(pkglibdir)\" \
     -DSAMOYED_LOCALEDIR=\"$(localedir)\" \
     $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS) \
-    $(XML_CFLAGS)
+    $(GTK_CFLAGS)
 
 libsamoyed_la_CXXFLAGS = -Werror -Wall
 

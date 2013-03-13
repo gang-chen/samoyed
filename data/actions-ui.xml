@@ -57,6 +57,7 @@
       <menuitem name="view-new-editor-group" action="view-new-editor-group"/>
       <separator/>
       <menuitem name="view-full-screen" action="view-full-screen"/>
+      <separator/>
     </menu>
 
     <menu name="help" action="help">

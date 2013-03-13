@@ -48,7 +48,7 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                 return false;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                   GROUP_NAME) == 0)
+                        GROUP_NAME) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -102,6 +102,7 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
     }
     else if (m_currentChildIndex == childCount())
         m_currentChildIndex = childCount() - 1;
+    return true;
 }
 
 Widget::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,

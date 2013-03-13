@@ -192,9 +192,9 @@ public:
 protected:
     TextFile(const char *uri);
 
-    ~TextFile();
+    virtual ~TextFile();
 
-    virtual Editor *newEditor(Project &project);
+    virtual Editor *newEditor(Project *project);
 
     virtual FileLoader *createLoader(unsigned int priority,
                                      const Worker::Callback &callback);

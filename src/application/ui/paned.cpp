@@ -61,7 +61,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                 cp = g_strdup_printf(
                     _("Line %d: Unknown orientation \"%s\".\n"),
                     child->line, value);
-                errors.push_back(std::string(cp));
+                errors.push_back(cp);
                 g_free(cp);
             }
             xmlFree(value);
@@ -83,7 +83,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                             _("Line %d: More than two children contained by "
                               "the paned widget.\n"),
                             grandChild->line);
-                        errors.push_back(std::string(cp));
+                        errors.push_back(cp);
                         g_free(cp);
                         delete ch;
                     }
@@ -117,7 +117,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         cp = g_strdup_printf(
             _("Line %d: No child contained by the paned widget.\n"),
             node->line);
-        errors.push_back(std::string(cp));
+        errors.push_back(cp);
         g_free(cp);
         return false;
     }
@@ -126,7 +126,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         cp = g_strdup_printf(
             _("Line %d: Only one child contained by the paned widget.\n"),
             node->line);
-        errors.push_back(std::string(cp));
+        errors.push_back(cp);
         g_free(cp);
         return false;
     }

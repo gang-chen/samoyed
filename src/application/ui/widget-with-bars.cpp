@@ -62,7 +62,7 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
                             _("Line %d: More than one main children contained "
                               "by the bin.\n"),
                             grandChild->line);
-                        errors.push_back(std::string(cp));
+                        errors.push_back(cp);
                         g_free(cp);
                         delete ch;
                     }
@@ -99,13 +99,9 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
         cp = g_strdup_printf(
             _("Line %d: No main child contained by the bin.\n"),
             node->line);
-        errors.push_back(std::string(cp));
+        errors.push_back(cp);
         g_free(cp);
-        for (std::vector<Bar::XmlElement *>::const_iterator it = m_bars.begin();
-             it != m_bars.end();
-             ++it)
-            delete *it;
-        throw std::runtime_error(std::string());
+        return false;
     }
 
     if (m_currentChildIndex < 0)

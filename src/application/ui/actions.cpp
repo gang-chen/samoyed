@@ -196,10 +196,10 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       G_CALLBACK(manageConfigurations) },
 
     // File menu.
-    { "file-open", GTK_STOCK_OPEN, N_("_Open"), NULL,
-      N_("Open the selected file"), G_CALLBACK(openFile) },
-    { "file-open-new-editor", NULL, N_("Open in New _Editor"), NULL,
-      N_("Open the selected file in a new editor"),
+    { "file-open", GTK_STOCK_OPEN, N_("_Open..."), NULL,
+      N_("Open a file"), G_CALLBACK(openFile) },
+    { "file-open-new-editor", NULL, N_("Open in New _Editor..."), NULL,
+      N_("Open a file in a new editor"),
       G_CALLBACK(openFileInNewEditor) },
     { "file-save", GTK_STOCK_SAVE, N_("_Save"), "<ctrl>S",
       N_("Save the current file"), G_CALLBACK(saveFile) },

@@ -2,7 +2,7 @@ noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
     lock-file.cpp \
-    misc.cpp \
+    miscellaneous.cpp \
     revision.cpp \
     signal.cpp \
     text-file-loader.cpp \
@@ -16,7 +16,7 @@ libutilities_la_SOURCES = \
     lock-file.hpp \
     managed.hpp \
     manager.hpp \
-    misc.hpp \
+    miscellaneous.hpp \
     range.hpp \
     revision.hpp \
     scheduler.hpp \
