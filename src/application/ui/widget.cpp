@@ -107,7 +107,8 @@ Widget::~Widget()
 {
     if (m_parent)
         m_parent->removeChild(*this);
-    gtk_widget_destroy(m_gtkWidget);
+    if (m_gtkWidget)
+        gtk_widget_destroy(m_gtkWidget);
 }
 
 void Widget::setTitle(const char *title)
