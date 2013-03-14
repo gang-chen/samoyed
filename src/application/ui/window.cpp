@@ -39,6 +39,9 @@
 #define EDITOR_GROUP_NAME "Editor Group"
 #define PANED_NAME "Paned"
 
+#define NAVIGATION_PANE_TITLE "_Navigation Pane"
+#define TOOLS_PANE_TITLE "_Tools Pane"
+
 namespace Samoyed
 {
 
@@ -161,7 +164,7 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
     if (!m_child)
     {
         cp = g_strdup_printf(
-            _("Line %d: No main child contained by the bin.\n"),
+            _("Line %d: No child contained by the bin.\n"),
             node->line);
         errors.push_back(cp);
         g_free(cp);
@@ -300,34 +303,43 @@ bool Window::build(const Configuration &config)
                      G_CALLBACK(onDeleteEvent), this);
     g_signal_connect(window, "focus-in-event",
                      G_CALLBACK(onFocusInEvent), this);
+    g_signal_connect(window, "window-state-event",
+                     G_CALLBACK(onWindowStateEvent), this);
 
     setGtkWidget(window);
 
     // Configure the window.
-    if (config.m_fullScreen)
-        gtk_window_fullscreen(window);
-    else if (config.m_maximized)
-        gtk_window_maximize(window);
-    else
-    {
-        gtk_window_move(window, config.m_x, config.m_y);
-        gtk_window_resize(window, config.m_width, config.m_height);
-    }
-
+    m_toolbarVisible = config.m_toolbarVisible;
+    m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
+    gtk_widget_show_all(m_grid);
     if (config.m_fullScreen)
     {
-        // Hide the menu bar and toolbar.
-        gtk_widget_show(m_grid);
-        gtk_widget_show(window);
+        GtkAction *viewFullScreen =
+            gtk_ui_manager_get_action(m_uiManager, "/view/full-screen");
+        if (viewFullScreen)
+            gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(viewFullScreen),
+                                         TRUE);
+        else
+            enterFullScreen();
     }
-    else if (config.m_toolbarVisible)
-        gtk_widget_show_all(window);
     else
     {
-        gtk_widget_show(m_menuBar);
-        gtk_widget_show(m_grid);
-        gtk_widget_show(window);
+        if (!m_toolbarVisible)
+            gtk_widget_hide(m_toolbar);
+        GtkAction *viewToolbar =
+            gtk_ui_manager_get_action(m_uiManager, "/view/toolbar");
+        if (viewToolbar)
+            gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(viewToolbar),
+                                         m_toolbarVisible);
+        if (config.m_maximized)
+            gtk_window_maximize(window);
+        else
+        {
+            gtk_window_move(window, config.m_x, config.m_y);
+            gtk_window_resize(window, config.m_width, config.m_height);
+        }
     }
+    gtk_widget_show(window);
 
     return true;
 }
@@ -391,9 +403,10 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
 {
     Window *w = static_cast<Window *>(window);
 
-    if (&Application::instance().mainWindow() == w)
+    if (!Application::instance().windows()->next())
     {
-        // Closing the main window will quit the application.  Confirm it.
+        // This is the last window.  Closing this window will quit the
+        // application.  Confirm it.
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(w->m_window),
             GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -533,7 +546,8 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
     }
 
     // Add a menu item for showing or hiding the side pane.
-    createMenuItemForSidePane(pane.name(), true);
+    createMenuItemForSidePane(pane.name(), pane.title(),
+                              gtk_widget_get_visible(pane.gtkWidget()));
 
     s_sidePaneAdded(pane, *this);
 }
@@ -586,6 +600,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 void Window::createNavigationPane(Window &window)
 {
     Notebook *pane = Notebook::create(NAVIGATION_PANE_NAME);
+    pane->setTitle(NAVIGATION_PANE_TITLE);
     s_navigationPaneCreated(*pane);
     Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
@@ -594,6 +609,7 @@ void Window::createNavigationPane(Window &window)
 void Window::createToolsPane(Window &window)
 {
     Notebook *pane = Notebook::create(TOOLS_PANE_NAME);
+    pane->setTitle(TOOLS_PANE_TITLE);
     s_toolsPaneCreated(*pane);
     Configuration config = window.configuration();
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
@@ -605,15 +621,25 @@ void Window::setupDefaultSidePanes()
     addCreatedCallback(createToolsPane);
 }
 
-void Window::createMenuItemForSidePane(const char *name, bool visible)
+void Window::createMenuItemForSidePane(const char *name, const char *title,
+                                       bool visible)
 {
-    GtkWidget *item = gtk_check_menu_item_new_with_label(name);
+    GtkWidget *spItem = gtk_ui_manager_get_widget(m_uiManager,
+                                                  "/view/side-panes");
+    if (!spItem)
+        return;
+    GtkWidget *item = gtk_check_menu_item_new_with_mnemonic(title);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), visible);
     char *cp = g_strdup_printf(_("Show or hide %s"), name);
     gtk_widget_set_tooltip_text(item, cp);
     g_free(cp);
-    GtkWidget *viewMenu = gtk_ui_manager_get_widget(m_uiManager, "/view");
-    gtk_menu_shell_append(GTK_MENU_SHELL(viewMenu), item);
+    GtkWidget *spMenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(spItem));
+    if (!spMenu)
+    {
+        spMenu = gtk_menu_new();
+        gtk_menu_item_set_submenu(GTK_MENU_ITEM(spItem), GTK_MENU(spMenu));
+    }
+    gtk_menu_shell_append(GTK_MENU_SHELL(spMenu), item);
     g_signal_connect(item, "toggled", G_CALLBACK(onSidePaneToggled), this);
 }
 
@@ -628,20 +654,79 @@ void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
         createMenuItemsForSidePanesRecursively(paned.child(1));
         return;
     }
-    createMenuItemForSidePane(widget.name(),
+    createMenuItemForSidePane(widget.name(), widget.title(),
                               gtk_widget_get_visible(widget.gtkWidget()));
 }
 
 void Window::onSidePaneToggled(GtkCheckMenuItem *menuItem, gpointer window)
 {
-    Window *win = static_cast<Window *>(window);
-    Widget *pane = win->findSidePane(
-        gtk_menu_item_get_label(GTK_MENU_ITEM(menuItem)));
+    Window *w = static_cast<Window *>(window);
+    std::string name = gtk_menu_item_get_label(GTK_MENU_ITEM(menuItem));
+    std::remove(name.begin(), name.end(), '_');
+    Widget *pane = w->findSidePane(name.c_str());
     assert(pane);
-    if (gtk_check_menu_item_get_active(menuItem))
-        gtk_widget_show(pane->gtkWidget());
+    gtk_widget_set_visible(pane->gtkWidget(),
+                           gtk_check_menu_item_get_active(menuItem));
+}
+
+void Window::onWindowStateEvent(GtkWidget *widget,
+                                GdkEvent *event,
+                                gpointer window)
+{
+    Window *w = static_cast<Window *>(window);
+    w->m_maximized = event.window_state & GDK_WINDOW_STATE_MAXIMIZED;
+}
+
+void Window::setToolbarVisible(bool visible)
+{
+    gtk_widget_set_visible(m_toolbar, visible);
+}
+
+void Window::setToolbarVisibleWrapper(bool visible)
+{
+    GtkAction *viewToolbar =
+        gtk_ui_manager_get_action(m_uiManager, "/view/toolbar");
+    if (viewToolbar)
+        gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(viewToolbar),
+                                     visible);
     else
-        gtk_widget_hide(pane->gtkWidget());
+        gtk_widget_set_visible(m_toolbar, visible);
+}
+
+void Window::enterFullScreen()
+{
+    m_toolbarVisible = gtk_widget_get_visible(m_toolbar);
+    if (m_toolbarVisible)
+    {
+        if (!m_toolbarVisibleInFullScreen)
+            setToolbarVisibleWrapper(false);
+    }
+    else
+    {
+        if (m_toolbarVisibleInFullScreen)
+            setToolbarVisibleWrapper(true);
+    }
+    gtk_widget_hide(m_menuBar);
+    gtk_window_fullscreen(gtkWidget());
+    m_fullScreen = true;
+}
+
+void Window::leaveFullScreen()
+{
+    m_toolbarVisibleInFullScreen = gtk_widget_get_visible(m_toolbar);
+    if (m_toolbarVisibleInFullScreen)
+    {
+        if (!m_toolbarVisible)
+            setToolbarVisibleWrapper(false);
+    }
+    else
+    {
+        if (m_toolbarVisible)
+            setToolbarVisibleWrapper(true);
+    }
+    gtk_widget_show(m_menuBar);
+    gtk_window_unfullscreen(gtkWidget());
+    m_fullScreen = false;
 }
 
 }
