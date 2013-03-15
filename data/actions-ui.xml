@@ -24,7 +24,6 @@
 
     <menu name="file" action="file">
       <menuitem name="file-open" action="file-open"/>
-      <menuitem name="file-open-new-editor" action="file-open-new-editor"/>
       <separator/>
       <menuitme name="file-save" action="file-save"/>
       <menuitem name="file-save-all" action="file-save-all"/>
@@ -58,6 +57,8 @@
       <separator/>
       <menuitem name="view-full-screen" action="view-full-screen"/>
       <separator/>
+      <menuitem name="view-toolbar" action="view-toolbar"/>
+      <menuitem name="view-side-panes" action="view-side-panes"/>
     </menu>
 
     <menu name="help" action="help">
