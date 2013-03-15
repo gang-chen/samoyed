@@ -42,7 +42,6 @@ public:
         MANAGE_CONFIGURATIONS,
 
         OPEN_FILE,
-        OPEN_FILE_IN_NEW_EDITOR,
         SAVE_FILE,
         SAVE_ALL_FILES,
         RELOAD_FILE,
@@ -62,7 +61,7 @@ public:
 
         CREATE_WINDOW,
         CREATE_EDITOR_GROUP,
-        ENTER_FULL_SCREEN,
+        SIDE_PANES,
 
         SHOW_MANUAL,
         SHOW_TUTORIAL,
@@ -72,6 +71,14 @@ public:
         POPUP_CREATE_DIRECTORY,
 
         N_ACTIONS
+    };
+
+    enum ToggleActionIndex
+    {
+        ENTER_LEAVE_FULL_SCREEN,
+        SHOW_HIDE_TOOLBAR,
+
+        N_TOGGLE_ACTIONS
     };
 
     Actions(Window *window);
@@ -86,6 +93,7 @@ private:
     GtkActionGroup *m_actionGroup;
 
     GtkAction *m_actions[N_ACTIONS];
+    GtkToggleAction *m_toggleActions[N_TOGGLE_ACTIONS];
 };
 
 }
