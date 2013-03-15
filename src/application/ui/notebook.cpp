@@ -21,6 +21,7 @@
 #define GROUP_NAME "group-name"
 #define CREATE_CLOSE_BUTTONS "creaet-close-buttons"
 #define CAN_DRAG_CHILDREN "can-drag-children"
+#define USE_UNDERLINE "use-underline"
 #define CHILDREN "children"
 #define CURRENT_CHILD_INDEX "current-child-index"
 
@@ -69,6 +70,14 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
             m_canDragChildren = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        USE_UNDERLINE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_useUnderline = atoi(value);
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -136,6 +145,10 @@ xmlNodePtr Notebook::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>(CAN_DRAG_CHILDREN),
                     reinterpret_cast<const xmlChar *>(m_canDragChildren ?
                                                       "1" : "0"));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(USE_UNDERLINE),
+                    reinterpret_cast<const xmlChar *>(m_useUnderline ?
+                                                      "1" : "0"));
     xmlNodePtr children =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
     for (std::vector<Widget::XmlElement *>::const_iterator it =
@@ -159,6 +172,7 @@ void Notebook::XmlElement::saveWidgetInternally(const Notebook &notebook)
         m_groupName = notebook.groupName();
     m_createCloseButtons = notebook.createCloseButtons();
     m_canDragChildren = notebook.canDragChildren();
+    m_useUnderline = notebook.useUnderline();
     m_children.reserve(notebook.childCount());
     for (int i = 0; i < notebook.childCount(); ++i)
         m_children.push_back(notebook.child(i).save());
@@ -203,7 +217,9 @@ Notebook::XmlElement::~XmlElement()
 }
 
 bool Notebook::setup(const char *name, const char *groupName,
-                     bool createCloseButtons, bool canDragChildren)
+                     bool createCloseButtons,
+                     bool canDragChildren,
+                     bool useUnderline)
 {
     if (!WidgetContainer::setup(name))
         return false;
@@ -213,6 +229,7 @@ bool Notebook::setup(const char *name, const char *groupName,
         gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), groupName);
     m_createCloseButtons = createCloseButtons;
     m_canDragChildren = canDragChildren;
+    m_useUnderline = useUnderline;
     if (m_canDragChildren)
     {
         g_signal_connect(notebook, "page-reordered",
@@ -228,10 +245,15 @@ bool Notebook::setup(const char *name, const char *groupName,
 }
 
 Notebook *Notebook::create(const char *name, const char *groupName,
-                           bool createCloseButtons, bool canDragChildren)
+                           bool createCloseButtons,
+                           bool canDragChildren,
+                           bool useUnderline)
 {
     Notebook *notebook = new Notebook;
-    if (!notebook->setup(name, groupName, createCloseButtons, canDragChildren))
+    if (!notebook->setup(name, groupName,
+                         createCloseButtons,
+                         canDragChildren,
+                         useUnderline))
     {
         delete notebook;
         return NULL;
@@ -250,6 +272,7 @@ bool Notebook::restore(XmlElement &xmlElement)
                                     xmlElement.groupName());
     m_createCloseButtons = xmlElement.createCloseButtons();
     m_canDragChildren = xmlElement.canDragChildren();
+    m_useUnderline = xmlElement.useUnderline();
     if (m_canDragChildren)
     {
         g_signal_connect(notebook, "page-reordered",
@@ -272,7 +295,7 @@ bool Notebook::restore(XmlElement &xmlElement)
             --i;
         }
         else
-            addChild(*child);
+            addChild(*child, i);
     }
     if (childCount())
         setCurrentChildIndex(xmlElement.currentChildIndex());
@@ -284,9 +307,9 @@ Notebook::~Notebook()
     assert(m_children.empty());
 }
 
-void Notebook::onCloseButtonClicked(GtkButton *button, gpointer child)
+void Notebook::onCloseButtonClicked(GtkButton *button, Widget *child)
 {
-    static_cast<Widget *>(child)->close();
+    child->close();
 }
 
 bool Notebook::close()
@@ -313,7 +336,7 @@ bool Notebook::close()
     }
     for (std::vector<Widget *>::size_type i = 0; i < children.size(); ++i)
     {
-        if (i != index)
+        if (static_cast<int>(i) != index)
             if (!children[i]->close())
             {
                 setClosing(false);
@@ -331,7 +354,11 @@ Widget::XmlElement *Notebook::save() const
 void Notebook::addChildInternally(Widget &child, int index)
 {
     // Create the tab label.
-    GtkWidget *title = gtk_label_new(child.title());
+    GtkWidget *title;
+    if (m_useUnderline)
+        title = gtk_label_new_with_mnemonic(child.title());
+    else
+        title = gtk_label_new(child.title());
     gtk_widget_set_tooltip_text(title, child.description());
     GtkWidget *tabLabel;
     if (m_createCloseButtons)
@@ -355,7 +382,7 @@ void Notebook::addChildInternally(Widget &child, int index)
         tabLabel = title;
 
     // Show the child widget before adding it to the notebook.
-    gtk_widget_show(child->gtkWidget());
+    gtk_widget_show(child.gtkWidget());
     gtk_notebook_insert_page(GTK_NOTEBOOK(gtkWidget()),
                              child.gtkWidget(),
                              tabLabel,
@@ -380,7 +407,7 @@ void Notebook::removeChildInternally(Widget &child)
 
 void Notebook::replaceChild(Widget &oldChild, Widget &newChild)
 {
-    int index = childIndex(&oldChild);
+    int index = childIndex(oldChild);
     removeChildInternally(oldChild);
     addChildInternally(newChild, index);
 }
@@ -412,33 +439,31 @@ void Notebook::onChildDescriptionChanged(const Widget &child)
 }
 
 void Notebook::onPageReordered(GtkWidget *widget, GtkWidget *child, int index,
-                               gpointer notebook)
+                               Notebook *notebook)
 {
-    Notebook *nb = static_cast<Notebook *>(notebook);
     Widget *ch = Widget::getFromGtkWidget(child);
     assert(ch);
-    nb->m_children.erase(nb->m_children.begin() + childIndex(*ch));
-    nb->m_children.insert(nb->m_children.begin() + index, ch);
+    notebook->m_children.erase(notebook->m_children.begin() +
+                               notebook->childIndex(*ch));
+    notebook->m_children.insert(notebook->m_children.begin() + index, ch);
 }
 
 void Notebook::onPageAdded(GtkWidget *widget, GtkWidget *child, int index,
-                           gpointer notebook)
+                           Notebook *notebook)
 {
-    Notebook *nb = static_cast<Notebook *>(notebook);
     Widget *ch = Widget::getFromGtkWidget(child);
     assert(ch);
-    nb->WidgetContainer::addChildInternally(*ch);
-    m_children.insert(m_children.begin() + index, ch);
+    notebook->WidgetContainer::addChildInternally(*ch);
+    notebook->m_children.insert(notebook->m_children.begin() + index, ch);
 }
 
 void Notebook::onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
-                             gpointer notebook)
+                             Notebook *notebook)
 {
-    Notebook *nb = static_cast<Notebook *>(notebook);
     Widget *ch = Widget::getFromGtkWidget(child);
     assert(ch);
-    m_children.erase(m_children.begin() + index);
-    nb->WidgetContainer::removeChildInternally(*ch);
+    notebook->m_children.erase(notebook->m_children.begin() + index);
+    notebook->WidgetContainer::removeChildInternally(*ch);
 }
 
 }

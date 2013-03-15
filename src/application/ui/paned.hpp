@@ -121,7 +121,7 @@ protected:
 private:
     static void setFocusChild(GtkWidget *container,
                               GtkWidget *child,
-                              gpointer paned);
+                              Paned *paned);
 
     Orientation m_orientation;
 

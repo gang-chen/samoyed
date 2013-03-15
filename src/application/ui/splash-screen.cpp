@@ -51,9 +51,10 @@ void SplashScreen::setProgress(double progress, const char *message)
 
 double progress = 0.;
 
-gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer splash)
+gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event,
+                       Samoyed::SplashScreen *splash)
 {
-    delete static_cast<Samoyed::SplashScreen *>(splash);
+    delete splash;
     gtk_main_quit();
     return TRUE;
 }

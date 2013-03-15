@@ -42,8 +42,8 @@ public:
     typedef boost::signals2::signal<void (Window &)> Created;
     typedef boost::signals2::signal<void (Widget &)> SidePaneCreated;
 
-    static const char *NAVIGATION_PANE_NAME = "Navigation Pane";
-    static const char *TOOLS_PANE_NAME = "Tools Pane";
+    static const char *NAVIGATION_PANE_NAME;
+    static const char *TOOLS_PANE_NAME;
 
     enum Side
     {
@@ -60,14 +60,16 @@ public:
         int m_y;
         int m_width;
         int m_height;
-        bool m_fullScreen;
+        bool m_inFullScreen;
         bool m_maximized;
         bool m_toolbarVisible;
+        bool m_toolbarVisibleInFullScreen;
         Configuration():
             m_screenIndex(-1),
-            m_fullScreen(false),
+            m_inFullScreen(false),
             m_maximized(true),
-            m_toolbarVisible(true)
+            m_toolbarVisible(true),
+            m_toolbarVisibleInFullScreen(false)
         {}
     };
 
@@ -161,14 +163,10 @@ public:
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
 
-    Notebook &navigationPane()
-    { return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME)); }
-    const Notebook &navigationPane() const
-    { return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME)); }
-    Notebook &toolsPane()
-    { return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME)); }
-    const Notebook &toolsPane() const
-    { return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME)); }
+    Notebook &navigationPane();
+    const Notebook &navigationPane() const;
+    Notebook &toolsPane();
+    const Notebook &toolsPane() const;
 
     WidgetWithBars &mainArea() { return *m_mainArea; }
     const WidgetWithBars &mainArea() const { return *m_mainArea; }
@@ -184,6 +182,12 @@ public:
      */
     Notebook *splitCurrentEditorGroup(Side side);
 
+    void setToolbarVisible(bool visible);
+
+    bool inFullScreen() const { return m_inFullScreen; }
+    void enterFullScreen();
+    void leaveFullScreen();
+
 protected:
     Window():
         m_grid(NULL),
@@ -192,7 +196,10 @@ protected:
         m_child(NULL),
         m_mainArea(NULL),
         m_uiManager(NULL),
-        m_actions(this)
+        m_actions(this),
+        m_inFullScreen(false),
+        m_toolbarVisible(true),
+        m_toolbarVisibleInFullScreen(false)
     {}
 
     virtual ~Window();
@@ -208,12 +215,15 @@ protected:
 private:
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
-                                  gpointer window);
-    static void onDestroy(GtkWidget *widget, gpointer window);
+                                  Window *window);
+    static void onDestroy(GtkWidget *widget, Window *window);
     static gboolean onFocusInEvent(GtkWidget *widget,
                                    GdkEvent *event,
-                                   gpointer window);
-    static void onSidePaneToggled(GtkCheckMenuItem *menuItem, gpointer window);
+                                   Window *window);
+    static void onWindowStateEvent(GtkWidget *widget,
+                                   GdkEvent *event,
+                                   Window *window);
+    static void showHideSidePane(GtkToggleAction *action, Window *window);
 
     static void createNavigationPane(Window &window);
     static void createToolsPane(Window &window);
@@ -224,9 +234,11 @@ private:
     void createMenuItemForSidePane(const char *name, bool visible);
     void createMenuItemsForSidePanesRecursively(const Widget &widget);
 
-    Created s_created;
-    SidePaneCreated s_navigationPaneCreated;
-    SidePaneCreated s_toolsPaneCreated;
+    void setToolbarVisibleWrapper(bool visible);
+
+    static Created s_created;
+    static SidePaneCreated s_navigationPaneCreated;
+    static SidePaneCreated s_toolsPaneCreated;
 
     GtkWidget *m_grid;
 
@@ -245,6 +257,10 @@ private:
     GtkUIManager *m_uiManager;
 
     Actions m_actions;
+
+    bool m_inFullScreen;
+    bool m_toolbarVisible;
+    bool m_toolbarVisibleInFullScreen;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };

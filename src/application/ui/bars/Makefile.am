@@ -6,6 +6,7 @@ libbars_la_SOURCES = \
 
 libbars_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS)
+    $(GTK_CFLAGS) \
+    $(XML_CFLAGS)
 
 libbars_la_CXXFLAGS = -Werror -Wall

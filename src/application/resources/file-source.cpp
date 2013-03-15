@@ -27,7 +27,8 @@ void FileSource::Loading::execute(FileSource &source)
 {
     TextFileLoader loader(Worker::defaultPriorityInCurrentThread(),
                           Worker::Callback(),
-                          source.uri());
+                          source.uri(),
+                          source.encoding());
     loader.runAll();
     source.beginWrite(false, NULL, NULL, NULL);
     TextBuffer *buffer = loader.takeBuffer();
@@ -105,11 +106,13 @@ char *FileSource::WriteExecutionWorker::description() const
                            m_source->uri());
 }
 
-FileSource::FileSource(const Key &uri,
+FileSource::FileSource(const Key &key,
                        unsigned long id,
                        Manager<FileSource> &mgr):
     Managed<FileSource>(id, mgr),
-    m_uri(uri),
+    m_key(key),
+    m_uri(m_key.substr(0, m_key.rfind('?'))),
+    m_encoding(m_key.substr(m_key.rfind('?') + 1)),
     m_error(NULL),
     m_buffer(NULL),
     m_writeWorker(NULL),

@@ -366,17 +366,11 @@ int WidgetWithBars::barIndex(const Bar &bar) const
 
 void WidgetWithBars::setFocusChild(GtkWidget *container,
                                    GtkWidget *child,
-                                   gpointer widget)
+                                   WidgetWithBars *widget)
 {
-    WidgetWithBars *w = static_cast<WidgetWithBars *>(widget);
-    if (w->m_mainChild->gtkWidget() == child)
-        setCurrentChildIndex(0);
-    else
-    {
-        for (std::vector<Bar *>::size_type i = 0; i < m_bars.size(); ++i)
-            if (m_bars[i]->gtkWidget() == child)
-                setCurrentChildIndex(i);
-    }
+    for (int i = 0; i < widget->childCount(); ++i)
+        if (widget->child(i).gtkWidget() == child)
+            widget->setCurrentChildIndex(i);
 }
 
 }

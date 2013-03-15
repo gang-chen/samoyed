@@ -7,39 +7,33 @@
 #include "editor.hpp"
 #include "file.hpp"
 #include "project.hpp"
-#include "editor-group.hpp"
 
 namespace Samoyed
 {
 
-Editor::Editor(File &file, Project &project):
+Editor::Editor(File &file, Project *project):
     m_file(file),
-    m_project(project),
-    m_group(NULL),
-    m_index(-1),
-    m_closing(false)
+    m_project(project)
 {
-    m_project.addEditor(*this);
+    if (m_project)
+        m_project->addEditor(*this);
 }
 
 Editor::~Editor()
 {
-    assert(m_group);
-    assert(m_closing);
-    m_group->removeEditor(*this);
-    m_project.removeEditor(*this);
-    m_group->onEditorClosed();
+    if (m_project)
+        m_project->removeEditor(*this);
 }
 
 bool Editor::close()
 {
-    // It is possible the editor is requested to be closed for multiple times.
-    if (m_closing)
+    if (closing())
         return true;
-    m_closing = true;
+
+    setClosing(true);
     if (!m_file.closeEditor(*this))
     {
-        m_closing = false;
+        setClosing(false);
         return false;
     }
     return true;
@@ -47,7 +41,6 @@ bool Editor::close()
 
 void Editor::onEditedStateChanged()
 {
-    m_group->onEditorEditedStateChanged(*this);
 }
 
 }

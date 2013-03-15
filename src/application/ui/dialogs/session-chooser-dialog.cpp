@@ -13,7 +13,7 @@ g++ session-chooser-dialog.cpp ../../utilities/miscellaneous.cpp\
 #endif
 #include "session-chooser-dialog.hpp"
 #ifndef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
-# include "../../session.hpp"
+# include "../session.hpp"
 #endif
 #include "../../utilities/miscellaneous.hpp"
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST

@@ -21,12 +21,7 @@ public:
         ORIENTATION_VERTICAL = GTK_ORIENTATION_VERTICAL
     };
 
-    Bar(const char *name): Widget(name) {}
-
     virtual Orientation orientation() const = 0;
-
-protected:
-    Bar(XmlElement &xmlElement): Widget(xmlElement) {}
 };
 
 }

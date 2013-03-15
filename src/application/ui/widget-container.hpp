@@ -33,7 +33,7 @@ public:
 
     virtual int currentChildIndex() const = 0;
 
-    virtual void setCurrentChildIndex() = 0;
+    virtual void setCurrentChildIndex(int index) = 0;
 
     Widget *findChild(const char *name);
     const Widget *findChild(const char *name) const;

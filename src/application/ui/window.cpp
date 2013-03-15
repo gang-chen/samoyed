@@ -6,7 +6,6 @@
 #endif
 #include "window.hpp"
 #include "actions.hpp"
-#include "widget-container.hpp"
 #include "paned.hpp"
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
@@ -31,19 +30,23 @@
 #define Y "y"
 #define WIDTH "width"
 #define HEIGHT "height"
-#define FULL_SCREEN "full-screen"
+#define IN_FULL_SCREEN "in-full-screen"
 #define MAXIMIZED "maximized"
 #define TOOLBAR_VISIBLE "toolbar-visible"
+#define TOOLBAR_VISIBLE_IN_FULL_SCREEN "toolbar-visible-in-full-screen"
 
-#define MAIN_AREA_NAME "Main Area"
-#define EDITOR_GROUP_NAME "Editor Group"
-#define PANED_NAME "Paned"
+#define MAIN_AREA_NAME "main-area"
+#define EDITOR_GROUP_NAME "editor-group"
+#define PANED_NAME "paned"
 
-#define NAVIGATION_PANE_TITLE "_Navigation Pane"
-#define TOOLS_PANE_TITLE "_Tools Pane"
+#define NAVIGATION_PANE_TITLE _("_Navigation Pane")
+#define TOOLS_PANE_TITLE _("_Tools Pane")
 
 namespace Samoyed
 {
+
+const char *Window::NAVIGATION_PANE_NAME = "navigation-pane";
+const char *Window::TOOLS_PANE_NAME = "tools-pane";
 
 Window::Created Window::s_created;
 Window::SidePaneCreated Window::s_navigationPaneCreated;
@@ -110,11 +113,11 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        FULL_SCREEN) == 0)
+                        IN_FULL_SCREEN) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_fullScreen = atoi(value);
+            m_configuration.m_inFullScreen = atoi(value);
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -131,6 +134,14 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
             m_configuration.m_toolbarVisible = atoi(value);
+            xmlFree(value);
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        TOOLBAR_VISIBLE_IN_FULL_SCREEN) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeListGetString(doc, child->children, 1));
+            m_configuration.m_toolbarVisibleInFullScreen = atoi(value);
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -218,9 +229,9 @@ xmlNodePtr Window::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(FULL_SCREEN),
+                    reinterpret_cast<const xmlChar *>(IN_FULL_SCREEN),
                     reinterpret_cast<const xmlChar *>(
-                        m_configuration.m_fullScreen ? "1" : "0"));
+                        m_configuration.m_inFullScreen ? "1" : "0"));
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(MAXIMIZED),
                     reinterpret_cast<const xmlChar *>(
@@ -229,6 +240,11 @@ xmlNodePtr Window::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE),
                     reinterpret_cast<const xmlChar *>(
                         m_configuration.m_toolbarVisible ? "1" : "0"));
+    xmlNewTextChild(
+        node, NULL,
+        reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE_IN_FULL_SCREEN),
+        reinterpret_cast<const xmlChar *>(
+            m_configuration.m_toolbarVisibleInFullScreen ? "1" : "0"));
     xmlNodePtr children =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILD));
     xmlAddChild(children, m_child->write());
@@ -312,11 +328,13 @@ bool Window::build(const Configuration &config)
     m_toolbarVisible = config.m_toolbarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
     gtk_widget_show_all(m_grid);
-    if (config.m_fullScreen)
+    if (!m_toolbarVisible)
+        setToolbarVisibleWrapper(false);
+    if (config.m_inFullScreen)
     {
         GtkAction *viewFullScreen =
             gtk_ui_manager_get_action(m_uiManager, "/view/full-screen");
-        if (viewFullScreen)
+        if (GTK_IS_TOGGLE_ACTION(viewFullScreen))
             gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(viewFullScreen),
                                          TRUE);
         else
@@ -324,13 +342,6 @@ bool Window::build(const Configuration &config)
     }
     else
     {
-        if (!m_toolbarVisible)
-            gtk_widget_hide(m_toolbar);
-        GtkAction *viewToolbar =
-            gtk_ui_manager_get_action(m_uiManager, "/view/toolbar");
-        if (viewToolbar)
-            gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(viewToolbar),
-                                         m_toolbarVisible);
         if (config.m_maximized)
             gtk_window_maximize(window);
         else
@@ -399,16 +410,14 @@ Window::~Window()
 
 gboolean Window::onDeleteEvent(GtkWidget *widget,
                                GdkEvent *event,
-                               gpointer window)
+                               Window *window)
 {
-    Window *w = static_cast<Window *>(window);
-
     if (!Application::instance().windows()->next())
     {
         // This is the last window.  Closing this window will quit the
         // application.  Confirm it.
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(w->m_window),
+            GTK_WINDOW(window->gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
@@ -427,7 +436,7 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
         return TRUE;
     }
 
-    w->close();
+    window->close();
     return TRUE;
 }
 
@@ -476,9 +485,9 @@ void Window::replaceChild(Widget &oldChild, Widget &newChild)
 
 gboolean Window::onFocusInEvent(GtkWidget *widget,
                                 GdkEvent *event,
-                                gpointer window)
+                                Window *window)
 {
-    Application::instance().setCurrentWindow(*static_cast<Window *>(window));
+    Application::instance().setCurrentWindow(*window);
     return FALSE;
 }
 
@@ -552,6 +561,26 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
     s_sidePaneAdded(pane, *this);
 }
 
+Notebook &Window::navigationPane()
+{
+    return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME));
+}
+
+const Notebook &Window::navigationPane() const
+{
+    return static_cast<const Notebook &>(*findSidePane(NAVIGATION_PANE_NAME));
+}
+
+Notebook &Window::toolsPane()
+{
+    return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME));
+}
+
+const Notebook &Window::toolsPane() const
+{
+    return static_cast<const Notebook &>(*findSidePane(TOOLS_PANE_NAME));
+}
+
 Notebook &Window::currentEditorGroup()
 {
     Widget *current = &this->current();
@@ -573,7 +602,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     Widget &current = currentEditorGroup();
     Notebook *newEditorGroup =
         new Notebook(strcmp(current.name(), EDITOR_GROUP_NAME) == 0 ?
-                     EDITOR_GROUP_NAME " 2" : EDITOR_GROUP_NAME,
+                     EDITOR_GROUP_NAME "-2" : EDITOR_GROUP_NAME,
                      EDITOR_GROUP_NAME,
                      true, true);
     switch (side)
@@ -624,23 +653,27 @@ void Window::setupDefaultSidePanes()
 void Window::createMenuItemForSidePane(const char *name, const char *title,
                                        bool visible)
 {
-    GtkWidget *spItem = gtk_ui_manager_get_widget(m_uiManager,
-                                                  "/view/side-panes");
-    if (!spItem)
-        return;
-    GtkWidget *item = gtk_check_menu_item_new_with_mnemonic(title);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), visible);
-    char *cp = g_strdup_printf(_("Show or hide %s"), name);
-    gtk_widget_set_tooltip_text(item, cp);
-    g_free(cp);
-    GtkWidget *spMenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(spItem));
-    if (!spMenu)
-    {
-        spMenu = gtk_menu_new();
-        gtk_menu_item_set_submenu(GTK_MENU_ITEM(spItem), GTK_MENU(spMenu));
-    }
-    gtk_menu_shell_append(GTK_MENU_SHELL(spMenu), item);
-    g_signal_connect(item, "toggled", G_CALLBACK(onSidePaneToggled), this);
+    std::string actionName(name);
+    actionName.insert(0, "show-hide-");
+    std::string titleText(title);
+    std::remove(titleText.begin(), titleText.end(), '_');
+    char *tooltip = g_strdup_printf(_("Show or hide %s"), titleText.c_str());
+    GtkToggleAction *action = gtk_toggle_action_new(actionName,
+                                                    title,
+                                                    tooltip,
+                                                    NULL);
+    g_free(tooltip);
+    gtk_toggle_action_set_active(action, visible);
+    g_signal_connect(action, "toggled",
+                     G_CALLBACK(showHideSidePane), this);
+    gtk_ui_manager_add_ui(m_uiManager,
+                          gtk_ui_manager_new_merge_id(m_uiManager),
+                          "/view/side-panes",
+                          actionName,
+                          actionName,
+                          GTK_UI_MANAGER_MENUITEM,
+                          FALSE);
+    g_object_unref(action);
 }
 
 void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
@@ -658,23 +691,20 @@ void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
                               gtk_widget_get_visible(widget.gtkWidget()));
 }
 
-void Window::onSidePaneToggled(GtkCheckMenuItem *menuItem, gpointer window)
+void Window::showHideSidePane(GtkToggleAction *action, Window *window)
 {
-    Window *w = static_cast<Window *>(window);
-    std::string name = gtk_menu_item_get_label(GTK_MENU_ITEM(menuItem));
-    std::remove(name.begin(), name.end(), '_');
-    Widget *pane = w->findSidePane(name.c_str());
+    const char *name = gtk_action_get_name(GTK_ACTION(action)) + 10;
+    Widget *pane = window->findSidePane(name);
     assert(pane);
     gtk_widget_set_visible(pane->gtkWidget(),
-                           gtk_check_menu_item_get_active(menuItem));
+                           gtk_toggle_action_get_active(action));
 }
 
 void Window::onWindowStateEvent(GtkWidget *widget,
                                 GdkEvent *event,
-                                gpointer window)
+                                Window *window)
 {
-    Window *w = static_cast<Window *>(window);
-    w->m_maximized = event.window_state & GDK_WINDOW_STATE_MAXIMIZED;
+    window->m_maximized = event.window_state & GDK_WINDOW_STATE_MAXIMIZED;
 }
 
 void Window::setToolbarVisible(bool visible)
@@ -686,11 +716,11 @@ void Window::setToolbarVisibleWrapper(bool visible)
 {
     GtkAction *viewToolbar =
         gtk_ui_manager_get_action(m_uiManager, "/view/toolbar");
-    if (viewToolbar)
+    if (GTK_IS_TOGGLE_ACTION(viewToolbar))
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(viewToolbar),
                                      visible);
     else
-        gtk_widget_set_visible(m_toolbar, visible);
+        setToolbarVisible(visible);
 }
 
 void Window::enterFullScreen()
@@ -708,7 +738,7 @@ void Window::enterFullScreen()
     }
     gtk_widget_hide(m_menuBar);
     gtk_window_fullscreen(gtkWidget());
-    m_fullScreen = true;
+    m_inFullScreen = true;
 }
 
 void Window::leaveFullScreen()
@@ -726,7 +756,7 @@ void Window::leaveFullScreen()
     }
     gtk_widget_show(m_menuBar);
     gtk_window_unfullscreen(gtkWidget());
-    m_fullScreen = false;
+    m_inFullScreen = false;
 }
 
 }

@@ -38,6 +38,7 @@ public:
         { return m_groupName.empty() ? NULL : m_groupName.c_str(); }
         bool createCloseButtons() const { return m_createCloseButtons; }
         bool canDragChildren() const { return m_canDragChildren; }
+        bool useUnderline() const { return m_useUnderline; }
         int childCount() const { return m_children.size(); }
         Widget::XmlElement &child(int index) const
         { return *m_children[index]; }
@@ -53,6 +54,7 @@ public:
         XmlElement():
             m_createCloseButtons(false),
             m_canDragChildren(false),
+            m_useUnderline(false),
             m_currentChildIndex(0)
         {}
 
@@ -64,6 +66,7 @@ public:
         std::string m_groupName;
         bool m_createCloseButtons;
         bool m_canDragChildren;
+        bool m_useUnderline;
         std::vector<Widget::XmlElement *> m_children;
         int m_currentChildIndex;
     };
@@ -71,7 +74,8 @@ public:
     static Notebook *create(const char *name,
                             const char *groupName,
                             bool createCloseButtons,
-                            bool canDragChildren);
+                            bool canDragChildren,
+                            bool useUnderline);
 
     virtual bool close();
 
@@ -102,16 +106,21 @@ public:
 
     bool createCloseButtons() const { return m_createCloseButtons; }
     bool canDragChildren() const { return m_canDragChildren; }
+    bool useUnderline() const { return m_useUnderline; }
 
 protected:
-    Notebook(): m_createCloseButtons(false), m_canDragChildren(false) {}
+    Notebook():
+        m_createCloseButtons(false),
+        m_canDragChildren(false),
+        m_useUnderline(false)
+    {}
 
     virtual ~Notebook();
 
-    bool setup(const char *name,
-               const char *groupName,
+    bool setup(const char *name, const char *groupName,
                bool createCloseButtons,
-               bool canDragChildren);
+               bool canDragChildren,
+               bool useUnderline);
 
     bool restore(XmlElement &xmlElement);
 
@@ -120,17 +129,18 @@ protected:
     virtual void removeChildInternally(Widget &child);
 
 private:
-    static void onCloseButtonClicked(GtkButton *button, gpointer child);
+    static void onCloseButtonClicked(GtkButton *button, Widget *child);
 
     static void onPageReordered(GtkWidget *widget, GtkWidget *child, int index,
-                                gpointer notebook);
+                                Notebook *notebook);
     static void onPageAdded(GtkWidget *widget, GtkWidget *child, int index,
-                            gpointer notebook);
+                            Notebook *notebook);
     static void onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
-                              gpointer notebook);
+                              Notebook *notebook);
 
     bool m_createCloseButtons;
     bool m_canDragChildren;
+    bool m_useUnderline;
 
     std::vector<Widget *> m_children;
 };

@@ -43,7 +43,7 @@ class FileSource: public Managed<FileSource>
 public:
     typedef ComparablePointer<const char *> Key;
     typedef CastableString KeyHolder;
-    Key key() const { return m_uri.c_str(); }
+    Key key() const { return m_key.c_str(); }
 
     typedef
     boost::signals2::signal_type<void (const FileSource &source,
@@ -52,6 +52,7 @@ public:
         type Changed;
 
     const char *uri() const { return m_uri.c_str(); }
+    const char *encoding() const { return m_encoding.c_str(); }
 
     /**
      * Request to update the source by loading from the external file or the
@@ -234,7 +235,7 @@ private:
         ReferencePointer<FileSource> m_source;
     };
 
-    FileSource(const Key &uri, unsigned long id, Manager<FileSource> &mgr);
+    FileSource(const Key &key, unsigned long id, Manager<FileSource> &mgr);
 
     ~FileSource();
 
@@ -257,7 +258,9 @@ private:
 
     void setBuffer(TextBuffer *buffer);
 
+    const std::string m_key;
     const std::string m_uri;
+    const std::string m_encoding;
 
     Revision m_revision;
 

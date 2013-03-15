@@ -5,17 +5,16 @@
 # include <config.h>
 #endif
 #include "session.hpp"
-#include "application.hpp"
-#include "ui/project.hpp"
-#include "ui/window.hpp"
-#include "ui/editor-group.hpp"
-#include "ui/editor.hpp"
-#include "ui/file.hpp"
-#include "ui/bars/file-recovery-bar.hpp"
-#include "utilities/miscellaneous.hpp"
-#include "utilities/lock-file.hpp"
-#include "utilities/signal.hpp"
-#include "utilities/scheduler.hpp"
+#include "project.hpp"
+#include "window.hpp"
+#include "editor.hpp"
+#include "file.hpp"
+#include "bars/file-recovery-bar.hpp"
+#include "../application.hpp"
+#include "../utilities/miscellaneous.hpp"
+#include "../utilities/lock-file.hpp"
+#include "../utilities/signal.hpp"
+#include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>

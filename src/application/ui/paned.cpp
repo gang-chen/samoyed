@@ -35,7 +35,7 @@ bool Paned::XmlElement::registerReader()
 
 bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                                        xmlNodePtr node,
-                                       std::list<std::string> &errors):
+                                       std::list<std::string> &errors)
 {
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
@@ -55,7 +55,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
             if (strcmp(value, HORIZONTAL) == 0)
                 m_orientation = Paned::ORIENTATION_HORIZONTAL;
             else if (strcmp(value, VERTICAL) == 0)
-                m_orientation = Paned::ORIENTATOIN_VERTICAL;
+                m_orientation = Paned::ORIENTATION_VERTICAL;
             else
             {
                 cp = g_strdup_printf(
@@ -160,7 +160,7 @@ xmlNodePtr Paned::XmlElement::write() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(ORIENTATION),
                     m_orientation ==
-                    Samoyed::SplitPane::ORIENTATION_HORIZONTAL ?
+                    Paned::ORIENTATION_HORIZONTAL ?
                     reinterpret_cast<const xmlChar *>(HORIZONTAL) :
                     reinterpret_cast<const xmlChar *>(VERTICAL));
     xmlNodePtr children =
@@ -215,25 +215,13 @@ Paned::XmlElement::~XmlElement()
     delete m_children[1];
 }
 
-Paned::Paned(const char *name, Orientation orientation):
-    WidgetContainer(name),
-    m_orientation(orientation),
-    m_currentChildIndex(0)
-{
-    m_children[0] = NULL;
-    m_children[1] = NULL;
-    GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
-    g_signal_connect(paned, "set-focus-child",
-                     G_CALLBACK(setFocusChild), this);
-    setGtkWidget(paned);
-}
-
 bool Paned::setup(const char *name,
                   Orientation orientation,
                   Widget &child1, Widget &child2)
 {
     if (!WidgetContainer::setup(name))
         return false;
+    m_orientation = orientation;
     GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
     g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
@@ -270,8 +258,9 @@ bool Paned::restore(XmlElement &xmlElement)
         delete child1;
         return false;
     }
+    m_orientation = xmlElement.orientation();
     GtkWidget *paned =
-        gtk_paned_new(static_cast<GtkOrientation>(xmlElement.m_orientation));
+        gtk_paned_new(static_cast<GtkOrientation>(m_orientation));
     g_signal_connect(paned, "set-focus-child",
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(paned);
@@ -366,7 +355,7 @@ Paned *Paned::split(const char *name,
 {
     Widget *original;
     WidgetContainer *parent;
-    int index, newChildIndex;
+    int newChildIndex;
 
     if (child1.parent())
     {
@@ -380,19 +369,19 @@ Paned *Paned::split(const char *name,
         newChildIndex = 0;
     }
     parent = original->parent();
-    index = parent->childIndex(*original);
 
     // Create a paned widget to hold the two widgets.
     Paned *paned = new Paned;
-    if (!paned->Widget::setup(name))
+    if (!paned->WidgetContainer::setup(name))
     {
         delete paned;
         return NULL;
     }
-    GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
-    g_signal_connect(paned, "set-focus-child",
+    paned->m_orientation = orientation;
+    GtkWidget *p = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(p, "set-focus-child",
                      G_CALLBACK(setFocusChild), paned);
-    paned->setGtkWidget(paned);
+    paned->setGtkWidget(p);
 
     // Replace the original widget with the paned widget.
     parent->replaceChild(*original, *paned);
@@ -402,21 +391,17 @@ Paned *Paned::split(const char *name,
     paned->addChildInternally(child2, 1);
     paned->m_currentChildIndex = newChildIndex;
 
+    gtk_widget_show_all(p);
     return paned;
 }
 
 void Paned::setFocusChild(GtkWidget *container,
                           GtkWidget *child,
-                          gpointer paned)
+                          Paned *paned)
 {
-    Paned *p = static_cast<Paned *>(paned);
-    if (p->m_children[0]->gtkWidget() == child)
-        m_currentChildIndex = 0;
-    else
-    {
-        assert(p->m_children[1]->gtkWidget() == child);
-        m_currentChildIndex = 1;
-    }
+    for (int i = 0; i < paned->childCount(); ++i)
+        if (paned->child(i).gtkWidget() == child)
+            paned->setCurrentChildIndex(i);
 }
 
 }

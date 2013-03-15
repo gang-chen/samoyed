@@ -138,7 +138,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
     File *file = it->second.m_factory(uri);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
-    Editor *editor = file->createEditor();
+    Editor *editor = file->createEditor(project);
     if (!editor)
     {
         delete file;
@@ -147,7 +147,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
     return std::make_pair(file, editor);
 }
 
-Editor *File::createEditor(Project &project)
+Editor *File::createEditor(Project *project)
 {
     Editor *editor = newEditor(project);
     if (!editor)

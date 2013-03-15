@@ -123,7 +123,7 @@ protected:
 private:
     static void setFocusChild(GtkWidget *container,
                               GtkWidget *child,
-                              gpointer widget);
+                              WidgetWithBars *widget);
 
     GtkWidget *m_horizontalGrid;
 

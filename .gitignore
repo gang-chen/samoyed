@@ -68,6 +68,13 @@ Makefile.in
 # Build directory.
 /build/
 
+# Object files, archives, shared libraries and programs produced by compilers.
+*.o
+*.a
+*.so
+*.so.*
+src/application/samoyed
+
 # Unit test builds.
 src/application/ui/dialogs/session-chooser-dialog
 src/application/ui/splash-screen

@@ -156,7 +156,7 @@ private:
 
     static gboolean onSplashScreenDeleteEvent(GtkWidget *widget,
                                               GdkEvent *event,
-                                              gpointer app);
+                                              Application *app);
 
     static gboolean checkTerminateRequest(gpointer app);
 
@@ -210,8 +210,6 @@ private:
     Window *m_firstWindow;
     Window *m_lastWindow;
     Window *m_currentWindow;
-
-    ProjectExplorer *m_projectExplorer;
 
     char *m_sessionName;
     char *m_newSessionName;

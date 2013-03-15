@@ -270,9 +270,9 @@ void Application::quit()
 
 gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
                                                 GdkEvent *event,
-                                                gpointer app)
+                                                Application *app)
 {
-    static_cast<Application *>(app)->quit();
+    app->quit();
     return TRUE;
 }
 
