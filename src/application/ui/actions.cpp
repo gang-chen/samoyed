@@ -64,10 +64,6 @@ void openFile(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void openFileInNewEditor(GtkAction *action, Samoyed::Window *window)
-{
-}
-
 void saveFile(GtkAction *action, Samoyed::Window *window)
 {
 }
@@ -136,10 +132,6 @@ void createEditorGroup(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void enterFullScreen(GtkAction *action, Samoyed::Window *window)
-{
-}
-
 void showManual(GtkAction *action, Samoyed::Window *window)
 {
 }
@@ -149,6 +141,14 @@ void showTutorial(GtkAction *action, Samoyed::Window *window)
 }
 
 void showAbout(GtkAction *action, Samoyed::Window *window)
+{
+}
+
+void enterLeaveFullScreen(GtkToggleAction *action, Samoyed::Window *window)
+{
+}
+
+void showHideToolbar(GtkToggleAction *action, Samoyed::Window *window)
 {
 }
 
@@ -198,9 +198,6 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     // File menu.
     { "file-open", GTK_STOCK_OPEN, N_("_Open..."), NULL,
       N_("Open a file"), G_CALLBACK(openFile) },
-    { "file-open-new-editor", NULL, N_("Open in New _Editor..."), NULL,
-      N_("Open a file in a new editor"),
-      G_CALLBACK(openFileInNewEditor) },
     { "file-save", GTK_STOCK_SAVE, N_("_Save"), "<ctrl>S",
       N_("Save the current file"), G_CALLBACK(saveFile) },
     { "file-save-all", NULL, N_("Save _All"), NULL,
@@ -239,8 +236,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Create a window"), G_CALLBACK(createWindow) },
     { "view-new-editor-group", NULL, N_("New Editor _Group"), NULL,
       N_("Create an editor group"), G_CALLBACK(createEditorGroup) },
-    { "view-full-screen", GTK_STOCK_FULLSCREEN, N_("_Full Screen"), "F11",
-      N_("Enter full screen mode"), G_CALLBACK(enterFullScreen) },
+    { "view-side-panes", NULL, N_("_Side Panes"), NULL, NULL, NULL },
 
     // Help menu.
     { "help-manual", GTK_STOCK_HELP, N_("_Manual"), "F1",
@@ -257,6 +253,14 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Create a directory"), G_CALLBACK(createDirectory) }
 };
 
+const GtkToggleActionEntry
+toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
+{
+    { "view-full-screen", GTK_STOCK_FULLSCREEN, N_("_Full Screen"), "F11",
+      N_("Enter or leave full screen mode"),
+      G_CALLBACK(enterLeaveFullScreen), FALSE },
+    { "view-toolbar", NULL, N_("_Toolbar"), NULL,
+      N_("Show or hide toolbar"), G_CALLBACK(showHideToolbar), TRUE }
 }
 
 namespace Samoyed
@@ -270,11 +274,19 @@ Actions::Actions(Window *window)
                                  actionEntries,
                                  N_ACTIONS,
                                  window);
+    gtk_action_group_add_toggle_actions(m_actionGroup,
+                                        toggleActionEntries,
+                                        N_TOGGLE_ACTIONS,
+                                        window);
 
     // Fill the action array.
-    for (int i = 0; i < N_ACTIONS; i++)
+    for (int i = 0; i < N_ACTIONS; ++i)
         m_actions[i] = gtk_action_group_get_action(m_actionGroup,
                                                    actionEntries[i].name);
+    for (int i = 0; i < N_ACTIONS; ++i)
+        m_toggleActions[i] = GTK_TOGGLE_ACTION(
+            gtk_action_group_get_action(m_actionGroup,
+                                        toggleActionEntries[i].name));
 }
 
 Actions::~Actions()
