@@ -30,6 +30,8 @@ public:
 
     virtual ~TextFileLoader();
 
+    const TextBuffer *buffer() const { return m_buffer; }
+
     TextBuffer *takeBuffer()
     {
         TextBuffer *buffer = m_buffer;

@@ -21,15 +21,19 @@ class Project;
 class Editor: public Widget
 {
 public:
-    Editor(File &file, Project *project);
+    static Editor *create(File &file, Project *project);
 
-    virtual ~Editor();
+    // This function can be called by the file only.
+    ~Editor();
 
     File &file() { return m_file; }
     const File &file() const { return m_file; }
 
     virtual bool close();
 
+    /**
+     * This function is called by the file when it is edited or loaded.
+     */
     virtual void onEdited(const File::EditPrimitive &edit) = 0;
 
     virtual void onEditedStateChanged();
@@ -37,6 +41,9 @@ public:
     virtual void freeze() = 0;
 
     virtual void unfreeze() = 0;
+
+protected:
+    Editor(File &file, Project *project);
 
 private:
     /**

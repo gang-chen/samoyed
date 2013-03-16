@@ -28,6 +28,9 @@ public:
         static bool registerReader();
 
         virtual ~XmlElement();
+        static XmlElement *read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         static XmlElement *saveWidget(const Paned &paned);
         virtual Widget *restoreWidget();
@@ -55,10 +58,6 @@ public:
         }
 
     private:
-        static Widget::XmlElement *read(xmlDocPtr doc,
-                                        xmlNodePtr node,
-                                        std::list<std::string> &errors);
-
         Paned::Orientation m_orientation;
         Widget::XmlElement *m_children[2];
         int m_currentChildIndex;

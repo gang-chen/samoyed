@@ -1,11 +1,18 @@
 // Opened text file.
 // Copyright (C) 2013 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "text-file.hpp"
+#include "text-editor.hpp"
+#include "project.hpp"
 #include "../utilities/utf8.hpp"
 #include "../utilities/text-buffer.hpp"
 #include "../utilities/text-file-loader.hpp"
 #include "../utilities/text-file-saver.hpp"
+#include <gtk/gtk.h>
+#include <glib/gi18n-lib.h>
 
 namespace
 {
@@ -103,85 +110,114 @@ bool TextFile::TempInsertion::merge(File::EditPrimitive *edit)
     return false;
 }
 
-File *TextFile::create(const char *uri)
+File *TextFile::create(const char *uri, Project *project)
 {
-    return new TextFile(uri);
-}
-
-Editor *TextFile::newEditor(Project *project)
-{
-    return new TextEditor(*this, project);
+    return new TextFile(uri, "UTF-8", true);
 }
 
 void TextFile::registerType()
 {
-    Application::instance().fileTypeRegistry().
-        registerFileFactory("text/x-csrc", create);
-    Application::instance().fileTypeRegistry().
-        registerFileFactory("text/x-chdr", create);
-    Application::instance().fileTypeRegistry().
-        registerFileFactory("text/x-c++src", create);
-    Application::instance().fileTypeRegistry().
-        registerFileFactory("text/x-c++hdr", create);
+    File::registerType("text/plain", _("Plain text"), create);
 }
 
-TextFile::TextFile(const char *uri, const char *encoding):
+TextFile::TextFile(const char *uri, const char *encoding, bool ownBuffer):
     File(uri),
-    m_encoding(encoding)
-{}
+    m_encoding(encoding),
+    m_buffer(NULL)
+{
+    if (ownBuffer)
+        m_buffer = gtk_text_buffer_new();
+}
+
+TextFile::~TextFile()
+{
+    if (m_buffer)
+        g_object_unref(m_buffer);
+}
+
+int TextFile::characterCount() const
+{
+    assert(m_buffer);
+    return gtk_text_buffer_get_char_count(m_buffer);
+}
+
+int TextFile::lineCount() const
+{
+    assert(m_buffer);
+    return gtk_text_buffer_get_line_count(m_buffer);
+}
+
+char *TextFile::text(int beginLine, int beginColumn,
+                     int endLine, int endColumn) const
+{
+    assert(m_buffer);
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
+    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
+}
+
+Editor *TextFile::createEditorInternally(Project *project)
+{
+    return TextEditor::create(*this, project);
+}
+
+FileLoader *SourceFile::createLoader(unsigned int priority,
+                                     const Worker::Callback &callback)
+{
+    return new TextFileLoader(priority, callback, uri(), encoding());
+}
+
+FileSaver *SourceFile::createSaver(unsigned int priority,
+                                   const Worker::Callback &callback)
+{
+    return new TextFileSaver(priority,
+                             callback,
+                             uri(),
+                             encoding(),
+                             text(0, 0, -1, -1),
+                             characterCount());
+}
 
 void TextFile::onLoaded(FileLoader &loader)
 {
     TextFileLoader &ld = static_cast<TextFileLoader &>(loader);
 
     // Copy the contents in the loader's buffer to the editors.
-    TextBuffer *buffer = ld.takeBuffer();
+    const TextBuffer *buffer = ld.buffer();
     TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
+    if (m_buffer)
+    {
+        GtkTextIter begin, end;
+        gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
+        gtk_text_buffer_delete(m_buffer, &begin, &end);
+    }
     onEdited(Removal(0, 0, -1, -1), NULL);
+    GtkTextIter iter;
+    if (m_buffer)
+        gtk_text_buffer_get_start_iter(m_buffer, &iter);
     do
     {
         const char *begin, *end;
         if (it.getAtomsBulk(begin, end))
+        {
+            if (m_buffer)
+                gtk_text_buffer_insert(m_buffer, &iter, begin, end - begin);
             onEdited(TempInsertion(-1, -1, begin, end - begin), NULL);
+        }
     }
     while (it.goToNextBulk());
-
-    // Pass the loader's buffer to the source, which will own the buffer.
-    m_source->onFileLoaded(*this, buffer);
 }
 
-void SourceFile::onSaved(FileSaver &saver)
-{
-    m_source->onFileSaved(*this);
-}
-
-int SourceFile::characterCount() const
-{
-    return static_cast<SourceEditor *>(editors())->characterCount();
-}
-
-int SourceFile::lineCount() const
-{
-    return static_cast<SourceEditor *>(editors())->lineCount();
-}
-
-char *SourceFile::text(int beginLine, int beginColumn,
-                       int endLine, int endColumn) const
-{
-    return static_cast<SourceEditor *>(editors())->
-        text(beginLine, beginColumn, endLine, endColumn);
-}
-
-void SourceFile::insert(int line, int column, const char *text, int length,
-                        SourceEditor *committer)
+void TextFile::insert(int line, int column, const char *text, int length,
+                      TextEditor *committer)
 {
     Removal *undo = insertOnly(line, column, text, length, committer);
     saveUndo(undo);
 }
 
-void SourceFile::remove(int beginLine, int beginColumn,
-                        int endLine, int endColumn,
-                        SourceEditor *committer)
+void TextFile::remove(int beginLine, int beginColumn,
+                      int endLine, int endColumn,
+                      TextEditor *committer)
 {
     Insertion *undo = removeOnly(beginLine, beginColumn,
                                  endLine, endColumn,
@@ -189,12 +225,20 @@ void SourceFile::remove(int beginLine, int beginColumn,
     saveUndo(undo);
 }
 
-SourceFile::Removal *
-SourceFile::insertOnly(int line, int column, const char *text, int length,
-                       SourceEditor *committer)
+TextFile::Removal *
+TextFile::insertOnly(int line, int column, const char *text, int length,
+                     TextEditor *committer)
 {
     int oldLineCount = lineCount();
+    if (m_buffer)
+    {
+        GtkTextIter iter;
+        gtk_text_buffer_get_iter_at_line_offset(m_buffer, &iter,
+                                                line, column);
+        gtk_text_buffer_insert(m_buffer, &iter, text, length);
+    }
     onEdited(TempInsertion(line, column, text, length), committer);
+    onInserted(line, column, text, length, committer);
     int newLineCount = lineCount();
     int endLine, endColumn;
     endLine = line + newLineCount - oldLineCount;
@@ -213,38 +257,29 @@ SourceFile::insertOnly(int line, int column, const char *text, int length,
         }
     }
     Removal *undo = new Removal(line, column, endLine, endColumn);
-    m_source->onFileTextInserted(*this, line, column, text, length);
     return undo;
 }
 
-SourceFile::Insertion *
-SourceFile::removeOnly(int beginLine, int beginColumn,
-                       int endLine, int endColumn,
-                       SourceEditor *committer)
+TextFile::Insertion *
+TextFile::removeOnly(int beginLine, int beginColumn,
+                     int endLine, int endColumn,
+                     TextEditor *committer)
 {
     char *removed = text(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
     g_free(removed);
+    if (m_buffer)
+    {
+        GtkTextIter begin, end;
+        gtk_text_buffer_get_iter_at_line_offset(m_buffer, &begin,
+                                                beginLine, beginColumn);
+        gtk_text_buffer_get_iter_at_line_offset(m_buffer, &end,
+                                                endLine, endColumn);
+        gtk_text_buffer_delete(m_buffer, &begin, &end);
+    }
     onEdited(Removal(beginLine, beginColumn, endLine, endColumn), committer);
-    m_source->onFileTextRemoved(*this,
-                                beginLine, beginColumn, endLine, endColumn);
+    onRemoved(beginLine, beginColumn, endLine, endColumn, committer);
     return undo;
-}
-
-FileLoader *SourceFile::createLoader(unsigned int priority,
-                                     const Worker::Callback &callback)
-{
-    return new TextFileLoader(priority, callback, uri());
-}
-
-FileSaver *SourceFile::createSaver(unsigned int priority,
-                                   const Worker::Callback &callback)
-{
-    return new TextFileSaver(priority,
-                             callback,
-                             uri(),
-                             text(0, 0, -1, -1),
-                             characterCount());
 }
 
 }

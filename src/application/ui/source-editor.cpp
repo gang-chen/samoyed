@@ -22,4 +22,22 @@ void SourceEditor::destroySharedData()
     g_object_unref(s_sharedTagTable);
 }
 
+int SourceEditor::characterCount() const
+{
+    return gtk_text_buffer_get_char_count(m_buffer);
+}
+
+int SourceEditor::lineCount() const
+{
+    return gtk_text_buffer_get_line_count(m_buffer);
+}
+
+char *SourceEditor::text(int beginLine, int beginColumn,
+                         int endLine, int endColumn) const
+{
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
+    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
+}
+
 }

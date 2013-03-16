@@ -106,6 +106,8 @@ public:
         std::vector<Edit *> m_edits;
     };
 
+    static std::pair<File *, Editor *> open();
+
     static std::pair<File *, Editor *> open(const char *uri, Project *project);
 
     Editor *createEditor(Project *project);
@@ -215,15 +217,20 @@ public:
     { return m_edited.connect(callback); }
 
 protected:
-    typedef boost::function<File *(const char *uri)> Factory;
+    typedef boost::function<File *(const char *uri, Project *project)> Factory;
 
     struct TypeRecord
     {
         std::string m_description;
         Factory m_factory;
+        TypeRecord(const char *desc, const Factory &factory):
+            m_description(desc), m_factory(factory)
+        {}
     };
 
-    static bool registerType(const char *mimeType, const TypeRecord &record);
+    static bool registerType(const char *mimeType,
+                             const char *description,
+                             const Factory &factory);
 
     File(const char *uri);
 
@@ -243,7 +250,7 @@ protected:
 
 private:
     // Functions implemented by derived classes and called by the base class.
-    virtual Editor *newEditor(Project *project) = 0;
+    virtual Editor *createEditorInternally(Project *project) = 0;
 
     virtual FileLoader *createLoader(unsigned int priority,
                                      const Worker::Callback &callback) = 0;
@@ -253,7 +260,7 @@ private:
 
     virtual void onLoaded(FileLoader &loader) = 0;
 
-    virtual void onSaved(FileSaver &saver) = 0;
+    virtual void onSaved(FileSaver &saver) {}
 
     void continueClosing();
 

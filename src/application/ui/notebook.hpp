@@ -23,6 +23,9 @@ public:
         static bool registerReader();
 
         virtual ~XmlElement();
+        static XmlElement *read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         static XmlElement *saveWidget(const Notebook &notebook);
         virtual Widget *restoreWidget();
@@ -59,10 +62,6 @@ public:
         {}
 
     private:
-        static Widget::XmlElement *read(xmlDocPtr doc,
-                                        xmlNodePtr node,
-                                        std::list<std::string> &errors);
-
         std::string m_groupName;
         bool m_createCloseButtons;
         bool m_canDragChildren;

@@ -22,7 +22,7 @@ class Worker;
 class Project;
 class File;
 template<class> class Manager;
-class FileSource;
+class FileSourceManager;
 class ProjectConfiguration;
 class ProjectAstManager;
 class Window;
@@ -83,7 +83,7 @@ public:
 
     Scheduler &scheduler() const { return *m_scheduler; }
 
-    Manager<FileSource> &fileSourceManager() const
+    FileSourceManager &fileSourceManager() const
     { return *m_fileSourceManager; }
 
     Manager<ProjectConfiguration> &projectConfigurationManager() const
@@ -189,7 +189,7 @@ private:
 
     Scheduler *m_scheduler;
 
-    Manager<FileSource> *m_fileSourceManager;
+    FileSourceManager *m_fileSourceManager;
 
     Manager<ProjectConfiguration> *m_projectConfigManager;
 

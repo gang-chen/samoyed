@@ -83,9 +83,13 @@ void File::EditStack::clear()
 
 std::map<std::string, File::TypeRecord> File::s_typeRegistry;
 
-bool File::registerType(const char *mimeType, const TypeRecord &record)
+bool File::registerType(const char *mimeType,
+                        const char *description,
+                        const Factory &factory)
 {
-    return s_typeRegistry.insert(std::make_pair(mimeType, record)).second;
+    return s_typeRegistry.insert(
+                std::make_pair(mimeType,
+                               TypeRecord(description, factory))).second;
 }
 
 std::pair<File *, Editor *> File::open(const char *uri, Project *project)
@@ -135,7 +139,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(mimeType);
-    File *file = it->second.m_factory(uri);
+    File *file = it->second.m_factory(uri, project);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
     Editor *editor = file->createEditor(project);
@@ -149,7 +153,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
 
 Editor *File::createEditor(Project *project)
 {
-    Editor *editor = newEditor(project);
+    Editor *editor = createEditorInternally(project);
     if (!editor)
         return NULL;
 

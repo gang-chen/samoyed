@@ -138,9 +138,9 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Widget::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
-                                            xmlNodePtr node,
-                                            std::list<std::string> &errors)
+Paned::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
+                                           xmlNodePtr node,
+                                           std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(doc, node, errors))
@@ -255,7 +255,8 @@ bool Paned::restore(XmlElement &xmlElement)
     Widget *child2 = xmlElement.child(1).restoreWidget();
     if (!child2)
     {
-        delete child1;
+        // Assume that it should close itself silently.
+        child1->close();
         return false;
     }
     m_orientation = xmlElement.orientation();

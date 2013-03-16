@@ -54,6 +54,7 @@ Application::Application():
     m_fileTypeRegistry(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
+    m_projectConfigManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
     m_firstProject(NULL),

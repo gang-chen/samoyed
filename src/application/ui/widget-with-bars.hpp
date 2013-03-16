@@ -28,6 +28,9 @@ public:
         static bool registerReader();
 
         virtual ~XmlElement();
+        static XmlElement *read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         static XmlElement *saveWidget(const WidgetWithBars &widget);
         virtual Widget *restoreWidget();
@@ -54,10 +57,6 @@ public:
         XmlElement(): m_mainChild(NULL), m_currentChildIndex(0) {}
 
     private:
-        static Widget::XmlElement *read(xmlDocPtr doc,
-                                        xmlNodePtr node,
-                                        std::list<std::string> &errors);
-
         Widget::XmlElement *m_mainChild;
         std::vector<Bar::XmlElement *> m_bars;
         int m_currentChildIndex;

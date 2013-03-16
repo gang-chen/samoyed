@@ -7,6 +7,7 @@ libresources_la_SOURCES = \
     file-ast-collection.hpp \
     file-ast.hpp \
     file-source.hpp \
+    file-source-manager.hpp \
     project-ast-manager.hpp \
     project-ast.hpp \
     project-configuration.hpp

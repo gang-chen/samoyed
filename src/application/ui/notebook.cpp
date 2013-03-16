@@ -114,9 +114,9 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Widget::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,
-                                               xmlNodePtr node,
-                                               std::list<std::string> &errors)
+Notebook::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,
+                                                 xmlNodePtr node,
+                                                 std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(doc, node, errors))

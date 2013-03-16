@@ -111,10 +111,9 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Widget::XmlElement *
-WidgetWithBars::XmlElement::read(xmlDocPtr doc,
-                                 xmlNodePtr node,
-                                 std::list<std::string> &errors)
+XmlElement *WidgetWithBars::XmlElement::read(xmlDocPtr doc,
+                                             xmlNodePtr node,
+                                             std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(doc, node, errors))

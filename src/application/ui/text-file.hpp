@@ -5,6 +5,7 @@
 #define SMYD_TEXT_FILE_HPP
 
 #include "file.hpp"
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
@@ -144,6 +145,8 @@ public:
 
     static void registerType();
 
+    const char *encoding() const { return m_encoding.c_str(); }
+
     int characterCount() const;
 
     int lineCount() const;
@@ -190,11 +193,11 @@ public:
                 TextEditor *committer);
 
 protected:
-    TextFile(const char *uri);
+    TextFile(const char *uri, const char *encoding, bool ownBuffer);
 
     virtual ~TextFile();
 
-    virtual Editor *newEditor(Project *project);
+    virtual Editor *createEditorInternally(Project *project);
 
     virtual FileLoader *createLoader(unsigned int priority,
                                      const Worker::Callback &callback);
@@ -207,7 +210,15 @@ protected:
     virtual void onSaved(FileSaver &saver);
 
 private:
-    static File *create(const char *uri);
+    static File *create(const char *uri, Project *project);
+
+    virtual void onInserted(int line, int column,
+                            const char *text, int length,
+                            TextEditor *committer);
+
+    virtual void onRemoved(int beginLine, int beginColumn,
+                           int endLine, int endColumn,
+                           TextEditor *committer);
 
     Removal *insertOnly(int line, int column,
                         const char *text, int length,
@@ -218,6 +229,8 @@ private:
                           TextEditor *committer);
 
     std::string m_encoding;
+
+    GtkTextBuffer *m_buffer;
 };
 
 }

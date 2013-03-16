@@ -4,7 +4,7 @@
 #ifndef SMYD_SOURCE_EDITOR_HPP
 #define SMYD_SOURCE_EDITOR_HPP
 
-#include "editor.hpp"
+#include "text-editor.hpp"
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -15,7 +15,7 @@ class SourceFile;
 /**
  * A source editor
  */
-class SourceEditor: public Editor
+class SourceEditor: public TextEditor
 {
 public:
     /**
@@ -27,7 +27,7 @@ public:
 
     static void destroySharedData();
 
-    SourceEditor(SourceFile &file, Project &project);
+    SourceEditor(SourceFile &file, Project *project);
 
     int characterCount() const;
 
@@ -36,13 +36,7 @@ public:
     char *text(int beginLine, int beginColumn,
                int endLine, int endColumn) const;
 
-    virtual GtkWidget *gtkWidget() const { return GTK_WIDGET(m_view); }
-
     virtual void onEdited(const File::EditPrimitive &edit);
-
-    virtual void freeze();
-
-    virtual void unfreeze();
 
 private:
     /**

@@ -79,6 +79,9 @@ public:
         static bool registerReader();
 
         virtual ~XmlElement();
+        static XmlElement *read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         static XmlElement *saveWidget(const Window &window);
         virtual Widget *restoreWidget();
@@ -96,10 +99,6 @@ public:
         XmlElement(): m_child(NULL) {}
 
     private:
-        static Widget::XmlElement *read(xmlDocPtr doc,
-                                        xmlNodePtr node,
-                                        std::list<std::string> &errors);
-
         Configuration m_configuration;
         Widget::XmlElement *m_child;
     };
