@@ -11,7 +11,8 @@ libsamoyed_la_CPPFLAGS = \
     -DSAMOYED_PKGLIBDIR=\"$(pkglibdir)\" \
     -DSAMOYED_LOCALEDIR=\"$(localedir)\" \
     $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS)
+    $(GTK_CFLAGS) \
+    $(XML_CFLAGS)
 
 libsamoyed_la_CXXFLAGS = -Werror -Wall
 

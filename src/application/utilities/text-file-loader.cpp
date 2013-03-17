@@ -46,6 +46,21 @@ const int BUFFER_SIZE = 10000;
 namespace Samoyed
 {
 
+TextFileLoader::TextFileLoader(unsigned int priority,
+                               const Callback &callback,
+                               const char *uri,
+                               const char *encoding):
+    FileLoader(priority, callback, uri),
+    m_encoding(encoding),
+    m_buffer(NULL)
+{
+    char *desc =
+        g_strdup_printf(_("Loading text file \"%s\" in encoding \"%s\""),
+                        uri, encoding);
+    setDescription(desc);
+    g_free(desc);
+}
+
 TextFileLoader::~TextFileLoader()
 {
     delete m_buffer;
@@ -144,11 +159,6 @@ CLEAN_UP:
     if (file)
         g_object_unref(file);
     return true;
-}
-
-char *TextFileLoader::description() const
-{
-    return g_strdup_printf(_("Loading text file \"%s\""), uri());
 }
 
 }

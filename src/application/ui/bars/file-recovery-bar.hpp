@@ -15,15 +15,16 @@ namespace Samoyed
 class FileRecoveryBar: public Bar
 {
 public:
-    FileRecoveryBar(const std::set<std::string> &unsavedFileUris);
+    static const char *NAME;
+
+    static FileRecoveryBar *create(const std::set<std::string> &fileUris);
 
     virtual Orientation orientation() const
     { return ORIENTATION_HORIZONTAL; }
 
-    virtual GtkWidget *gtkWidget() const { return m_grid; }
+    void setFileUris(const std::set<std::string> &fileUris);
 
 private:
-    GtkWidget *m_grid;
 };
 
 }

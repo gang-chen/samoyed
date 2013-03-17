@@ -6,9 +6,11 @@
 
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/manager.hpp"
+#include <list>
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -30,9 +32,27 @@ class ProjectConfiguration;
 class Project: public boost::noncopyable
 {
 public:
+    class XmlElement
+    {
+    public:
+        static XmlElement *read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::list<std::string> &errors);
+        xmlNodePtr write() const;
+        static XmlElement *saveProject();
+        Project *restoreProject();
+
+    private:
+        XmlElement() {}
+
+        std::string m_uri;
+    };
+
     Project(const char *uri);
 
     bool close();
+
+    XmlElement *save() const;
 
     const char *uri() const { return m_uri.c_str(); }
 

@@ -24,9 +24,9 @@ namespace Samoyed
 {
 
 std::map<std::string, Widget::XmlElement::Reader>
-    Widget::XmlElement::s_widgetRegistry;
+    Widget::XmlElement::s_readerRegistry;
 
-bool Widget::XmlElement::registerWidget(const char *className,
+bool Widget::XmlElement::registerReader(const char *className,
                                         const Reader &reader)
 {
     return s_readerRegistry.insert(std::make_pair(className, reader)).second;

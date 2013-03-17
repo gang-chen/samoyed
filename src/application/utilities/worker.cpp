@@ -98,10 +98,8 @@ void Worker::operator()()
             Application::instance().scheduler().schedule(*this);
 #endif
 #ifdef SMYD_WORKER_UNIT_TEST
-            char *desc = description();
             printf("%s: Priority %u preempted by priority %u\n",
-                   desc, m_priority, hpp);
-            g_free(desc);
+                   description(), m_priority, hpp);
 #endif
             return;
         }
@@ -179,10 +177,8 @@ void Worker::operator()()
 #endif
                         schedule(*this);
 #ifdef SMYD_WORKER_UNIT_TEST
-                    char *desc = description();
                     printf("%s: Priority %u preempted by priority %u\n",
-                           desc, m_priority, hpp);
-                    g_free(desc);
+                           description(), m_priority, hpp);
 #endif
                     return;
                 }
@@ -275,9 +271,7 @@ public:
         void operator()(Worker &worker) const
         {
             Alarm &alarm = static_cast<Alarm &>(worker);
-            char *desc = alarm.description();
-            printf("%s: Update requested\n", desc);
-            g_free(desc);
+            printf("%s: Update requested\n", alarm.description());
             alarm.m_updatedTimes += m_times;
         }
 
@@ -291,18 +285,17 @@ public:
         Samoyed::Worker(priority, callback),
         m_id(id), m_sec(sec), m_times(times), m_updatedTimes(0), m_tick(0)
     {
+        char *desc =
+            g_strdup_printf("Alarm %d: Alarm every %d seconds for %d times",
+                            m_id, m_sec, m_times);
+        setDescription(desc);
+        g_free(desc);
         printf("Alarm %d created\n", m_id);
     }
 
     virtual ~Alarm()
     {
         printf("Alarm %d destroyed\n", m_id);
-    }
-
-    virtual char *description() const
-    {
-        return g_strdup_printf("Alarm %d: Alarm every %d seconds for %d times",
-                               m_id, m_sec, m_times);
     }
 
     bool update(int times)
@@ -313,15 +306,12 @@ public:
 private:
     virtual bool step()
     {
-        char *desc = description();
         if (m_tick >= m_times)
         {
-            printf("%s: Done\n", desc);
-            g_free(desc);
+            printf("%s: Done\n", description());
             return true;
         }
-        printf("%s: Tick %d\n", desc, ++m_tick);
-        g_free(desc);
+        printf("%s: Tick %d\n", description(), ++m_tick);
         boost::system_time t = boost::get_system_time();
         t += boost::posix_time::seconds(m_sec);
         boost::thread::sleep(t);
@@ -332,6 +322,11 @@ private:
     {
         m_times += m_updatedTimes;
         m_updatedTimes = 0;
+        char *desc =
+            g_strdup_printf("Alarm %d: Alarm every %d seconds for %d times",
+                            m_id, m_sec, m_times);
+        setDescription(desc);
+        g_free(desc);
     }
 
     const int m_id;
@@ -363,26 +358,25 @@ public:
         boost::mutex::scoped_lock lock(m_mutex);
         if (m_alarm)
         {
-            char *desc = m_alarm->description();
             if (incremental)
             {
                 if (m_alarm->update(times))
                 {
-                    printf("%s: Update requested successfully\n", desc);
+                    printf("%s: Update requested successfully\n",
+                           m_alarm->description());
                 }
                 else
                 {
-                    printf("%s: Can't be updated\n", desc);
+                    printf("%s: Can't be updated\n", m_alarm->description());
                     m_updatedTimes += times;
                 }
             }
             else
             {
+                printf("%s: Cancel requested\n", m_alarm->description());
                 m_alarm->cancel();
-                printf("%s: Cancel requested\n", desc);
                 m_updatedTimes += times;
             }
-            g_free(desc);
         }
         else
         {
@@ -401,17 +395,15 @@ private:
         boost::mutex::scoped_lock lock(m_mutex);
         assert(m_alarm == &worker);
         Samoyed::Worker::State state = worker.state();
-        char *desc = m_alarm->description();
         if (state == Samoyed::Worker::STATE_FINISHED)
         {
-            printf("%s: Finished\n", desc);
+            printf("%s: Finished\n", m_alarm->description());
         }
         else
         {
             assert(state == Samoyed::Worker::STATE_CANCELED);
-            printf("%s: Canceled\n", desc);
+            printf("%s: Canceled\n", m_alarm->description());
         }
-        g_free(desc);
         m_alarm = NULL;
         delete &worker;
         if (m_updatedTimes > 0)

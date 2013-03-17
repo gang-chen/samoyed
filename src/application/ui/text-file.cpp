@@ -26,7 +26,7 @@ namespace Samoyed
 
 File::Edit *TextFile::Insertion::execute(File &file) const
 {
-    return static_cast<SourceFile &>(file).
+    return static_cast<TextFile &>(file).
         insertOnly(m_line, m_column, m_text.c_str(), m_text.length(), NULL);
 }
 
@@ -126,7 +126,7 @@ TextFile::TextFile(const char *uri, const char *encoding, bool ownBuffer):
     m_buffer(NULL)
 {
     if (ownBuffer)
-        m_buffer = gtk_text_buffer_new();
+        m_buffer = gtk_text_buffer_new(NULL);
 }
 
 TextFile::~TextFile()
@@ -161,21 +161,21 @@ Editor *TextFile::createEditorInternally(Project *project)
     return TextEditor::create(*this, project);
 }
 
-FileLoader *SourceFile::createLoader(unsigned int priority,
+FileLoader *TextFile::createLoader(unsigned int priority,
                                      const Worker::Callback &callback)
 {
     return new TextFileLoader(priority, callback, uri(), encoding());
 }
 
-FileSaver *SourceFile::createSaver(unsigned int priority,
-                                   const Worker::Callback &callback)
+FileSaver *TextFile::createSaver(unsigned int priority,
+                                 const Worker::Callback &callback)
 {
     return new TextFileSaver(priority,
                              callback,
                              uri(),
-                             encoding(),
                              text(0, 0, -1, -1),
-                             characterCount());
+                             -1,
+                             encoding());
 }
 
 void TextFile::onLoaded(FileLoader &loader)

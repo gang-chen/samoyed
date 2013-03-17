@@ -51,11 +51,13 @@ public:
 protected:
     SourceFile(const char *uri, const char *encoding);
 
+    ~SourceFile();
+
     virtual Editor *createEditorInternally(Project *project);
 
     virtual void onLoaded(FileLoader &loader);
 
-    virtual void onSaved(FileLoader &saver);
+    virtual void onSaved(FileSaver &saver);
 
 private:
     static File *create(const char *uri, Project *project);

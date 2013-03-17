@@ -22,11 +22,7 @@ public:
     TextFileLoader(unsigned int priority,
                    const Callback &callback,
                    const char *uri,
-                   const char *encoding):
-        FileLoader(priority, callback, uri),
-        m_encoding(encoding),
-        m_buffer(NULL)
-    {}
+                   const char *encoding);
 
     virtual ~TextFileLoader();
 
@@ -40,8 +36,6 @@ public:
     }
 
     virtual bool step();
-
-    virtual char *description() const;
 
 private:
     std::string m_encoding;

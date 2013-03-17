@@ -16,7 +16,6 @@ namespace Samoyed
 {
 
 class Session;
-class FileTypeRegistry;
 class Scheduler;
 class Worker;
 class Project;
@@ -57,7 +56,7 @@ public:
     /**
      * Request to quit the application.
      */
-    void quit();
+    bool quit();
 
     /**
      * Request to start a new session.
@@ -79,7 +78,7 @@ public:
      */
     static Application &instance() { return *s_instance; }
 
-    FileTypeRegistry &fileTypeRegistry() const { return *m_fileTypeRegistry; }
+    Session *session() const { return m_session; }
 
     Scheduler &scheduler() const { return *m_scheduler; }
 
@@ -184,8 +183,6 @@ private:
     Session *m_session;
     bool m_creatingSession;
     bool m_switchingSession;
-
-    FileTypeRegistry *m_fileTypeRegistry;
 
     Scheduler *m_scheduler;
 

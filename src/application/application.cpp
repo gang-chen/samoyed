@@ -5,8 +5,7 @@
 # include <config.h>
 #endif
 #include "application.hpp"
-#include "session.hpp"
-#include "file-type-registry.hpp"
+#include "ui/session.hpp"
 #include "ui/project.hpp"
 #include "ui/file.hpp"
 #include "ui/window.hpp"
@@ -51,7 +50,6 @@ Application::Application():
     m_session(NULL),
     m_creatingSession(false),
     m_switchingSession(false),
-    m_fileTypeRegistry(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
     m_projectConfigManager(NULL),
@@ -64,7 +62,6 @@ Application::Application():
     m_firstWindow(NULL),
     m_lastWindow(NULL),
     m_currentWindow(NULL),
-    m_projectExplorer(NULL),
     m_sessionName(NULL),
     m_newSessionName(NULL),
     m_chooseSession(0),
@@ -219,10 +216,9 @@ void Application::shutDown()
     assert(!m_splashScreen);
     assert(!m_sessionName);
     assert(!m_newSessionName);
-    delete m_fileTypeRegistry;
 }
 
-void Application::quit()
+bool Application::quit()
 {
     // If we're starting up the application, just quit.
     if (m_splashScreen)
@@ -234,14 +230,14 @@ void Application::quit()
         m_sessionName = NULL;
         m_newSessionName = NULL;
         gtk_main_quit();
-        return;
+        return true;
     }
 
     // Save the current session.  If the user cancels quitting the session,
     // cancel quitting.
     assert(m_session);
     if (!m_session->save())
-        return;
+        return false;
 
     m_quitting = true;
 

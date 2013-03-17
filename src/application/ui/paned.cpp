@@ -163,8 +163,8 @@ xmlNodePtr Paned::XmlElement::write() const
                     Paned::ORIENTATION_HORIZONTAL ?
                     reinterpret_cast<const xmlChar *>(HORIZONTAL) :
                     reinterpret_cast<const xmlChar *>(VERTICAL));
-    xmlNodePtr children =
-        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
+    xmlNodePtr children = xmlNewNode(NULL,
+                                     reinterpret_cast<const xmlChar *>(CHILDREN));
     xmlAddChild(children, m_children[0]->write());
     xmlAddChild(children, m_children[1]->write());
     xmlAddChild(node, children);

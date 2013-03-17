@@ -11,6 +11,7 @@ namespace Samoyed
 {
 
 class SourceFile;
+class Project;
 
 /**
  * A source editor
@@ -36,6 +37,8 @@ public:
     char *text(int beginLine, int beginColumn,
                int endLine, int endColumn) const;
 
+    virtual Widget::XmlElement *save() const;
+
     virtual void onEdited(const File::EditPrimitive &edit);
 
 private:
@@ -45,7 +48,6 @@ private:
     static GtkTextTagTable *s_sharedTagTable;
 
     GtkTextBuffer *m_buffer;
-    GtkTextView *m_view;
 };
 
 }

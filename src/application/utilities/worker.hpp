@@ -100,10 +100,7 @@ public:
         return m_state;
     }
 
-    /**
-     * @return A description, in a memory chunk allocated by GTK+.
-     */
-    virtual char *description() const = 0;
+    const char *description() const { return m_description.c_str(); }
 
     unsigned int priority() const { return m_priority; }
 
@@ -167,6 +164,9 @@ protected:
         }
         return false;
     }
+
+    void setDescription(const char *description)
+    { m_description = description; }
 
 private:
     // The following four functions are called sequentially.
@@ -241,6 +241,8 @@ private:
      * The callback called when the worker is finished or canceled.
      */
     Callback m_callback;
+
+    std::string m_description;
 
     mutable boost::mutex m_mutex;
 

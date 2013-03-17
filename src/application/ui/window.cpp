@@ -34,6 +34,7 @@
 #define MAXIMIZED "maximized"
 #define TOOLBAR_VISIBLE "toolbar-visible"
 #define TOOLBAR_VISIBLE_IN_FULL_SCREEN "toolbar-visible-in-full-screen"
+#define CHILD "child"
 
 #define MAIN_AREA_NAME "main-area"
 #define EDITOR_GROUP_NAME "editor-group"
@@ -45,6 +46,7 @@
 namespace Samoyed
 {
 
+const char *Window::NAME = "main-window";
 const char *Window::NAVIGATION_PANE_NAME = "navigation-pane";
 const char *Window::TOOLS_PANE_NAME = "tools-pane";
 
@@ -184,7 +186,7 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Widget::XmlElement *Window::XmlElement::read(xmlDocPtr doc,
+Window::XmlElement *Window::XmlElement::read(xmlDocPtr doc,
                                              xmlNodePtr node,
                                              std::list<std::string> &errors)
 {
@@ -200,8 +202,8 @@ Widget::XmlElement *Window::XmlElement::read(xmlDocPtr doc,
 xmlNodePtr Window::XmlElement::write() const
 {
     char *cp;
-    xmlNodePtr node =
-        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(WINDOW));
+    xmlNodePtr node = xmlNewNode(NULL,
+                                 reinterpret_cast<const xmlChar *>(WINDOW));
     xmlAddChild(node, WidgetContainer::XmlElement::write());
     cp = g_strdup_printf("%d", m_configuration.m_screenIndex);
     xmlNewTextChild(node, NULL,
@@ -245,16 +247,16 @@ xmlNodePtr Window::XmlElement::write() const
         reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE_IN_FULL_SCREEN),
         reinterpret_cast<const xmlChar *>(
             m_configuration.m_toolbarVisibleInFullScreen ? "1" : "0"));
-    xmlNodePtr children =
-        xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILD));
-    xmlAddChild(children, m_child->write());
-    xmlAddChild(node, children);
+    xmlNodePtr child = xmlNewNode(NULL,
+                                  reinterpret_cast<const xmlChar *>(CHILD));
+    xmlAddChild(child, m_child->write());
+    xmlAddChild(node, child);
     return node;
 }
 
-void Window::XmlElement::savewidgetInternally(const Window &window)
+void Window::XmlElement::saveWidgetInternally(const Window &window)
 {
-    WidgetContainer::XmlElement::savewidgetinternally(window);
+    WidgetContainer::XmlElement::saveWidgetInternally(window);
     m_configuration = window.configuration();
     m_child = window.child(0).save();
 }
@@ -343,11 +345,12 @@ bool Window::build(const Configuration &config)
     else
     {
         if (config.m_maximized)
-            gtk_window_maximize(window);
+            gtk_window_maximize(GTK_WINDOW(window));
         else
         {
-            gtk_window_move(window, config.m_x, config.m_y);
-            gtk_window_resize(window, config.m_width, config.m_height);
+            gtk_window_move(GTK_WINDOW(window), config.m_x, config.m_y);
+            gtk_window_resize(GTK_WINDOW(window),
+                              config.m_width, config.m_height);
         }
     }
     gtk_widget_show(window);
@@ -364,21 +367,24 @@ bool Window::setup(const char *name, const Configuration &config)
 
     // Create the initial editor group and the main area.
     Notebook *editorGroup =
-        Notebook::create(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME, true, true);
+        Notebook::create(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME,
+                         true, true, false);
     m_mainArea = WidgetWithBars::create(MAIN_AREA_NAME, *editorGroup);
-    addChild(*m_mainArea);
+    addChildInternally(*m_mainArea);
+
+    Application::instance().addWindow(*this);
+    s_created(*this);
+    return true;
 }
 
 Window *Window::create(const char *name, const Configuration &config)
 {
     Window *window = new Window;
-    if (!setup(name, config))
+    if (!window->setup(name, config))
     {
         delete window;
         return NULL;
     }
-    Application::instance().addWindow(*this);
-    s_created(*this);
     return window;
 }
 
@@ -391,7 +397,7 @@ bool Window::restore(XmlElement &xmlElement)
         return false;
     if (!build(xmlElement.configuration()))
         return false;
-    addChild(*child);
+    addChildInternally(*child);
     Application::instance().addWindow(*this);
 
     // Create menu items for the side panes.
@@ -462,7 +468,7 @@ Widget::XmlElement *Window::save() const
 void Window::addChildInternally(Widget &child)
 {
     assert(!m_child);
-    WidgetContainer::addChild(child);
+    WidgetContainer::addChildInternally(child);
     m_child = &child;
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             child.gtkWidget(), m_toolbar,
@@ -473,7 +479,7 @@ void Window::removeChildInternally(Widget &child)
 {
     m_child = NULL;
     g_object_ref(child.gtkWidget());
-    gtk_container_remove(GTK_CONTANDER(m_grid), child.gtkWidget());
+    gtk_container_remove(GTK_CONTAINER(m_grid), child.gtkWidget());
     WidgetContainer::removeChild(child);
 }
 
@@ -557,8 +563,6 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
     // Add a menu item for showing or hiding the side pane.
     createMenuItemForSidePane(pane.name(), pane.title(),
                               gtk_widget_get_visible(pane.gtkWidget()));
-
-    s_sidePaneAdded(pane, *this);
 }
 
 Notebook &Window::navigationPane()
@@ -601,10 +605,10 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 {
     Widget &current = currentEditorGroup();
     Notebook *newEditorGroup =
-        new Notebook(strcmp(current.name(), EDITOR_GROUP_NAME) == 0 ?
-                     EDITOR_GROUP_NAME "-2" : EDITOR_GROUP_NAME,
-                     EDITOR_GROUP_NAME,
-                     true, true);
+        Notebook::create(strcmp(current.name(), EDITOR_GROUP_NAME) == 0 ?
+                         EDITOR_GROUP_NAME "-2" : EDITOR_GROUP_NAME,
+                         EDITOR_GROUP_NAME,
+                         true, true, false);
     switch (side)
     {
     case SIDE_TOP:
@@ -628,7 +632,9 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 
 void Window::createNavigationPane(Window &window)
 {
-    Notebook *pane = Notebook::create(NAVIGATION_PANE_NAME);
+    Notebook *pane =
+        Notebook::create(NAVIGATION_PANE_NAME, NAVIGATION_PANE_NAME,
+                         false, false, true);
     pane->setTitle(NAVIGATION_PANE_TITLE);
     s_navigationPaneCreated(*pane);
     Configuration config = window.configuration();
@@ -637,7 +643,9 @@ void Window::createNavigationPane(Window &window)
 
 void Window::createToolsPane(Window &window)
 {
-    Notebook *pane = Notebook::create(TOOLS_PANE_NAME);
+    Notebook *pane =
+        Notebook::create(TOOLS_PANE_NAME, TOOLS_PANE_NAME,
+                         false, false, true);
     pane->setTitle(TOOLS_PANE_TITLE);
     s_toolsPaneCreated(*pane);
     Configuration config = window.configuration();
@@ -658,7 +666,7 @@ void Window::createMenuItemForSidePane(const char *name, const char *title,
     std::string titleText(title);
     std::remove(titleText.begin(), titleText.end(), '_');
     char *tooltip = g_strdup_printf(_("Show or hide %s"), titleText.c_str());
-    GtkToggleAction *action = gtk_toggle_action_new(actionName,
+    GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
                                                     title,
                                                     tooltip,
                                                     NULL);
@@ -669,8 +677,8 @@ void Window::createMenuItemForSidePane(const char *name, const char *title,
     gtk_ui_manager_add_ui(m_uiManager,
                           gtk_ui_manager_new_merge_id(m_uiManager),
                           "/view/side-panes",
-                          actionName,
-                          actionName,
+                          actionName.c_str(),
+                          actionName.c_str(),
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
@@ -704,7 +712,8 @@ void Window::onWindowStateEvent(GtkWidget *widget,
                                 GdkEvent *event,
                                 Window *window)
 {
-    window->m_maximized = event.window_state & GDK_WINDOW_STATE_MAXIMIZED;
+    window->m_maximized =
+        event->window_state.new_window_state & GDK_WINDOW_STATE_MAXIMIZED;
 }
 
 void Window::setToolbarVisible(bool visible)
@@ -737,7 +746,7 @@ void Window::enterFullScreen()
             setToolbarVisibleWrapper(true);
     }
     gtk_widget_hide(m_menuBar);
-    gtk_window_fullscreen(gtkWidget());
+    gtk_window_fullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = true;
 }
 
@@ -755,7 +764,7 @@ void Window::leaveFullScreen()
             setToolbarVisibleWrapper(true);
     }
     gtk_widget_show(m_menuBar);
-    gtk_window_unfullscreen(gtkWidget());
+    gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = false;
 }
 

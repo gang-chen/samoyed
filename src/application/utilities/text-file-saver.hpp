@@ -23,19 +23,12 @@ public:
                   const char *uri,
                   char *text,
                   int length,
-                  const char *encoding):
-        FileSaver(priority, callback, uri),
-        m_text(text),
-        m_length(length),
-        m_encoding(encoding)
-    {}
+                  const char *encoding);
 
     virtual ~TextFileSaver()
     { g_free(m_text); }
 
     virtual bool step();
-
-    virtual char *description() const;
 
 private:
     char *m_text;

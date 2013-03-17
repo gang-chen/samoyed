@@ -52,7 +52,7 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
                  grandChild;
                  grandChild = grandChild->next)
             {
-                Wodget::XmlElement *ch =
+                Widget::XmlElement *ch =
                     Widget::XmlElement::read(doc, grandChild, errors);
                 if (ch)
                 {
@@ -111,9 +111,10 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-XmlElement *WidgetWithBars::XmlElement::read(xmlDocPtr doc,
-                                             xmlNodePtr node,
-                                             std::list<std::string> &errors)
+WidgetWithBars::XmlElement *
+WidgetWithBars::XmlElement::read(xmlDocPtr doc,
+                                 xmlNodePtr node,
+                                 std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(doc, node, errors))
@@ -228,7 +229,7 @@ WidgetWithBars *WidgetWithBars::create(const char *name, Widget &mainChild)
 
 bool WidgetWithBars::restore(XmlElement &xmlElement)
 {
-    if (!WidgetContaienr::restore(xmlElement))
+    if (!WidgetContainer::restore(xmlElement))
         return false;
     Widget *mainChild = xmlElement.mainChild().restoreWidget();
     if (!mainChild)
@@ -247,7 +248,7 @@ bool WidgetWithBars::restore(XmlElement &xmlElement)
     m_bars.reserve(xmlElement.barCount());
     for (int i = 0; i < xmlElement.barCount(); ++i)
     {
-        Bar *bar = xmlElement.bar(i).createWidget();
+        Bar *bar = static_cast<Bar *>(xmlElement.bar(i).restoreWidget());
         if (!bar)
         {
             xmlElement.removeBar(i);
@@ -299,7 +300,7 @@ Widget::XmlElement *WidgetWithBars::save() const
 
 void WidgetWithBars::addMainChild(Widget &child)
 {
-    assert(!m_child);
+    assert(!m_mainChild);
     WidgetContainer::addChildInternally(child);
     m_mainChild = &child;
     gtk_grid_attach(GTK_GRID(m_horizontalGrid), child.gtkWidget(), 0, 0, 1, 1);

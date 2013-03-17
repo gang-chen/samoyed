@@ -10,6 +10,8 @@
 namespace Samoyed
 {
 
+class TextEditor;
+
 class TextFile: public File
 {
 public:

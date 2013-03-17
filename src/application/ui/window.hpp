@@ -42,6 +42,7 @@ public:
     typedef boost::signals2::signal<void (Window &)> Created;
     typedef boost::signals2::signal<void (Widget &)> SidePaneCreated;
 
+    static const char *NAME;
     static const char *NAVIGATION_PANE_NAME;
     static const char *TOOLS_PANE_NAME;
 
@@ -197,6 +198,7 @@ protected:
         m_uiManager(NULL),
         m_actions(this),
         m_inFullScreen(false),
+        m_maximized(false),
         m_toolbarVisible(true),
         m_toolbarVisibleInFullScreen(false)
     {}
@@ -230,7 +232,8 @@ private:
 
     bool build(const Configuration &config);
 
-    void createMenuItemForSidePane(const char *name, bool visible);
+    void createMenuItemForSidePane(const char *name, const char *title,
+                                   bool visible);
     void createMenuItemsForSidePanesRecursively(const Widget &widget);
 
     void setToolbarVisibleWrapper(bool visible);
@@ -258,6 +261,7 @@ private:
     Actions m_actions;
 
     bool m_inFullScreen;
+    bool m_maximized;
     bool m_toolbarVisible;
     bool m_toolbarVisibleInFullScreen;
 

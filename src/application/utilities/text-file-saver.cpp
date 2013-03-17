@@ -33,6 +33,24 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 namespace Samoyed
 {
 
+TextFileSaver::TextFileSaver(unsigned int priority,
+                             const Callback &callback,
+                             const char *uri,
+                             char *text,
+                             int length,
+                             const char *encoding):
+    FileSaver(priority, callback, uri),
+    m_text(text),
+    m_length(length),
+    m_encoding(encoding)
+{
+    char *desc =
+        g_strdup_printf(_("Saving text file \"%s\" in encoding \"%s\""),
+                        uri, encoding);
+    setDescription(desc);
+    g_free(desc);
+}
+
 bool TextFileSaver::step()
 {
     GFile *file = NULL;
@@ -95,11 +113,6 @@ CLEAN_UP:
     if (file)
         g_object_unref(file);
     return true;
-}
-
-char *TextFileSaver::description() const
-{
-    return g_strdup_printf(_("Saving text file \"%s\""), uri());
 }
 
 }

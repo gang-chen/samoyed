@@ -17,7 +17,13 @@
 namespace
 {
 
-const std::pair<const char *, const char *> typeEntries[] =
+struct TypeEntry
+{
+    const char *mimeType;
+    const char *description;
+};
+
+const TypeEntry typeEntries[] =
 {
     { "text/x-csrc", N_("C source") },
     { "text/x-chdr", N_("C header") },
@@ -38,10 +44,8 @@ File *SourceFile::create(const char *uri, Project *project)
 
 void SourceFile::registerType()
 {
-    for (const std::pair<const char *, const char *> *entry = typeEntries;
-         entry->first;
-         ++entry)
-        File::registerType(entry->first, entry->second, create);
+    for (const TypeEntry *entry = typeEntries; entry->mimeType; ++entry)
+        File::registerType(entry->mimeType, entry->description, create);
 }
 
 SourceFile::SourceFile(const char *uri, const char *encoding):
@@ -83,7 +87,7 @@ void SourceFile::onLoaded(FileLoader &loader)
 
     // Pass the loader's buffer to the source, which will own the buffer.
     TextFileLoader &ld = static_cast<TextFileLoader &>(loader);
-    m_source->onFileLoaded(*this, loader.takeBuffer());
+    m_source->onFileLoaded(*this, ld.takeBuffer());
 }
 
 void SourceFile::onSaved(FileSaver &saver)
@@ -92,7 +96,7 @@ void SourceFile::onSaved(FileSaver &saver)
 }
 
 void SourceFile::onInserted(int line, int column,
-                            const char *text, int lenght,
+                            const char *text, int length,
                             TextEditor *committer)
 {
     m_source->onFileTextInserted(*this, line, column, text, length);

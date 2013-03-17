@@ -94,16 +94,23 @@ void FileSource::Replacement::execute(FileSource &source)
     m_error = NULL;
 }
 
+FileSource::WriteExecutionWorker::WriteExecutionWorker(unsigned int priority,
+                                                       const Callback &callback,
+                                                       FileSource &source):
+    Worker(priority, callback),
+    m_source(&source)
+{
+    char *desc =
+        g_strdup_printf(_("Executing queued writes for file \"%s\""),
+                        m_source->uri());
+    setDescription(desc);
+    g_free(desc);
+}
+
 bool FileSource::WriteExecutionWorker::step()
 {
     m_source->executeQueuedWrites();
     return true;
-}
-
-char *FileSource::WriteExecutionWorker::description() const
-{
-    return g_strdup_printf(_("Executing queued writes for file \"%s\""),
-                           m_source->uri());
 }
 
 FileSource::FileSource(const Key &key,

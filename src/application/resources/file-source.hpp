@@ -224,12 +224,8 @@ private:
     public:
         WriteExecutionWorker(unsigned int priority,
                              const Callback &callback,
-                             FileSource &source):
-            Worker(priority, callback),
-            m_source(&source)
-        {}
+                             FileSource &source);
         virtual bool step();
-        virtual char *description() const;
 
     private:
         ReferencePointer<FileSource> m_source;

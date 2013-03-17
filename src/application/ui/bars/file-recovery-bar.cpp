@@ -8,4 +8,7 @@
 
 namespace Samoyed
 {
+
+const char *FileRecoveryBar::NAME = "file-recovery-bar";
+
 }

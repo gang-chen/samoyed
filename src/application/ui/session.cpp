@@ -7,8 +7,7 @@
 #include "session.hpp"
 #include "project.hpp"
 #include "window.hpp"
-#include "editor.hpp"
-#include "file.hpp"
+#include "widget-with-bars.hpp"
 #include "bars/file-recovery-bar.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
@@ -21,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <list>
+#include <numeric>
 #include <string>
 #include <vector>
 #include <utility>
@@ -30,11 +30,16 @@
 #include <unistd.h>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <glib/gstdio.h>
 #include <gtk/gtk.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+
+#define SESSION "session"
+#define PROJECTS "projects"
+#define WINDOWS "windows"
 
 namespace
 {
@@ -53,9 +58,6 @@ struct UnsavedFileListReadParam
     }
 };
 
-// The XML parser aborts only when a fatal error is found, ignoring unrecognized
-// elements.
-
 class XmlElementSession
 {
 public:
@@ -65,13 +67,13 @@ public:
                                    xmlNodePtr node,
                                    std::list<std::string> &errors);
     xmlNodePtr write() const;
-
-    static XmlElementSession *save();
-    bool restore() const;
+    static XmlElementSession *saveSession();
+    bool restoreSession();
 
 private:
     XmlElementSession() {}
 
+    std::vector<Samoyed::Project::XmlElement *> m_projects;
     std::vector<Samoyed::Window::XmlElement *> m_windows;
 };
 
@@ -80,27 +82,47 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                                            std::list<std::string> &errors)
 {
     char *cp;
+    if (strcmp(reinterpret_cast<const char *>(node->name),
+               SESSION) == 0)
+        return NULL;
     XmlElementSession *session = new XmlElementSession;
-    for (xmlNodePtr child = node->children; child; child->next)
+    for (xmlNodePtr child = node->children; child; child = child->next)
     {
-        if (xmlStrcmp(child->name,
-                      static_cast<xmlChar *>("window")) == 0)
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   PROJECTS) == 0)
         {
-            bool isMainWindow = m_windows.empty();
-            Samoyed::Window::XmlElement *window =
-                Samoyed::Window::XmlElement::read(doc, child, errors);
-            if (window)
-                session->m_windows.push_back(window);
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
+            {
+                Samoyed::Project::XmlElement *project =
+                    Samoyed::Project::XmlElement::read(doc, grandChild, errors);
+                if (project)
+                    session->m_projects.push_back(project);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        WINDOWS) == 0)
+        {
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
+            {
+                Samoyed::Window::XmlElement *window =
+                    Samoyed::Window::XmlElement::read(doc, grandChild, errors);
+                if (window)
+                    session->m_windows.push_back(window);
+            }
         }
     }
     if (session->m_windows.empty())
     {
-        delete session;
         cp = g_strdup_printf(
             _("Line %d: No window in the session.\n"),
             node->line);
-        error += cp;
+        errors.push_back(cp);
         g_free(cp);
+        delete session;
         return NULL;
     }
     return session;
@@ -108,50 +130,76 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
 
 xmlNodePtr XmlElementSession::write() const
 {
-    xmlNodePtr node = xmlNewNode(NULL, static_cast<const xmlChar *>("session"));
-    for (std::vectore<XmlElementWindow *>::const_iterator it =
+    xmlNodePtr node = xmlNewNode(NULL,
+                                 reinterpret_cast<const xmlChar *>(SESSION));
+    xmlNodePtr projects = xmlNewNode(NULL,
+                                     reinterpret_cast<const xmlChar *>(PROJECTS));
+    for (std::vector<Samoyed::Project::XmlElement *>::const_iterator it =
+             m_projects.begin();
+         it != m_projects.end();
+         ++it)
+        xmlAddChild(projects, (*it)->write());
+    xmlAddChild(node, projects);
+    xmlNodePtr windows = xmlNewNode(NULL,
+                                    reinterpret_cast<const xmlChar *>(WINDOWS));
+    for (std::vector<Samoyed::Window::XmlElement *>::const_iterator it =
              m_windows.begin();
          it != m_windows.end();
          ++it)
-        xmlAddChild(node, (*it)->write());
+        xmlAddChild(windows, (*it)->write());
+    xmlAddChild(node, windows);
+    return node;
 }
 
-XmlElementSession *XmlElementSession::save()
+XmlElementSession *XmlElementSession::saveSession()
 {
     XmlElementSession *session = new XmlElementSession;
+    for (Samoyed::Project *project =
+             Samoyed::Application::instance().projects();
+         project;
+         project = project->next())
+        session->m_projects.push_back(project->save());
     for (Samoyed::Window *window = Samoyed::Application::instance().windows();
          window;
          window = window->next())
-        session->m_windows.push_back(XmlElementWindow::save(*window));
+        session->m_windows.push_back(
+            static_cast<Samoyed::Window::XmlElement *>(window->save()));
     return session;
 }
 
-bool XmlElementSession::restore() const
+bool XmlElementSession::restoreSession()
 {
-    std::vector<Samoyed::Window *> windows(m_windows.size(), NULL);
-    std::vector<XmlElementWindow *>::const_iterator it1;
-    std::vector<Samoyed::Window *>::iterator it2;
-    for (it1 = m_windows.begin(), it2 = windows.begin();
-         it1 != m_windows.end();
-         ++it1, ++it2)
+    for (std::vector<Samoyed::Project::XmlElement *>::iterator it =
+             m_projects.begin();
+         it < m_projects.end();)
     {
-        (*it1)->restore(RESTORE_PANES, *it2);
-        assert(*it2);
+        if (!(*it)->restoreProject())
+            it = m_projects.erase(it);
+        else
+            ++it;
     }
-    for (it1 = m_windows.begin(), it2 = windows.begin();
-         it != windows.end();
-         ++it1, ++it2)
-        (*it1)->restore(RESTORE_PROJECTS, *it2);
-    for (it1 = m_windows.begin(), it2 = windows.begin();
-         it != windows.end();
-         ++it1, ++it2)
-        (*it1)->restore(RESTORE_EDITORS, *it2);
+    for (std::vector<Samoyed::Window::XmlElement *>::iterator it =
+             m_windows.begin();
+         it < m_windows.end();)
+    {
+        if (!(*it)->restoreWidget())
+            it = m_windows.erase(it);
+        else
+            ++it;
+    }
+    if (m_windows.empty())
+        return false;
     return true;
 }
 
 XmlElementSession::~XmlElementSession()
 {
-    for (std::vectore<XmlElementWindow *>::const_iterator it =
+    for (std::vector<Samoyed::Project::XmlElement *>::const_iterator it =
+             m_projects.begin();
+         it != m_projects.end();
+         ++it)
+        delete *it;
+    for (std::vector<Samoyed::Window::XmlElement *>::const_iterator it =
              m_windows.begin();
          it != m_windows.end();
          ++it)
@@ -175,13 +223,13 @@ XmlElementSession *parseSessionFile(const char *fileName,
             sessionName);
         xmlErrorPtr error = xmlGetLastError();
         if (error)
-            gtkMessageDialogAddDetails(
+            Samoyed::gtkMessageDialogAddDetails(
                 dialog,
                 _("Samoyed failed to parse session file \"%s\" to restore "
                   "session \"%s\". %s."),
                 fileName, sessionName, error->message);
         else
-            gtkMessageDialogAddDetails(
+            Samoyed::gtkMessageDialogAddDetails(
                 dialog,
                 _("Samoyed failed to parse session file \"%s\" to restore "
                   "session \"%s\"."),
@@ -204,7 +252,7 @@ XmlElementSession *parseSessionFile(const char *fileName,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to restore session \"%s\"."),
             sessionName);
-        gtkMessageDialogAddDetails(
+        Samoyed::gtkMessageDialogAddDetails(
             dialog,
             _("Session file \"%s\" is empty."),
             fileName);
@@ -215,8 +263,8 @@ XmlElementSession *parseSessionFile(const char *fileName,
         return NULL;
     }
 
-    std::string error;
-    XmlElementSession *session = XmlElementSession::read(doc, node, error);
+    std::list<std::string> errors;
+    XmlElementSession *session = XmlElementSession::read(doc, node, errors);
     xmlFreeDoc(doc);
     if (!session)
     {
@@ -228,17 +276,22 @@ XmlElementSession *parseSessionFile(const char *fileName,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to restore session \"%s\"."),
             sessionName);
-        if (error.empty())
-            gtkMessageDialogAddDetails(
+        if (errors.empty())
+            Samoyed::gtkMessageDialogAddDetails(
                 dialog,
                 _("Samoyed failed to construct session \"%s\" from session "
                   "file \"%s\"."),
                 sessionName, fileName);
         else
-            gtkMessageDialogAddDetails(
+        {
+            std::string e =
+                std::accumulate(errors.begin(), errors.end(), std::string());
+            Samoyed::gtkMessageDialogAddDetails(
+                dialog,
                 _("Samoyed failed to construct session \"%s\" from session "
-                  "file \"%s\". Errors found in file \"%s\":\n%s."),
-                sessionName, fileName, error.c_str());
+                  "file \"%s\". Errors:\n%s."),
+                sessionName, fileName, e.c_str());
+        }
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -260,21 +313,21 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char *&error)
         error = g_strdup_printf(
             _("Samoyed failed to create lock file \"%s\" to lock session "
               "\"%s\". %s."),
-            m_lockFile.fileName(), name, g_strerror(errno));
+            lockFile.fileName(), name, g_strerror(errno));
         return false;
     }
 
     if (state == Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS)
     {
-        const char *lockHostName = m_lockFile.lockingHostName();
-        pid_t lockPid = m_lockFile.lockingProcessId();
+        const char *lockHostName = lockFile.lockingHostName();
+        pid_t lockPid = lockFile.lockingProcessId();
         if (*lockHostName != '\0' && lockPid != -1)
             error = g_strdup_printf(
                 _("Samoyed failed to lock session \"%s\" because the session "
                   "is being locked by process %d on host \"%s\". If that "
                   "process does not exist or is not an instance of Samoyed, "
                   "remove lock file \"%s\" and retry."),
-                name, lockPid, lockHostName, m_lockFile.fileName());
+                name, lockPid, lockHostName, lockFile.fileName());
         else
             error = g_strdup_printf(
                 _("Samoyed failed to lock session \"%s\" because the session "
@@ -285,8 +338,8 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char *&error)
 
     // If it is said to be locked by this process but not this lock, we assume
     // it is a stale lock.
-    assert(state == LockFile::STATE_LOCKED_BY_THIS_PROCESS);
-    m_lockFile.unlock(true);
+    assert(state == Samoyed::LockFile::STATE_LOCKED_BY_THIS_PROCESS);
+    lockFile.unlock(true);
     return lockSession(name, lockFile, error);
 }
 
@@ -298,7 +351,7 @@ namespace Samoyed
 bool Session::s_crashHandlerRegistered = false;
 
 // Don't report the error.
-void Sesssion::UnsavedFileListRead::execute(const Session &session) const
+void Session::UnsavedFileListRead::execute(const Session &session) const
 {
     std::string unsavedFn(Application::instance().userDirectoryName());
     unsavedFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
@@ -316,7 +369,7 @@ void Sesssion::UnsavedFileListRead::execute(const Session &session) const
     }
     g_free(text);
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(Session::onUnsavedFileListRead),
+                    onUnsavedFileListRead,
                     new UnsavedFileListReadParam(m_session, unsavedFileUris),
                     NULL);
 }
@@ -337,7 +390,7 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
              it != m_unsavedFileUris.end();
              ++it)
         {
-            fputs(*it, unsavedFp);
+            fputs(it->c_str(), unsavedFp);
             fputs("\n", unsavedFp);
         }
         fclose(unsavedFp);
@@ -356,9 +409,19 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
     }
 
     // Show the unsaved files.
+    WidgetWithBars &mainArea =
+        Application::instance().currentWindow().mainArea();
     FileRecoveryBar *bar =
-        new FileRecoveryBar(p->m_session.unsavedFileListUris());
-    Application::instance().currentWindow().addBar(*bar);
+        static_cast<FileRecoveryBar *>(
+            mainArea.findChild(FileRecoveryBar::NAME));
+    if (bar)
+        bar->setFileUris(p->m_session.unsavedFileUris());
+    else
+    {
+        bar =
+            FileRecoveryBar::create(p->m_session.unsavedFileUris());
+        mainArea.addBar(*bar);
+    }
     delete p;
     return FALSE;
 }
@@ -376,15 +439,15 @@ gboolean Session::onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param)
                 new UnsavedFileListRequestWorker(
                     Worker::PRIORITY_IDLE,
                     boost::bind(&Session::onUnsavedFileListRequestWorkerDone,
-                                this, _1),
-                    *this);
+                                session, _1),
+                    *session);
             Application::instance().scheduler().
                 schedule(*session->m_unsavedFileListRequestWorker);
         }
         else
             session->m_unsavedFileListRequestWorker = NULL;
     }
-    if (!session->m_unsavedFileListRequestWorker && p->m_session.m_destroy)
+    if (!session->m_unsavedFileListRequestWorker && session->m_destroy)
         delete session;
     return FALSE;
 }
@@ -393,7 +456,7 @@ void Session::onUnsavedFileListRequestWorkerDone(Worker &worker)
 {
     assert(&worker == m_unsavedFileListRequestWorker);
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    G_CALLBACK(onUnsavedFileListRequestWorkerDoneInMainThread),
+                    onUnsavedFileListRequestWorkerDoneInMainThread,
                     this,
                     NULL);
 }
@@ -431,7 +494,8 @@ void Session::executeQueuedUnsavedFileListRequests()
         }
         do
         {
-            UnsavedFileListRequest *request = requests.pop_front();
+            UnsavedFileListRequest *request = requests.front();
+            requests.pop_front();
             request->execute(*this);
             delete request;
         }
@@ -485,7 +549,7 @@ bool Session::writeLastSessionName(const char *name)
 {
     std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
-    int fd = g_open(fileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int fd = g_open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd == -1)
         return false;
     if (write(fd, name, strlen(name)) == -1)
@@ -504,7 +568,7 @@ bool Session::readLastSessionName(std::string &name)
     std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
     char *text;
-    int textLength;
+    gsize textLength;
     if (!g_file_get_contents(fileName.c_str(), &text, &textLength, NULL))
         return false;
     if (textLength == 0)
@@ -561,7 +625,7 @@ bool Session::readAllSessionNames(std::vector<std::string> &names)
 
 Session::LockState Session::queryLockState(const char *name)
 {
-    std::string lockFileName(Application.instance().userDirectoryName());
+    std::string lockFileName(Application::instance().userDirectoryName());
     lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFileName += name;
     lockFileName += ".lock";
@@ -577,7 +641,7 @@ Session::LockState Session::queryLockState(const char *name)
 
 bool Session::remove(const char *name)
 {
-    std::string lockFileName(Application.instance().userDirectoryName());
+    std::string lockFileName(Application::instance().userDirectoryName());
     lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFileName += name;
     lockFileName += ".lock";
@@ -631,13 +695,13 @@ bool Session::rename(const char *oldName, const char *newName)
 {
     char *lockError = NULL;
 
-    std::string oldLockFileName(Application.instance().userDirectoryName());
+    std::string oldLockFileName(Application::instance().userDirectoryName());
     oldLockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     oldLockFileName += oldName;
     oldLockFileName += ".lock";
 
     LockFile oldLockFile(oldLockFileName.c_str());
-    if (!lockSession(name, oldLockFile, lockError))
+    if (!lockSession(oldName, oldLockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -655,13 +719,13 @@ bool Session::rename(const char *oldName, const char *newName)
         return false;
     }
 
-    std::string newLockFileName(Application.instance().userDirectoryName());
+    std::string newLockFileName(Application::instance().userDirectoryName());
     newLockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     newLockFileName += newName;
     newLockFileName += ".lock";
 
     LockFile newLockFile(oldLockFileName.c_str());
-    if (!lockSession(name, newLockFile, lockError))
+    if (!lockSession(newName, newLockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -679,7 +743,7 @@ bool Session::rename(const char *oldName, const char *newName)
         return false;
     }
 
-    std::string oldessionDirName(Application::instance().userDirectoryName());
+    std::string oldSessionDirName(Application::instance().userDirectoryName());
     oldSessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     oldSessionDirName += oldName;
     std::string newSessionDirName(Application::instance().userDirectoryName());
@@ -688,7 +752,7 @@ bool Session::rename(const char *oldName, const char *newName)
 
     // If the new session directory already exists, ask the user whether to
     // overwrite it.
-    if (g_file_test(newSessionDirName.c_str(), G_FILE_TEST_EXISTS)
+    if (g_file_test(newSessionDirName.c_str(), G_FILE_TEST_EXISTS))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -758,7 +822,7 @@ void Session::destroy()
 
 void Session::unlock()
 {
-    m_lockFile.unlock();
+    m_lockFile.unlock(true);
 }
 
 Session *Session::create(const char *name)
@@ -768,7 +832,7 @@ Session *Session::create(const char *name)
     lockFileName += name;
     lockFileName += ".lock";
 
-    Session *session = new Session(name, lockFileName);
+    Session *session = new Session(name, lockFileName.c_str());
 
     // Lock the session.
     char *error = NULL;
@@ -796,7 +860,7 @@ Session *Session::create(const char *name)
     sessionDirName += name;
 
     // If the session directory already exists, remove it.
-    if (g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS)
+    if (g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -821,7 +885,7 @@ Session *Session::create(const char *name)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
                 NULL,
-                GTK_DIALOG_DESTROY_WITH_PARENT;
+                GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
                 _("Samoyed failed to create session \"%s\"."),
@@ -864,13 +928,7 @@ Session *Session::create(const char *name)
     }
 
     // Create the main window for the new session.
-    ProjectExplorer *projectExplorer = new ProjectExplorer;
-    EditorGroup *editorGroup = new EditorGroup;
-    SplitPane *splitPane = new SplitPane(SplitPane::ORIENTATION_HORIZONTAL,
-                                         -1,
-                                         projectExplorer,
-                                         editorGroup);
-    new Window(Window::Confignuration(), splitPane);
+    Window::create(Window::NAME, Window::Configuration());
 
     return session;
 }
@@ -882,7 +940,7 @@ Session *Session::restore(const char *name)
     lockFileName += name;
     lockFileName += ".lock";
 
-    Session *session = new Session(name, lockFileName);
+    Session *session = new Session(name, lockFileName.c_str());
 
     // Lock the session.
     char *error = NULL;
@@ -918,7 +976,7 @@ Session *Session::restore(const char *name)
     }
 
     // Restore the session.
-    if (!s->restore())
+    if (!s->restoreSession())
     {
         delete s;
         delete session;
@@ -939,11 +997,11 @@ bool Session::save()
     sessionFileName += m_name;
     sessionFileName += G_DIR_SEPARATOR_S "session.xml";
 
-    XmlElementSession *session = XmlElementSession::save();
+    XmlElementSession *session = XmlElementSession::saveSession();
     xmlNodePtr node = session->write();
     delete session;
 
-    xmlDocPtr doc = xmlNewDoc(static_cast<const xmlChar *>("1.0"));
+    xmlDocPtr doc = xmlNewDoc(reinterpret_cast<const xmlChar *>("1.0"));
     xmlDocSetRootElement(doc, node);
     if (xmlSaveFormatFile(sessionFileName.c_str(), doc, 1) == -1)
     {
