@@ -10,14 +10,17 @@
 /aclocal.m4
 /autom4te.cache/
 /config.guess
+/config.h
 /config.h.in
+/config.log
 /config.rpath
+/config.status
 /config.sub
 /configure
 /depcomp
 /install-sh
+/libtool
 /ltmain.sh
-/missing
 /m4/codeset.m4
 /m4/fcntl-o.m4
 /m4/gettext.m4
@@ -55,15 +58,20 @@
 /m4/wchar_t.m4
 /m4/wint_t.m4
 /m4/xsize.m4
+/missing
 /po/boldquot.sed
 /po/en@boldquot.header
 /po/en@quot.header
 /po/insert-header.sin
 /po/Makefile.in.in
+/po/POTFILES
 /po/quot.sed
 /po/remove-potcdate.sin
+/po/stamp-it
 /po/Rules-quot
+/stamp-h1
 Makefile.in
+Makefile
 
 # Build directory.
 /build/
@@ -71,9 +79,11 @@ Makefile.in
 # Object files, archives, shared libraries and programs produced by compilers.
 *.o
 *.a
+*.lo
+*.la
 *.so
 *.so.*
-src/application/samoyed
+/src/launcher/samoyed
 
 # Unit test builds.
 src/application/ui/dialogs/session-chooser-dialog
