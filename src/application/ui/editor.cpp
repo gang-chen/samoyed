@@ -39,7 +39,7 @@ bool Editor::close()
     return true;
 }
 
-void Editor::onEditedStateChanged()
+void Editor::onFileEditedStateChanged()
 {
 }
 

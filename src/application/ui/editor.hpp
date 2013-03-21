@@ -32,11 +32,11 @@ public:
     virtual bool close();
 
     /**
-     * This function is called by the file when it is edited or loaded.
+     * This function is called by the file when it is changed.
      */
-    virtual void onEdited(const File::EditPrimitive &edit) = 0;
+    virtual void onFileChanged(const File::Change &change) {}
 
-    virtual void onEditedStateChanged();
+    virtual void onFileEditedStateChanged();
 
     virtual void freeze() = 0;
 

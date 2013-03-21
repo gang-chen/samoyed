@@ -24,7 +24,7 @@ namespace Samoyed
 class Range;
 class ChangeHint;
 class TextBuffer;
-class File;
+class SourceFile;
 
 /**
  * A file source represents the source code contents of a source file.  It is a
@@ -91,19 +91,19 @@ public:
      */
     void removeObserver(const boost::signals2::connection &connection);
 
-    void onFileClose(const File &file);
+    void onFileClose(const SourceFile &file);
 
-    void onFileLoaded(const File &file, TextBuffer *buffer);
+    void onFileLoaded(const SourceFile &file, TextBuffer *buffer);
 
-    void onFileSaved(const File &file);
+    void onFileSaved(const SourceFile &file);
 
-    void onFileTextInserted(const File &file,
+    void onFileTextInserted(const SourceFile &file,
                             int line,
                             int column,
                             const char *text,
                             int length);
 
-    void onFileTextRemoved(const File &file,
+    void onFileTextRemoved(const SourceFile &file,
                            int beginLine,
                            int beginColumn,
                            int endLine,
@@ -280,7 +280,7 @@ private:
 
     mutable boost::mutex m_writeWorkerMutex;
 
-    const File *m_file;
+    const SourceFile *m_file;
 
     mutable boost::mutex m_fileMutex;
 

@@ -15,14 +15,55 @@ class TextEditor;
 class TextFile: public File
 {
 public:
+    struct Change: public File::Change
+    {
+        enum Type
+        {
+            TYPE_INSERTION,
+            TYPE_REMOVAL
+        } type;
+        union Value
+        {
+            struct Insertion
+            {
+                int line;
+                int column;
+                const char *text;
+                int length;
+            } insertion;
+            struct Removal
+            {
+                int beginLine;
+                int beginColumn;
+                int endLine;
+                int endColumn;
+            } removal;
+        } value;
+        Change(int line, int column, const char *text, int length):
+            type(TYPE_INSERTION)
+        {
+            value.insertion.line = line;
+            value.insertion.column = column;
+            value.insertion.text = text;
+            value.insertion.length = length;
+        }
+        Change(int beginLine, int beginColumn, int endLine, int endColumn):
+            type(TYPE_REMOVAL)
+        {
+            value.removal.beginLine = beginLine;
+            value.removal.beginColumn = beginColumn;
+            value.removal.endLine = endLine;
+            value.removal.endColumn = endColumn;
+        }
+    };
+
     class EditPrimitive: public File::EditPrimitive
     {
     public:
         enum Type
         {
             TYPE_INSERTION,
-            TYPE_REMOVAL,
-            TYPE_TEMP_INSERTION
+            TYPE_REMOVAL
         };
 
         EditPrimitive(Type type): m_type(type) {}
@@ -56,10 +97,6 @@ public:
 
         virtual bool merge(File::EditPrimitive *edit);
 
-        int line() const { return m_line; }
-        int column() const { return m_column; }
-        const char *text() const { return m_text.c_str(); }
-
     private:
         int m_line;
         int m_column;
@@ -91,58 +128,11 @@ public:
 
         virtual bool merge(File::EditPrimitive *edit);
 
-        int beginLine() const { return m_beginLine; }
-        int beginColumn() const { return m_beginColumn; }
-        int endLine() const { return m_endLine; }
-        int endColumn() const { return m_endColumn; }
-
     private:
         int m_beginLine;
         int m_beginColumn;
         int m_endLine;
         int m_endColumn;
-    };
-
-    /**
-     * A temporary insertion is different from an insertion in that it does not
-     * save a copy of the inserted text.  It is only used to carry the edit
-     * information when notifying the editors and observers.  It cannot be saved
-     * as an undo.
-     */
-    class TempInsertion: public EditPrimitive
-    {
-    public:
-        /**
-         * @param line The line number of the insertion position, starting from
-         * 0.
-         * @param column The column number of the insertion position, the
-         * character index, starting from 0.
-         * @param text The text to be inserted.
-         * @param length The number of the bytes to be inserted, or -1 to insert
-         * the text until '\0'.
-         */
-        TempInsertion(int line, int column, const char *text, int length):
-            EditPrimitive(TYPE_TEMP_INSERTION),
-            m_line(line),
-            m_column(column),
-            m_text(text),
-            m_length(length)
-        {}
-
-        virtual Edit *execute(File &file) const;
-
-        virtual bool merge(File::EditPrimitive *edit);
-
-        int line() const { return m_line; }
-        int column() const { return m_column; }
-        const char *text() const { return m_text; }
-        int length() const { return m_length; }
-
-    private:
-        int m_line;
-        int m_column;
-        const char *m_text;
-        int m_length;
     };
 
     static void registerType();
@@ -209,18 +199,16 @@ protected:
 
     virtual void onLoaded(FileLoader &loader);
 
-    virtual void onSaved(FileSaver &saver);
+    virtual void onInserted(int line, int column,
+                            const char *text, int length)
+    {}
+
+    virtual void onRemoved(int beginLine, int beginColumn,
+                           int endLine, int endColumn)
+    {}
 
 private:
     static File *create(const char *uri, Project *project);
-
-    virtual void onInserted(int line, int column,
-                            const char *text, int length,
-                            TextEditor *committer);
-
-    virtual void onRemoved(int beginLine, int beginColumn,
-                           int endLine, int endColumn,
-                           TextEditor *committer);
 
     Removal *insertOnly(int line, int column,
                         const char *text, int length,

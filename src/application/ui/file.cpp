@@ -47,6 +47,8 @@ struct SavedParam
 namespace Samoyed
 {
 
+File::Opened File::s_opened;
+
 File::Edit *File::EditStack::execute(File &file) const
 {
     EditStack *undo = new EditStack;
@@ -148,6 +150,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
         delete file;
         return std::pair<File *, Editor *>(NULL, NULL);
     }
+    s_opened(*file);
     return std::make_pair(file, editor);
 }
 
@@ -589,14 +592,16 @@ void File::unfreezeInternally()
     }
 }
 
-void File::onEdited(const EditPrimitive &edit, const Editor *committer)
+void File::onChanged(const Change &change,
+                     const Editor *committer,
+                     bool loading)
 {
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
     {
         if (editor != committer)
-            editor->onEdited(edit);
+            editor->onFileChanged(change);
     }
-    m_edited(*this, edit);
+    m_changed(*this, change, loading);
 }
 
 void File::resetEditCount()
@@ -607,7 +612,7 @@ void File::resetEditCount()
         for (Editor *editor = m_firstEditor;
              editor;
              editor = editor->nextInFile())
-            editor->onEditedStateChanged();
+            editor->onFileEditedStateChanged();
     }
 }
 
@@ -619,7 +624,7 @@ void File::increaseEditCount()
         for (Editor *editor = m_firstEditor;
              editor;
              editor = editor->nextInFile())
-            editor->onEditedStateChanged();
+            editor->onFileEditedStateChanged();
     }
 }
 
@@ -631,7 +636,7 @@ void File::decreaseEditCount()
         for (Editor *editor = m_firstEditor;
              editor;
              editor = editor->nextInFile())
-            editor->onEditedStateChanged();
+            editor->onFileEditedStateChanged();
     }
 }
 

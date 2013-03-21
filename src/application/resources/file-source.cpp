@@ -7,7 +7,7 @@
 #include "file-source.hpp"
 #include "project-ast-manager.hpp"
 #include "../application.hpp"
-#include "../ui/file.hpp"
+#include "../ui/source-file.hpp"
 #include "../utilities/range.hpp"
 #include "../utilities/change-hint.hpp"
 #include "../utilities/text-buffer.hpp"
@@ -322,7 +322,7 @@ void FileSource::onWriteWorkerDone(Worker &worker)
     delete &worker;
 }
 
-void FileSource::onFileClose(const File &file)
+void FileSource::onFileClose(const SourceFile &file)
 {
     {
         boost::mutex::scoped_lock lock(m_fileMutex);
@@ -340,7 +340,7 @@ void FileSource::onFileClose(const File &file)
     }
 }
 
-void FileSource::onFileLoaded(const File &file, TextBuffer *buffer)
+void FileSource::onFileLoaded(const SourceFile &file, TextBuffer *buffer)
 {
     // Now the file becomes the only one who can update the source.
     {
@@ -354,14 +354,14 @@ void FileSource::onFileLoaded(const File &file, TextBuffer *buffer)
     requestWrite(rep);
 }
 
-void FileSource::onFileSaved(const File &file)
+void FileSource::onFileSaved(const SourceFile &file)
 {
     RevisionUpdate *revUpdate = new RevisionUpdate(file.revision(),
                                                    file.ioError());
     requestWrite(revUpdate);
 }
 
-void FileSource::onFileTextInserted(const File &file,
+void FileSource::onFileTextInserted(const SourceFile &file,
                                     int line,
                                     int column,
                                     const char *text,
@@ -372,7 +372,7 @@ void FileSource::onFileTextInserted(const File &file,
     requestWrite(ins);
 }
 
-void FileSource::onFileTextRemoved(const File &file,
+void FileSource::onFileTextRemoved(const SourceFile &file,
                                    int beginLine,
                                    int beginColumn,
                                    int endLine,

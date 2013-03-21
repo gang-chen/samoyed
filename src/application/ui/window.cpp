@@ -20,6 +20,7 @@
 #include <vector>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <gdk/gdk.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -327,6 +328,10 @@ bool Window::build(const Configuration &config)
     setGtkWidget(window);
 
     // Configure the window.
+    GdkDisplay *display = gdk_display_get_default();
+    GdkScreen *screen = gdk_display_get_screen(display, config.m_screenIndex);
+    gtk_window_set_screen(GTK_WINDOW(window), screen);
+
     m_toolbarVisible = config.m_toolbarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
     gtk_widget_show_all(m_grid);
@@ -766,6 +771,21 @@ void Window::leaveFullScreen()
     gtk_widget_show(m_menuBar);
     gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = false;
+}
+
+Window::Configuration Window::configuration() const
+{
+    Configuration config;
+    config.m_screenIndex =
+        gdk_screen_get_number(gtk_window_get_screen(GTK_WINDOW(gtkWidget())));
+    gtk_window_get_position(GTK_WINDOW(gtkWidget()),
+                            &config.m_x, &config.m_y);
+    gtk_window_get_size(GTK_WINDOW(gtkWidget()),
+                        &config.m_width, &config.m_height);
+    config.m_inFullScreen = m_inFullScreen;
+    config.m_toolbarVisible = m_toolbarVisible;
+    config.m_toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
+    return config;
 }
 
 }

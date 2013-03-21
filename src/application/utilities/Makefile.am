@@ -5,6 +5,7 @@ libutilities_la_SOURCES = \
     miscellaneous.cpp \
     revision.cpp \
     signal.cpp \
+    text-buffer.cpp \
     text-file-loader.cpp \
     text-file-saver.cpp \
     utf8.cpp \

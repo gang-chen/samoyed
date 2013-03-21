@@ -397,6 +397,12 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
     }
 }
 
+bool Session::UnsavedFileListRequestWorker::step()
+{
+    m_session.executeQueuedUnsavedFileListRequests();
+    return true;
+}
+
 gboolean Session::onUnsavedFileListRead(gpointer param)
 {
     UnsavedFileListReadParam *p =
@@ -629,7 +635,7 @@ Session::LockState Session::queryLockState(const char *name)
     lockFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     lockFileName += name;
     lockFileName += ".lock";
-    
+
     LockFile lockFile(lockFileName.c_str());
     LockFile::State state = lockFile.queryState();
     if (state == LockFile::STATE_UNLOCKED)

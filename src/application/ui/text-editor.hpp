@@ -19,8 +19,6 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    virtual void onEdited(const File::EditPrimitive &edit);
-
     virtual void freeze();
 
     virtual void unfreeze();

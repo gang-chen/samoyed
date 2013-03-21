@@ -38,13 +38,25 @@ class FileSaver;
 class File: public boost::noncopyable
 {
 public:
-    class EditPrimitive;
-
+    typedef boost::signals2::signal<void (const File &file)> Opened;
     typedef boost::signals2::signal<void (const File &file)> Close;
     typedef boost::signals2::signal<void (const File &file)> Loaded;
     typedef boost::signals2::signal<void (const File &file)> Saved;
+
+    /**
+     * A change.  Derived classes should define their concrete changes.
+     */
+    class Change {};
+
+    /**
+     * @param change The change that was made.
+     * @param loading True iff the change was due to file loading.
+     */
     typedef boost::signals2::signal<void (const File &file,
-                                          const EditPrimitive &edit)> Edited;
+                                          const Change &change,
+                                          bool loading)> Changed;
+
+    class EditPrimitive;
 
     class Edit
     {
@@ -65,7 +77,8 @@ public:
     };
 
     /**
-     * An edit primitive.
+     * An edit primitive.  Derived classes should define their concrete edit
+     * primitives.
      */
     class EditPrimitive: public Edit
     {
@@ -200,6 +213,10 @@ public:
 
     Editor *editors() const { return m_firstEditor; }
 
+    static boost::signals2::connection
+    addOpenedCallback(const Opened::slot_type &callback)
+    { return s_opened.connect(callback); }
+
     boost::signals2::connection
     addCloseCallback(const Close::slot_type &callback)
     { return m_close.connect(callback); }
@@ -213,8 +230,8 @@ public:
     { return m_saved.connect(callback); }
 
     boost::signals2::connection
-    addEditedCallback(const Edited::slot_type &callback)
-    { return m_edited.connect(callback); }
+    addChangedCallback(const Changed::slot_type &callback)
+    { return m_changed.connect(callback); }
 
 protected:
     typedef boost::function<File *(const char *uri, Project *project)> Factory;
@@ -238,9 +255,9 @@ protected:
 
     /**
      * This function is called by a derived class to notify all editors except
-     * the committer and observers after edited.
+     * the committer and observers after changed.
      */
-    void onEdited(const EditPrimitive &edit, const Editor *committer);
+    void onChanged(const Change &change, const Editor *committer, bool loading);
 
     /**
      * This function is called by a derived class to save the reverse edit of a
@@ -323,10 +340,11 @@ private:
     // We memorize the file loader so that we can cancel it later.
     FileLoader *m_loader;
 
+    static Opened s_opened;
     Close m_close;
     Loaded m_loaded;
     Saved m_saved;
-    Edited m_edited;
+    Changed m_changed;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(File)
 };

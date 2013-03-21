@@ -7,14 +7,15 @@ g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST\
  `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o text-buffer
 */
 
-#ifdef SMYD_TEXT_BUFFER_UNIT_TEST
-
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "text-buffer.hpp"
-#include <assert.h>
-#include <string.h>
+
+#ifdef SMYD_TEXT_BUFFER_UNIT_TEST
+# include <assert.h>
+# include <string.h>
+#endif
 
 namespace Samoyed
 {
@@ -64,6 +65,8 @@ void TextBuffer::transformLineColumnToCharOffset(int line,
 }
 
 }
+
+#ifdef SMYD_TEXT_BUFFER_UNIT_TEST
 
 int main()
 {

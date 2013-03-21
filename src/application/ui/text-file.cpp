@@ -98,18 +98,6 @@ bool TextFile::Removal::merge(File::EditPrimitive *edit)
     return false;
 }
 
-File::Edit *TextFile::TempInsertion::execute(File &file) const
-{
-    assert(0);
-    return NULL;
-}
-
-bool TextFile::TempInsertion::merge(File::EditPrimitive *edit)
-{
-    assert(0);
-    return false;
-}
-
 File *TextFile::create(const char *uri, Project *project)
 {
     return new TextFile(uri, "UTF-8", true);
@@ -191,7 +179,7 @@ void TextFile::onLoaded(FileLoader &loader)
         gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
         gtk_text_buffer_delete(m_buffer, &begin, &end);
     }
-    onEdited(Removal(0, 0, -1, -1), NULL);
+    onChanged(Change(0, 0, -1, -1), NULL, true);
     GtkTextIter iter;
     if (m_buffer)
         gtk_text_buffer_get_start_iter(m_buffer, &iter);
@@ -202,7 +190,7 @@ void TextFile::onLoaded(FileLoader &loader)
         {
             if (m_buffer)
                 gtk_text_buffer_insert(m_buffer, &iter, begin, end - begin);
-            onEdited(TempInsertion(-1, -1, begin, end - begin), NULL);
+            onChanged(Change(-1, -1, begin, end - begin), NULL, true);
         }
     }
     while (it.goToNextBulk());
@@ -237,8 +225,8 @@ TextFile::insertOnly(int line, int column, const char *text, int length,
                                                 line, column);
         gtk_text_buffer_insert(m_buffer, &iter, text, length);
     }
-    onEdited(TempInsertion(line, column, text, length), committer);
-    onInserted(line, column, text, length, committer);
+    onInserted(line, column, text, length);
+    onChanged(Change(line, column, text, length), committer, false);
     int newLineCount = lineCount();
     int endLine, endColumn;
     endLine = line + newLineCount - oldLineCount;
@@ -277,8 +265,10 @@ TextFile::removeOnly(int beginLine, int beginColumn,
                                                 endLine, endColumn);
         gtk_text_buffer_delete(m_buffer, &begin, &end);
     }
-    onEdited(Removal(beginLine, beginColumn, endLine, endColumn), committer);
-    onRemoved(beginLine, beginColumn, endLine, endColumn, committer);
+    onRemoved(beginLine, beginColumn, endLine, endColumn);
+    onChanged(Change(beginLine, beginColumn, endLine, endColumn),
+              committer,
+              false);
     return undo;
 }
 

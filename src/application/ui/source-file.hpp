@@ -59,16 +59,18 @@ protected:
 
     virtual void onSaved(FileSaver &saver);
 
+    virtual void onInserted(int line, int column,
+                            const char *text, int length);
+
+    virtual void onRemoved(int beginLine, int beginColumn,
+                           int endLine, int endColumn);
+
 private:
     static File *create(const char *uri, Project *project);
 
-    virtual void onInserted(int line, int column,
-                            const char *text, int length,
-                            TextEditor *committer);
-
-    virtual void onRemoved(int beginLine, int beginColumn,
-                           int endLine, int endColumn,
-                           TextEditor *committer);
+    static void onChanged(File &file,
+                          EditPrimitive &change,
+                          bool loading);
 
     ReferencePointer<FileSource> m_source;
 };

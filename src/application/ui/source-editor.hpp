@@ -39,7 +39,7 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    virtual void onEdited(const File::EditPrimitive &edit);
+    virtual void onFileChanged(const File::Change &change);
 
 private:
     /**

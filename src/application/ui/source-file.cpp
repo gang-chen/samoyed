@@ -78,7 +78,7 @@ char *SourceFile::text(int beginLine, int beginColumn,
 
 Editor *SourceFile::createEditorInternally(Project *project)
 {
-    return new SourceEditor(*this, project);
+    return SourceEditor::create(*this, project);
 }
 
 void SourceFile::onLoaded(FileLoader &loader)
@@ -96,15 +96,13 @@ void SourceFile::onSaved(FileSaver &saver)
 }
 
 void SourceFile::onInserted(int line, int column,
-                            const char *text, int length,
-                            TextEditor *committer)
+                            const char *text, int length)
 {
     m_source->onFileTextInserted(*this, line, column, text, length);
 }
 
 void SourceFile::onRemoved(int beginLine, int beginColumn,
-                           int endLine, int endColumn,
-                           TextEditor *committer)
+                           int endLine, int endColumn)
 {
     m_source->onFileTextRemoved(*this,
                                 beginLine, beginColumn,
