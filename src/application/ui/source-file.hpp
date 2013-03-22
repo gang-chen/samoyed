@@ -68,10 +68,6 @@ protected:
 private:
     static File *create(const char *uri, Project *project);
 
-    static void onChanged(File &file,
-                          EditPrimitive &change,
-                          bool loading);
-
     ReferencePointer<FileSource> m_source;
 };
 
