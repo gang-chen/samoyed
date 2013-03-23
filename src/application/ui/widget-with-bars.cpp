@@ -16,7 +16,7 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
-#define WIDGET "widget"
+#define WIDGET_CONTAINER "widget-container"
 #define WIDGET_WITH_BARS "widget-with-bars"
 #define MAIN_CHILD "main-child"
 #define BARS "bars"
@@ -36,14 +36,25 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
                                                 std::list<std::string> &errors)
 {
     char *value, *cp;
+    bool containerSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   WIDGET) == 0)
+                   WIDGET_CONTAINER) == 0)
         {
+            if (containerSeen)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: More than one \"%s\" elements seen.\n"),
+                    child->line, WIDGET_CONTAINER);
+                errors.push_back(cp);
+                g_free(cp);
+                return false;
+            }
             if (!WidgetContainer::XmlElement::readInternally(doc, child,
                                                              errors))
                 return false;
+            containerSeen = true;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         MAIN_CHILD) == 0)
@@ -92,6 +103,16 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
             m_currentChildIndex = atoi(value);
             xmlFree(value);
         }
+    }
+
+    if (!containerSeen)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: \"%s\" element missing.\n"),
+            node->line, WIDGET_CONTAINER);
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
     }
 
     if (!m_mainChild)
@@ -150,23 +171,14 @@ xmlNodePtr WidgetWithBars::XmlElement::write() const
     return node;
 }
 
-void
-WidgetWithBars::XmlElement::saveWidgetInternally(const WidgetWithBars &widget)
+WidgetWithBars::XmlElement::XmlElement(const WidgetWithBars &widget):
+    WidgetContainer::XmlElement(widget)
 {
-    WidgetContainer::XmlElement::saveWidgetInternally(widget);
     m_mainChild = widget.mainChild().save();
     m_bars.reserve(widget.barCount());
     for (int i = 0; i < widget.barCount(); ++i)
         m_bars.push_back(widget.bar(i).save());
     m_currentChildIndex = widget.currentChildIndex();
-}
-
-WidgetWithBars::XmlElement *
-WidgetWithBars::XmlElement::saveWidget(const WidgetWithBars &widget)
-{
-    XmlElement *element = new XmlElement;
-    element->saveWidgetInternally(widget);
-    return element;
 }
 
 Widget *WidgetWithBars::XmlElement::restoreWidget()
@@ -295,7 +307,7 @@ bool WidgetWithBars::close()
 
 Widget::XmlElement *WidgetWithBars::save() const
 {
-    return XmlElement::saveWidget(*this);
+    return new XmlElement(*this);
 }
 
 void WidgetWithBars::addMainChild(Widget &child)

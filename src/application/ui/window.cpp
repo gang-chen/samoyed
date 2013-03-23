@@ -24,7 +24,7 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
-#define WIDGET "widget"
+#define WIDGET_CONTAINER "widget-container"
 #define WINDOW "window"
 #define SCREEN_INDEX "screen-index"
 #define X "x"
@@ -66,14 +66,25 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
                                         std::list<std::string> &errors)
 {
     char *value, *cp;
+    bool containerSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   WIDGET) == 0)
+                   WIDGET_CONTAINER) == 0)
         {
+            if (containerSeen)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: More than one \"%s\" elements seen.\n"),
+                    child->line, WIDGET_CONTAINER);
+                errors.push_back(cp);
+                g_free(cp);
+                return false;
+            }
             if (!WidgetContainer::XmlElement::readInternally(doc,
                                                              child, errors))
                 return false;
+            containerSeen = true;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         SCREEN_INDEX) == 0)
@@ -175,6 +186,15 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         }
     }
 
+    if (!containerSeen)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: \"%s\" element missing.\n"),
+            node->line, WIDGET_CONTAINER);
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
+    }
     if (!m_child)
     {
         cp = g_strdup_printf(
@@ -255,18 +275,11 @@ xmlNodePtr Window::XmlElement::write() const
     return node;
 }
 
-void Window::XmlElement::saveWidgetInternally(const Window &window)
+Window::XmlElement::XmlElement(const Window &window):
+    WidgetContainer::XmlElement(window)
 {
-    WidgetContainer::XmlElement::saveWidgetInternally(window);
     m_configuration = window.configuration();
     m_child = window.child(0).save();
-}
-
-Window::XmlElement *Window::XmlElement::saveWidget(const Window &window)
-{
-    XmlElement *element = new XmlElement;
-    element->saveWidgetInternally(window);
-    return element;
 }
 
 Widget *Window::XmlElement::restoreWidget()
@@ -467,7 +480,7 @@ bool Window::close()
 
 Widget::XmlElement *Window::save() const
 {
-    return Window::XmlElement::saveWidget(*this);
+    return new XmlElement(*this);
 }
 
 void Window::addChildInternally(Widget &child)
@@ -657,7 +670,7 @@ void Window::createToolsPane(Window &window)
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
 }
 
-void Window::setupDefaultSidePanes()
+void Window::registerDefaultSidePanes()
 {
     addCreatedCallback(createNavigationPane);
     addCreatedCallback(createToolsPane);

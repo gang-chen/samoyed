@@ -6,10 +6,67 @@
 #endif
 #include "widget-container.hpp"
 #include <assert.h>
+#include <string.h>
+#include <list>
+#include <string>
 #include <utility>
+#include <glib.h>
+#include <glib/gi18n-lib.h>
+#include <libxml/tree.h>
+
+#define WIDGET "widget"
+#define WIDGET_CONTAINER "widget-container"
 
 namespace Samoyed
 {
+
+bool
+WidgetContainer::XmlElement::readInternally(xmlDocPtr doc,
+                                            xmlNodePtr node,
+                                            std::list<std::string> &errors)
+{
+    char *cp;
+    bool widgetSeen = false;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   WIDGET) == 0)
+        {
+            if (widgetSeen)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: More than one \"%s\" elements seen.\n"),
+                    child->line, WIDGET);
+                errors.push_back(cp);
+                g_free(cp);
+                return false;
+            }
+            if (!WidgetContainer::XmlElement::readInternally(doc, child,
+                                                             errors))
+                return false;
+            widgetSeen = true;
+        }
+    }
+    if (!widgetSeen)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: \"%s\" element missing.\n"),
+            node->line, WIDGET);
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
+    }
+    return true;
+}
+
+xmlNodePtr WidgetContainer::XmlElement::write() const
+{
+    xmlNodePtr node =
+        xmlNewNode(NULL,
+                   reinterpret_cast<const xmlChar *>(WIDGET_CONTAINER));
+    xmlAddChild(node, Widget::XmlElement::write());
+    return node;
+}
 
 void WidgetContainer::removeChild(Widget &child)
 {

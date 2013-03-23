@@ -55,6 +55,8 @@ public:
 
     static bool makeSessionsDirectory();
 
+    static void onCrashed(int signalNumber);
+
     static bool readLastSessionName(std::string &name);
 
     static bool readAllSessionNames(std::vector<std::string> &names);
@@ -140,8 +142,6 @@ private:
     };
 
     static bool writeLastSessionName(const char *name);
-
-    static void onCrashed(int signalNumber);
 
     static gboolean onUnsavedFileListRead(gpointer param);
 

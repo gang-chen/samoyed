@@ -39,16 +39,22 @@ public:
                                 xmlNodePtr node,
                                 std::list<std::string> &errors);
         xmlNodePtr write() const;
-        static XmlElement *saveProject();
+        XmlElement(const Project &project);
         Project *restoreProject();
 
+        const char *uri() const { return m_uri.c_str(); }
+
     private:
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
         XmlElement() {}
 
         std::string m_uri;
     };
 
-    Project(const char *uri);
+    static Project *create(const char *uri);
 
     bool close();
 
@@ -65,13 +71,15 @@ public:
 
     void removeEditor(Editor &editor);
 
-    void onEditorClosed();
-
     Editor *editors() { return m_firstEditor; }
     const Editor *editors() const { return m_firstEditor; }
 
 protected:
+    Project(const char *uri);
+
     ~Project();
+
+    bool restore(XmlElement &xmlElement);
 
 private:
     typedef std::multimap<ComparablePointer<const char *>, Editor *>

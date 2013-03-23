@@ -74,7 +74,7 @@ public:
         {}
     };
 
-    class XmlElement: public Widget::XmlElement
+    class XmlElement: public WidgetContainer::XmlElement
     {
     public:
         static bool registerReader();
@@ -84,7 +84,7 @@ public:
                                 xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
-        static XmlElement *saveWidget(const Window &window);
+        XmlElement(const Window &window);
         virtual Widget *restoreWidget();
 
         const Configuration &configuration() const { return m_configuration; }
@@ -94,8 +94,6 @@ public:
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        void saveWidgetInternally(const Window &window);
 
         XmlElement(): m_child(NULL) {}
 
@@ -129,9 +127,10 @@ public:
     { return s_toolsPaneCreated.connect(callback); }
 
     /**
-     * Setup default side panes, which are the navigation pane and tools pane.
+     * Register default side panes, which are the navigation pane and tools
+     * pane.
      */
-    static void setupDefaultSidePanes();
+    static void registerDefaultSidePanes();
 
     static Window *create(const char *name, const Configuration &config);
 

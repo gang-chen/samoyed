@@ -15,7 +15,7 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
-#define WIDGET "widget"
+#define WIDGET_CONTAINER "widget-container"
 #define PANED "paned"
 #define ORIENTATION "orientation"
 #define HORIZONTAL "horizontal"
@@ -38,14 +38,25 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                                        std::list<std::string> &errors)
 {
     char *value, *cp;
+    bool containerSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   WIDGET) == 0)
+                   WIDGET_CONTAINER) == 0)
         {
+            if (containerSeen)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: More than one \"%s\" elements seen.\n"),
+                    child->line, WIDGET_CONTAINER);
+                errors.push_back(cp);
+                g_free(cp);
+                return false;
+            }
             if (!WidgetContainer::XmlElement::readInternally(doc, child,
                                                              errors))
                 return false;
+            containerSeen = true;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         ORIENTATION) == 0)
@@ -112,6 +123,15 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         }
     }
 
+    if (!containerSeen)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: \"%s\" element missing.\n"),
+            node->line, WIDGET_CONTAINER);
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
+    }
     if (!m_children[0])
     {
         cp = g_strdup_printf(
@@ -181,21 +201,14 @@ xmlNodePtr Paned::XmlElement::write() const
     return node;
 }
 
-void Paned::XmlElement::saveWidgetInternally(const Paned &paned)
+Paned::XmlElement::XmlElement(const Paned &paned):
+    WidgetContainer::XmlElement(paned)
 {
-    WidgetContainer::XmlElement::saveWidgetInternally(paned);
     m_orientation = paned.orientation();
     m_children[0] = paned.child(0).save();
     m_children[1] = paned.child(1).save();
     m_currentChildIndex = paned.currentChildIndex();
     m_position = paned.position();
-}
-
-Paned::XmlElement *Paned::XmlElement::saveWidget(const Paned &paned)
-{
-    XmlElement *element = new XmlElement;
-    element->saveWidgetInternally(paned);
-    return element;
 }
 
 Widget *Paned::XmlElement::restoreWidget()
@@ -302,7 +315,7 @@ bool Paned::close()
 
 Widget::XmlElement *Paned::save() const
 {
-    return XmlElement::saveWidget(*this);
+    return new XmlElement(*this);
 }
 
 void Paned::addChildInternally(Widget &child, int index)

@@ -6,7 +6,10 @@
 
 #include "widget.hpp"
 #include "../utilities/miscellaneous.hpp"
+#include <list>
 #include <map>
+#include <string>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -14,6 +17,22 @@ namespace Samoyed
 class WidgetContainer: public Widget
 {
 public:
+    class XmlElement: public Widget::XmlElement
+    {
+    public:
+        virtual xmlNodePtr write() const;
+        XmlElement(const WidgetContainer &widget):
+            Widget::XmlElement(widget)
+        {}
+
+    protected:
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        XmlElement() {}
+    };
+
     virtual Widget &current()
     { return child(currentChildIndex()).current(); }
 
@@ -39,7 +58,7 @@ public:
     const Widget *findChild(const char *name) const;
 
     virtual void onChildTitleChanged(const Widget &child) {}
-    
+
     virtual void onChildDescriptionChanged(const Widget &child) {}
 
 protected:

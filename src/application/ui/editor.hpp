@@ -7,8 +7,9 @@
 #include "widget.hpp"
 #include "file.hpp"
 #include "../utilities/miscellaneous.hpp"
+#include <list>
 #include <string>
-#include <gtk/gtk.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -21,13 +22,38 @@ class Project;
 class Editor: public Widget
 {
 public:
+    class XmlElement: public Widget::XmlElement
+    {
+    public:
+        virtual xmlNodePtr write() const;
+        XmlElement(const Editor &editor);
+
+        const char *uri() const { return m_uri.c_str(); }
+        const char *projectUri() const
+        { return m_projectUri.empty() ? NULL : m_projectUri.c_str(); }
+
+    protected:
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        XmlElement() {}
+
+    private:
+        std::string m_uri;
+        std::string m_projectUri;
+    };
+
     static Editor *create(File &file, Project *project);
 
     // This function can be called by the file only.
-    ~Editor();
+    virtual ~Editor();
 
     File &file() { return m_file; }
     const File &file() const { return m_file; }
+
+    Project *project() { return m_project; }
+    const Project *project() const { return m_project; }
 
     virtual bool close();
 

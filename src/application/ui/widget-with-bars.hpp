@@ -22,7 +22,7 @@ namespace Samoyed
 class WidgetWithBars: public WidgetContainer
 {
 public:
-    class XmlElement: public Widget::XmlElement
+    class XmlElement: public WidgetContainer::XmlElement
     {
     public:
         static bool registerReader();
@@ -32,7 +32,7 @@ public:
                                 xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
-        static XmlElement *saveWidget(const WidgetWithBars &widget);
+        XmlElement(const WidgetWithBars &widget);
         virtual Widget *restoreWidget();
 
         /**
@@ -51,8 +51,6 @@ public:
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        void saveWidgetInternally(const WidgetWithBars &widget);
 
         XmlElement(): m_mainChild(NULL), m_currentChildIndex(0) {}
 

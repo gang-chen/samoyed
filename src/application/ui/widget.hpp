@@ -46,7 +46,14 @@ public:
         virtual xmlNodePtr write() const;
 
         /**
-         * Restore a widget and its child widgets from this XML element.
+         * Create an XML element storing the information on a widget.
+         */
+        XmlElement(const Widget &widget);
+
+        /**
+         * Restore a widget and its child widgets from this XML element.  If
+         * the widget cannot be restored to the saved state exactly, the XML
+         * element will be changed to the restored state.
          * @return The restored widget, or NULL if failed.
          */
         virtual Widget *restoreWidget() = 0;
@@ -57,10 +64,9 @@ public:
 
     protected:
         typedef
-        boost::function<Widget::XmlElement *(xmlDocPtr doc,
-                                             xmlNodePtr node,
-                                             std::list<std::string> &errors)>
-            Reader;
+        boost::function<XmlElement *(xmlDocPtr doc,
+                                     xmlNodePtr node,
+                                     std::list<std::string> &errors)> Reader;
 
         static bool registerReader(const char *className,
                                    const Reader &reader);
@@ -70,8 +76,6 @@ public:
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        void saveWidgetInternally(const Widget &widget);
 
     private:
         static std::map<std::string, Reader> s_readerRegistry;

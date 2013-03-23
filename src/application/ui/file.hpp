@@ -80,9 +80,7 @@ public:
      * An edit primitive.  Derived classes should define their concrete edit
      * primitives.
      */
-    class EditPrimitive: public Edit
-    {
-    };
+    class EditPrimitive: public Edit {};
 
     /**
      * A stack of edits.

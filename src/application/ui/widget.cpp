@@ -78,14 +78,14 @@ xmlNodePtr Widget::XmlElement::write() const
                                  reinterpret_cast<const xmlChar *>(WIDGET));
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(NAME),
-                    reinterpret_cast<const xmlChar *>(m_name.c_str()));
+                    reinterpret_cast<const xmlChar *>(name()));
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(VISIBLE),
                     reinterpret_cast<const xmlChar *>(m_visible ? "1" : "0"));
     return node;
 }
 
-void Widget::XmlElement::saveWidgetInternally(const Widget &widget)
+Widget::XmlElement::XmlElement(const Widget &widget)
 {
     m_name = widget.name();
     m_visible = gtk_widget_get_visible(widget.gtkWidget());

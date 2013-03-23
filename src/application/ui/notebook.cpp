@@ -16,7 +16,7 @@
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
-#define WIDGET "widget"
+#define WIDGET_CONTAINER "widget-container"
 #define NOTEBOOK "notebook"
 #define GROUP_NAME "group-name"
 #define CREATE_CLOSE_BUTTONS "creaet-close-buttons"
@@ -38,15 +38,26 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                                           xmlNodePtr node,
                                           std::list<std::string> &errors)
 {
-    char *value;
+    char *value, *cp;
+    bool containerSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   WIDGET) == 0)
+                   WIDGET_CONTAINER) == 0)
         {
+            if (containerSeen)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: More than one \"%s\" elements seen.\n"),
+                    child->line, WIDGET_CONTAINER);
+                errors.push_back(cp);
+                g_free(cp);
+                return false;
+            }
             if (!WidgetContainer::XmlElement::readInternally(doc,
                                                              child, errors))
                 return false;
+            containerSeen = true;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         GROUP_NAME) == 0)
@@ -102,6 +113,17 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
             xmlFree(value);
         }
     }
+
+    if (!containerSeen)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: \"%s\" element missing.\n"),
+            node->line, WIDGET_CONTAINER);
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
+    }
+
     if (m_currentChildIndex < 0)
     {
         if (childCount())
@@ -165,9 +187,9 @@ xmlNodePtr Notebook::XmlElement::write() const
     return node;
 }
 
-void Notebook::XmlElement::saveWidgetInternally(const Notebook &notebook)
+Notebook::XmlElement::XmlElement(const Notebook &notebook):
+    WidgetContainer::XmlElement(notebook)
 {
-    WidgetContainer::XmlElement::saveWidgetInternally(notebook);
     if (notebook.groupName())
         m_groupName = notebook.groupName();
     m_createCloseButtons = notebook.createCloseButtons();
@@ -177,13 +199,6 @@ void Notebook::XmlElement::saveWidgetInternally(const Notebook &notebook)
     for (int i = 0; i < notebook.childCount(); ++i)
         m_children.push_back(notebook.child(i).save());
     m_currentChildIndex = notebook.currentChildIndex();
-}
-
-Notebook::XmlElement *Notebook::XmlElement::saveWidget(const Notebook &notebook)
-{
-    XmlElement *element = new XmlElement;
-    element->saveWidgetInternally(notebook);
-    return element;
 }
 
 Widget *Notebook::XmlElement::restoreWidget()
@@ -348,7 +363,7 @@ bool Notebook::close()
 
 Widget::XmlElement *Notebook::save() const
 {
-    return XmlElement::saveWidget(*this);
+    return new XmlElement(*this);
 }
 
 void Notebook::addChildInternally(Widget &child, int index)

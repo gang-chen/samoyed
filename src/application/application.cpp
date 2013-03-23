@@ -14,6 +14,12 @@
 #include "utilities/manager.hpp"
 #include "utilities/signal.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
+#include "ui/text-file.hpp"
+#include "ui/source-file.hpp"
+#include "ui/notebook.hpp"
+#include "ui/paned.hpp"
+#include "ui/widget-with-bars.hpp"
+#include "ui/source-editor.hpp"
 #include <assert.h>
 #include <utility>
 #include <string>
@@ -146,6 +152,18 @@ gboolean Application::startUp(gpointer app)
     if (!Session::makeSessionsDirectory())
         goto ERROR_OUT;
 
+    Signal::registerCrashHandler(Session::onCrashed);
+
+    // Initialize class data.
+    TextFile::registerType();
+    SourceFile::registerType();
+    Notebook::XmlElement::registerReader();
+    Paned::XmlElement::registerReader();
+    WidgetWithBars::XmlElement::registerReader();
+    Window::XmlElement::registerReader();
+    Window::registerDefaultSidePanes();
+    SourceEditor::createSharedData();
+
     // Create global objects.
 
     // All the background initialization is done.  Close the splash screen.
@@ -216,6 +234,8 @@ void Application::shutDown()
     assert(!m_splashScreen);
     assert(!m_sessionName);
     assert(!m_newSessionName);
+
+    SourceEditor::destroySharedData();
 }
 
 bool Application::quit()

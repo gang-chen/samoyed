@@ -12,7 +12,6 @@
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/lock-file.hpp"
-#include "../utilities/signal.hpp"
 #include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <errno.h>
@@ -807,11 +806,6 @@ Session::Session(const char *name, const char *lockFileName):
     m_lockFile(lockFileName),
     m_unsavedFileListRequestWorker(NULL)
 {
-    if (!s_crashHandlerRegistered)
-    {
-        Signal::registerCrashHandler(onCrashed);
-        s_crashHandlerRegistered = true;
-    }
 }
 
 Session::~Session()

@@ -17,7 +17,7 @@ namespace Samoyed
 class Notebook: public WidgetContainer
 {
 public:
-    class XmlElement: public Widget::XmlElement
+    class XmlElement: public WidgetContainer::XmlElement
     {
     public:
         static bool registerReader();
@@ -27,7 +27,7 @@ public:
                                 xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
-        static XmlElement *saveWidget(const Notebook &notebook);
+        XmlElement(const Notebook &notebook);
         virtual Widget *restoreWidget();
 
         /**
@@ -51,8 +51,6 @@ public:
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        void saveWidgetInternally(const Notebook &notebook);
 
         XmlElement():
             m_createCloseButtons(false),

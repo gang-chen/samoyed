@@ -15,6 +15,10 @@ class Project;
 class TextEditor: public Editor
 {
 public:
+    class XmlElement: public Editor::XmlElement
+    {
+    };
+
     TextEditor(TextFile &file, Project *project);
 
     virtual Widget::XmlElement *save() const;

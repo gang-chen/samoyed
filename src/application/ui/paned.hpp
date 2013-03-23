@@ -22,7 +22,7 @@ public:
         ORIENTATION_VERTICAL = GTK_ORIENTATION_VERTICAL
     };
 
-    class XmlElement: public Widget::XmlElement
+    class XmlElement: public WidgetContainer::XmlElement
     {
     public:
         static bool registerReader();
@@ -32,7 +32,7 @@ public:
                                 xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
-        static XmlElement *saveWidget(const Paned &paned);
+        XmlElement(const Paned &paned);
         virtual Widget *restoreWidget();
 
         Paned::Orientation orientation() const { return m_orientation; }
@@ -45,8 +45,6 @@ public:
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        void saveWidgetInternally(const Paned &paned);
 
         XmlElement():
             m_orientation(Paned::ORIENTATION_HORIZONTAL),
