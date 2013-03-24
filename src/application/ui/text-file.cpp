@@ -11,8 +11,12 @@
 #include "../utilities/text-buffer.hpp"
 #include "../utilities/text-file-loader.hpp"
 #include "../utilities/text-file-saver.hpp"
+#include <map>
+#include <boost/any.hpp>
 #include <gtk/gtk.h>
 #include <glib/gi18n-lib.h>
+
+#define ENCODING "encoding"
 
 namespace
 {
@@ -98,9 +102,15 @@ bool TextFile::Removal::merge(File::EditPrimitive *edit)
     return false;
 }
 
-File *TextFile::create(const char *uri, Project *project)
+File *TextFile::create(const char *uri, Project *project,
+                       const std::map<std::string, boost::any> &options)
 {
-    return new TextFile(uri, "UTF-8", true);
+    std::string encoding("UTF-8");
+    std::map<std::string, boost::any>::const_iterator it =
+        options.find(ENCODING);
+    if (it != options.end())
+        encoding = boost::any_cast<std::string>(it->second);
+    return new TextFile(uri, encoding.c_str(), true);
 }
 
 void TextFile::registerType()
@@ -125,23 +135,19 @@ TextFile::~TextFile()
 
 int TextFile::characterCount() const
 {
-    assert(m_buffer);
-    return gtk_text_buffer_get_char_count(m_buffer);
+    return static_cast<const TextEditor *>(editors())->characterCount();
 }
 
 int TextFile::lineCount() const
 {
-    assert(m_buffer);
-    return gtk_text_buffer_get_line_count(m_buffer);
+    return static_cast<const TextEditor *>(editors())->lineCount();
 }
 
 char *TextFile::text(int beginLine, int beginColumn,
                      int endLine, int endColumn) const
 {
-    assert(m_buffer);
-    GtkTextIter begin, end;
-    gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
-    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
+    return static_cast<const TextEditor *>(editors())->
+        text(beginLine, beginColumn, endLine, endColumn);
 }
 
 Editor *TextFile::createEditorInternally(Project *project)

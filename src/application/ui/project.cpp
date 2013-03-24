@@ -83,6 +83,8 @@ Project::XmlElement::XmlElement(const Project &project):
 
 Project *Project::XmlElement::restoreProject()
 {
+    if (Application::instance().findProject(uri()))
+        return NULL;
     Project *project = new Project(uri());
     if (!project->restore(*this))
     {
@@ -103,8 +105,11 @@ Project::~Project()
     Application::instance().removeProject(*this);
 }
 
-Project *Project::create(const char *uri)
+Project *Project::open(const char *uri)
 {
+    Project *project = Application::instance().findProject(uri);
+    if (project)
+        return project;
     return new Project(uri);
 }
 

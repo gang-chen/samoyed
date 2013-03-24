@@ -30,24 +30,13 @@ public:
 
     SourceEditor(SourceFile &file, Project *project);
 
-    int characterCount() const;
-
-    int lineCount() const;
-
-    char *text(int beginLine, int beginColumn,
-               int endLine, int endColumn) const;
-
     virtual Widget::XmlElement *save() const;
-
-    virtual void onFileChanged(const File::Change &change);
 
 private:
     /**
      * The tag table shared by all the GTK+ text buffers.
      */
     static GtkTextTagTable *s_sharedTagTable;
-
-    GtkTextBuffer *m_buffer;
 };
 
 }

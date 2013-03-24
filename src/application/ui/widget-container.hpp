@@ -26,11 +26,10 @@ public:
         {}
 
     protected:
+        XmlElement() {}
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        XmlElement() {}
     };
 
     virtual Widget &current()

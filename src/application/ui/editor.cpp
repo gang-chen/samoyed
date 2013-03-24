@@ -8,6 +8,10 @@
 #include "file.hpp"
 #include "project.hpp"
 #include "../application.hpp"
+#include <stdlib.h>
+#include <string.h>
+#include <list>
+#include <string>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <libxml/tree.h>
@@ -16,6 +20,13 @@
 #define EDITOR "editor"
 #define URI "uri"
 #define PROJECT_URI "project-uri"
+
+namespace
+{
+
+int serialNumber = 0;
+
+}
 
 namespace Samoyed
 {
@@ -107,18 +118,62 @@ Editor::XmlElement::XmlElement(const Editor &editor)
         m_projectUri = editor.project()->uri();
 }
 
+Editor *Editor::XmlElement::restoreEditor(
+    const std::map<std::string, boost::any> &options)
+{
+    Project *project = NULL;
+    if (projectUri())
+    {
+        project = Application::instance().findProject(projectUri());
+        if (!project)
+            m_projectUri.clear();
+    }
+    Editor *editor = File::open(uri(), project, options, true).second;
+    return editor;
+}
+
 Editor::Editor(File &file, Project *project):
     m_file(file),
     m_project(project)
 {
     if (m_project)
         m_project->addEditor(*this);
+    m_file.addEditor(*this);
 }
 
 Editor::~Editor()
 {
+    m_file.removeEditor(*this);
     if (m_project)
         m_project->removeEditor(*this);
+}
+
+bool Editor::setup()
+{
+    char *name = g_strdup_printf("%s-%d", EDITOR, serialNumber++);
+    if (!Widget::setup(name))
+    {
+        g_free(name);
+        return false;
+    }
+    g_free(name);
+    return true;
+}
+
+bool Editor::restore(XmlElement &xmlElement)
+{
+    if (!Widget::restore(xmlElement))
+        return false;
+    // Extract the serial number of the editor from its name, and update the
+    // global serial number.
+    const char *cp = strrchr(name(), '-');
+    if (cp)
+    {
+        int sn = atoi(cp + 1);
+        if (sn >= serialNumber)
+            serialNumber = sn + 1;
+    }
+    return true;
 }
 
 bool Editor::close()

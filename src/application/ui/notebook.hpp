@@ -48,16 +48,16 @@ public:
         int currentChildIndex() const { return m_currentChildIndex; }
 
     protected:
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
-
         XmlElement():
             m_createCloseButtons(false),
             m_canDragChildren(false),
             m_useUnderline(false),
             m_currentChildIndex(0)
         {}
+
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
 
     private:
         std::string m_groupName;

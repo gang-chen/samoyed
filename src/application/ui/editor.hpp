@@ -8,7 +8,9 @@
 #include "file.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <list>
+#include <map>
 #include <string>
+#include <boost/any.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -33,18 +35,18 @@ public:
         { return m_projectUri.empty() ? NULL : m_projectUri.c_str(); }
 
     protected:
+        XmlElement() {}
+
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
 
-        XmlElement() {}
+        Editor *restoreEditor(const std::map<std::string, boost::any> &options);
 
     private:
         std::string m_uri;
         std::string m_projectUri;
     };
-
-    static Editor *create(File &file, Project *project);
 
     // This function can be called by the file only.
     virtual ~Editor();
@@ -64,12 +66,18 @@ public:
 
     virtual void onFileEditedStateChanged();
 
+    virtual bool frozen() const = 0;
+
     virtual void freeze() = 0;
 
     virtual void unfreeze() = 0;
 
 protected:
     Editor(File &file, Project *project);
+
+    bool setup();
+
+    bool restore(XmlElement &xmlElement);
 
 private:
     /**

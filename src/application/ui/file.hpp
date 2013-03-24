@@ -14,6 +14,7 @@
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
+#include <boost/any.hpp>
 #include <glib.h>
 
 namespace Samoyed
@@ -117,13 +118,33 @@ public:
         std::vector<Edit *> m_edits;
     };
 
-    static std::pair<File *, Editor *> open();
+    /**
+     * Open a file in an editor.
+     * @param uri The URI of the new file.
+     * @param project The project context, or NULL if none.
+     * @param options Additional file-type-specific options specifying the
+     * behavior.
+     * @param newEditor True to create a new editor if the file is already
+     * opened.
+     */
+    static std::pair<File *, Editor *>
+    open(const char *uri, Project *project,
+         const std::map<std::string, boost::any> &options,
+         bool newEditor);
 
-    static std::pair<File *, Editor *> open(const char *uri, Project *project);
+    /**
+     * Open a dialog to let the user choose the file to open and set additional
+     * optins, and open the chosen file if any.
+     */
+    static std::pair<File *, Editor *> openByDialog();
 
+    /**
+     * Create an editor.
+     */
     Editor *createEditor(Project *project);
 
     /**
+     * Close an editor.
      * @return False iff the user cancels closing the editor.
      */
     bool closeEditor(Editor &editor);
@@ -209,7 +230,11 @@ public:
      */
     void unfreeze();
 
-    Editor *editors() const { return m_firstEditor; }
+    void addEditor(Editor &editor);
+    void removeEditor(Editor &editor);
+
+    Editor *editors() { return m_firstEditor; }
+    const Editor *editors() const { return m_firstEditor; }
 
     static boost::signals2::connection
     addOpenedCallback(const Opened::slot_type &callback)
@@ -232,7 +257,10 @@ public:
     { return m_changed.connect(callback); }
 
 protected:
-    typedef boost::function<File *(const char *uri, Project *project)> Factory;
+    typedef
+    boost::function<File *(const char *uri, Project *project,
+                           const std::map<std::string, boost::any> &options)>
+    	Factory;
 
     struct TypeRecord
     {
@@ -263,7 +291,6 @@ protected:
      */
     void saveUndo(EditPrimitive *undo);
 
-private:
     // Functions implemented by derived classes and called by the base class.
     virtual Editor *createEditorInternally(Project *project) = 0;
 
@@ -277,6 +304,7 @@ private:
 
     virtual void onSaved(FileSaver &saver) {}
 
+private:
     void continueClosing();
 
     void freezeInternally();

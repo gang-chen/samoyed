@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <map>
+#include <boost/any.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -94,10 +96,23 @@ bool File::registerType(const char *mimeType,
                                TypeRecord(description, factory))).second;
 }
 
-std::pair<File *, Editor *> File::open(const char *uri, Project *project)
+std::pair<File *, Editor *>
+File::open(const char *uri, Project *project,
+           const std::map<std::string, boost::any> &options,
+           bool newEditor)
 {
-    // Can't open an already opened file.
-    assert(!Application::instance().findFile(uri));
+    File *file;
+    Editor *editor;
+    file = Application::instance().findFile(uri);
+    if (file)
+    {
+        if (newEditor)
+            editor = file->createEditor(project);
+        else
+            editor = file->editors();
+        return std::make_pair(file, editor);
+    }
+
     char *mimeType = getFileType(uri);
     if (!mimeType)
     {
@@ -141,10 +156,10 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(mimeType);
-    File *file = it->second.m_factory(uri, project);
+    file = it->second.m_factory(uri, project, options);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
-    Editor *editor = file->createEditor(project);
+    editor = file->createEditor(project);
     if (!editor)
     {
         delete file;
@@ -156,7 +171,7 @@ std::pair<File *, Editor *> File::open(const char *uri, Project *project)
 
 Editor *File::createEditor(Project *project)
 {
-    Editor *editor = createEditorInternally(project);
+    Editor *editor = createEditor(project);
     if (!editor)
         return NULL;
 
@@ -166,12 +181,10 @@ Editor *File::createEditor(Project *project)
     {
         Editor *oldEditor = m_firstEditor;
         assert(m_firstEditor == m_lastEditor);
-        oldEditor->removeFromListInFile(m_firstEditor, m_lastEditor);
         delete oldEditor;
         m_closing = false;
         m_reopening = true;
     }
-    editor->addToListInFile(m_firstEditor, m_lastEditor);
     return editor;
 }
 
@@ -181,7 +194,6 @@ void File::continueClosing()
     assert(m_firstEditor == m_lastEditor);
 
     Editor *lastEditor = m_firstEditor;
-    lastEditor->removeFromListInFile(m_firstEditor, m_lastEditor);
     delete lastEditor;
 
     // Notify the observers right before deleting the file so that the observers
@@ -197,7 +209,6 @@ bool File::closeEditor(Editor &editor)
 
     if (editor.nextInFile() || editor.previousInFile())
     {
-        editor.removeFromListInFile(m_firstEditor, m_lastEditor);
         delete &editor;
         return true;
     }
@@ -267,6 +278,16 @@ bool File::closeEditor(Editor &editor)
     // Go ahead.
     continueClosing();
     return true;
+}
+
+void File::addEditor(Editor &editor)
+{
+    editor.addToListInFile(m_firstEditor, m_lastEditor);
+}
+
+void File::removeEditor(Editor &editor)
+{
+    editor.removeFromListInFile(m_firstEditor, m_lastEditor);
 }
 
 File::File(const char *uri):

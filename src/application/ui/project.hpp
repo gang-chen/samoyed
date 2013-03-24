@@ -45,16 +45,16 @@ public:
         const char *uri() const { return m_uri.c_str(); }
 
     private:
+        XmlElement() {}
+
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
 
-        XmlElement() {}
-
         std::string m_uri;
     };
 
-    static Project *create(const char *uri);
+    static Project *open(const char *uri);
 
     bool close();
 
@@ -68,7 +68,6 @@ public:
     const Editor *findEditor(const char *uri) const;
 
     void addEditor(Editor &editor);
-
     void removeEditor(Editor &editor);
 
     Editor *editors() { return m_firstEditor; }

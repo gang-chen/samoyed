@@ -42,10 +42,6 @@ public:
         int position() const { return m_position; }
 
     protected:
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
-
         XmlElement():
             m_orientation(Paned::ORIENTATION_HORIZONTAL),
             m_currentChildIndex(0),
@@ -54,6 +50,10 @@ public:
             m_children[0] = NULL;
             m_children[1] = NULL;
         }
+
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
 
     private:
         Paned::Orientation m_orientation;

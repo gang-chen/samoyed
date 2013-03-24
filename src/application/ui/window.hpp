@@ -91,11 +91,11 @@ public:
         Widget::XmlElement &child() const { return *m_child; }
 
     protected:
+        XmlElement(): m_child(NULL) {}
+
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        XmlElement(): m_child(NULL) {}
 
     private:
         Configuration m_configuration;

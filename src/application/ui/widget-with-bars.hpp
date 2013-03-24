@@ -48,11 +48,11 @@ public:
         int currentChildIndex() const { return m_currentChildIndex; }
 
     protected:
+        XmlElement(): m_mainChild(NULL), m_currentChildIndex(0) {}
+
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
-
-        XmlElement(): m_mainChild(NULL), m_currentChildIndex(0) {}
 
     private:
         Widget::XmlElement *m_mainChild;

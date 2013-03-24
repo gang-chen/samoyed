@@ -12,7 +12,11 @@
 #include "../resources/file-source.hpp"
 #include "../utilities/text-file-loader.hpp"
 #include <utility>
+#include <map>
+#include <boost/any.hpp>
 #include <glib/gi18n-lib.h>
+
+#define ENCODING "encoding"
 
 namespace
 {
@@ -37,9 +41,19 @@ const TypeEntry typeEntries[] =
 namespace Samoyed
 {
 
-File *SourceFile::create(const char *uri, Project *project)
+File *SourceFile::create(const char *uri, Project *project,
+                         const std::map<std::string, boost::any> &options)
 {
-    return new SourceFile(uri, "UTF-8");
+    std::string encoding("UTF-8");
+    std::map<std::string, boost::any>::const_iterator it =
+        options.find(ENCODING);
+    if (it != options.end())
+        encoding = boost::any_cast<std::string>(it->second);
+    else
+    {
+    }
+
+    return new SourceFile(uri, encoding.c_str());
 }
 
 void SourceFile::registerType()
@@ -49,7 +63,7 @@ void SourceFile::registerType()
 }
 
 SourceFile::SourceFile(const char *uri, const char *encoding):
-    TextFile(uri, encoding, false)
+    TextFile(uri, encoding)
 {
     m_source = Application::instance().fileSourceManager().reference(uri);
 }
@@ -57,23 +71,6 @@ SourceFile::SourceFile(const char *uri, const char *encoding):
 SourceFile::~SourceFile()
 {
     m_source->onFileClose(*this);
-}
-
-int SourceFile::characterCount() const
-{
-    return static_cast<SourceEditor *>(editors())->characterCount();
-}
-
-int SourceFile::lineCount() const
-{
-    return static_cast<SourceEditor *>(editors())->lineCount();
-}
-
-char *SourceFile::text(int beginLine, int beginColumn,
-                       int endLine, int endColumn) const
-{
-    return static_cast<SourceEditor *>(editors())->
-        text(beginLine, beginColumn, endLine, endColumn);
 }
 
 Editor *SourceFile::createEditorInternally(Project *project)

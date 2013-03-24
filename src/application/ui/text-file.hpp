@@ -5,6 +5,8 @@
 #define SMYD_TEXT_FILE_HPP
 
 #include "file.hpp"
+#include <map>
+#include <boost/any.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -185,7 +187,7 @@ public:
                 TextEditor *committer);
 
 protected:
-    TextFile(const char *uri, const char *encoding, bool ownBuffer);
+    TextFile(const char *uri, const char *encoding);
 
     virtual ~TextFile();
 
@@ -208,7 +210,8 @@ protected:
     {}
 
 private:
-    static File *create(const char *uri, Project *project);
+    static File *create(const char *uri, Project *project,
+                        const std::map<std::string, boost::any> &options);
 
     Removal *insertOnly(int line, int column,
                         const char *text, int length,
@@ -219,8 +222,6 @@ private:
                           TextEditor *committer);
 
     std::string m_encoding;
-
-    GtkTextBuffer *m_buffer;
 };
 
 }
