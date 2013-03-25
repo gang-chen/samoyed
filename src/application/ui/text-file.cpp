@@ -13,8 +13,6 @@
 #include "../utilities/text-file-saver.hpp"
 #include <map>
 #include <boost/any.hpp>
-#include <gtk/gtk.h>
-#include <glib/gi18n-lib.h>
 
 #define ENCODING "encoding"
 
@@ -118,21 +116,6 @@ void TextFile::registerType()
     File::registerType("text/plain", _("Plain text"), create);
 }
 
-TextFile::TextFile(const char *uri, const char *encoding, bool ownBuffer):
-    File(uri),
-    m_encoding(encoding),
-    m_buffer(NULL)
-{
-    if (ownBuffer)
-        m_buffer = gtk_text_buffer_new(NULL);
-}
-
-TextFile::~TextFile()
-{
-    if (m_buffer)
-        g_object_unref(m_buffer);
-}
-
 int TextFile::characterCount() const
 {
     return static_cast<const TextEditor *>(editors())->characterCount();
@@ -179,25 +162,12 @@ void TextFile::onLoaded(FileLoader &loader)
     // Copy the contents in the loader's buffer to the editors.
     const TextBuffer *buffer = ld.buffer();
     TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
-    if (m_buffer)
-    {
-        GtkTextIter begin, end;
-        gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
-        gtk_text_buffer_delete(m_buffer, &begin, &end);
-    }
     onChanged(Change(0, 0, -1, -1), NULL, true);
-    GtkTextIter iter;
-    if (m_buffer)
-        gtk_text_buffer_get_start_iter(m_buffer, &iter);
     do
     {
         const char *begin, *end;
         if (it.getAtomsBulk(begin, end))
-        {
-            if (m_buffer)
-                gtk_text_buffer_insert(m_buffer, &iter, begin, end - begin);
             onChanged(Change(-1, -1, begin, end - begin), NULL, true);
-        }
     }
     while (it.goToNextBulk());
 }
@@ -224,13 +194,6 @@ TextFile::insertOnly(int line, int column, const char *text, int length,
                      TextEditor *committer)
 {
     int oldLineCount = lineCount();
-    if (m_buffer)
-    {
-        GtkTextIter iter;
-        gtk_text_buffer_get_iter_at_line_offset(m_buffer, &iter,
-                                                line, column);
-        gtk_text_buffer_insert(m_buffer, &iter, text, length);
-    }
     onInserted(line, column, text, length);
     onChanged(Change(line, column, text, length), committer, false);
     int newLineCount = lineCount();
@@ -262,15 +225,6 @@ TextFile::removeOnly(int beginLine, int beginColumn,
     char *removed = text(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
     g_free(removed);
-    if (m_buffer)
-    {
-        GtkTextIter begin, end;
-        gtk_text_buffer_get_iter_at_line_offset(m_buffer, &begin,
-                                                beginLine, beginColumn);
-        gtk_text_buffer_get_iter_at_line_offset(m_buffer, &end,
-                                                endLine, endColumn);
-        gtk_text_buffer_delete(m_buffer, &begin, &end);
-    }
     onRemoved(beginLine, beginColumn, endLine, endColumn);
     onChanged(Change(beginLine, beginColumn, endLine, endColumn),
               committer,
