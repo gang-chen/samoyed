@@ -5,6 +5,9 @@
 #define SMYD_TEXT_EDITOR_HPP
 
 #include "editor.hpp"
+#include <map>
+#include <string>
+#include <boost/any.hpp>
 
 namespace Samoyed
 {
@@ -41,6 +44,8 @@ public:
         bool readInternally(xmlDocPtr doc,
                             xmlNodePtr node,
                             std::list<std::string> &errors);
+
+        Editor *restoreEditor(std::map<std::string, boost::any> &options);
 
     private:
         std::string m_encoding;
