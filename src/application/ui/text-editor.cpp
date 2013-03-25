@@ -82,7 +82,7 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
         return false;
     }
 
-    // Check to see if the file is a text file.
+    // Verify that the file is a text file.
     return true;
 }
 
@@ -115,10 +115,16 @@ TextEditor::XmlElement::XmlElement(const TextEditor &editor):
     editor.getCursor(m_cursorLine, m_cursorColumn);
 }
 
+Editor *TextEditor::XmlElement::restoreEditor(
+    std::map<std::string, boost::any> &options)
+{
+    options.insert(std::make_pair(ENCODING, std::string(encoding())));
+    return Editor::XmlElement::restoreEditor(options);
+}
+
 Widget *TextEditor::XmlElement::restoreWidget()
 {
     std::map<std::string, boost::any> options;
-    options.insert(std::make_pair(ENCODING, std::string(encoding())));
     Editor *editor = restoreEditor(options);
     if (!editor)
         return NULL;
@@ -180,43 +186,82 @@ void TextEditor::unfreeze()
 
 void TextEditor::getCursor(int &line, int &column) const
 {
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
+    line = gtk_text_iter_get_line(iter);
+    column = gtk_text_iter_get_line_offset(iter);
 }
 
 void TextEditor::setCursor(int line, int column)
 {
-    gtk_text_buffer_place_cursor(m_buffer);
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
+                                            line, column);
+    gtk_text_buffer_place_cursor(buffer, &iter);
+    gtk_text_view_place_cursor_onscreen(GTK_TEXT_VIEW(gtkWidget()));
 }
 
 void TextEditor::getSelectedRange(int &line, int &column,
                                   int &line2, int &column2) const
 {
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextMark *mark;
+    GtkTextIter iter;
+    mark = gtk_text_buffer_get_insert(buffer);
+    gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
+    line = gtk_text_iter_get_line(iter);
+    column = gtk_text_iter_get_line_offset(iter);
+    mark = gtk_text_buffer_get_selection_bound(buffer);
+    gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
+    line2 = gtk_text_iter_get_line(iter);
+    column2 = gtk_text_iter_get_line_offset(iter);    
 }
 
 void TextEditor::setSelectedRange(int line, int column,
                                   int line2, int column2)
 {
-    gtk_text_buffer_set_select_range(m_buffer);
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextIter iter, iter2;
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
+                                            line, column);
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &iter2,
+                                            line2, column2);
+    gtk_text_buffer_set_select_range(buffer, &iter, &iter2);
+    gtk_text_view_place_cursor_onscreen(GTK_TEXT_VIEW(gtkWidget()));
 }
 
 int TextEditor::characterCount() const
 {
-    return gtk_text_buffer_get_char_count(m_buffer);
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    return gtk_text_buffer_get_char_count(buffer);
 }
 
 int TextEditor::lineCount() const
 {
-    return gtk_text_buffer_get_line_count(m_buffer);
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    return gtk_text_buffer_get_line_count(buffer);
 }
 
 char *TextEditor::text(int beginLine, int beginColumn,
                        int endLine, int endColumn) const
 {
+    GtkTextBuffer *buffer =
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
     GtkTextIter begin, end;
-    gtk_text_buffer_get_bounds(m_buffer, &begin, &end);
-    return gtk_text_buffer_get_text(m_buffer, &begin, &end, TRUE);
+    gtk_text_buffer_get_bounds(buffer, &begin, &end);
+    return gtk_text_buffer_get_text(buffer, &begin, &end, TRUE);
 }
 
-void TextEditor::onFileChanged(const File::Change& change)
+void TextEditor::onFileChanged(const File::Change &change)
 {
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
