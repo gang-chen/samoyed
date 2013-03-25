@@ -24,7 +24,7 @@
 namespace Samoyed
 {
 
-GtkTextTagTable* SourceEditor::s_sharedTagTable = NULL;
+GtkTextTagTable *SourceEditor::s_sharedTagTable = NULL;
 
 void SourceEditor::createSharedData()
 {
