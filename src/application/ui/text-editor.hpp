@@ -9,6 +9,7 @@
 #include <map>
 #include <string>
 #include <boost/any.hpp>
+#include <gtk/gtk.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -87,9 +88,9 @@ protected:
         Editor(file, project)
     {}
 
-    bool setup();
+    bool setup(GtkTextTagTable *tagTable);
 
-    bool restore(XmlElement &xmlElement);
+    bool restore(XmlElement &xmlElement, GtkTextTagTable *tagTable);
 };
 
 }
