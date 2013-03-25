@@ -5,7 +5,12 @@
 #define SMYD_SOURCE_EDITOR_HPP
 
 #include "text-editor.hpp"
+#include <list>
+#include <map>
+#include <string>
+#include <boost/any.hpp>
 #include <gtk/gtk.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -19,6 +24,28 @@ class Project;
 class SourceEditor: public TextEditor
 {
 public:
+    class XmlElement: public TextEditor::XmlElement
+    {
+    public:
+        static bool registerReader();
+
+        static XmlElement *read(xmlDocPtr doc,
+                                xmlNodePtr node,
+                                std::list<std::string> &errors);
+        virtual xmlNodePtr write() const;
+        XmlElement(const SourceEditor &editor);
+        virtual Widget *restoreWidget();
+
+    protected:
+        XmlElement() {}
+
+        bool readInternally(xmlDocPtr doc,
+                            xmlNodePtr node,
+                            std::list<std::string> &errors);
+
+        Editor *restoreEditor(std::map<std::string, boost::any> &options);
+    };
+
     /**
      * Create the data that will be shared by all source editors.  It is
      * required that this function be called before any source editor is
@@ -28,9 +55,16 @@ public:
 
     static void destroySharedData();
 
-    SourceEditor(SourceFile &file, Project *project);
+    static SourceEditor *create(SourceFile &file, Project *project);
 
     virtual Widget::XmlElement *save() const;
+
+protected:
+    SourceEditor(SourceFile &file, Project *project);
+
+    bool setup();
+
+    bool restore(XmlElement &xmlElement);
 
 private:
     /**
