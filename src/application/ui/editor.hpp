@@ -41,7 +41,7 @@ public:
                             xmlNodePtr node,
                             std::list<std::string> &errors);
 
-        Editor *restoreEditor(const std::map<std::string, boost::any> &options);
+        Editor *restoreEditor(std::map<std::string, boost::any> &options);
 
     private:
         std::string m_uri;
