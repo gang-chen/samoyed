@@ -55,7 +55,7 @@ public:
         int m_cursorColumn;
     };
 
-    static Editor *create(File &file, Project *project);
+    static TextEditor *create(File &file, Project *project);
 
     virtual Widget::XmlElement *save() const;
 
