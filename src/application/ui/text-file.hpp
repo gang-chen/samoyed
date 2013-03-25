@@ -187,9 +187,10 @@ public:
                 TextEditor *committer);
 
 protected:
-    TextFile(const char *uri, const char *encoding);
-
-    virtual ~TextFile();
+    TextFile(const char *uri, const char *encoding):
+        File(uri),
+        m_encoding(encoding)
+    {}
 
     virtual Editor *createEditorInternally(Project *project);
 
