@@ -147,7 +147,7 @@ Widget *TextEditor::XmlElement::restoreWidget()
     Editor *editor = restoreEditor(options);
     if (!editor)
         return NULL;
-    if (!static_cast<TextEditor *>(editor)->restore())
+    if (!static_cast<TextEditor *>(editor)->restore(*this, NULL))
     {
         editor->close();
         return NULL;
@@ -155,11 +155,13 @@ Widget *TextEditor::XmlElement::restoreWidget()
     return editor;
 }
 
-bool TextEditor::setup()
+bool TextEditor::setup(GtkTextTagTable *tagTable)
 {
     if (!Editor::setup())
         return false;
-    GtkWidget *view = gtk_text_view_new();
+    GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
+    GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
+    g_object_unref(buffer);
     setGtkWidget(view);
     return true;
 }
@@ -167,7 +169,7 @@ bool TextEditor::setup()
 TextEditor *TextEditor::create(TextFile &file, Project *project)
 {
     TextEditor *editor = new TextEditor(file, project);
-    if (!editor->setup())
+    if (!editor->setup(NULL))
     {
         editor->close();
         return NULL;
@@ -175,10 +177,14 @@ TextEditor *TextEditor::create(TextFile &file, Project *project)
     return editor;
 }
 
-bool TextEditor::restore(XmlElement &xmlElement)
+bool TextEditor::restore(XmlElement &xmlElement, GtkTextTagTable *tagTable)
 {
     if (!Editor::restore(xmlElement))
         return false;
+    GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
+    GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
+    g_object_unref(buffer);
+    setGtkWidget(view);
     setCursor(xmlElement.cursorLine(), xmlElement.cursorColumn());
     return true;
 }
