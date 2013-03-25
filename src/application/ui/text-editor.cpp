@@ -23,6 +23,12 @@
 namespace Samoyed
 {
 
+bool TextEditor::XmlElement::registerReader()
+{
+    return Widget::XmlElement::registerReader(TEXT_EDITOR,
+                                              Widget::XmlElement::Reader(read));
+}
+
 bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
                                             xmlNodePtr node,
                                             std::list<std::string> &errors)
@@ -84,8 +90,10 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
     }
 
     // Verify that the file is a text file.
-    if (strcmp(getFileType(uri()), "text/plain"))
+    char *type = getFileType(uri());
+    if (strcmp(type, "text/plain"))
     {
+        g_free(type);
         cp = g_strdup_printf(
             _("Line %d: File \"%s\" is not a text file.\n"),
             node->line, uri());
@@ -93,6 +101,7 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
         g_free(cp);
         return false;
     }
+    g_free(type);
     return true;
 }
 
