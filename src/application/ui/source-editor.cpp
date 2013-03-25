@@ -122,7 +122,7 @@ Widget *SourceEditor::XmlElement::restoreWidget()
     Editor *editor = restoreEditor(options);
     if (!editor)
         return NULL;
-    if (!static_cast<SourceEditor *>(editor)->restore())
+    if (!static_cast<SourceEditor *>(editor)->restore(*this))
     {
         editor->close();
         return NULL;
