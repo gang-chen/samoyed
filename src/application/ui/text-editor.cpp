@@ -2,6 +2,7 @@
 // Copyright (C) 2013 Gang Chen.
 
 #include "text-editor.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include <stdlib.h>
 #include <string.h>
 #include <list>
@@ -83,6 +84,15 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
     }
 
     // Verify that the file is a text file.
+    if (strcmp(getFileType(uri()), "text/plain"))
+    {
+        cp = g_strdup_printf(
+            _("Line %d: File \"%s\" is not a text file.\n"),
+            node->line, uri());
+        errors.push_back(cp);
+        g_free(cp);
+        return false;
+    }
     return true;
 }
 
