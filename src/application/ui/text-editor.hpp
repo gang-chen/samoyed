@@ -5,9 +5,11 @@
 #define SMYD_TEXT_EDITOR_HPP
 
 #include "editor.hpp"
+#include <list>
 #include <map>
 #include <string>
 #include <boost/any.hpp>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
