@@ -135,8 +135,9 @@ public:
     /**
      * Open a dialog to let the user choose the file to open and set additional
      * optins, and open the chosen file if any.
+     * @param project The project context, or NULL if none.
      */
-    static std::pair<File *, Editor *> openByDialog();
+    static std::pair<File *, Editor *> openByDialog(Project *project);
 
     /**
      * Create an editor.
