@@ -1,7 +1,11 @@
 // Text file editor.
 // Copyright (C) 2013 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "text-editor.hpp"
+#include "text-file.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +109,20 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
+TextEditor::XmlElement *
+TextEditor::XmlElement::read(xmlDocPtr doc,
+                             xmlNodePtr node,
+                             std::list<std::string> &errors)
+{
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(doc, node, errors))
+    {
+        delete element;
+        return NULL;
+    }
+    return element;
+}
+
 xmlNodePtr TextEditor::XmlElement::write() const
 {
     char *cp;
@@ -130,7 +148,7 @@ xmlNodePtr TextEditor::XmlElement::write() const
 TextEditor::XmlElement::XmlElement(const TextEditor &editor):
     Editor::XmlElement(editor)
 {
-    m_encoding = static_cast<TextFile &>(editor.file()).encoding();
+    m_encoding = static_cast<const TextFile &>(editor.file()).encoding();
     editor.getCursor(m_cursorLine, m_cursorColumn);
 }
 
@@ -153,6 +171,11 @@ Widget *TextEditor::XmlElement::restoreWidget()
         return NULL;
     }
     return editor;
+}
+
+TextEditor::TextEditor(TextFile &file, Project *project):
+    Editor(file, project)
+{
 }
 
 bool TextEditor::setup(GtkTextTagTable *tagTable)
@@ -216,8 +239,8 @@ void TextEditor::getCursor(int &line, int &column) const
     GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
-    line = gtk_text_iter_get_line(iter);
-    column = gtk_text_iter_get_line_offset(iter);
+    line = gtk_text_iter_get_line(&iter);
+    column = gtk_text_iter_get_line_offset(&iter);
 }
 
 void TextEditor::setCursor(int line, int column)
@@ -240,16 +263,16 @@ void TextEditor::getSelectedRange(int &line, int &column,
     GtkTextIter iter;
     mark = gtk_text_buffer_get_insert(buffer);
     gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
-    line = gtk_text_iter_get_line(iter);
-    column = gtk_text_iter_get_line_offset(iter);
+    line = gtk_text_iter_get_line(&iter);
+    column = gtk_text_iter_get_line_offset(&iter);
     mark = gtk_text_buffer_get_selection_bound(buffer);
     gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
-    line2 = gtk_text_iter_get_line(iter);
-    column2 = gtk_text_iter_get_line_offset(iter);    
+    line2 = gtk_text_iter_get_line(&iter);
+    column2 = gtk_text_iter_get_line_offset(&iter);    
 }
 
-void TextEditor::setSelectedRange(int line, int column,
-                                  int line2, int column2)
+void TextEditor::selectRange(int line, int column,
+                             int line2, int column2)
 {
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
@@ -258,7 +281,7 @@ void TextEditor::setSelectedRange(int line, int column,
                                             line, column);
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter2,
                                             line2, column2);
-    gtk_text_buffer_set_select_range(buffer, &iter, &iter2);
+    gtk_text_buffer_select_range(buffer, &iter, &iter2);
     gtk_text_view_place_cursor_onscreen(GTK_TEXT_VIEW(gtkWidget()));
 }
 

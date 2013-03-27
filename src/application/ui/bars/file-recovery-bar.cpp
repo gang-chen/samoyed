@@ -5,10 +5,138 @@
 # include <config.h>
 #endif
 #include "file-recovery-bar.hpp"
+#include "../../utilities/miscellaneous.hpp"
+#include <set>
+#include <string>
+#include <glib/gi18n-lib.h>
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
 const char *FileRecoveryBar::NAME = "file-recovery-bar";
+
+FileRecoveryBar::~FileRecoveryBar()
+{
+    if (m_store)
+        g_object_unref(m_store);
+}
+
+bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
+{
+    if (!Bar::setup(NAME))
+        return false;
+    m_store = gtk_list_store_new(1, G_TYPE_STRING);
+    GtkTreeIter it;
+    for (std::set<std::string>::const_iterator i = fileUris.begin();
+         i != fileUris.end();
+         ++i)
+    {
+        gtk_list_store_append(m_store, &it);
+        gtk_list_store_set(m_store, &it,
+                           0, i->c_str(),
+                           -1);
+    }
+    GtkCellRenderer *renderer;
+    GtkTreeViewColumn *column;
+    GtkWidget *list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(list), FALSE);
+    renderer = gtk_cell_renderer_text_new();
+    column = gtk_tree_view_column_new_with_attributes(_("URIs"),
+                                                      renderer,
+                                                      "text", 0,
+                                                      NULL);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(list), column);
+
+    GtkWidget *grid = gtk_grid_new();
+    GtkWidget *label = gtk_label_new_with_mnemonic(
+        _("_Files that were edited but not saved in the last session:"));
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), list);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), list, 0, 1, 1, 1);
+
+    GtkWidget *button;
+    GtkWidget *box = gtk_button_box_new(GTK_ORIENTATION_VERTICAL);
+    gtk_button_box_set_layout(GTK_BUTTON_BOX(box), GTK_BUTTONBOX_START);
+    gtk_box_set_spacing(GTK_BOX(box), CONTAINER_SPACING);
+    button = gtk_button_new_with_mnemonic(_("_Recover"));
+    gtk_widget_set_tooltip_text(
+        button, _("Open the file and replay the saved edits"));
+    gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
+    g_signal_connect(button, "clicked", G_CALLBACK(onRecover), this);
+    button = gtk_button_new_with_mnemonic(_("_Show differences"));
+    gtk_widget_set_tooltip_text(
+        button,
+        _("Show the differences between the saved content and the edited "
+          "content"));
+    gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
+    g_signal_connect(button, "clicked", G_CALLBACK(onShowDifferences), this);
+    button = gtk_button_new_with_mnemonic(_("_Discard"));
+    gtk_widget_set_tooltip_text(
+        button,
+        _("Discard the edits and delete the replay file"));
+    gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
+    g_signal_connect(button, "clicked", G_CALLBACK(onDiscard), this);
+    button = gtk_button_new_with_mnemonic(_("_Close"));
+    gtk_widget_set_tooltip_text(button, _("Close this bar"));
+    gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
+    gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(box), button, TRUE);
+    g_signal_connect(button, "clicked", G_CALLBACK(onClose), this);
+
+    setGtkWidget(grid);
+    gtk_widget_show_all(grid);
+    return true;
+}
+
+FileRecoveryBar *FileRecoveryBar::create(const std::set<std::string> &fileUris)
+{
+    FileRecoveryBar *bar = new FileRecoveryBar;
+    if (!bar->setup(fileUris))
+    {
+        delete bar;
+        return NULL;
+    }
+    return bar;
+}
+
+bool FileRecoveryBar::close()
+{
+    delete this;
+    return true;
+}
+
+Widget::XmlElement *FileRecoveryBar::save() const
+{
+    return NULL;
+}
+
+void FileRecoveryBar::setFileUris(const std::set<std::string> &fileUris)
+{
+    GtkTreeIter it;
+    gtk_list_store_clear(m_store);
+    for (std::set<std::string>::const_iterator i = fileUris.begin();
+         i != fileUris.end();
+         ++i)
+        gtk_list_store_insert_with_values(m_store, &it,
+                                          0, i->c_str(),
+                                          -1);
+}
+
+void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
+{
+}
+
+void FileRecoveryBar::onShowDifferences(GtkButton *button, FileRecoveryBar *bar)
+{
+}
+
+void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
+{
+}
+
+void FileRecoveryBar::onClose(GtkButton *button, FileRecoveryBar *bar)
+{
+    bar->close();
+}
 
 }

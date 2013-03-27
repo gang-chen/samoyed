@@ -276,13 +276,13 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
     // Make the session list.
     GtkCellRenderer *renderer;
     GtkTreeViewColumn *column;
-    GtkTreeSelection *selection;
     m_list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
     renderer = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(_("Name"),
                                                       renderer,
                                                       "text", 0,
                                                       NULL);
+    gtk_tree_view_column_set_expand(column, TRUE);
     gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
     renderer = gtk_cell_renderer_toggle_new();
     gtk_cell_renderer_toggle_set_activatable(
@@ -293,8 +293,6 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
                                                       NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
     gtk_widget_set_hexpand(m_list, TRUE);
-    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(m_list));
-    gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
 
     // Make the dialog.
     GtkWidget *label = gtk_label_new_with_mnemonic(_("Choose a _session:"));

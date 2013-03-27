@@ -188,19 +188,7 @@ public:
     void leaveFullScreen();
 
 protected:
-    Window():
-        m_grid(NULL),
-        m_menuBar(NULL),
-        m_toolbar(NULL),
-        m_child(NULL),
-        m_mainArea(NULL),
-        m_uiManager(NULL),
-        m_actions(this),
-        m_inFullScreen(false),
-        m_maximized(false),
-        m_toolbarVisible(true),
-        m_toolbarVisibleInFullScreen(false)
-    {}
+    Window();
 
     virtual ~Window();
 

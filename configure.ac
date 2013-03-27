@@ -57,6 +57,9 @@ AX_BOOST_REGEX
 PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.0.0])
 PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 
+SAMOYED_LIBS='$(top_builddir)/src/application/libsamoyed.la'
+AC_SUBST(SAMOYED_LIBS)
+
 AC_CONFIG_FILES([
 Makefile
 data/Makefile

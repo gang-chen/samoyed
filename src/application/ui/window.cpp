@@ -298,6 +298,22 @@ Window::XmlElement::~XmlElement()
     delete m_child;
 }
 
+Window::Window():
+    m_grid(NULL),
+    m_menuBar(NULL),
+    m_toolbar(NULL),
+    m_child(NULL),
+    m_mainArea(NULL),
+    m_uiManager(NULL),
+    m_actions(this),
+    m_inFullScreen(false),
+    m_maximized(false),
+    m_toolbarVisible(true),
+    m_toolbarVisibleInFullScreen(false)
+{
+    Application::instance().addWindow(*this);
+}
+
 bool Window::build(const Configuration &config)
 {
     m_uiManager = gtk_ui_manager_new();
@@ -305,8 +321,28 @@ bool Window::build(const Configuration &config)
 
     std::string uiFile(Application::instance().dataDirectoryName());
     uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
-    if (gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), NULL) == 0)
+    GError *error = NULL;
+    gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), &error);
+    if (error)
+    {
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to build a new window."));
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to load UI definitions from file \"%s\". %s."),
+            uiFile.c_str(), error->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(error);
         return false;
+    }
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     m_grid = gtk_grid_new();
@@ -341,9 +377,13 @@ bool Window::build(const Configuration &config)
     setGtkWidget(window);
 
     // Configure the window.
-    GdkDisplay *display = gdk_display_get_default();
-    GdkScreen *screen = gdk_display_get_screen(display, config.m_screenIndex);
-    gtk_window_set_screen(GTK_WINDOW(window), screen);
+    if (config.m_screenIndex >= 0)
+    {
+        GdkDisplay *display = gdk_display_get_default();
+        GdkScreen *screen = gdk_display_get_screen(display,
+                                                   config.m_screenIndex);
+        gtk_window_set_screen(GTK_WINDOW(window), screen);
+    }
 
     m_toolbarVisible = config.m_toolbarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
@@ -390,7 +430,6 @@ bool Window::setup(const char *name, const Configuration &config)
     m_mainArea = WidgetWithBars::create(MAIN_AREA_NAME, *editorGroup);
     addChildInternally(*m_mainArea);
 
-    Application::instance().addWindow(*this);
     s_created(*this);
     return true;
 }
@@ -416,7 +455,6 @@ bool Window::restore(XmlElement &xmlElement)
     if (!build(xmlElement.configuration()))
         return false;
     addChildInternally(*child);
-    Application::instance().addWindow(*this);
 
     // Create menu items for the side panes.
     createMenuItemsForSidePanesRecursively(*child);

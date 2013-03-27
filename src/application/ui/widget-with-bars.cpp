@@ -176,9 +176,21 @@ WidgetWithBars::XmlElement::XmlElement(const WidgetWithBars &widget):
 {
     m_mainChild = widget.mainChild().save();
     m_bars.reserve(widget.barCount());
-    for (int i = 0; i < widget.barCount(); ++i)
-        m_bars.push_back(widget.bar(i).save());
     m_currentChildIndex = widget.currentChildIndex();
+    for (int i = 0; i < widget.barCount(); ++i)
+    {
+        Bar::XmlElement *bar = widget.bar(i).save();
+        if (bar)
+            m_bars.push_back(bar);
+        else
+        {
+            // Some bars are not restorable.  Remove them.
+            if (m_currentChildIndex > i + 1)
+                --m_currentChildIndex;
+        }
+    }
+    if (m_currentChildIndex == barCount() + 1)
+        m_currentChildIndex = barCount();
 }
 
 Widget *WidgetWithBars::XmlElement::restoreWidget()
@@ -199,7 +211,7 @@ void WidgetWithBars::XmlElement::removeBar(int index)
     if (m_currentChildIndex > index + 1)
         --m_currentChildIndex;
     else if (m_currentChildIndex == barCount() + 1)
-        m_currentChildIndex = barCount() - 1;
+        m_currentChildIndex = barCount();
 }
 
 WidgetWithBars::XmlElement::~XmlElement()

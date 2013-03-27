@@ -56,7 +56,7 @@ public:
         int m_cursorColumn;
     };
 
-    static TextEditor *create(File &file, Project *project);
+    static TextEditor *create(TextFile &file, Project *project);
 
     virtual Widget::XmlElement *save() const;
 
@@ -80,13 +80,11 @@ public:
 
     void getSelectedRange(int &line, int &column,
                           int &line2, int &column2) const;
-    void setSelectedRange(int line, int column,
-                          int line2, int column2);
+    void selectRange(int line, int column,
+                     int line2, int column2);
 
 protected:
-    TextEditor(TextFile &file, Project *project):
-        Editor(file, project)
-    {}
+    TextEditor(TextFile &file, Project *project);
 
     bool setup(GtkTextTagTable *tagTable);
 

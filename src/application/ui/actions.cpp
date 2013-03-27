@@ -193,7 +193,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     { "create-directory", GTK_STOCK_DIRECTORY,
       N_("New _Directory..."), NULL,
       N_("Create a directory"), G_CALLBACK(createDirectory) },
-    { "configure", GTK_STOCK_PROPERTIES, N_("Confi_gure"), "<alt><enter>",
+    { "configure", GTK_STOCK_PROPERTIES, N_("Confi_gure"), "<alt><return>",
       N_("Configure the selected object"), G_CALLBACK(configure) },
     { "manage-configurations", NULL, N_("Manage Confi_gurations"), NULL,
       N_("Manage configurations of the current project"),
@@ -257,7 +257,8 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
 const GtkToggleActionEntry
 toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 {
-    { "show-hide-full-screen", GTK_STOCK_FULLSCREEN, N_("_Full Screen"), "F11",
+    { "enter-leave-full-screen", GTK_STOCK_FULLSCREEN,
+      N_("_Full Screen"), "F11",
       N_("Enter or leave full screen mode"),
       G_CALLBACK(enterLeaveFullScreen), FALSE },
     { "show-hide-toolbar", NULL, N_("_Toolbar"), NULL,
@@ -286,7 +287,7 @@ Actions::Actions(Window *window)
     for (int i = 0; i < N_ACTIONS; ++i)
         m_actions[i] = gtk_action_group_get_action(m_actionGroup,
                                                    actionEntries[i].name);
-    for (int i = 0; i < N_ACTIONS; ++i)
+    for (int i = 0; i < N_TOGGLE_ACTIONS; ++i)
         m_toggleActions[i] = GTK_TOGGLE_ACTION(
             gtk_action_group_get_action(m_actionGroup,
                                         toggleActionEntries[i].name));

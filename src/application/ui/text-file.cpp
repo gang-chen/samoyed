@@ -13,6 +13,7 @@
 #include "../utilities/text-file-saver.hpp"
 #include <map>
 #include <boost/any.hpp>
+#include <glib/gi18n-lib.h>
 
 #define ENCODING "encoding"
 
@@ -108,7 +109,7 @@ File *TextFile::create(const char *uri, Project *project,
         options.find(ENCODING);
     if (it != options.end())
         encoding = boost::any_cast<std::string>(it->second);
-    return new TextFile(uri, encoding.c_str(), true);
+    return new TextFile(uri, encoding.c_str());
 }
 
 void TextFile::registerType()

@@ -19,6 +19,7 @@
 #include "ui/notebook.hpp"
 #include "ui/paned.hpp"
 #include "ui/widget-with-bars.hpp"
+#include "ui/text-editor.hpp"
 #include "ui/source-editor.hpp"
 #include <assert.h>
 #include <utility>
@@ -161,6 +162,8 @@ gboolean Application::startUp(gpointer app)
     Paned::XmlElement::registerReader();
     WidgetWithBars::XmlElement::registerReader();
     Window::XmlElement::registerReader();
+    TextEditor::XmlElement::registerReader();
+    SourceEditor::XmlElement::registerReader();
     Window::registerDefaultSidePanes();
     SourceEditor::createSharedData();
 
@@ -440,8 +443,7 @@ int Application::run(int argc, char *argv[])
     g_idle_add(startUp, this);
 
     // Enter the main event loop.
-    if (m_session)
-        gtk_main();
+    gtk_main();
 
     shutDown();
     return m_exitStatus;

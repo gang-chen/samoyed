@@ -11,4 +11,4 @@ libterminal_la_CXXFLAGS = -Werror -Wall
 
 libterminal_la_LIBADD = \
     $(GTK_LIBS) \
-    libsamoyed.la
+    $(SAMOYED_LIBS)

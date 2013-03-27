@@ -119,7 +119,7 @@ Editor::XmlElement::XmlElement(const Editor &editor)
 }
 
 Editor *Editor::XmlElement::restoreEditor(
-    const std::map<std::string, boost::any> &options)
+    std::map<std::string, boost::any> &options)
 {
     Project *project = NULL;
     if (projectUri())

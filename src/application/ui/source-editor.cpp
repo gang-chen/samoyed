@@ -46,7 +46,7 @@ bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
                                               xmlNodePtr node,
                                               std::list<std::string> &errors)
 {
-    char *value, *cp;
+    char *cp;
     bool textEditorSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
@@ -95,9 +95,22 @@ bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
+SourceEditor::XmlElement *
+SourceEditor::XmlElement::read(xmlDocPtr doc,
+                               xmlNodePtr node,
+                               std::list<std::string> &errors)
+{
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(doc, node, errors))
+    {
+        delete element;
+        return NULL;
+    }
+    return element;
+}
+
 xmlNodePtr SourceEditor::XmlElement::write() const
 {
-    char *cp;
     xmlNodePtr node =
         xmlNewNode(NULL,
                    reinterpret_cast<const xmlChar *>(SOURCE_EDITOR));
@@ -130,6 +143,11 @@ Widget *SourceEditor::XmlElement::restoreWidget()
     return editor;
 }
 
+SourceEditor::SourceEditor(SourceFile &file, Project *project):
+    TextEditor(file, project)
+{
+}
+
 bool SourceEditor::setup()
 {
     if (!TextEditor::setup(s_sharedTagTable))
@@ -137,7 +155,7 @@ bool SourceEditor::setup()
     return true;
 }
 
-SourceEditor *SourceEditor::create(TextFile &file, Project *project)
+SourceEditor *SourceEditor::create(SourceFile &file, Project *project)
 {
     SourceEditor *editor = new SourceEditor(file, project);
     if (!editor->setup())

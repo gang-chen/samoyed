@@ -25,7 +25,7 @@
     <menu name="file" action="file">
       <menuitem name="open" action="open-file"/>
       <separator/>
-      <menuitme name="save" action="save-file"/>
+      <menuitem name="save" action="save-file"/>
       <menuitem name="save-all" action="save-all-files"/>
       <menuitem name="reload" action="reload-file"/>
       <separator/>
@@ -60,13 +60,12 @@
       <separator/>
       <menuitem name="toolbar" action="show-hide-toolbar"/>
       <menu name="side-panes" action="side-panes"/>
-      </menu>
     </menu>
 
     <menu name="help" action="help">
       <menuitem name="manual" action="show-manual"/>
       <menuitem name="tutorial" action="show-tutorial"/>
-      <menuitme name="about" action="show-about"/>
+      <menuitem name="about" action="show-about"/>
     </menu>
   </menubar>
 
