@@ -137,6 +137,8 @@ public:
         int m_endColumn;
     };
 
+    static bool isSupportedType(const char *type);
+
     static void registerType();
 
     const char *encoding() const { return m_encoding.c_str(); }

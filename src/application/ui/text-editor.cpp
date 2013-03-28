@@ -15,6 +15,7 @@
 #include <boost/any.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <gio/gio.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -94,10 +95,21 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
     }
 
     // Verify that the file is a text file.
-    char *type = getFileType(uri());
-    if (strcmp(type, "text/plain"))
+    char *fileName = g_filename_from_uri(uri(), NULL, NULL);
+    if (!fileName)
     {
-        g_free(type);
+        cp = g_strdup_printf(
+            _("Line %d: Invalid URI \"%s\".\n"),
+            node->line, uri());
+        errors.push_back(cp);
+        g_free(cp);
+    }
+    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    bool isTextFile = TextFile::isSupportedType(type);
+    g_free(fileName);
+    g_free(type);
+    if (!isTextFile)
+    {
         cp = g_strdup_printf(
             _("Line %d: File \"%s\" is not a text file.\n"),
             node->line, uri());
@@ -105,7 +117,6 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
         g_free(cp);
         return false;
     }
-    g_free(type);
     return true;
 }
 

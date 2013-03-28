@@ -20,7 +20,7 @@ g++ session-chooser-dialog.cpp ../../utilities/miscellaneous.cpp\
 # include <stdio.h>
 #endif
 #include <string>
-#include <vector>
+#include <list>
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
 # define _(T) T
 #else
@@ -68,7 +68,7 @@ public:
 private:
     static void onResponse(GtkDialog *gtkDialog,
                            gint response,
-                           gpointer dialog);
+                           NewSessionDialog *dialog);
     GtkWidget *m_name;
     GtkWidget *m_dialog;
 };
@@ -84,14 +84,18 @@ public:
 private:
     static void onResponse(GtkDialog *gtkDialog,
                            gint response,
-                           gpointer dialog);
+                           RestoreSessionDialog *dialog);
+    static void onRowActivated(GtkTreeView *list,
+                               GtkTreeIter *iter,
+                               GtkTreePath *path,
+                               RestoreSessionDialog *dialog);
     GtkListStore *m_store;
     GtkWidget *m_list;
     GtkWidget *m_dialog;
 };
 
-bool readSessions(std::vector<std::string> &sessionNames,
-                  std::vector<Samoyed::Session::LockState> &sessionStates)
+bool readSessions(std::list<std::string> &sessionNames,
+                  std::list<Samoyed::Session::LockState> &sessionStates)
 {
 #ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
     sessionNames.push_back("unlocked");
@@ -104,8 +108,7 @@ bool readSessions(std::vector<std::string> &sessionNames,
 #else
     bool successful;
     successful = Samoyed::Session::readAllSessionNames(sessionNames);
-    sessionStates.reserve(sessionNames.size());
-    for (std::vector<std::string>::const_iterator it = sessionNames.begin();
+    for (std::list<std::string>::const_iterator it = sessionNames.begin();
          it != sessionNames.end();
          ++it)
         sessionStates.push_back(Samoyed::Session::queryLockState(it->c_str()));
@@ -115,12 +118,11 @@ bool readSessions(std::vector<std::string> &sessionNames,
 
 void NewSessionDialog::onResponse(GtkDialog *gtkDialog,
                                   gint response,
-                                  gpointer dialog)
+                                  NewSessionDialog *dialog)
 {
     if (response == GTK_RESPONSE_OK)
     {
-        const char *sessionName =
-            static_cast<NewSessionDialog *>(dialog)->name();
+        const char *sessionName = dialog->name();
         if (!*sessionName)
         {
             GtkWidget *d = gtk_message_dialog_new(
@@ -133,8 +135,7 @@ void NewSessionDialog::onResponse(GtkDialog *gtkDialog,
             gtk_dialog_run(GTK_DIALOG(d));
             gtk_widget_destroy(d);
             g_signal_stop_emission_by_name(gtkDialog, "response");
-            gtk_widget_grab_focus(
-                static_cast<NewSessionDialog *>(dialog)->m_name);
+            gtk_widget_grab_focus(dialog->m_name);
         }
         if (!Samoyed::isValidFileName(sessionName))
         {
@@ -153,8 +154,7 @@ void NewSessionDialog::onResponse(GtkDialog *gtkDialog,
             gtk_dialog_run(GTK_DIALOG(d));
             gtk_widget_destroy(d);
             g_signal_stop_emission_by_name(gtkDialog, "response");
-            gtk_widget_grab_focus(
-                static_cast<NewSessionDialog *>(dialog)->m_name);
+            gtk_widget_grab_focus(dialog->m_name);
         }
     }
 }
@@ -225,12 +225,11 @@ const char *NewSessionDialog::name() const
 void
 RestoreSessionDialog::onResponse(GtkDialog *gtkDialog,
                                  gint response,
-                                 gpointer dialog)
+                                 RestoreSessionDialog *dialog)
 {
     if (response == GTK_RESPONSE_OK)
     {
-        const char *sessionName =
-            static_cast<RestoreSessionDialog *>(dialog)->name();
+        const char *sessionName = dialog->name();
         if (!sessionName)
         {
             GtkWidget *d = gtk_message_dialog_new(
@@ -243,10 +242,18 @@ RestoreSessionDialog::onResponse(GtkDialog *gtkDialog,
             gtk_dialog_run(GTK_DIALOG(d));
             gtk_widget_destroy(d);
             g_signal_stop_emission_by_name(gtkDialog, "response");
-            gtk_widget_grab_focus(
-                static_cast<RestoreSessionDialog *>(dialog)->m_list);
+            gtk_widget_grab_focus(dialog->m_list);
         }
     }
+}
+
+void
+RestoreSessionDialog::onRowActivated(GtkTreeView *list,
+                                     GtkTreeIter *iter,
+                                     GtkTreePath *path,
+                                     RestoreSessionDialog *dialog)
+{
+    gtk_window_activate_default(GTK_WINDOW(dialog->m_dialog));
 }
 
 RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
@@ -255,22 +262,23 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
     m_dialog(NULL)
 {
     // Read sessions.
-    std::vector<std::string> sessionNames;
-    std::vector<Samoyed::Session::LockState> sessionStates;
+    std::list<std::string> sessionNames;
+    std::list<Samoyed::Session::LockState> sessionStates;
     readSessions(sessionNames, sessionStates);
     if (sessionNames.empty())
         return;
     m_store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_BOOLEAN);
     GtkTreeIter it;
-    for (std::vector<std::string>::size_type i = 0;
-         i < sessionNames.size();
-         ++i)
+    std::list<std::string>::const_iterator it1 = sessionNames.begin();
+    std::list<Samoyed::Session::LockState>::const_iterator it2 =
+        sessionStates.begin();
+    for (; it1 != sessionNames.end(); ++it1, ++it2)
     {
         gtk_list_store_append(m_store, &it);
         gtk_list_store_set(m_store, &it,
-                           0, sessionNames[i].c_str(),
+                           0, it1->c_str(),
                            1,
-                           sessionStates[i] != Samoyed::Session::STATE_UNLOCKED,
+                           *it2 != Samoyed::Session::STATE_UNLOCKED,
                            -1);
     }
 
@@ -336,6 +344,7 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
         TRUE);
     gtk_dialog_set_default_response(GTK_DIALOG(m_dialog), GTK_RESPONSE_OK);
     g_signal_connect(m_dialog, "response", G_CALLBACK(onResponse), this);
+    g_signal_connect(m_list, "row-activated", G_CALLBACK(onRowActivated), this);
     gtk_widget_show_all(grid);
 }
 

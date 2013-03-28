@@ -85,20 +85,6 @@ bool removeFileOrDirectory(const char *name, GError **error)
     return true;
 }
 
-char *getFileType(const char *uri)
-{
-    char *fileName = g_filename_from_uri(uri, NULL, NULL);
-    if (!fileName)
-        return NULL;
-    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
-    g_free(fileName);
-    if (!type)
-        return NULL;
-    char *mimeType = g_content_type_get_mime_type(type);
-    g_free(type);
-    return mimeType;
-}
-
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 {
     GtkWidget *label, *sw, *expander, *box;
@@ -132,7 +118,6 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
     gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
-
     g_free(text);
 }
 
@@ -153,23 +138,6 @@ int main(int argc, char *argv[])
     if (!g_mkdir("misc-test-dir", 0755) &&
         g_file_set_contents("misc-test-dir/file", "hello", -1, NULL))
         assert(Samoyed::removeFileOrDirectory("misc-test-dir", NULL));
-
-    char *type;
-    type = Samoyed::getFileType("file:///file.txt");
-    assert(strcmp(type, "text/plain") == 0);
-    g_free(type);
-    type = Samoyed::getFileType("file:///file.c");
-    assert(strcmp(type, "text/x-csrc") == 0);
-    g_free(type);
-    type = Samoyed::getFileType("file:///file.h");
-    assert(strcmp(type, "text/x-chdr") == 0);
-    g_free(type);
-    type = Samoyed::getFileType("file:///file.cpp");
-    assert(strcmp(type, "text/x-c++src") == 0);
-    g_free(type);
-    type = Samoyed::getFileType("file:///file.hpp");
-    assert(strcmp(type, "text/x-c++hdr") == 0);
-    g_free(type);
 
     GtkWidget *dialog = gtk_message_dialog_new(
         NULL,

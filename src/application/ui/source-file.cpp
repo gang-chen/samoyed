@@ -12,6 +12,7 @@
 #include "../resources/file-source.hpp"
 #include "../utilities/text-file-loader.hpp"
 #include <utility>
+#include <list>
 #include <map>
 #include <boost/any.hpp>
 #include <glib/gi18n-lib.h>
@@ -21,20 +22,8 @@
 namespace
 {
 
-struct TypeEntry
-{
-    const char *mimeType;
-    const char *description;
-};
-
-const TypeEntry typeEntries[] =
-{
-    { "text/x-csrc", N_("C source") },
-    { "text/x-chdr", N_("C header") },
-    { "text/x-c++src", N_("C++ source") },
-    { "text/x-c++hdr", N_("C++ header") },
-    { NULL, NULL }
-};
+const char *mimeTypes[] =
+{ "text/x-csrc", "text/x-chdr", "text/x-c++src", "text/x-c++hdr", NULL };
 
 }
 
@@ -56,10 +45,27 @@ File *SourceFile::create(const char *uri, Project *project,
     return new SourceFile(uri, encoding.c_str());
 }
 
+bool SourceFile::isSupportedType(const char *type)
+{
+    for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
+    {
+        char *cType = g_content_type_from_mime_type(*mimeType);
+        bool supported = g_content_type_is_a(type, cType);
+        g_free(cType);
+        if (supported)
+            return true;
+    }
+    return false;
+}
+
 void SourceFile::registerType()
 {
-    for (const TypeEntry *entry = typeEntries; entry->mimeType; ++entry)
-        File::registerType(entry->mimeType, entry->description, create);
+    for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
+    {
+        char *type = g_content_type_from_mime_type(*mimeType);
+        File::registerType(type, create);
+        g_free(type);
+    }
 }
 
 SourceFile::SourceFile(const char *uri, const char *encoding):

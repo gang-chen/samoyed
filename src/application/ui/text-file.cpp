@@ -14,6 +14,7 @@
 #include <map>
 #include <boost/any.hpp>
 #include <glib/gi18n-lib.h>
+#include <gio/gio.h>
 
 #define ENCODING "encoding"
 
@@ -112,9 +113,19 @@ File *TextFile::create(const char *uri, Project *project,
     return new TextFile(uri, encoding.c_str());
 }
 
+bool TextFile::isSupportedType(const char *type)
+{
+    char *textType = g_content_type_from_mime_type("text/plain");
+    bool supported = g_content_type_is_a(type, textType);
+    g_free(textType);
+    return supported;
+}
+
 void TextFile::registerType()
 {
-    File::registerType("text/plain", _("Plain text"), create);
+    char *type = g_content_type_from_mime_type("text/plain");
+    File::registerType(type, create);
+    g_free(type);
 }
 
 int TextFile::characterCount() const

@@ -7,7 +7,7 @@
 #include "../utilities/lock-file.hpp"
 #include "../utilities/worker.hpp"
 #include <string>
-#include <vector>
+#include <list>
 #include <set>
 #include <deque>
 #include <boost/utility.hpp>
@@ -59,7 +59,7 @@ public:
 
     static bool readLastSessionName(std::string &name);
 
-    static bool readAllSessionNames(std::vector<std::string> &names);
+    static bool readAllSessionNames(std::list<std::string> &names);
 
     static LockState queryLockState(const char *name);
 
@@ -123,7 +123,7 @@ private:
         {}
         virtual void execute(const Session &session) const;
     private:
-        std::vector<std::string> m_unsavedFileUris;
+        std::list<std::string> m_unsavedFileUris;
     };
 
     class UnsavedFileListRequestWorker: public Worker

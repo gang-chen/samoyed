@@ -10,16 +10,15 @@
     </menu>
 
     <menu name="project" action="project">
-      <menuitem name="new" action="project-new"/>
-      <menuitem name="open" action="project-open"/>
-      <menuitem name="close" action="project-close"/>
-      <menuitem name="close-all" action="project-close-all"/>
+      <menuitem name="new" action="create-project"/>
+      <menuitem name="open" action="open-project"/>
+      <menuitem name="close" action="close-project"/>
+      <menuitem name="close-all" action="close-all-projects"/>
       <separator/>
-      <menuitem name="new-file" action="project-new-file"/>
-      <menuitem name="new-directory" action="project-new-directory"/>
+      <menuitem name="new-file" action="create-file"/>
+      <menuitem name="new-directory" action="create-directory"/>
       <separator/>
-      <menuitem name="manage-configurations"
-                action="project-manage-configurations"/>
+      <menuitem name="manage-configurations" action="manage-configurations"/>
     </menu>
 
     <menu name="file" action="file">

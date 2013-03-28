@@ -15,12 +15,13 @@
 #include <assert.h>
 #include <string.h>
 #include <utility>
-#include <vector>
+#include <list>
 #include <string>
 #include <map>
 #include <boost/any.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <gio/gio.h>
 #include <gtk/gtk.h>
 
 namespace
@@ -54,7 +55,7 @@ File::Opened File::s_opened;
 File::Edit *File::EditStack::execute(File &file) const
 {
     EditStack *undo = new EditStack;
-    for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
+    for (std::list<Edit *>::const_reverse_iterator it = m_edits.rbegin();
          it != m_edits.rend();
          ++it)
         undo->push((*it)->execute(file));
@@ -79,21 +80,53 @@ bool File::EditStack::mergePush(EditPrimitive *edit)
 
 void File::EditStack::clear()
 {
-    for (std::vector<Edit *>::const_reverse_iterator it = m_edits.rbegin();
+    for (std::list<Edit *>::const_reverse_iterator it = m_edits.rbegin();
          it != m_edits.rend();
          ++it)
         delete (*it);
 }
 
-std::map<std::string, File::TypeRecord> File::s_typeRegistry;
+std::list<File::TypeRecord> File::s_typeRegistry;
 
-bool File::registerType(const char *mimeType,
-                        const char *description,
-                        const Factory &factory)
+void File::registerType(const char *type, const Factory &factory)
 {
-    return s_typeRegistry.insert(
-                std::make_pair(mimeType,
-                               TypeRecord(description, factory))).second;
+    s_typeRegistry.push_back(TypeRecord(type, factory));
+}
+
+const File::Factory *File::findFactory(const char *type)
+{
+    // First find the exact match.
+    for (std::list<TypeRecord>::const_iterator it = s_typeRegistry.begin();
+         it != s_typeRegistry.end();
+         ++it)
+    {
+        if (g_content_type_equals(it->m_type.c_str(), type))
+            return &it->m_factory;
+    }
+
+    // Then collect all base types.
+    std::list<std::list<TypeRecord>::const_iterator> baseTypes;
+    for (std::list<TypeRecord>::const_iterator it = s_typeRegistry.begin();
+         it != s_typeRegistry.end();
+         ++it)
+    {
+        if (g_content_type_is_a(type, it->m_type.c_str()))
+            baseTypes.push_back(it);
+    }
+    if (baseTypes.empty())
+        return NULL;
+
+    // Find the best match.
+    std::list<std::list<TypeRecord>::const_iterator>::const_iterator it =
+        baseTypes.begin();
+    std::list<std::list<TypeRecord>::const_iterator>::const_iterator it2 =
+        baseTypes.begin();
+    for (++it2; it2 != baseTypes.end(); ++it2)
+    {
+        if (g_content_type_is_a((*it2)->m_type.c_str(), (*it)->m_type.c_str()))
+            it = it2;
+    }
+    return &(*it)->m_factory;
 }
 
 std::pair<File *, Editor *>
@@ -113,8 +146,9 @@ File::open(const char *uri, Project *project,
         return std::make_pair(file, editor);
     }
 
-    char *mimeType = getFileType(uri);
-    if (!mimeType)
+    GError *error = NULL;
+    char *fileName = g_filename_from_uri(uri, NULL, &error);
+    if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -125,17 +159,19 @@ File::open(const char *uri, Project *project,
             uri);
         gtkMessageDialogAddDetails(
             dialog,
-            _("The MIME type of file \"%s\" is unknown."),
-            uri);
+            _("Samoyed failed to parse URI \"%s\". %s."),
+            uri, error->message);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
+        g_error_free(error);
         return std::pair<File *, Editor *>(NULL, NULL);
     }
-    std::map<std::string, TypeRecord>::const_iterator it =
-        s_typeRegistry.find(mimeType);
-    if (it == s_typeRegistry.end())
+    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    g_free(fileName);
+    const Factory *factory = findFactory(type);
+    if (!factory)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -146,17 +182,17 @@ File::open(const char *uri, Project *project,
             uri);
         gtkMessageDialogAddDetails(
             dialog,
-            _("The MIME type of file \"%s\" is \"%s\", which is unsupported."),
-            uri, mimeType);
+            _("The type of file \"%s\" is \"%s\", which is unsupported."),
+            uri, type);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        g_free(mimeType);
+        g_free(type);
         return std::pair<File *, Editor *>(NULL, NULL);
     }
-    g_free(mimeType);
-    file = it->second.m_factory(uri, project, options);
+    g_free(type);
+    file = (*factory)(uri, project, options);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
     editor = file->createEditor(project);

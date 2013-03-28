@@ -79,11 +79,21 @@ bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
     }
 
     // Verify that the file is a C/C++ source file.
-    char *type = getFileType(uri());
-    if (strcmp(type, "text/x-csrc") && strcmp(type, "text/x-chdr") &&
-        strcmp(type, "text/x-c++src") && strcmp(type, "text/x-c++hdr"))
+    char *fileName = g_filename_from_uri(uri(), NULL, NULL);
+    if (!fileName)
     {
-        g_free(type);
+        cp = g_strdup_printf(
+            _("Line %d: Invalid URI \"%s\".\n"),
+            node->line, uri());
+        errors.push_back(cp);
+        g_free(cp);
+    }
+    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    bool isTextFile = SourceFile::isSupportedType(type);
+    g_free(fileName);
+    g_free(type);
+    if (!isTextFile)
+    {
         cp = g_strdup_printf(
             _("Line %d: File \"%s\" is not a C/C++ source file.\n"),
             node->line, uri());
@@ -91,7 +101,6 @@ bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
         g_free(cp);
         return false;
     }
-    g_free(type);
     return true;
 }
 

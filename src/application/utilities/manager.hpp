@@ -6,8 +6,8 @@
 
 #include <assert.h>
 #include <utility>
+#include <list>
 #include <map>
-#include <vector>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
@@ -102,7 +102,7 @@ protected:
     }
 
     void cacheObject(Object *object,
-                     std::vector<Object *> &objectsToSwap)
+                     std::list<Object *> &objectsToSwap)
     {
         // Cache the object.
         if (m_mruCachedObject)
@@ -137,7 +137,7 @@ protected:
 
     void decreaseReference(Object *object)
     {
-        std::vector<Object *> objectsToSwap;
+        std::list<Object *> objectsToSwap;
         bool del = false;
         {
             boost::mutex::scoped_lock lock(m_mutex);
@@ -152,7 +152,7 @@ protected:
                     del = true;
             }
         }
-        for (typename std::vector<Object *>::const_iterator it =
+        for (typename std::list<Object *>::const_iterator it =
                  objectsToSwap.begin();
              it != objectsToSwap.end();
              ++it)
@@ -163,7 +163,7 @@ protected:
 
     void switchReference(Object *newObject, Object *oldObject)
     {
-        std::vector<Object *> objectsToSwap;
+        std::list<Object *> objectsToSwap;
         if (newObject != oldObject)
         {
             boost::mutex::scoped_lock lock(m_mutex);
@@ -171,7 +171,7 @@ protected:
                 cacheObject(oldObject, objectsToSwap);
             ++newObject->m_refCount;
         }
-        for (typename std::vector<Object *>::const_iterator it =
+        for (typename std::list<Object *>::const_iterator it =
                  objectsToSwap.begin();
              it != objectsToSwap.end();
              ++it)

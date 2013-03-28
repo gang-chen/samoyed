@@ -28,6 +28,8 @@ class FileSource;
 class SourceFile: public TextFile
 {
 public:
+    static bool isSupportedType(const char *type);
+
     static void registerType();
 
 protected:

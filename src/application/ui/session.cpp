@@ -384,7 +384,7 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
     FILE *unsavedFp = g_fopen(unsavedFn.c_str(), "w");
     if (unsavedFp)
     {
-        for (std::vector<std::string>::const_iterator it =
+        for (std::list<std::string>::const_iterator it =
                  m_unsavedFileUris.begin();
              it != m_unsavedFileUris.end();
              ++it)
@@ -584,7 +584,7 @@ bool Session::readLastSessionName(std::string &name)
 }
 
 // Report the error.
-bool Session::readAllSessionNames(std::vector<std::string> &names)
+bool Session::readAllSessionNames(std::list<std::string> &names)
 {
     // Each sub-directory in directory "sessions" stores a session.  Its name is
     // the session name.

@@ -10,7 +10,7 @@ g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 # include <config.h>
 #endif
 #include "signal.hpp"
-#include <vector>
+#include <list>
 #ifdef OS_WIN32
 # define _WIN32_WINNT 0x0500
 # include <windows.h>
@@ -26,8 +26,8 @@ g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 namespace
 {
 
-std::vector<Samoyed::Signal::SignalHandler> crashHandlers;
-std::vector<Samoyed::Signal::SignalHandler> terminationHandlers;
+std::list<Samoyed::Signal::SignalHandler> crashHandlers;
+std::list<Samoyed::Signal::SignalHandler> terminationHandlers;
 
 #ifndef OS_WIN32
 struct sigaction savedFpeSignalAction;
@@ -45,7 +45,7 @@ volatile bool terminating = false;
 #ifdef OS_WIN32
 LONG WINAPI onCrashed(PEXCEPTION_POINTERS exceptionRecord)
 {
-    for (std::vector<Samoyed::Signal::SignalHandler>::const_iterator i =
+    for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
             crashHandlers.begin();
          i != crashHandlers.end();
          ++i)
@@ -82,7 +82,7 @@ void onCrashed(int signalNumber)
         sigaction(SIGSYS, &savedSysSignalAction, 0);
         break;
     }
-    for (std::vector<Samoyed::Signal::SignalHandler>::const_iterator i =
+    for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
              crashHandlers.begin();
          i != crashHandlers.end();
          ++i)
@@ -98,7 +98,7 @@ void onTerminate(int signalNumber)
         raise(signalNumber);
     terminating = true;
     sigaction(SIGTERM, &savedTermSignalAction, 0);
-    for (std::vector<Samoyed::Signal::SignalHandler>::const_iterator i =
+    for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
              terminationHandlers.begin();
          i != terminationHandlers.end();
          ++i)

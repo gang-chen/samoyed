@@ -8,7 +8,7 @@
 #include "../utilities/revision.hpp"
 #include "../utilities/worker.hpp"
 #include <utility>
-#include <vector>
+#include <list>
 #include <string>
 #include <map>
 #include <boost/utility.hpp>
@@ -115,7 +115,7 @@ public:
         void clear();
 
     private:
-        std::vector<Edit *> m_edits;
+        std::list<Edit *> m_edits;
     };
 
     /**
@@ -265,16 +265,14 @@ protected:
 
     struct TypeRecord
     {
-        std::string m_description;
+        std::string m_type;
         Factory m_factory;
-        TypeRecord(const char *desc, const Factory &factory):
-            m_description(desc), m_factory(factory)
+        TypeRecord(const char *type, const Factory &factory):
+            m_type(type), m_factory(factory)
         {}
     };
 
-    static bool registerType(const char *mimeType,
-                             const char *description,
-                             const Factory &factory);
+    static void registerType(const char *type, const Factory &factory);
 
     File(const char *uri);
 
@@ -306,6 +304,8 @@ protected:
     virtual void onSaved(FileSaver &saver) {}
 
 private:
+    static const Factory *findFactory(const char *type);
+
     void continueClosing();
 
     void freezeInternally();
@@ -326,7 +326,7 @@ private:
 
     void onSavedWrapper(Worker &worker);
 
-    static std::map<std::string, TypeRecord> s_typeRegistry;
+    static std::list<TypeRecord> s_typeRegistry;
 
     const std::string m_uri;
 
