@@ -928,7 +928,12 @@ Session *Session::create(const char *name)
     }
 
     // Create the main window for the new session.
-    Window::create(Window::NAME, Window::Configuration());
+    if (!Window::create(Window::NAME, Window::Configuration()))
+    {
+        remove(name);
+        delete session;
+        return NULL;
+    }
 
     return session;
 }
