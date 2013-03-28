@@ -536,7 +536,7 @@ void Window::removeChildInternally(Widget &child)
     m_child = NULL;
     g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(m_grid), child.gtkWidget());
-    WidgetContainer::removeChild(child);
+    WidgetContainer::removeChildInternally(child);
 }
 
 void Window::replaceChild(Widget &oldChild, Widget &newChild)
