@@ -47,7 +47,7 @@
 namespace Samoyed
 {
 
-const char *Window::NAME = "main-window";
+const char *Window::NAME = "window";
 const char *Window::NAVIGATION_PANE_NAME = "navigation-pane";
 const char *Window::TOOLS_PANE_NAME = "tools-pane";
 
