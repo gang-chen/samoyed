@@ -176,7 +176,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       G_CALLBACK(switchSession) },
     { "manage-sessions", NULL, N_("_Manage"), NULL,
       N_("Manage saved sessions"), G_CALLBACK(manageSessions) },
-    { "quit-session", GTK_STOCK_QUIT, N_("_Quit"), "<Control>q",
+    { "quit-session", GTK_STOCK_QUIT, N_("_Quit"), NULL,
       N_("Quit the current session"), G_CALLBACK(quitSession) },
 
     // Project menu.
@@ -193,16 +193,16 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     { "create-directory", GTK_STOCK_DIRECTORY,
       N_("New _Directory..."), NULL,
       N_("Create a directory"), G_CALLBACK(createDirectory) },
-    { "configure", GTK_STOCK_PROPERTIES, N_("Confi_gure"), "<Alt>Return",
+    { "configure", GTK_STOCK_PROPERTIES, N_("Confi_gure"), NULL,
       N_("Configure the selected object"), G_CALLBACK(configure) },
     { "manage-configurations", NULL, N_("Manage Confi_gurations"), NULL,
       N_("Manage configurations of the current project"),
       G_CALLBACK(manageConfigurations) },
 
     // File menu.
-    { "open-file", GTK_STOCK_OPEN, N_("_Open..."), NULL,
+    { "open-file", NULL, N_("_Open..."), NULL,
       N_("Open a file"), G_CALLBACK(openFile) },
-    { "save-file", GTK_STOCK_SAVE, N_("_Save"), "<Control>s",
+    { "save-file", GTK_STOCK_SAVE, N_("_Save"), NULL,
       N_("Save the current file"), G_CALLBACK(saveFile) },
     { "save-all-files", NULL, N_("Save _All"), NULL,
       N_("Save all edited files"), G_CALLBACK(saveAllFiles) },
@@ -217,19 +217,19 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     { "preview-printed-file", GTK_STOCK_PRINT_PREVIEW,
       N_("Print Pre_view"), NULL,
       N_("Preview the printed file"), G_CALLBACK(previewPrintedFile) },
-    { "print-file", GTK_STOCK_PRINT, N_("_Print"), "<Control>p",
+    { "print-file", GTK_STOCK_PRINT, N_("_Print"), NULL,
       N_("Print the current file"), G_CALLBACK(printFile) },
 
     // Edit menu.
-    { "undo", GTK_STOCK_UNDO, N_("_Undo"), "<Control>z",
+    { "undo", GTK_STOCK_UNDO, N_("_Undo"), NULL,
       N_("Undo the last operation"), G_CALLBACK(undo) },
-    { "redo", GTK_STOCK_REDO, N_("_Redo"), "<Shift><Control>z",
+    { "redo", GTK_STOCK_REDO, N_("_Redo"), NULL,
       N_("Redo the last undone operation"), G_CALLBACK(redo) },
-    { "cut", GTK_STOCK_CUT, N_("Cu_t"), "<Control>x",
+    { "cut", GTK_STOCK_CUT, N_("Cu_t"), NULL,
       N_("Cut the selected object"), G_CALLBACK(cut) },
-    { "copy", GTK_STOCK_COPY, N_("_Copy"), "<Control>c",
+    { "copy", GTK_STOCK_COPY, N_("_Copy"), NULL,
       N_("Copy the selected object"), G_CALLBACK(copy) },
-    { "paste", GTK_STOCK_PASTE, N_("_Paste"), "<Control>v",
+    { "paste", GTK_STOCK_PASTE, N_("_Paste"), NULL,
       N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
     { "delete", GTK_STOCK_DELETE, N_("_Delete"), NULL,
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
@@ -246,7 +246,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     { "side-panes", NULL, N_("_Side Panes"), NULL, NULL, NULL },
 
     // Help menu.
-    { "show-manual", GTK_STOCK_HELP, N_("_Manual"), "F1",
+    { "show-manual", GTK_STOCK_HELP, N_("_Manual"), NULL,
       N_("Show the user manual"), G_CALLBACK(showManual) },
     { "show-tutorial", NULL, N_("_Tutorial"), NULL,
       N_("Show the tutorial"), G_CALLBACK(showTutorial) },
