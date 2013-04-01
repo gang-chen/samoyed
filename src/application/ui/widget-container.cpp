@@ -41,8 +41,7 @@ WidgetContainer::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!WidgetContainer::XmlElement::readInternally(doc, child,
-                                                             errors))
+            if (!Widget::XmlElement::readInternally(doc, child, errors))
                 return false;
             widgetSeen = true;
         }

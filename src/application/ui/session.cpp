@@ -38,7 +38,9 @@
 
 #define SESSION "session"
 #define PROJECTS "projects"
+#define PROJECT "project"
 #define WINDOWS "windows"
+#define WINDOW "window"
 
 namespace
 {
@@ -82,8 +84,17 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
 {
     char *cp;
     if (strcmp(reinterpret_cast<const char *>(node->name),
-               SESSION) == 0)
+               SESSION) != 0)
+    {
+        cp = g_strdup_printf(
+            _("Line %d: Root element is \"%s\"; should be \"%s\".\n"),
+            node->line,
+            reinterpret_cast<const char *>(node->name),
+            SESSION);
+        errors.push_back(cp);
+        g_free(cp);
         return NULL;
+    }
     XmlElementSession *session = new XmlElementSession;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
@@ -94,10 +105,16 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                  grandChild;
                  grandChild = grandChild->next)
             {
-                Samoyed::Project::XmlElement *project =
-                    Samoyed::Project::XmlElement::read(doc, grandChild, errors);
-                if (project)
-                    session->m_projects.push_back(project);
+                if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                           PROJECT) == 0)
+                {
+                    Samoyed::Project::XmlElement *project =
+                        Samoyed::Project::XmlElement::read(doc,
+                                                           grandChild,
+                                                           errors);
+                    if (project)
+                        session->m_projects.push_back(project);
+                }
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -107,10 +124,16 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                  grandChild;
                  grandChild = grandChild->next)
             {
-                Samoyed::Window::XmlElement *window =
-                    Samoyed::Window::XmlElement::read(doc, grandChild, errors);
-                if (window)
-                    session->m_windows.push_back(window);
+                if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                           WINDOW) == 0)
+                {
+                    Samoyed::Window::XmlElement *window =
+                        Samoyed::Window::XmlElement::read(doc,
+                                                          grandChild,
+                                                          errors);
+                    if (window)
+                        session->m_windows.push_back(window);
+                }
             }
         }
     }
@@ -288,7 +311,7 @@ XmlElementSession *parseSessionFile(const char *fileName,
             Samoyed::gtkMessageDialogAddDetails(
                 dialog,
                 _("Samoyed failed to construct session \"%s\" from session "
-                  "file \"%s\". Errors:\n%s."),
+                  "file \"%s\". Errors:\n%s"),
                 sessionName, fileName, e.c_str());
         }
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
@@ -414,18 +437,21 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
     }
 
     // Show the unsaved files.
-    WidgetWithBars &mainArea =
-        Application::instance().currentWindow().mainArea();
-    FileRecoveryBar *bar =
-        static_cast<FileRecoveryBar *>(
-            mainArea.findChild(FileRecoveryBar::NAME));
-    if (bar)
-        bar->setFileUris(p->m_session.unsavedFileUris());
-    else
+    if (!p->m_sesion.unsavedFileUris().empty())
     {
-        bar =
-            FileRecoveryBar::create(p->m_session.unsavedFileUris());
-        mainArea.addBar(*bar);
+        WidgetWithBars &mainArea =
+            Application::instance().currentWindow().mainArea();
+        FileRecoveryBar *bar =
+            static_cast<FileRecoveryBar *>(
+                mainArea.findChild(FileRecoveryBar::NAME));
+        if (bar)
+            bar->setFileUris(p->m_session.unsavedFileUris());
+        else
+        {
+            bar =
+                FileRecoveryBar::create(p->m_session.unsavedFileUris());
+            mainArea.addBar(*bar);
+        }
     }
     delete p;
     return FALSE;

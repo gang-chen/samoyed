@@ -44,6 +44,24 @@
 #define NAVIGATION_PANE_TITLE _("_Navigation Pane")
 #define TOOLS_PANE_TITLE _("_Tools Pane")
 
+namespace
+{
+
+Samoyed::WidgetWithBars *findMainArea(Samoyed::Widget &root)
+{
+    if (strcmp(root.name(), MAIN_AREA_NAME) == 0)
+        return static_cast<Samoyed::WidgetWithBars *>(&root);
+    if (strcmp(root.name(), PANED_NAME) != 0)
+        return NULL;
+    Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(root);
+    Samoyed::WidgetWithBars *mainArea = findMainArea(paned.child(0));
+    if (mainArea)
+        return mainArea;
+    return findMainArea(paned.child(1));
+}
+
+}
+
 namespace Samoyed
 {
 
@@ -355,13 +373,15 @@ bool Window::build(const Configuration &config)
                             GTK_POS_BOTTOM, 1, 1);
 
     m_toolbar = gtk_ui_manager_get_widget(m_uiManager, "/main-toolbar");
-
-    GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
+    gtk_toolbar_set_style(GTK_TOOLBAR(m_toolbar), GTK_TOOLBAR_ICONS);
+    /*GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
                                                         "/new-popup-menu");
-    GtkToolItem *newItem = gtk_menu_tool_button_new_from_stock(GTK_STOCK_NEW);
+    GtkToolItem *newItem = gtk_menu_tool_button_new_from_stock(GTK_STOCK_FILE);
     gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(newItem), newPopupMenu);
-    gtk_tool_item_set_tooltip_text(newItem, _("Create an object"));
-    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);
+    gtk_tool_item_set_tooltip_text(newItem, _("Create a file"));
+    gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(newItem),
+                                                _("Create an object"));
+    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);*/
 
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             m_toolbar, m_menuBar,
@@ -455,6 +475,11 @@ bool Window::restore(XmlElement &xmlElement)
     if (!build(xmlElement.configuration()))
         return false;
     addChildInternally(*child);
+
+    // Find the main area.
+    m_mainArea = findMainArea(*child);
+    if (!m_mainArea)
+        return false;
 
     // Create menu items for the side panes.
     createMenuItemsForSidePanesRecursively(*child);

@@ -12,6 +12,7 @@
 #include "ui/splash-screen.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/manager.hpp"
+#include "utilities/scheduler.hpp"
 #include "utilities/signal.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
 #include "ui/text-file.hpp"
@@ -36,6 +37,8 @@
 
 namespace
 {
+
+const int THREAD_COUNT = 8;
 
 bool terminate = false;
 
@@ -168,6 +171,8 @@ gboolean Application::startUp(gpointer app)
     SourceEditor::createSharedData();
 
     // Create global objects.
+    a->m_scheduler = new Scheduler;
+    a->m_scheduler->size_controller().resize(THREAD_COUNT);
 
     // All the background initialization is done.  Close the splash screen.
     delete a->m_splashScreen;
@@ -238,6 +243,7 @@ void Application::shutDown()
     assert(!m_sessionName);
     assert(!m_newSessionName);
 
+    delete m_scheduler;
     SourceEditor::destroySharedData();
 }
 
