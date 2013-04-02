@@ -374,14 +374,14 @@ bool Window::build(const Configuration &config)
 
     m_toolbar = gtk_ui_manager_get_widget(m_uiManager, "/main-toolbar");
     gtk_toolbar_set_style(GTK_TOOLBAR(m_toolbar), GTK_TOOLBAR_ICONS);
-    /*GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
+    GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
                                                         "/new-popup-menu");
     GtkToolItem *newItem = gtk_menu_tool_button_new_from_stock(GTK_STOCK_FILE);
     gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(newItem), newPopupMenu);
     gtk_tool_item_set_tooltip_text(newItem, _("Create a file"));
     gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(newItem),
                                                 _("Create an object"));
-    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);*/
+    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);
 
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             m_toolbar, m_menuBar,
@@ -447,6 +447,8 @@ bool Window::setup(const char *name, const Configuration &config)
     Notebook *editorGroup =
         Notebook::create(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME,
                          true, true, false);
+    gtk_widget_set_hexpand(editorGroup->gtkWidget(), TRUE);
+    gtk_widget_set_vexpand(editorGroup->gtkWidget(), TRUE);
     m_mainArea = WidgetWithBars::create(MAIN_AREA_NAME, *editorGroup);
     addChildInternally(*m_mainArea);
 
@@ -606,39 +608,25 @@ const Widget *Window::findSidePane(const char *name) const
     return NULL;
 }
 
-void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
+void Window::addSidePane(Widget &pane, Widget &neighbor, Side side)
 {
-    Paned *paned;
-    int handleSize;
     switch (side)
     {
     case SIDE_TOP:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
-                             pane, neighbor);
-        paned->setPosition(size);
+        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+                     pane, neighbor);
         break;
     case SIDE_BOTTOM:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
-                             neighbor, pane);
-        gtk_widget_style_get(paned->gtkWidget(),
-                             "handle-size", &handleSize,
-                             NULL);
-        paned->setPosition(gtk_widget_get_allocated_height(paned->gtkWidget()) -
-                           size - handleSize);
+        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+                     neighbor, pane);
         break;
     case SIDE_LEFT:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
-                             pane, neighbor);
-        paned->setPosition(size);
+        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+                     pane, neighbor);
         break;
     case SIDE_RIGHT:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
-                             neighbor, pane);
-        gtk_widget_style_get(paned->gtkWidget(),
-                             "handle-size", &handleSize,
-                             NULL);
-        paned->setPosition(gtk_widget_get_allocated_width(paned->gtkWidget()) -
-                           size - handleSize);
+        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+                     neighbor, pane);
     }
 
     // Add a menu item for showing or hiding the side pane.
@@ -717,9 +705,10 @@ void Window::createNavigationPane(Window &window)
         Notebook::create(NAVIGATION_PANE_NAME, NAVIGATION_PANE_NAME,
                          false, false, true);
     pane->setTitle(NAVIGATION_PANE_TITLE);
+    gtk_widget_set_size_request(pane->gtkWidget(), WIDGET_WIDTH_REQUEST, -1);
+    gtk_widget_set_vexpand(pane->gtkWidget(), TRUE);
     s_navigationPaneCreated(*pane);
-    Configuration config = window.configuration();
-    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, config.m_x / 5);
+    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT);
 }
 
 void Window::createToolsPane(Window &window)
@@ -728,9 +717,10 @@ void Window::createToolsPane(Window &window)
         Notebook::create(TOOLS_PANE_NAME, TOOLS_PANE_NAME,
                          false, false, true);
     pane->setTitle(TOOLS_PANE_TITLE);
+    gtk_widget_set_size_request(pane->gtkWidget(), WIDGET_WIDTH_REQUEST, -1);
+    gtk_widget_set_vexpand(pane->gtkWidget(), TRUE);
     s_toolsPaneCreated(*pane);
-    Configuration config = window.configuration();
-    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, config.m_x / 5);
+    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT);
 }
 
 void Window::registerDefaultSidePanes()
@@ -745,8 +735,10 @@ void Window::createMenuItemForSidePane(const char *name, const char *title,
     std::string actionName(name);
     actionName.insert(0, "show-hide-");
     std::string titleText(title);
-    std::remove(titleText.begin(), titleText.end(), '_');
+    titleText.erase(std::remove(titleText.begin(), titleText.end(), '_'),
+                    titleText.end());
     char *tooltip = g_strdup_printf(_("Show or hide %s"), titleText.c_str());
+    GtkActionGroup *group = gtk_action_group_new(actionName.c_str());
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
                                                     title,
                                                     tooltip,
@@ -755,6 +747,8 @@ void Window::createMenuItemForSidePane(const char *name, const char *title,
     gtk_toggle_action_set_active(action, visible);
     g_signal_connect(action, "toggled",
                      G_CALLBACK(showHideSidePane), this);
+    gtk_action_group_add_action(group, GTK_ACTION(action));
+    gtk_ui_manager_insert_action_group(m_uiManager, group, 0);
     gtk_ui_manager_add_ui(m_uiManager,
                           gtk_ui_manager_new_merge_id(m_uiManager),
                           "/view/side-panes",
@@ -763,6 +757,7 @@ void Window::createMenuItemForSidePane(const char *name, const char *title,
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
+    g_object_unref(group);
 }
 
 void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)

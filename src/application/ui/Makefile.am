@@ -4,6 +4,7 @@ noinst_LTLIBRARIES = libui.la
 
 libui_la_SOURCES = \
     actions.cpp \
+    bar.cpp \
     editor.cpp \
     file.cpp \
     notebook.cpp \

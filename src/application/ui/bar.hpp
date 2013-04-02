@@ -21,7 +21,15 @@ public:
         ORIENTATION_VERTICAL = GTK_ORIENTATION_VERTICAL
     };
 
-    virtual Orientation orientation() const = 0;
+    Orientation orientation() const { return m_orientation; }
+
+protected:
+    Bar(Orientation orientation): m_orientation(orientation) {}
+
+    virtual ~Bar();
+
+private:
+    Orientation m_orientation;
 };
 
 }

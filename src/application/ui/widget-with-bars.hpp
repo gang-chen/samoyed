@@ -83,9 +83,9 @@ public:
     Widget &mainChild() { return *m_mainChild; }
     const Widget &mainChild() const { return *m_mainChild; }
 
-    void addBar(Bar &bar) { addBarInternally(bar); }
+    void addBar(Bar &bar);
 
-    void removeBar(Bar &bar) { removeChild(bar); }
+    void removeBar(Bar &bar);
 
     int barCount() const { return m_bars.size(); }
 
@@ -110,10 +110,6 @@ protected:
     void addMainChild(Widget &child);
 
     void removeMainChild(Widget &child);
-
-    void addBarInternally(Bar &bar);
-
-    void removeBarInternally(Bar &bar);
 
     virtual void removeChildInternally(Widget &child);
 

@@ -23,9 +23,6 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    virtual Orientation orientation() const
-    { return ORIENTATION_HORIZONTAL; }
-
     void setFileUris(const std::set<std::string> &fileUris);
 
 private:
@@ -34,7 +31,10 @@ private:
     static void onDiscard(GtkButton *button, FileRecoveryBar *bar);
     static void onClose(GtkButton *button, FileRecoveryBar *bar);
 
-    FileRecoveryBar(): m_store(NULL) {}
+    FileRecoveryBar():
+        Bar(ORIENTATION_HORIZONTAL),
+        m_store(NULL)
+    {}
 
     virtual ~FileRecoveryBar();
 

@@ -437,7 +437,7 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
     }
 
     // Show the unsaved files.
-    if (!p->m_sesion.unsavedFileUris().empty())
+    if (!p->m_session.unsavedFileUris().empty())
     {
         WidgetWithBars &mainArea =
             Application::instance().currentWindow().mainArea();

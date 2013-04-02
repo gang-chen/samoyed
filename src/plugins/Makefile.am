@@ -1,1 +1,1 @@
-SUBDIRS = terminal
+SUBDIRS =

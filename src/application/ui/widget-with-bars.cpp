@@ -298,7 +298,7 @@ bool WidgetWithBars::close()
 
     setClosing(true);
 
-    std::vector<Bar *> bars(bars);
+    std::vector<Bar *> bars(m_bars);
     for (std::vector<Bar *>::const_iterator it = bars.begin();
          it != bars.end();
          ++it)
@@ -339,7 +339,7 @@ void WidgetWithBars::removeMainChild(Widget &child)
     WidgetContainer::removeChildInternally(child);
 }
 
-void WidgetWithBars::addBarInternally(Bar &bar)
+void WidgetWithBars::addBar(Bar &bar)
 {
     WidgetContainer::addChildInternally(bar);
     m_bars.push_back(&bar);
@@ -353,7 +353,7 @@ void WidgetWithBars::addBarInternally(Bar &bar)
                                 GTK_POS_LEFT, 1, 1);
 }
 
-void WidgetWithBars::removeBarInternally(Bar &bar)
+void WidgetWithBars::removeBar(Bar &bar)
 {
     int index = barIndex(bar);
     m_bars.erase(m_bars.begin() + index);
@@ -367,10 +367,8 @@ void WidgetWithBars::removeBarInternally(Bar &bar)
 
 void WidgetWithBars::removeChildInternally(Widget &child)
 {
-    if (&child == m_mainChild)
-        removeMainChild(child);
-    else
-        removeBarInternally(static_cast<Bar &>(child));
+    assert(&child == m_mainChild);
+    removeMainChild(child);
 }
 
 void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)

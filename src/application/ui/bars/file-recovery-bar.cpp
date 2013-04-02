@@ -47,18 +47,22 @@ bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
                                                       "text", 0,
                                                       NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW(list), column);
+    gtk_widget_set_hexpand(list, TRUE);
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *label = gtk_label_new_with_mnemonic(
         _("_Files that were edited but not saved in the last session:"));
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_label_set_mnemonic_widget(GTK_LABEL(label), list);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), list, 0, 1, 1, 1);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
 
     GtkWidget *button;
     GtkWidget *box = gtk_button_box_new(GTK_ORIENTATION_VERTICAL);
     gtk_button_box_set_layout(GTK_BUTTON_BOX(box), GTK_BUTTONBOX_START);
     gtk_box_set_spacing(GTK_BOX(box), CONTAINER_SPACING);
+    gtk_box_set_homogeneous(GTK_BOX(box), TRUE);
     button = gtk_button_new_with_mnemonic(_("_Recover"));
     gtk_widget_set_tooltip_text(
         button, _("Open the file and replay the saved edits"));
@@ -82,9 +86,19 @@ bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
     gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
     gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(box), button, TRUE);
     g_signal_connect(button, "clicked", G_CALLBACK(onClose), this);
+    gtk_grid_attach(GTK_GRID(grid), box, 1, 0, 1, 2);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), CONTAINER_SPACING);
+    gtk_container_set_border_width(GTK_CONTAINER(grid), CONTAINER_BORDER_WIDTH);
 
     setGtkWidget(grid);
     gtk_widget_show_all(grid);
+
+    int total_h, label_h;
+    gtk_widget_get_preferred_height(box, &total_h, NULL);
+    gtk_widget_get_preferred_height(label, &label_h, NULL);
+    gtk_widget_set_size_request(list, -1,
+                                total_h - label_h - CONTAINER_SPACING);
+
     return true;
 }
 
