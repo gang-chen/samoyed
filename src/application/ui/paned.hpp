@@ -122,8 +122,6 @@ private:
                               GtkWidget *child,
                               Paned *paned);
 
-    Orientation m_orientation;
-
     Widget *m_children[2];
 
     int m_currentChildIndex;
