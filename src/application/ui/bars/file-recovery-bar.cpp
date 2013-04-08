@@ -90,14 +90,14 @@ bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
     gtk_grid_set_column_spacing(GTK_GRID(grid), CONTAINER_SPACING);
     gtk_container_set_border_width(GTK_CONTAINER(grid), CONTAINER_BORDER_WIDTH);
 
-    setGtkWidget(grid);
-    gtk_widget_show_all(grid);
-
     int total_h, label_h;
     gtk_widget_get_preferred_height(box, &total_h, NULL);
     gtk_widget_get_preferred_height(label, &label_h, NULL);
     gtk_widget_set_size_request(list, -1,
                                 total_h - label_h - CONTAINER_SPACING);
+
+    setGtkWidget(grid);
+    gtk_widget_show_all(grid);
 
     return true;
 }

@@ -70,7 +70,6 @@
 
   <toolbar name="main-toolbar">
     <toolitem name="file-save" action="save-file"/>
-    <toolitem name="file-save-all" action="save-all-files"/>
     <separator/>
     <toolitem name="edit-undo" action="undo"/>
     <toolitem name="edit-redo" action="redo"/>

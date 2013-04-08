@@ -64,7 +64,8 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_groupName = value;
+            if (value)
+                m_groupName = value;
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -254,6 +255,8 @@ bool Notebook::setup(const char *name, const char *groupName,
         g_signal_connect(notebook, "page-removed",
                          G_CALLBACK(onPageRemoved), this);
     }
+    gtk_widget_set_hexpand(notebook, TRUE);
+    gtk_widget_set_vexpand(notebook, TRUE);
     setGtkWidget(notebook);
     gtk_widget_show_all(notebook);
     return true;
@@ -297,6 +300,11 @@ bool Notebook::restore(XmlElement &xmlElement)
         g_signal_connect(notebook, "page-removed",
                          G_CALLBACK(onPageRemoved), this);
     }
+
+    // Explicitly set it to be expandable.
+    gtk_widget_set_hexpand(notebook, TRUE);
+    gtk_widget_set_vexpand(notebook, TRUE);
+
     setGtkWidget(notebook);
     if (xmlElement.visible())
         gtk_widget_show_all(notebook);

@@ -59,7 +59,8 @@ public:
         virtual Widget *restoreWidget() = 0;
 
         const char *name() const { return m_name.c_str(); }
-
+        const char *title() const { return m_title.c_str(); }
+        const char *description() const { return m_description.c_str(); }
         bool visible() const { return m_visible; }
 
     protected:
@@ -81,6 +82,8 @@ public:
         static std::map<std::string, Reader> s_readerRegistry;
 
         std::string m_name;
+        std::string m_title;
+        std::string m_description;
         bool m_visible;
     };
 

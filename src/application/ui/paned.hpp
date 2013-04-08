@@ -87,7 +87,11 @@ public:
     virtual void setCurrentChildIndex(int index)
     { m_currentChildIndex = index; }
 
-    Orientation orientation() const { return m_orientation; }
+    Orientation orientation() const
+    {
+        return static_cast<Orientation>(
+            gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())));
+    }
 
     int position() const
     { return gtk_paned_get_position(GTK_PANED(gtkWidget())); }
@@ -95,9 +99,7 @@ public:
     { gtk_paned_set_position(GTK_PANED(gtkWidget()), position); }
 
 protected:
-    Paned():
-        m_orientation(ORIENTATION_HORIZONTAL),
-        m_currentChildIndex(0)
+    Paned(): m_currentChildIndex(0)
     {
         m_children[0] = NULL;
         m_children[1] = NULL;

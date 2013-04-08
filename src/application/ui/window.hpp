@@ -57,8 +57,6 @@ public:
     struct Configuration
     {
         int m_screenIndex;
-        int m_x;
-        int m_y;
         int m_width;
         int m_height;
         bool m_inFullScreen;
@@ -67,6 +65,8 @@ public:
         bool m_toolbarVisibleInFullScreen;
         Configuration():
             m_screenIndex(-1),
+            m_width(400),
+            m_height(300),
             m_inFullScreen(false),
             m_maximized(true),
             m_toolbarVisible(true),
@@ -158,8 +158,9 @@ public:
      * @param pane The side pane to be added.
      * @param neighbor The widget that will be the neighbor of the side pane.
      * @param side The side the neighbor where the side pane will adjoin.
+     * @param size The size of the side pane.
      */
-    void addSidePane(Widget &pane, Widget &neighbor, Side side);
+    void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
 
     Notebook &navigationPane();
     const Notebook &navigationPane() const;
@@ -203,13 +204,15 @@ private:
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
                                   Window *window);
-    static void onDestroy(GtkWidget *widget, Window *window);
     static gboolean onFocusInEvent(GtkWidget *widget,
                                    GdkEvent *event,
                                    Window *window);
-    static void onWindowStateEvent(GtkWidget *widget,
-                                   GdkEvent *event,
-                                   Window *window);
+    static gboolean onWindowStateEvent(GtkWidget *widget,
+                                       GdkEvent *event,
+                                       Window *window);
+    static gboolean onConfigureEvent(GtkWidget *widget,
+                                     GdkEvent *event,
+                                     Window *window);
     static void showHideSidePane(GtkToggleAction *action, Window *window);
 
     static void createNavigationPane(Window &window);
@@ -221,8 +224,6 @@ private:
     void createMenuItemForSidePane(const char *name, const char *title,
                                    bool visible);
     void createMenuItemsForSidePanesRecursively(const Widget &widget);
-
-    void setToolbarVisibleWrapper(bool visible);
 
     static Created s_created;
     static SidePaneCreated s_navigationPaneCreated;
@@ -246,6 +247,8 @@ private:
 
     Actions m_actions;
 
+    int m_width;
+    int m_height;
     bool m_inFullScreen;
     bool m_maximized;
     bool m_toolbarVisible;
