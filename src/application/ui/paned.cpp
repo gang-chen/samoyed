@@ -389,7 +389,6 @@ Paned *Paned::split(const char *name,
         delete paned;
         return NULL;
     }
-    paned->m_orientation = orientation;
     GtkWidget *p = gtk_paned_new(static_cast<GtkOrientation>(orientation));
     g_signal_connect(p, "set-focus-child",
                      G_CALLBACK(setFocusChild), paned);
