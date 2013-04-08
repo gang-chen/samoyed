@@ -798,7 +798,6 @@ gboolean Window::onConfigureEvent(GtkWidget *widget,
     {
         window->m_width = event->configure.width;
         window->m_height = event->configure.height;
-        printf("w %d, h %d\n", window->m_width, window->m_height);
     }
     return FALSE;
 }
