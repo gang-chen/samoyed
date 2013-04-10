@@ -36,14 +36,9 @@
 #define TOOLBAR_VISIBLE_IN_FULL_SCREEN "toolbar-visible-in-full-screen"
 #define CHILD "child"
 
-#define WINDOW_TITLE "Samoyed IDE"
-
 #define MAIN_AREA_NAME "main-area"
 #define EDITOR_GROUP_NAME "editor-group"
 #define PANED_NAME "paned"
-
-#define NAVIGATION_PANE_TITLE _("_Navigation Pane")
-#define TOOLS_PANE_TITLE _("_Tools Pane")
 
 namespace
 {
@@ -425,7 +420,7 @@ bool Window::setup(const char *name, const Configuration &config)
     addChildInternally(*m_mainArea);
 
     // Set the title.
-    setTitle(WINDOW_TITLE);
+    setTitle(_("Samoyed IDE"));
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
 
     s_created(*this);
@@ -714,7 +709,7 @@ void Window::createNavigationPane(Window &window)
 {
     Notebook *pane =
         Notebook::create(NAVIGATION_PANE_NAME, NULL, false, false, true);
-    pane->setTitle(NAVIGATION_PANE_TITLE);
+    pane->setTitle(_("_Navigation Pane"));
     s_navigationPaneCreated(*pane);
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 100);
 }
@@ -723,7 +718,7 @@ void Window::createToolsPane(Window &window)
 {
     Notebook *pane =
         Notebook::create(TOOLS_PANE_NAME, NULL, false, false, true);
-    pane->setTitle(TOOLS_PANE_TITLE);
+    pane->setTitle(_("_Tools Pane"));
     s_toolsPaneCreated(*pane);
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 100);
 }
