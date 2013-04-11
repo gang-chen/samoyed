@@ -58,8 +58,8 @@ PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.0.0])
 PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
 
-SAMOYED_LIBS='$(top_builddir)/src/application/libsamoyed.la'
-AC_SUBST(SAMOYED_LIBS)
+LIBSAMOYED_LIBS='$(top_builddir)/src/application/libsamoyed.la'
+AC_SUBST(LIBSAMOYED_LIBS)
 
 AC_CONFIG_FILES([
 Makefile
