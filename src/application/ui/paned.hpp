@@ -39,13 +39,13 @@ public:
         Widget::XmlElement &child(int index) const
         { return *m_children[index]; }
         int currentChildIndex() const { return m_currentChildIndex; }
-        int position() const { return m_position; }
+        double position() const { return m_position; }
 
     protected:
         XmlElement():
             m_orientation(Paned::ORIENTATION_HORIZONTAL),
             m_currentChildIndex(0),
-            m_position(-1)
+            m_position(0.5)
         {
             m_children[0] = NULL;
             m_children[1] = NULL;
@@ -59,16 +59,18 @@ public:
         Paned::Orientation m_orientation;
         Widget::XmlElement *m_children[2];
         int m_currentChildIndex;
-        int m_position;
+        double m_position;
     };
 
     static Paned *create(const char *name,
                          Orientation orientation,
-                         Widget &child1, Widget &child2);
+                         Widget &child1, Widget &child2,
+                         double position);
 
     static Paned *split(const char *name,
                         Orientation orientation,
-                        Widget &child1, Widget &child2);
+                        Widget &child1, Widget &child2,
+                        double position);
 
     virtual bool close();
 
@@ -93,13 +95,11 @@ public:
             gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())));
     }
 
-    int position() const
-    { return gtk_paned_get_position(GTK_PANED(gtkWidget())); }
-    void setPosition(int position)
-    { gtk_paned_set_position(GTK_PANED(gtkWidget()), position); }
+    double position() const { return m_position; }
+    void setPosition(double position);
 
 protected:
-    Paned(): m_currentChildIndex(0)
+    Paned(): m_currentChildIndex(0), m_position(0.5)
     {
         m_children[0] = NULL;
         m_children[1] = NULL;
@@ -122,9 +122,14 @@ private:
                               GtkWidget *child,
                               Paned *paned);
 
+    void setPositionInternally();
+    static void setPositionOnMapped(GtkWidget *widget, Paned *paned);
+
     Widget *m_children[2];
 
     int m_currentChildIndex;
+
+    double m_position;
 };
 
 }

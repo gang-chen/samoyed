@@ -158,9 +158,9 @@ public:
      * @param pane The side pane to be added.
      * @param neighbor The widget that will be the neighbor of the side pane.
      * @param side The side the neighbor where the side pane will adjoin.
-     * @param size The size of the side pane.
+     * @param size The ratio of the size of the side pane over the total size.
      */
-    void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
+    void addSidePane(Widget &pane, Widget &neighbor, Side side, double size);
 
     Notebook &navigationPane();
     const Notebook &navigationPane() const;

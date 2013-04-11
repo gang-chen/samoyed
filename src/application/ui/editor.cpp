@@ -150,13 +150,19 @@ Editor::~Editor()
 
 bool Editor::setup()
 {
-    char *name = g_strdup_printf("%s-%d", EDITOR, serialNumber++);
+    char *name = g_strdup_printf(EDITOR "-%d", serialNumber++);
     if (!Widget::setup(name))
     {
         g_free(name);
         return false;
     }
     g_free(name);
+    char *fileName = g_filename_from_uri(m_file.uri(), NULL, NULL);
+    char *title = g_filename_display_basename(fileName);
+    setTitle(title);
+    g_free(title);
+    g_free(fileName);
+    setDescription(m_file.uri());
     return true;
 }
 
@@ -192,6 +198,14 @@ bool Editor::close()
 
 void Editor::onFileEditedStateChanged()
 {
+    if (m_file.edited())
+    {
+        std::string title(this->title());
+        title.insert(0, "* ");
+        setTitle(title.c_str());
+    }
+    else
+        setTitle(title() + 2);
 }
 
 }

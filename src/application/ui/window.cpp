@@ -20,7 +20,6 @@
 #include <vector>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
-#include <glib-object.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
@@ -54,25 +53,6 @@ Samoyed::WidgetWithBars *findMainArea(Samoyed::Widget &root)
     if (mainArea)
         return mainArea;
     return findMainArea(paned.child(1));
-}
-
-void setPanedPosition(GtkWidget *paned, int size)
-{
-    int totalSize;
-    GValue handleSize = G_VALUE_INIT;
-    if (gtk_orientable_get_orientation(GTK_ORIENTABLE(paned)) ==
-        GTK_ORIENTATION_HORIZONTAL)
-        totalSize = gtk_widget_get_allocated_width(paned);
-    else
-        totalSize = gtk_widget_get_allocated_height(paned);
-    g_value_init(&handleSize, G_TYPE_INT);
-    gtk_widget_style_get_property(paned, "handle-size", &handleSize);
-    gtk_paned_set_position(GTK_PANED(paned),
-                           totalSize - size - g_value_get_int(&handleSize));
-    g_signal_handlers_disconnect_by_func(
-        paned,
-        reinterpret_cast<gpointer>(setPanedPosition),
-        reinterpret_cast<gpointer>(size));
 }
 
 }
@@ -390,8 +370,9 @@ bool Window::build(const Configuration &config)
         gtk_window_set_screen(GTK_WINDOW(window), screen);
     }
 
-    gtk_window_set_default_size(GTK_WINDOW(window),
-                                config.m_width, config.m_height);
+    m_width = config.m_width;
+    m_height = config.m_height;
+    gtk_window_set_default_size(GTK_WINDOW(window), m_width, m_height);
     m_toolbarVisible = config.m_toolbarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
     gtk_widget_show_all(m_grid);
@@ -583,56 +564,25 @@ const Widget *Window::findSidePane(const char *name) const
     return NULL;
 }
 
-void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
+void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
 {
-    Paned *paned;
-    int totalSize;
-    GValue handleSize = G_VALUE_INIT;
     switch (side)
     {
     case SIDE_TOP:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
-                             pane, neighbor);
-        paned->setPosition(size);
+        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+                     pane, neighbor, size);
         break;
     case SIDE_BOTTOM:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
-                             neighbor, pane);
-        if (gtk_widget_get_mapped(paned->gtkWidget()))
-        {
-            totalSize = gtk_widget_get_allocated_height(paned->gtkWidget());
-            g_value_init(&handleSize, G_TYPE_INT);
-            gtk_widget_style_get_property(paned->gtkWidget(),
-                                          "handle-size", &handleSize);
-            paned->setPosition(totalSize - size - g_value_get_int(&handleSize));
-        }
-        else
-            g_signal_connect_after(paned->gtkWidget(),
-                                   "map",
-                                   G_CALLBACK(setPanedPosition),
-                                   reinterpret_cast<gpointer>(size));
+        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+                     neighbor, pane, 1. - size);
         break;
     case SIDE_LEFT:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
-                             pane, neighbor);
-        paned->setPosition(size);
+        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+                     pane, neighbor, size);
         break;
     case SIDE_RIGHT:
-        paned = Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
-                             neighbor, pane);
-        if (gtk_widget_get_mapped(paned->gtkWidget()))
-        {
-            totalSize = gtk_widget_get_allocated_width(paned->gtkWidget());
-            g_value_init(&handleSize, G_TYPE_INT);
-            gtk_widget_style_get_property(paned->gtkWidget(),
-                                          "handle-size", &handleSize);
-            paned->setPosition(totalSize - size - g_value_get_int(&handleSize));
-        }
-        else
-            g_signal_connect_after(paned->gtkWidget(),
-                                   "map",
-                                   G_CALLBACK(setPanedPosition),
-                                   reinterpret_cast<gpointer>(size));
+        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+                     neighbor, pane, 1. - size);
     }
 
     // Add a menu item for showing or hiding the side pane.
@@ -688,19 +638,19 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     {
     case SIDE_TOP:
         Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
-                     *newEditorGroup, current);
+                     *newEditorGroup, current, 0.5);
         break;
     case SIDE_BOTTOM:
         Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
-                     current, *newEditorGroup);
+                     current, *newEditorGroup, 0.5);
         break;
     case SIDE_LEFT:
         Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
-                     *newEditorGroup, current);
+                     *newEditorGroup, current, 0.5);
         break;
     case SIDE_RIGHT:
         Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
-                     current, *newEditorGroup);
+                     current, *newEditorGroup, 0.5);
     }
     return newEditorGroup;
 }
@@ -711,7 +661,7 @@ void Window::createNavigationPane(Window &window)
         Notebook::create(NAVIGATION_PANE_NAME, NULL, false, false, true);
     pane->setTitle(_("_Navigation Pane"));
     s_navigationPaneCreated(*pane);
-    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 100);
+    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 0.25);
 }
 
 void Window::createToolsPane(Window &window)
@@ -720,7 +670,7 @@ void Window::createToolsPane(Window &window)
         Notebook::create(TOOLS_PANE_NAME, NULL, false, false, true);
     pane->setTitle(_("_Tools Pane"));
     s_toolsPaneCreated(*pane);
-    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 100);
+    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 0.33);
 }
 
 void Window::registerDefaultSidePanes()
@@ -792,6 +742,7 @@ gboolean Window::onConfigureEvent(GtkWidget *widget,
     {
         window->m_width = event->configure.width;
         window->m_height = event->configure.height;
+        printf("window %d, %d\n", window->m_width, window->m_height);
     }
     return FALSE;
 }

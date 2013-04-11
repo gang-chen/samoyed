@@ -118,7 +118,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_position = atoi(value);
+            m_position = atof(value);
             xmlFree(value);
         }
     }
@@ -193,7 +193,7 @@ xmlNodePtr Paned::XmlElement::write() const
                     reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
                     reinterpret_cast<const xmlChar *>(cp));
     g_free(cp);
-    cp = g_strdup_printf("%d", m_position);
+    cp = g_strdup_printf("%f", m_position);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(POSITION),
                     reinterpret_cast<const xmlChar *>(cp));
@@ -246,7 +246,8 @@ bool Paned::setup(const char *name,
 
 Paned *Paned::create(const char *name,
                      Orientation orientation,
-                     Widget &child1, Widget &child2)
+                     Widget &child1, Widget &child2,
+                     double position)
 {
     Paned *paned = new Paned;
     if (!paned->setup(name, orientation, child1, child2))
@@ -254,6 +255,7 @@ Paned *Paned::create(const char *name,
         delete paned;
         return NULL;
     }
+    paned->setPosition(position);
     return paned;
 }
 
@@ -281,8 +283,7 @@ bool Paned::restore(XmlElement &xmlElement)
     addChildInternally(*child1, 0);
     addChildInternally(*child2, 1);
     setCurrentChildIndex(xmlElement.currentChildIndex());
-    if (xmlElement.position() >= 0)
-        setPosition(xmlElement.position());
+    setPosition(xmlElement.position());
     return true;
 }
 
@@ -363,7 +364,8 @@ void Paned::replaceChild(Widget &oldChild, Widget &newChild)
 
 Paned *Paned::split(const char *name,
                     Orientation orientation,
-                    Widget &child1, Widget &child2)
+                    Widget &child1, Widget &child2,
+                    double position)
 {
     Widget *original;
     WidgetContainer *parent;
@@ -403,6 +405,7 @@ Paned *Paned::split(const char *name,
     paned->m_currentChildIndex = newChildIndex;
 
     gtk_widget_show_all(p);
+    paned->setPosition(position);
     return paned;
 }
 
@@ -413,6 +416,38 @@ void Paned::setFocusChild(GtkWidget *container,
     for (int i = 0; i < paned->childCount(); ++i)
         if (paned->child(i).gtkWidget() == child)
             paned->setCurrentChildIndex(i);
+}
+
+void Paned::setPositionInternally()
+{
+    int totalSize;
+    if (gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())) ==
+        GTK_ORIENTATION_HORIZONTAL)
+        totalSize = gtk_widget_get_allocated_width(gtkWidget());
+    else
+        totalSize = gtk_widget_get_allocated_height(gtkWidget());
+    gtk_paned_set_position(GTK_PANED(gtkWidget()), totalSize * m_position);
+}
+
+void Paned::setPositionOnMapped(GtkWidget *widget, Paned *paned)
+{
+    paned->setPositionInternally();
+    g_signal_handlers_disconnect_by_func(
+        widget,
+        reinterpret_cast<gpointer>(setPositionOnMapped),
+        paned);
+}
+
+void Paned::setPosition(double position)
+{
+    m_position = position;
+    if (gtk_widget_get_mapped(gtkWidget()))
+        setPositionInternally();
+    else
+        g_signal_connect_after(gtkWidget(),
+                               "map",
+                               G_CALLBACK(setPositionOnMapped),
+                               this);
 }
 
 }

@@ -199,7 +199,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       G_CALLBACK(manageConfigurations) },
 
     // File menu.
-    { "open-file", NULL, N_("_Open..."), NULL,
+    { "open-file", NULL, N_("_Open..."), "<Control>o",
       N_("Open a file"), G_CALLBACK(openFile) },
     { "save-file", GTK_STOCK_SAVE, N_("_Save"), "<Control>s",
       N_("Save the current file"), G_CALLBACK(saveFile) },
