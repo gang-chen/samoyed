@@ -40,9 +40,6 @@
 #define EDITOR_GROUP_NAME "editor-group"
 #define PANED_NAME "paned"
 
-#define NAVIGATION_PANE_TITLE _("_Navigation Pane")
-#define TOOLS_PANE_TITLE _("_Tools Pane")
-
 namespace
 {
 
@@ -369,15 +366,6 @@ bool Window::build(const Configuration &config)
     gtk_style_context_add_class(gtk_widget_get_style_context(m_toolbar),
                                 GTK_STYLE_CLASS_PRIMARY_TOOLBAR);
     gtk_widget_set_hexpand(m_toolbar, TRUE);
-    GtkWidget *newPopupMenu = gtk_ui_manager_get_widget(m_uiManager,
-                                                        "/new-popup-menu");
-    GtkToolItem *newItem = gtk_menu_tool_button_new_from_stock(GTK_STOCK_FILE);
-    gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(newItem), newPopupMenu);
-    gtk_tool_item_set_tooltip_text(newItem, _("Create a file"));
-    gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(newItem),
-                                                _("Create an object"));
-    gtk_toolbar_insert(GTK_TOOLBAR(m_toolbar), newItem, 0);
-
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             m_toolbar, m_menuBar,
                             GTK_POS_BOTTOM, 1, 1);
@@ -431,6 +419,10 @@ bool Window::setup(const char *name, const Configuration &config)
     m_mainArea = WidgetWithBars::create(MAIN_AREA_NAME, *editorGroup);
     addChildInternally(*m_mainArea);
 
+    // Set the title.
+    setTitle(_("Samoyed IDE"));
+    gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
+
     s_created(*this);
     return true;
 }
@@ -465,6 +457,8 @@ bool Window::restore(XmlElement &xmlElement)
 
     // Create menu items for the side panes.
     createMenuItemsForSidePanesRecursively(*child);
+
+    gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
 
     gtk_widget_show(gtkWidget());
     return true;
@@ -715,7 +709,7 @@ void Window::createNavigationPane(Window &window)
 {
     Notebook *pane =
         Notebook::create(NAVIGATION_PANE_NAME, NULL, false, false, true);
-    pane->setTitle(NAVIGATION_PANE_TITLE);
+    pane->setTitle(_("_Navigation Pane"));
     s_navigationPaneCreated(*pane);
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 100);
 }
@@ -724,7 +718,7 @@ void Window::createToolsPane(Window &window)
 {
     Notebook *pane =
         Notebook::create(TOOLS_PANE_NAME, NULL, false, false, true);
-    pane->setTitle(TOOLS_PANE_TITLE);
+    pane->setTitle(_("_Tools Pane"));
     s_toolsPaneCreated(*pane);
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 100);
 }
