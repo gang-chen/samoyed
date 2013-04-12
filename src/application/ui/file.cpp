@@ -207,7 +207,7 @@ File::open(const char *uri, Project *project,
 
 Editor *File::createEditor(Project *project)
 {
-    Editor *editor = createEditor(project);
+    Editor *editor = createEditorInternally(project);
     if (!editor)
         return NULL;
 
