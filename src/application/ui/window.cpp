@@ -35,18 +35,21 @@
 #define TOOLBAR_VISIBLE_IN_FULL_SCREEN "toolbar-visible-in-full-screen"
 #define CHILD "child"
 
-#define MAIN_AREA_NAME "main-area"
-#define EDITOR_GROUP_NAME "editor-group"
-#define PANED_NAME "paned"
+#define WINDOW_ID "window"
+#define MAIN_AREA_ID "main-area"
+#define EDITOR_GROUP_ID "editor-group"
+#define PANED_ID "paned"
 
 namespace
 {
 
+int serialNumber = 0;
+
 Samoyed::WidgetWithBars *findMainArea(Samoyed::Widget &root)
 {
-    if (strcmp(root.name(), MAIN_AREA_NAME) == 0)
+    if (strcmp(root.id(), MAIN_AREA_ID) == 0)
         return static_cast<Samoyed::WidgetWithBars *>(&root);
-    if (strcmp(root.name(), PANED_NAME) != 0)
+    if (strcmp(root.id(), PANED_ID) != 0)
         return NULL;
     Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(root);
     Samoyed::WidgetWithBars *mainArea = findMainArea(paned.child(0));
@@ -60,9 +63,8 @@ Samoyed::WidgetWithBars *findMainArea(Samoyed::Widget &root)
 namespace Samoyed
 {
 
-const char *Window::NAME = "window";
-const char *Window::NAVIGATION_PANE_NAME = "navigation-pane";
-const char *Window::TOOLS_PANE_NAME = "tools-pane";
+const char *Window::NAVIGATION_PANE_ID = "navigation-pane";
+const char *Window::TOOLS_PANE_ID = "tools-pane";
 
 Window::Created Window::s_created;
 Window::SidePaneCreated Window::s_navigationPaneCreated;
@@ -386,18 +388,23 @@ bool Window::build(const Configuration &config)
     return true;
 }
 
-bool Window::setup(const char *name, const Configuration &config)
+bool Window::setup(const Configuration &config)
 {
-    if (!WidgetContainer::setup(name))
+    char *id = g_strdup_printf(WINDOW_ID "-%d", serialNumber++);
+    if (!WidgetContainer::setup(id))
+    {
+        g_free(id);
         return false;
+    }
+    g_free(id);
     if (!build(config))
         return false;
 
     // Create the initial editor group and the main area.
     Notebook *editorGroup =
-        Notebook::create(EDITOR_GROUP_NAME, EDITOR_GROUP_NAME,
+        Notebook::create(EDITOR_GROUP_ID "-0", EDITOR_GROUP_ID,
                          true, true, false);
-    m_mainArea = WidgetWithBars::create(MAIN_AREA_NAME, *editorGroup);
+    m_mainArea = WidgetWithBars::create(MAIN_AREA_ID, *editorGroup);
     addChildInternally(*m_mainArea);
 
     // Set the title.
@@ -408,10 +415,10 @@ bool Window::setup(const char *name, const Configuration &config)
     return true;
 }
 
-Window *Window::create(const char *name, const Configuration &config)
+Window *Window::create(const Configuration &config)
 {
     Window *window = new Window;
-    if (!window->setup(name, config))
+    if (!window->setup(config))
     {
         delete window;
         return NULL;
@@ -435,6 +442,16 @@ bool Window::restore(XmlElement &xmlElement)
     m_mainArea = findMainArea(*child);
     if (!m_mainArea)
         return false;
+
+    // Extract the serial number of the window from its identifier, and update
+    // the global serial number.
+    const char *cp = strrchr(id(), '-');
+    if (cp)
+    {
+        int sn = atoi(cp + 1);
+        if (sn >= serialNumber)
+            serialNumber = sn + 1;
+    }
 
     // Create menu items for the side panes.
     createMenuItemsForSidePanesRecursively(*child);
@@ -536,13 +553,13 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
     return FALSE;
 }
 
-Widget *Window::findSidePane(const char *name)
+Widget *Window::findSidePane(const char *id)
 {
     Widget *pane;
     WidgetContainer *container = m_mainArea->parent();
     while (container != this)
     {
-        pane = container->findChild(name);
+        pane = container->findChild(id);
         if (pane)
             return pane;
         container = container->parent();
@@ -550,13 +567,13 @@ Widget *Window::findSidePane(const char *name)
     return NULL;
 }
 
-const Widget *Window::findSidePane(const char *name) const
+const Widget *Window::findSidePane(const char *id) const
 {
     const Widget *pane;
     const WidgetContainer *container = m_mainArea->parent();
     while (container != this)
     {
-        pane = container->findChild(name);
+        pane = container->findChild(id);
         if (pane)
             return pane;
         container = container->parent();
@@ -569,51 +586,51 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
     switch (side)
     {
     case SIDE_TOP:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
                      pane, neighbor, size);
         break;
     case SIDE_BOTTOM:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
                      neighbor, pane, 1. - size);
         break;
     case SIDE_LEFT:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      pane, neighbor, size);
         break;
     case SIDE_RIGHT:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      neighbor, pane, 1. - size);
     }
 
     // Add a menu item for showing or hiding the side pane.
-    createMenuItemForSidePane(pane.name(), pane.title(),
+    createMenuItemForSidePane(pane.id(), pane.title(),
                               gtk_widget_get_visible(pane.gtkWidget()));
 }
 
 Notebook &Window::navigationPane()
 {
-    return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_NAME));
+    return static_cast<Notebook &>(*findSidePane(NAVIGATION_PANE_ID));
 }
 
 const Notebook &Window::navigationPane() const
 {
-    return static_cast<const Notebook &>(*findSidePane(NAVIGATION_PANE_NAME));
+    return static_cast<const Notebook &>(*findSidePane(NAVIGATION_PANE_ID));
 }
 
 Notebook &Window::toolsPane()
 {
-    return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_NAME));
+    return static_cast<Notebook &>(*findSidePane(TOOLS_PANE_ID));
 }
 
 const Notebook &Window::toolsPane() const
 {
-    return static_cast<const Notebook &>(*findSidePane(TOOLS_PANE_NAME));
+    return static_cast<const Notebook &>(*findSidePane(TOOLS_PANE_ID));
 }
 
 Notebook &Window::currentEditorGroup()
 {
     Widget *current = &this->current();
-    while (strncmp(current->name(), EDITOR_GROUP_NAME, 12) != 0)
+    while (strncmp(current->id(), EDITOR_GROUP_ID, 12) != 0)
         current = current->parent();
     return static_cast<Notebook &>(*current);
 }
@@ -621,7 +638,7 @@ Notebook &Window::currentEditorGroup()
 const Notebook &Window::currentEditorGroup() const
 {
     const Widget *current = &this->current();
-    while (strncmp(current->name(), EDITOR_GROUP_NAME, 12) != 0)
+    while (strncmp(current->id(), EDITOR_GROUP_ID, 12) != 0)
         current = current->parent();
     return static_cast<const Notebook &>(*current);
 }
@@ -630,26 +647,26 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 {
     Widget &current = currentEditorGroup();
     Notebook *newEditorGroup =
-        Notebook::create(strcmp(current.name(), EDITOR_GROUP_NAME) == 0 ?
-                         EDITOR_GROUP_NAME "-2" : EDITOR_GROUP_NAME,
-                         EDITOR_GROUP_NAME,
+        Notebook::create(*(current.id() + 13) == '0' ?
+                         EDITOR_GROUP_ID "-1" : EDITOR_GROUP_ID "-0",
+                         EDITOR_GROUP_ID,
                          true, true, false);
     switch (side)
     {
     case SIDE_TOP:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
                      *newEditorGroup, current, 0.5);
         break;
     case SIDE_BOTTOM:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
                      current, *newEditorGroup, 0.5);
         break;
     case SIDE_LEFT:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      *newEditorGroup, current, 0.5);
         break;
     case SIDE_RIGHT:
-        Paned::split(PANED_NAME, Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      current, *newEditorGroup, 0.5);
     }
     return newEditorGroup;
@@ -658,7 +675,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
 void Window::createNavigationPane(Window &window)
 {
     Notebook *pane =
-        Notebook::create(NAVIGATION_PANE_NAME, NULL, false, false, true);
+        Notebook::create(NAVIGATION_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Navigation Pane"));
     s_navigationPaneCreated(*pane);
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 0.25);
@@ -667,7 +684,7 @@ void Window::createNavigationPane(Window &window)
 void Window::createToolsPane(Window &window)
 {
     Notebook *pane =
-        Notebook::create(TOOLS_PANE_NAME, NULL, false, false, true);
+        Notebook::create(TOOLS_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Tools Pane"));
     s_toolsPaneCreated(*pane);
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 0.33);
@@ -679,10 +696,10 @@ void Window::registerDefaultSidePanes()
     addCreatedCallback(createToolsPane);
 }
 
-void Window::createMenuItemForSidePane(const char *name, const char *title,
+void Window::createMenuItemForSidePane(const char *id, const char *title,
                                        bool visible)
 {
-    std::string actionName(name);
+    std::string actionName(id);
     actionName.insert(0, "show-hide-");
     std::string titleText(title);
     titleText.erase(std::remove(titleText.begin(), titleText.end(), '_'),
@@ -714,21 +731,21 @@ void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
 {
     if (&widget == m_mainArea)
         return;
-    if (strcmp(widget.name(), PANED_NAME) == 0)
+    if (strcmp(widget.id(), PANED_ID) == 0)
     {
         const Paned &paned = static_cast<const Paned &>(widget);
         createMenuItemsForSidePanesRecursively(paned.child(0));
         createMenuItemsForSidePanesRecursively(paned.child(1));
         return;
     }
-    createMenuItemForSidePane(widget.name(), widget.title(),
+    createMenuItemForSidePane(widget.id(), widget.title(),
                               gtk_widget_get_visible(widget.gtkWidget()));
 }
 
 void Window::showHideSidePane(GtkToggleAction *action, Window *window)
 {
-    const char *name = gtk_action_get_name(GTK_ACTION(action)) + 10;
-    Widget *pane = window->findSidePane(name);
+    const char *id = gtk_action_get_name(GTK_ACTION(action)) + 10;
+    Widget *pane = window->findSidePane(id);
     assert(pane);
     gtk_widget_set_visible(pane->gtkWidget(),
                            gtk_toggle_action_get_active(action));
@@ -742,7 +759,6 @@ gboolean Window::onConfigureEvent(GtkWidget *widget,
     {
         window->m_width = event->configure.width;
         window->m_height = event->configure.height;
-        printf("window %d, %d\n", window->m_width, window->m_height);
     }
     return FALSE;
 }

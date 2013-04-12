@@ -443,7 +443,7 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
             Application::instance().currentWindow().mainArea();
         FileRecoveryBar *bar =
             static_cast<FileRecoveryBar *>(
-                mainArea.findChild(FileRecoveryBar::NAME));
+                mainArea.findChild(FileRecoveryBar::ID));
         if (bar)
             bar->setFileUris(p->m_session.unsavedFileUris());
         else
@@ -954,7 +954,7 @@ Session *Session::create(const char *name)
     }
 
     // Create the main window for the new session.
-    if (!Window::create(Window::NAME, Window::Configuration()))
+    if (!Window::create(Window::Configuration()))
     {
         remove(name);
         delete session;

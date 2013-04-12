@@ -58,7 +58,7 @@ public:
          */
         virtual Widget *restoreWidget() = 0;
 
-        const char *name() const { return m_name.c_str(); }
+        const char *id() const { return m_id.c_str(); }
         const char *title() const { return m_title.c_str(); }
         const char *description() const { return m_description.c_str(); }
         bool visible() const { return m_visible; }
@@ -81,17 +81,18 @@ public:
     private:
         static std::map<std::string, Reader> s_readerRegistry;
 
-        std::string m_name;
+        std::string m_id;
         std::string m_title;
         std::string m_description;
         bool m_visible;
     };
 
     /**
-     * A widget may be assigned a name, which is unique in its parent container.
-     * @return The name of the widget.
+     * A widget is assigned an identifier, which is unique in its parent
+     * container.
+     * @return The identifier of the widget.
      */
-    const char *name() const { return m_name.c_str(); }
+    const char *id() const { return m_id.c_str(); }
 
     /**
      * @return The underlying GTK+ widget, which is owned by this widget.
@@ -146,7 +147,7 @@ protected:
 
     virtual ~Widget();
 
-    bool setup(const char *name);
+    bool setup(const char *id);
 
     bool restore(XmlElement &xmlElement);
 
@@ -157,7 +158,7 @@ protected:
 private:
     GtkWidget *m_gtkWidget;
 
-    std::string m_name;
+    std::string m_id;
 
     std::string m_title;
 

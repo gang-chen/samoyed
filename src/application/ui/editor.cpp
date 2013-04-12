@@ -21,6 +21,8 @@
 #define URI "uri"
 #define PROJECT_URI "project-uri"
 
+#define EDITOR_ID "editor"
+
 namespace
 {
 
@@ -150,13 +152,13 @@ Editor::~Editor()
 
 bool Editor::setup()
 {
-    char *name = g_strdup_printf(EDITOR "-%d", serialNumber++);
-    if (!Widget::setup(name))
+    char *id = g_strdup_printf(EDITOR_ID "-%d", serialNumber++);
+    if (!Widget::setup(id))
     {
-        g_free(name);
+        g_free(id);
         return false;
     }
-    g_free(name);
+    g_free(id);
     char *fileName = g_filename_from_uri(m_file.uri(), NULL, NULL);
     char *title = g_filename_display_basename(fileName);
     setTitle(title);
@@ -170,9 +172,9 @@ bool Editor::restore(XmlElement &xmlElement)
 {
     if (!Widget::restore(xmlElement))
         return false;
-    // Extract the serial number of the editor from its name, and update the
-    // global serial number.
-    const char *cp = strrchr(name(), '-');
+    // Extract the serial number of the editor from its identifier, and update
+    // the global serial number.
+    const char *cp = strrchr(id(), '-');
     if (cp)
     {
         int sn = atoi(cp + 1);

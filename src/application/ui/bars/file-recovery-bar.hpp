@@ -15,7 +15,7 @@ namespace Samoyed
 class FileRecoveryBar: public Bar
 {
 public:
-    static const char *NAME;
+    static const char *ID;
 
     static FileRecoveryBar *create(const std::set<std::string> &fileUris);
 

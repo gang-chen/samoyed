@@ -60,7 +60,7 @@ public:
         int m_currentChildIndex;
     };
 
-    static WidgetWithBars *create(const char *name, Widget &mainChild);
+    static WidgetWithBars *create(const char *id, Widget &mainChild);
 
     virtual bool close();
 
@@ -103,7 +103,7 @@ protected:
 
     virtual ~WidgetWithBars();
 
-    bool setup(const char *name, Widget &mainChild);
+    bool setup(const char *id, Widget &mainChild);
 
     bool restore(XmlElement &xmlElement);
 

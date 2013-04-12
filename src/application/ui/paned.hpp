@@ -62,12 +62,12 @@ public:
         double m_position;
     };
 
-    static Paned *create(const char *name,
+    static Paned *create(const char *id,
                          Orientation orientation,
                          Widget &child1, Widget &child2,
                          double position);
 
-    static Paned *split(const char *name,
+    static Paned *split(const char *id,
                         Orientation orientation,
                         Widget &child1, Widget &child2,
                         double position);
@@ -107,7 +107,7 @@ protected:
 
     virtual ~Paned();
 
-    bool setup(const char *name,
+    bool setup(const char *id,
                Orientation orientation,
                Widget &child1, Widget &child2);
 

@@ -12,6 +12,7 @@
 #include "ui/splash-screen.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/manager.hpp"
+#include "utilities/plugin-manager.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/signal.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
@@ -60,6 +61,7 @@ Application::Application():
     m_session(NULL),
     m_creatingSession(false),
     m_switchingSession(false),
+    m_pluginManager(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
     m_projectConfigManager(NULL),
@@ -171,6 +173,7 @@ gboolean Application::startUp(gpointer app)
     SourceEditor::createSharedData();
 
     // Create global objects.
+    a->m_pluginManager = new PluginManager();
     a->m_scheduler = new Scheduler;
     a->m_scheduler->size_controller().resize(THREAD_COUNT);
 
@@ -244,6 +247,7 @@ void Application::shutDown()
     assert(!m_newSessionName);
 
     delete m_scheduler;
+    delete m_pluginManager;
     SourceEditor::destroySharedData();
 }
 

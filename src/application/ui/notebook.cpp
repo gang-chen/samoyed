@@ -232,12 +232,12 @@ Notebook::XmlElement::~XmlElement()
         delete *it;
 }
 
-bool Notebook::setup(const char *name, const char *groupName,
+bool Notebook::setup(const char *id, const char *groupName,
                      bool createCloseButtons,
                      bool canDragChildren,
                      bool useUnderline)
 {
-    if (!WidgetContainer::setup(name))
+    if (!WidgetContainer::setup(id))
         return false;
     GtkWidget *notebook = gtk_notebook_new();
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
@@ -262,13 +262,13 @@ bool Notebook::setup(const char *name, const char *groupName,
     return true;
 }
 
-Notebook *Notebook::create(const char *name, const char *groupName,
+Notebook *Notebook::create(const char *id, const char *groupName,
                            bool createCloseButtons,
                            bool canDragChildren,
                            bool useUnderline)
 {
     Notebook *notebook = new Notebook;
-    if (!notebook->setup(name, groupName,
+    if (!notebook->setup(id, groupName,
                          createCloseButtons,
                          canDragChildren,
                          useUnderline))

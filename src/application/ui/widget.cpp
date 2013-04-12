@@ -16,7 +16,7 @@
 #include <libxml/tree.h>
 
 #define WIDGET "widget"
-#define NAME "name"
+#define ID "id"
 #define TITLE "title"
 #define DESCRIPTION "description"
 #define VISIBLE "visible"
@@ -55,12 +55,12 @@ bool Widget::XmlElement::readInternally(xmlDocPtr doc,
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   NAME) == 0)
+                   ID) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
             if (value)
-                m_name = value;
+                m_id = value;
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -98,8 +98,8 @@ xmlNodePtr Widget::XmlElement::write() const
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(WIDGET));
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(NAME),
-                    reinterpret_cast<const xmlChar *>(name()));
+                    reinterpret_cast<const xmlChar *>(ID),
+                    reinterpret_cast<const xmlChar *>(id()));
     if (!m_title.empty())
         xmlNewTextChild(node, NULL,
                         reinterpret_cast<const xmlChar *>(TITLE),
@@ -116,21 +116,21 @@ xmlNodePtr Widget::XmlElement::write() const
 
 Widget::XmlElement::XmlElement(const Widget &widget)
 {
-    m_name = widget.name();
+    m_id = widget.id();
     m_title = widget.title();
     m_description = widget.description();
     m_visible = gtk_widget_get_visible(widget.gtkWidget());
 }
 
-bool Widget::setup(const char *name)
+bool Widget::setup(const char *id)
 {
-    m_name = name;
+    m_id = id;
     return true;
 }
 
 bool Widget::restore(XmlElement &xmlElement)
 {
-    m_name = xmlElement.name();
+    m_id = xmlElement.id();
     m_title = xmlElement.title();
     m_description = xmlElement.description();
     return true;

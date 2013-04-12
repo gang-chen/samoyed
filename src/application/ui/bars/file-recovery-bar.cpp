@@ -14,7 +14,7 @@
 namespace Samoyed
 {
 
-const char *FileRecoveryBar::NAME = "file-recovery-bar";
+const char *FileRecoveryBar::ID = "file-recovery-bar";
 
 FileRecoveryBar::~FileRecoveryBar()
 {
@@ -24,7 +24,7 @@ FileRecoveryBar::~FileRecoveryBar()
 
 bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
 {
-    if (!Bar::setup(NAME))
+    if (!Bar::setup(ID))
         return false;
     m_store = gtk_list_store_new(1, G_TYPE_STRING);
     GtkTreeIter it;

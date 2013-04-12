@@ -42,9 +42,8 @@ public:
     typedef boost::signals2::signal<void (Window &)> Created;
     typedef boost::signals2::signal<void (Widget &)> SidePaneCreated;
 
-    static const char *NAME;
-    static const char *NAVIGATION_PANE_NAME;
-    static const char *TOOLS_PANE_NAME;
+    static const char *NAVIGATION_PANE_ID;
+    static const char *TOOLS_PANE_ID;
 
     enum Side
     {
@@ -132,7 +131,7 @@ public:
      */
     static void registerDefaultSidePanes();
 
-    static Window *create(const char *name, const Configuration &config);
+    static Window *create(const Configuration &config);
 
     virtual bool close();
 
@@ -150,8 +149,8 @@ public:
 
     Configuration configuration() const;
 
-    Widget *findSidePane(const char *name);
-    const Widget *findSidePane(const char *name) const;
+    Widget *findSidePane(const char *id);
+    const Widget *findSidePane(const char *id) const;
 
     /**
      * Add a side pane.
@@ -192,7 +191,7 @@ protected:
 
     virtual ~Window();
 
-    bool setup(const char *name, const Configuration &config);
+    bool setup(const Configuration &config);
 
     bool restore(XmlElement &xmlElement);
 
@@ -221,7 +220,7 @@ private:
 
     bool build(const Configuration &config);
 
-    void createMenuItemForSidePane(const char *name, const char *title,
+    void createMenuItemForSidePane(const char *id, const char *title,
                                    bool visible);
     void createMenuItemsForSidePanesRecursively(const Widget &widget);
 

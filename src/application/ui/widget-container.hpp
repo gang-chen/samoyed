@@ -53,8 +53,8 @@ public:
 
     virtual void setCurrentChildIndex(int index) = 0;
 
-    Widget *findChild(const char *name);
-    const Widget *findChild(const char *name) const;
+    Widget *findChild(const char *id);
+    const Widget *findChild(const char *id) const;
 
     virtual void onChildTitleChanged(const Widget &child) {}
 

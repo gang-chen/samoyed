@@ -68,7 +68,7 @@ public:
         int m_currentChildIndex;
     };
 
-    static Notebook *create(const char *name,
+    static Notebook *create(const char *id,
                             const char *groupName,
                             bool createCloseButtons,
                             bool canDragChildren,
@@ -114,7 +114,7 @@ protected:
 
     virtual ~Notebook();
 
-    bool setup(const char *name, const char *groupName,
+    bool setup(const char *id, const char *groupName,
                bool createCloseButtons,
                bool canDragChildren,
                bool useUnderline);

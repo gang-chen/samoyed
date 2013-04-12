@@ -16,6 +16,7 @@ namespace Samoyed
 {
 
 class Session;
+class PluginManager;
 class Scheduler;
 class Worker;
 class Project;
@@ -79,6 +80,8 @@ public:
     static Application &instance() { return *s_instance; }
 
     Session *session() const { return m_session; }
+
+    PluginManager &pluginManager() const { return *m_pluginManager; }
 
     Scheduler &scheduler() const { return *m_scheduler; }
 
@@ -183,6 +186,8 @@ private:
     Session *m_session;
     bool m_creatingSession;
     bool m_switchingSession;
+
+    PluginManager *m_pluginManager;
 
     Scheduler *m_scheduler;
 

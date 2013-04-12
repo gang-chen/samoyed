@@ -223,9 +223,9 @@ WidgetWithBars::XmlElement::~XmlElement()
         delete *it;
 }
 
-bool WidgetWithBars::setup(const char *name, Widget &mainChild)
+bool WidgetWithBars::setup(const char *id, Widget &mainChild)
 {
-    if (!WidgetContainer::setup(name))
+    if (!WidgetContainer::setup(id))
         return false;
     GtkWidget *verticalGrid = gtk_grid_new();
     m_horizontalGrid = gtk_grid_new();
@@ -240,10 +240,10 @@ bool WidgetWithBars::setup(const char *name, Widget &mainChild)
     return true;
 }
 
-WidgetWithBars *WidgetWithBars::create(const char *name, Widget &mainChild)
+WidgetWithBars *WidgetWithBars::create(const char *id, Widget &mainChild)
 {
     WidgetWithBars *widget = new WidgetWithBars;
-    if (!widget->setup(name, mainChild))
+    if (!widget->setup(id, mainChild))
     {
         delete widget;
         return NULL;

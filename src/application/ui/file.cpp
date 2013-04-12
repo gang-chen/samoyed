@@ -205,6 +205,16 @@ File::open(const char *uri, Project *project,
     return std::make_pair(file, editor);
 }
 
+std::pair<File *, Editor *> File::openByDialog(Project *project)
+{
+    std::map<std::string, boost::any> &options;
+    GtkWidget *dialog =
+        gtk_file_chooser_dialog_new(
+            _("Open file"),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_FILE_CHOOSER_ACTION_OPEN);
+}
+
 Editor *File::createEditor(Project *project)
 {
     Editor *editor = createEditorInternally(project);

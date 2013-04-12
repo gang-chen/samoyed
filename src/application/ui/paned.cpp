@@ -228,11 +228,11 @@ Paned::XmlElement::~XmlElement()
     delete m_children[1];
 }
 
-bool Paned::setup(const char *name,
+bool Paned::setup(const char *id,
                   Orientation orientation,
                   Widget &child1, Widget &child2)
 {
-    if (!WidgetContainer::setup(name))
+    if (!WidgetContainer::setup(id))
         return false;
     GtkWidget *paned = gtk_paned_new(static_cast<GtkOrientation>(orientation));
     g_signal_connect(paned, "set-focus-child",
@@ -244,13 +244,13 @@ bool Paned::setup(const char *name,
     return true;
 }
 
-Paned *Paned::create(const char *name,
+Paned *Paned::create(const char *id,
                      Orientation orientation,
                      Widget &child1, Widget &child2,
                      double position)
 {
     Paned *paned = new Paned;
-    if (!paned->setup(name, orientation, child1, child2))
+    if (!paned->setup(id, orientation, child1, child2))
     {
         delete paned;
         return NULL;
@@ -362,7 +362,7 @@ void Paned::replaceChild(Widget &oldChild, Widget &newChild)
     addChildInternally(newChild, index);
 }
 
-Paned *Paned::split(const char *name,
+Paned *Paned::split(const char *id,
                     Orientation orientation,
                     Widget &child1, Widget &child2,
                     double position)
@@ -386,7 +386,7 @@ Paned *Paned::split(const char *name,
 
     // Create a paned widget to hold the two widgets.
     Paned *paned = new Paned;
-    if (!paned->WidgetContainer::setup(name))
+    if (!paned->WidgetContainer::setup(id))
     {
         delete paned;
         return NULL;
