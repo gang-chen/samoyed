@@ -7,6 +7,8 @@
 namespace Samoyed
 {
 
+class Plugin;
+
 class PluginManager
 {
 public:
@@ -15,10 +17,17 @@ public:
     ~PluginManager();
 
     /**
-     * Scan plugins in the plugins directory.  Read in the plugin manifest
-     * files.
+     * Scan plugins in the plugins directory.  Read in plugin manifest files.
+     * Add plugin extensions to extension points.
      */
     void scanPlugins();
+
+    Plugin *findPlugin(const char *pluginId);
+
+    Plugin *activatePlugin(const char *pluginId);
+
+private:
+    std::map<std::string id, Plugin *> m_pluginTable;
 };
 
 }
