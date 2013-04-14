@@ -74,6 +74,18 @@ void WidgetContainer::removeChild(Widget &child)
         delete this;
 }
 
+Widget &WidgetContainer::current()
+{
+    return (currentChildIndex() >= 0 ?
+            child(currentChildIndex()).current() : *this);
+}
+
+const Widget &WidgetContainer::current() const
+{
+    return (currentChildIndex() >= 0 ?
+            child(currentChildIndex()).current() : *this);
+}
+
 int WidgetContainer::childIndex(const Widget &child) const
 {
     for (int i = 0; i < childCount(); ++i)

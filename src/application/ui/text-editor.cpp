@@ -195,6 +195,10 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
         return false;
     GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
     GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
+    g_signal_connect(buffer, "insert-text",
+                     G_CALLBACK(insert), this);
+    g_signal_connect(buffer, "delete-range",
+                     G_CALLBACK(remove), this);
     g_object_unref(buffer);
     setGtkWidget(view);
     return true;
@@ -217,6 +221,10 @@ bool TextEditor::restore(XmlElement &xmlElement, GtkTextTagTable *tagTable)
         return false;
     GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
     GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
+    g_signal_connect(buffer, "insert-text",
+                     G_CALLBACK(insert), this);
+    g_signal_connect(buffer, "delete-range",
+                     G_CALLBACK(remove), this);
     g_object_unref(buffer);
     setGtkWidget(view);
     setCursor(xmlElement.cursorLine(), xmlElement.cursorColumn());
@@ -344,6 +352,28 @@ void TextEditor::onFileChanged(const File::Change &change)
                                                 rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
     }
+}
+
+void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
+                        char *text, int length,
+                        TextEditor *editor)
+{
+    static_cast<TextFile &>(editor->file()).insert(
+        gtk_text_iter_get_line(location),
+        gtk_text_iter_get_line_offset(location),
+        text, length, editor);
+}
+
+void TextEditor::remove(GtkTextBuffer *buffer,
+                        GtkTextIter *begin, GtkTextIter *end,
+                        TextEditor *editor)
+{
+    static_cast<TextFile &>(editor->file()).remove(
+        gtk_text_iter_get_line(begin),
+        gtk_text_iter_get_line_offset(begin),
+        gtk_text_iter_get_line(end),
+        gtk_text_iter_get_line_offset(end),
+        editor);
 }
 
 }

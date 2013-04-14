@@ -6,6 +6,9 @@
 #endif
 #include "actions.hpp"
 #include "window.hpp"
+#include "file.hpp"
+#include "editor.hpp"
+#include "notebook.hpp"
 #include <gtk/gtk.h>
 #include <glib/gi18n-lib.h>
 
@@ -62,6 +65,17 @@ void manageConfigurations(GtkAction *action, Samoyed::Window *window)
 
 void openFile(GtkAction *action, Samoyed::Window *window)
 {
+    std::list<std::pair<Samoyed::File *, Samoyed::Editor *> > opened;
+    Samoyed::File::openByDialog(NULL, opened);
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    for (std::list<std::pair<Samoyed::File *, Samoyed::Editor *> >::
+             const_iterator it = opened.begin();
+         it != opened.end();
+         ++it)
+    {
+        if (!it->second->parent())
+            editorGroup.addChild(*it->second, editorGroup.childCount());
+    }
 }
 
 void saveFile(GtkAction *action, Samoyed::Window *window)
@@ -126,10 +140,13 @@ void editPreferences(GtkAction *action, Samoyed::Window *window)
 
 void createWindow(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Window::Configuration config = window->configuration();
+    Samoyed::Window::create(config);
 }
 
 void createEditorGroup(GtkAction *action, Samoyed::Window *window)
 {
+    window->splitCurrentEditorGroup(Samoyed::Window::SIDE_RIGHT);
 }
 
 void createEditor(GtkAction *action, Samoyed::Window *window)
@@ -150,10 +167,15 @@ void showAbout(GtkAction *action, Samoyed::Window *window)
 
 void enterLeaveFullScreen(GtkToggleAction *action, Samoyed::Window *window)
 {
+    if (window->inFullScreen())
+        window->leaveFullScreen();
+    else
+        window->enterFullScreen();
 }
 
 void showHideToolbar(GtkToggleAction *action, Samoyed::Window *window)
 {
+    window->setToolbarVisible(!window->toolbarVisible());
 }
 
 const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =

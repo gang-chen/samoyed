@@ -205,14 +205,47 @@ File::open(const char *uri, Project *project,
     return std::make_pair(file, editor);
 }
 
-std::pair<File *, Editor *> File::openByDialog(Project *project)
+void File::openByDialog(Project *project,
+                        std::list<std::pair<File *, Editor *> > &opened)
 {
-    std::map<std::string, boost::any> &options;
+    std::map<std::string, boost::any> options;
+
     GtkWidget *dialog =
         gtk_file_chooser_dialog_new(
             _("Open file"),
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
-            GTK_FILE_CHOOSER_ACTION_OPEN);
+            GTK_FILE_CHOOSER_ACTION_OPEN,
+            GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+            GTK_STOCK_OPEN, GTK_RESPONSE_OK,
+            NULL);
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
+
+    GtkWidget *grid = gtk_grid_new();
+    GtkWidget *newEditorButton = gtk_check_button_new_with_mnemonic(
+        _("Create a _new editor even if the file is already opened."));
+    gtk_grid_attach_next_to(GTK_GRID(grid), newEditorButton,
+                            NULL, GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(grid);
+    gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog), grid);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
+    {
+        GSList *uris, *uri;
+        uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
+        uri = uris;
+        while (uri)
+        {
+            std::pair<File *, Editor *> fileEditor =
+                open(static_cast<const char *>(uri->data), project, options,
+                     gtk_toggle_button_get_active(
+                         GTK_TOGGLE_BUTTON(newEditorButton)));
+            if (fileEditor.first)
+                opened.push_back(fileEditor);
+            uri = uri->next;
+        }
+        g_slist_free_full(uris, g_free);
+    }
+    gtk_widget_destroy(dialog);
 }
 
 Editor *File::createEditor(Project *project)

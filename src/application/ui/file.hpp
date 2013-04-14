@@ -124,7 +124,7 @@ public:
      * @param project The project context, or NULL if none.
      * @param options Additional file-type-specific options specifying the
      * behavior.
-     * @param newEditor True to create a new editor if the file is already
+     * @param newEditor True to create a new editor even if the file is already
      * opened.
      */
     static std::pair<File *, Editor *>
@@ -137,7 +137,8 @@ public:
      * optins, and open the chosen file if any.
      * @param project The project context, or NULL if none.
      */
-    static std::pair<File *, Editor *> openByDialog(Project *project);
+    static void openByDialog(Project *project,
+                             std::list<std::pair<File *, Editor *> > &opened);
 
     /**
      * Create an editor.

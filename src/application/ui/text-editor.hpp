@@ -89,6 +89,15 @@ protected:
     bool setup(GtkTextTagTable *tagTable);
 
     bool restore(XmlElement &xmlElement, GtkTextTagTable *tagTable);
+
+private:
+    static void insert(GtkTextBuffer *buffer, GtkTextIter *location,
+                       char *text, int length,
+                       TextEditor *editor);
+
+    static void remove(GtkTextBuffer *buffer,
+                       GtkTextIter *begin, GtkTextIter *end,
+                       TextEditor *editor);
 };
 
 }

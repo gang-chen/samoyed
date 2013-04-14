@@ -180,6 +180,7 @@ public:
      */
     Notebook *splitCurrentEditorGroup(Side side);
 
+    bool toolbarVisible() const;
     void setToolbarVisible(bool visible);
 
     bool inFullScreen() const { return m_inFullScreen; }

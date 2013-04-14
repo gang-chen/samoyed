@@ -772,6 +772,11 @@ gboolean Window::onWindowStateEvent(GtkWidget *widget,
     return FALSE;
 }
 
+bool Window::toolbarVisible() const
+{
+    return gtk_widget_get_visible(m_toolbar);
+}
+
 void Window::setToolbarVisible(bool visible)
 {
     gtk_widget_set_visible(m_toolbar, visible);

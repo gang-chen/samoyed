@@ -32,11 +32,8 @@ public:
                             std::list<std::string> &errors);
     };
 
-    virtual Widget &current()
-    { return child(currentChildIndex()).current(); }
-
-    virtual const Widget &current() const
-    { return child(currentChildIndex()).current(); }
+    virtual Widget &current();
+    virtual const Widget &current() const;
 
     virtual void removeChild(Widget &child);
 

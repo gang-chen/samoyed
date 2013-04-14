@@ -202,7 +202,7 @@ void Editor::onFileEditedStateChanged()
 {
     if (m_file.edited())
     {
-        std::string title(this->title());
+        std::string title = this->title();
         title.insert(0, "* ");
         setTitle(title.c_str());
     }
