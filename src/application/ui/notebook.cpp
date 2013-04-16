@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "notebook.hpp"
+#include "../utilities/miscellaneous.hpp"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -400,12 +401,12 @@ void Notebook::addChildInternally(Widget &child, int index)
         gtk_grid_attach_next_to(GTK_GRID(tabLabel),
                                 closeButton, title,
                                 GTK_POS_RIGHT, 1, 1);
+        gtk_grid_set_column_spacing(GTK_GRID(tabLabel), CONTAINER_SPACING);
     }
     else
         tabLabel = title;
+    gtk_widget_show_all(tabLabel);
 
-    // Show the child widget before adding it to the notebook.
-    gtk_widget_show(child.gtkWidget());
     gtk_notebook_insert_page(GTK_NOTEBOOK(gtkWidget()),
                              child.gtkWidget(),
                              tabLabel,

@@ -67,6 +67,7 @@ Application::Application():
     m_projectConfigManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
+    m_threadWorker(NULL),
     m_firstProject(NULL),
     m_lastProject(NULL),
     m_firstFile(NULL),

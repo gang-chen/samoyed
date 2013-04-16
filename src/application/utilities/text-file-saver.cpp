@@ -20,7 +20,6 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 # include <string.h>
 #endif
 #include <string>
-#include <boost/bind.hpp>
 #include <glib.h>
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
 # define _(T) T

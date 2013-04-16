@@ -1,8 +1,8 @@
-// Extension point - action.
+// Extension point - views.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_ACTION_EXTENSION_POINT_HPP
-#define SMYD_ACTION_EXTENSION_POINT_HPP
+#ifndef SMYD_VIEWS_EXTENSION_POINT_HPP
+#define SMYD_VIEWS_EXTENSION_POINT_HPP
 
 #include <list>
 #include <string>
@@ -12,10 +12,10 @@
 namespace Samoyed
 {
 
-class ActionExtensionPoint: public ExtensionPoint
+class ViewsExtensionPoint: public ExtensionPoint
 {
 public:
-    ActionExtensionPoint();
+    ViewsExtensionPoint();
 
 protected:
     virtual bool addExtensionInternally(const char *pluginId,

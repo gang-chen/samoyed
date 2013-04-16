@@ -193,14 +193,14 @@ private:
      * and 'end()'.  Note that this function is called within the lock of the
      * mutex.
      */
-    virtual void cancel0() {}
+    virtual void cancelInternally() {}
 
     /**
      * Update the worker.  The call to this function is surrounded by 'begin()'
      * and 'end()'.  Note that this function is called within the lock of the
      * mutex.
      */
-    virtual void update0() {}
+    virtual void updateInternally() {}
 
     class ExecutionWrapper
     {

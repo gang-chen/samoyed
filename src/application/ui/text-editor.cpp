@@ -201,6 +201,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
                      G_CALLBACK(remove), this);
     g_object_unref(buffer);
     setGtkWidget(view);
+    gtk_widget_show_all(view);
     return true;
 }
 
@@ -217,16 +218,9 @@ TextEditor *TextEditor::create(TextFile &file, Project *project)
 
 bool TextEditor::restore(XmlElement &xmlElement, GtkTextTagTable *tagTable)
 {
+    assert(gtkWidget());
     if (!Editor::restore(xmlElement))
         return false;
-    GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
-    GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
-    g_signal_connect(buffer, "insert-text",
-                     G_CALLBACK(insert), this);
-    g_signal_connect(buffer, "delete-range",
-                     G_CALLBACK(remove), this);
-    g_object_unref(buffer);
-    setGtkWidget(view);
     setCursor(xmlElement.cursorLine(), xmlElement.cursorColumn());
     return true;
 }
@@ -324,7 +318,13 @@ char *TextEditor::text(int beginLine, int beginColumn,
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
     GtkTextIter begin, end;
-    gtk_text_buffer_get_bounds(buffer, &begin, &end);
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
+                                            beginLine, beginColumn);
+    if (endLine == -1 && endColumn == -1)
+        gtk_text_buffer_get_end_iter(buffer, &end);
+    else
+        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
+                                                endLine, endColumn);
     return gtk_text_buffer_get_text(buffer, &begin, &end, TRUE);
 }
 
@@ -337,10 +337,15 @@ void TextEditor::onFileChanged(const File::Change &change)
     if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
         const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
-        GtkTextIter iter;
-        gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
-                                                ins.line, ins.column);
-        gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
+        if (ins.line == -1 && ins.column == -1)
+            gtk_text_buffer_insert_at_cursor(buffer, ins.text, ins.length);
+        else
+        {
+            GtkTextIter iter;
+            gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
+                                                    ins.line, ins.column);
+            gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
+        }
     }
     else
     {
@@ -348,8 +353,11 @@ void TextEditor::onFileChanged(const File::Change &change)
         GtkTextIter begin, end;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
                                                 rem.beginLine, rem.beginColumn);
-        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
-                                                rem.endLine, rem.endColumn);
+        if (rem.endLine == -1 && rem.endColumn == -1)
+            gtk_text_buffer_get_end_iter(buffer, &end);
+        else
+            gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
+                                                    rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
     }
 }

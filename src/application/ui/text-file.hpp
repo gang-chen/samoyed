@@ -91,9 +91,13 @@ public:
         Insertion(int line, int column, const char *text, int length):
             EditPrimitive(TYPE_INSERTION),
             m_line(line),
-            m_column(column),
-            m_text(text, length)
-        {}
+            m_column(column)
+        {
+            if (length == -1)
+                m_text = text;
+            else
+                m_text.append(text, length);
+        }
 
         virtual Edit *execute(File &file) const;
 
@@ -164,9 +168,10 @@ public:
                int endLine, int endColumn) const;
 
     /**
-     * @param line The line number of the insertion position, starting from 0.
+     * @param line The line number of the insertion position, starting from 0;
+     * or -1 to insert at the cursor.
      * @param column The column number of the insertion position, the
-     * character index, starting from 0.
+     * character index, starting from 0; or -1 to insert at the cursor.
      * @param text The text to be inserted.
      * @param length The number of the bytes to be inserted, or -1 to insert the
      * text until '\0'.

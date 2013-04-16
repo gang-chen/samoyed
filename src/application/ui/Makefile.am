@@ -4,6 +4,7 @@ noinst_LTLIBRARIES = libui.la
 
 libui_la_SOURCES = \
     actions.cpp \
+    actions-extension-point.cpp \
     bar.cpp \
     editor.cpp \
     file.cpp \
@@ -16,11 +17,13 @@ libui_la_SOURCES = \
     splash-screen.cpp \
     text-editor.cpp \
     text-file.cpp \
+    views-extension-point.cpp \
     widget.cpp \
     widget-container.cpp \
     widget-with-bars.cpp \
     window.cpp \
     actions.hpp \
+    actions-extension-point.hpp \
     bar.hpp \
     editor.hpp \
     file.hpp \
@@ -33,6 +36,7 @@ libui_la_SOURCES = \
     splash-screen.hpp \
     text-editor.hpp \
     text-file.hpp \
+    view-extension-point.hpp \
     widget.hpp \
     widget-container.hpp \
     widget-with-bars.hpp \

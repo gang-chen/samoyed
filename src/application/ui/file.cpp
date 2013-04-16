@@ -202,6 +202,10 @@ File::open(const char *uri, Project *project,
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     s_opened(*file);
+
+    // Start the initial loading.
+    file->load(false);
+
     return std::make_pair(file, editor);
 }
 
@@ -222,7 +226,7 @@ void File::openByDialog(Project *project,
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *newEditorButton = gtk_check_button_new_with_mnemonic(
-        _("Create a _new editor even if the file is already opened."));
+        _("Create a _new editor even if the file is already opened"));
     gtk_grid_attach_next_to(GTK_GRID(grid), newEditorButton,
                             NULL, GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(grid);
@@ -386,9 +390,6 @@ File::File(const char *uri):
     m_loader(NULL)
 {
     Application::instance().addFile(*this);
-
-    // Start the initial loading.
-    load(false);
 }
 
 File::~File()

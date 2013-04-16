@@ -22,7 +22,6 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
 # include <string.h>
 #endif
 #include <string>
-#include <boost/bind.hpp>
 #include <glib.h>
 #ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
 # define _(T) T

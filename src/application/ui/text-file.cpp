@@ -151,7 +151,7 @@ Editor *TextFile::createEditorInternally(Project *project)
 }
 
 FileLoader *TextFile::createLoader(unsigned int priority,
-                                     const Worker::Callback &callback)
+                                   const Worker::Callback &callback)
 {
     return new TextFileLoader(priority, callback, uri(), encoding());
 }

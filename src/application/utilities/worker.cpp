@@ -117,7 +117,7 @@ void Worker::operator()()
             if (m_update)
             {
                 m_update = false;
-                update0();
+                updateInternally();
             }
         }
 
@@ -133,7 +133,7 @@ void Worker::operator()()
                 if (m_update)
                 {
                     m_update = false;
-                    update0();
+                    updateInternally();
                 }
                 else if (done)
                 {
@@ -147,7 +147,7 @@ void Worker::operator()()
                     m_state = STATE_CANCELED;
                     m_cancel = false;
                     m_block = false;
-                    cancel0();
+                    cancelInternally();
                     goto CANCELED;
                 }
                 if (m_block)
@@ -318,7 +318,7 @@ private:
         return false;
     }
 
-    virtual void update0()
+    virtual void updateInternally()
     {
         m_times += m_updatedTimes;
         m_updatedTimes = 0;
