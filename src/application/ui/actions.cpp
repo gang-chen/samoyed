@@ -134,6 +134,10 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
 {
 }
 
+void selectAll(GtkAction *action, Samoyed::Window *window)
+{
+}
+
 void editPreferences(GtkAction *action, Samoyed::Window *window)
 {
 }
@@ -254,6 +258,8 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
     { "delete", GTK_STOCK_DELETE, N_("_Delete"), NULL,
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
+    { "select-all", NULL, N_("_Select All"), NULL,
+      N_("Select all objects"), G_CALLBACK(selectAll) },
     { "edit-preferences", GTK_STOCK_PREFERENCES, N_("Pre_ferences"), NULL,
       N_("Edit your preferences"), G_CALLBACK(editPreferences) },
 
@@ -264,7 +270,6 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Create an editor group"), G_CALLBACK(createEditorGroup) },
     { "create-editor", NULL, N_("New _Editor"), NULL,
       N_("Create an editor for the current file"), G_CALLBACK(createEditor) },
-    { "side-panes", NULL, N_("_Side Panes"), NULL, NULL, NULL },
 
     // Help menu.
     { "show-manual", GTK_STOCK_HELP, N_("_Manual"), "F1",
@@ -291,7 +296,7 @@ toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 namespace Samoyed
 {
 
-Actions::Actions(Window *window)
+Actions::Actions(Window *window): m_window(window)
 {
     m_actionGroup = gtk_action_group_new("actions");
     gtk_action_group_set_translation_domain(m_actionGroup, NULL);
@@ -319,7 +324,15 @@ Actions::~Actions()
     g_object_unref(m_actionGroup);
 }
 
-void Actions::updateSensitivity(const Window *window)
+void Actions::onEditorAdded(const Editor &editor)
+{
+}
+
+void Actions::onEditorClosed(const Editor &editor)
+{
+}
+
+void Actions::onFileChanged(const File &file)
 {
 }
 
