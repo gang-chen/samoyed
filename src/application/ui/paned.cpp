@@ -12,6 +12,7 @@
 #include <string>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <glib-object.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -418,15 +419,41 @@ void Paned::setFocusChild(GtkWidget *container,
             paned->setCurrentChildIndex(i);
 }
 
-void Paned::setPositionInternally()
+double Paned::getPosition() const
 {
+    if (m_position > 0. && m_position < 1.)
+        return m_position;
     int totalSize;
+    GValue handleSize = G_VALUE_INIT;
     if (gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())) ==
         GTK_ORIENTATION_HORIZONTAL)
         totalSize = gtk_widget_get_allocated_width(gtkWidget());
     else
         totalSize = gtk_widget_get_allocated_height(gtkWidget());
-    gtk_paned_set_position(GTK_PANED(gtkWidget()), totalSize * m_position);
+    g_value_init(&handleSize, G_TYPE_INT);
+    gtk_widget_style_get_property(paned, "handle-size", &handleSize);
+    return
+        (static_cast<double>(gtk_paned_get_position(GTK_PANED(gtkWidget()))) /
+         (totalSize - g_value_get_int(&handleSize)));
+}
+
+void Paned::setPositionInternally()
+{
+    int totalSize;
+    GValue handleSize = G_VALUE_INIT;
+    assert(m_position > 0. && m_position < 1.);
+    if (gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())) ==
+        GTK_ORIENTATION_HORIZONTAL)
+        totalSize = gtk_widget_get_allocated_width(gtkWidget());
+    else
+        totalSize = gtk_widget_get_allocated_height(gtkWidget());
+    g_value_init(&handleSize, G_TYPE_INT);
+    gtk_widget_style_get_property(paned, "handle-size", &handleSize);
+    gtk_paned_set_position(GTK_PANED(gtkWidget()),
+                           (totalSize - g_value_get_int(&handleSize)) *
+                           m_position);
+    m_position = -1.;
+                                                                                
 }
 
 void Paned::setPositionOnMapped(GtkWidget *widget, Paned *paned)
