@@ -419,7 +419,7 @@ void Paned::setFocusChild(GtkWidget *container,
             paned->setCurrentChildIndex(i);
 }
 
-double Paned::getPosition() const
+double Paned::position() const
 {
     if (m_position > 0. && m_position < 1.)
         return m_position;
