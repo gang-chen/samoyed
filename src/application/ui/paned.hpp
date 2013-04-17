@@ -95,11 +95,11 @@ public:
             gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())));
     }
 
-    double position() const { return m_position; }
+    double position() const;
     void setPosition(double position);
 
 protected:
-    Paned(): m_currentChildIndex(0), m_position(0.5)
+    Paned(): m_currentChildIndex(0), m_position(-1.)
     {
         m_children[0] = NULL;
         m_children[1] = NULL;
