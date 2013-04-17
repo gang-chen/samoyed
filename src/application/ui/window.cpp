@@ -629,7 +629,7 @@ const Notebook &Window::toolsPane() const
 
 Notebook &Window::currentEditorGroup()
 {
-    Widget *current = &m_mainArea->current();
+    Widget *current = &m_mainArea->child(0).current();
     while (strncmp(current->id(), EDITOR_GROUP_ID, 12) != 0)
         current = current->parent();
     return static_cast<Notebook &>(*current);
@@ -637,7 +637,7 @@ Notebook &Window::currentEditorGroup()
 
 const Notebook &Window::currentEditorGroup() const
 {
-    const Widget *current = &m_mainArea->current();
+    const Widget *current = &m_mainArea->child(0).current();
     while (strncmp(current->id(), EDITOR_GROUP_ID, 12) != 0)
         current = current->parent();
     return static_cast<const Notebook &>(*current);
