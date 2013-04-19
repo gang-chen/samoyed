@@ -431,7 +431,7 @@ double Paned::position() const
     else
         totalSize = gtk_widget_get_allocated_height(gtkWidget());
     g_value_init(&handleSize, G_TYPE_INT);
-    gtk_widget_style_get_property(paned, "handle-size", &handleSize);
+    gtk_widget_style_get_property(gtkWidget(), "handle-size", &handleSize);
     return
         (static_cast<double>(gtk_paned_get_position(GTK_PANED(gtkWidget()))) /
          (totalSize - g_value_get_int(&handleSize)));
@@ -448,7 +448,7 @@ void Paned::setPositionInternally()
     else
         totalSize = gtk_widget_get_allocated_height(gtkWidget());
     g_value_init(&handleSize, G_TYPE_INT);
-    gtk_widget_style_get_property(paned, "handle-size", &handleSize);
+    gtk_widget_style_get_property(gtkWidget(), "handle-size", &handleSize);
     gtk_paned_set_position(GTK_PANED(gtkWidget()),
                            (totalSize - g_value_get_int(&handleSize)) *
                            m_position);

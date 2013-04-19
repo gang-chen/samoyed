@@ -16,6 +16,8 @@ class ChangeHint;
 class ProjectAstManager: public Manager<ProjectAst>
 {
 public:
+    ProjectAstManager(): Manager<ProjectAst>(0) {}
+
     void onFileSourceChanged(const FileSource &source,
                              const ChangeHint &changeHint);
 

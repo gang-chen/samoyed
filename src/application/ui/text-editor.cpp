@@ -185,7 +185,10 @@ Widget *TextEditor::XmlElement::restoreWidget()
 }
 
 TextEditor::TextEditor(TextFile &file, Project *project):
-    Editor(file, project)
+    Editor(file, project),
+    m_bypassEdits(false),
+    m_initialCursorLine(0),
+    m_initialCursorColumn(0)
 {
 }
 
@@ -247,6 +250,12 @@ void TextEditor::unfreeze()
 
 void TextEditor::getCursor(int &line, int &column) const
 {
+    if (file().loading())
+    {
+        line = m_initialCursorLine;
+        column = m_initialCursorColumn;
+        return;
+    }
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
     GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
@@ -258,6 +267,11 @@ void TextEditor::getCursor(int &line, int &column) const
 
 void TextEditor::setCursor(int line, int column)
 {
+    if (file().loading())
+    {
+        m_initialCursorLine = line;
+        m_initialCursorColumn = column;
+    }
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
     GtkTextIter iter;
@@ -334,6 +348,7 @@ void TextEditor::onFileChanged(const File::Change &change)
         static_cast<const TextFile::Change &>(change);
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    m_bypassEdits = true;
     if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
         const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
@@ -360,12 +375,15 @@ void TextEditor::onFileChanged(const File::Change &change)
                                                     rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
     }
+    m_bypassEdits = false;
 }
 
 void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
                         char *text, int length,
                         TextEditor *editor)
 {
+    if (editor->m_bypassEdits)
+        return;
     static_cast<TextFile &>(editor->file()).insert(
         gtk_text_iter_get_line(location),
         gtk_text_iter_get_line_offset(location),
@@ -376,12 +394,21 @@ void TextEditor::remove(GtkTextBuffer *buffer,
                         GtkTextIter *begin, GtkTextIter *end,
                         TextEditor *editor)
 {
+    if (editor->m_bypassEdits)
+        return;
     static_cast<TextFile &>(editor->file()).remove(
         gtk_text_iter_get_line(begin),
         gtk_text_iter_get_line_offset(begin),
         gtk_text_iter_get_line(end),
         gtk_text_iter_get_line_offset(end),
         editor);
+}
+
+void TextEditor::onFileLoaded()
+{
+    setCursor(m_initialCursorLine, m_initialCursorColumn);
+    m_initialCursorLine = 0;
+    m_initialCursorColumn = 0;
 }
 
 }

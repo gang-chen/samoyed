@@ -1,4 +1,4 @@
-<!-- Definitions of menu bar, toolbars and popup menus for actions -->
+<!-- Definitions of menu bar, toolbars and popup menus. -->
 <ui>
 
   <menubar name="main-menu-bar">
@@ -55,10 +55,10 @@
       <menuitem name="new-editor-group" action="create-editor-group"/>
       <menuitem name="new-editor" action="create-editor"/>
       <separator/>
-      <menuitem name="full-screen" action="enter-leave-full-screen"/>
-      <separator/>
       <menuitem name="toolbar" action="show-hide-toolbar"/>
-      <menu name="side-panes" action="side-panes"/>
+      <placeholder name="side-panes"/>
+      <separator/>
+      <menuitem name="full-screen" action="enter-leave-full-screen"/>
     </menu>
 
     <menu name="help" action="help">

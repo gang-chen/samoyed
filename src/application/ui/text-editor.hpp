@@ -83,6 +83,8 @@ public:
     void selectRange(int line, int column,
                      int line2, int column2);
 
+    void onFileLoaded();
+
 protected:
     TextEditor(TextFile &file, Project *project);
 
@@ -98,6 +100,11 @@ private:
     static void remove(GtkTextBuffer *buffer,
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
+
+    bool m_bypassEdits;
+
+    int m_initialCursorLine;
+    int m_initialCursorColumn;
 };
 
 }

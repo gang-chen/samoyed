@@ -15,10 +15,11 @@ namespace Samoyed
 class ActionsExtensionPoint: public ExtensionPoint
 {
 public:
-    ActionExtensionPoint();
+    ActionsExtensionPoint();
 
 protected:
     virtual bool addExtensionInternally(const char *pluginId,
+                                        const char *extensionId,
                                         xmlDocPtr doc,
                                         xmlNodePtr node,
                                         std::list<std::string> &errors);

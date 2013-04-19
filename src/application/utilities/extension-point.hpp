@@ -4,31 +4,44 @@
 #ifndef SMYD_EXTENSION_POINT_HPP
 #define SMYD_EXTENSION_POINT_HPP
 
+#include "miscellaneous.hpp"
 #include <list>
+#include <map>
 #include <string>
+#include <boost/utility.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
 
-class ExtensionPoint
+class ExtensionPoint: boost::noncopyable
 {
 public:
-    bool addExtension(const char *pluginId,
-                      xmlDocPtr doc,
-                      xmlNodePtr node,
-                      std::list<std::string> &errors);
+    static bool addExtension(const char *pluginId,
+                             xmlDocPtr doc,
+                             xmlNodePtr node,
+                             std::list<std::string> &errors);
+
+    ExtensionPoint(const char *id): m_id(id) {}
+
+    const char *id() const { return m_id.c_str(); }
 
 protected:
-    static bool registerExtensionPoint(const char *id, ExtensionPoint *point);
+    static bool registerExtensionPoint(ExtensionPoint *point);
 
     virtual bool addExtensionInternally(const char *pluginId,
+                                        const char *extensionId,
                                         xmlDocPtr doc,
                                         xmlNodePtr node,
-                                        std::list<std::string> &errors);
+                                        std::list<std::string> &errors) = 0;
 
 private:
-    static std::map<std::string, ExtensionPoint *> s_registry;
+    typedef std::map<ComparablePointer<const char *>, ExtensionPoint *>
+        Registry;
+
+    static Registry s_registry;
+
+    std::string m_id;
 };
 
 }

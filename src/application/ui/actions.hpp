@@ -59,7 +59,6 @@ public:
         ACTION_COPY,
         ACTION_PASTE,
         ACTION_DELETE,
-        ACTION_SELECT_ALL,
         ACTION_EDIT_PREFERENCES,
 
         ACTION_CREATE_WINDOW,
@@ -75,8 +74,8 @@ public:
 
     enum ToggleActionIndex
     {
-        TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN,
         TOGGLE_ACTION_SHOW_HIDE_TOOLBAR,
+        TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN,
 
         N_TOGGLE_ACTIONS
     };
@@ -91,13 +90,13 @@ public:
 
     GtkActionGroup *actionGroup() const { return m_actionGroup; }
 
-    void onEditorAdded(const Editor &editor);
-    void onEditorClosed(const Editor &editor);
-    void onFileChanged(const File &file);
+    void onProjectOpened();
+    void onProjectClosed();
+
+    void onToolbarVisibilityChanged(bool visibility);
+    void onWindowFullScreenChanged(bool inFullScreen);
 
 private:
-    Window *m_window;
-
     GtkAction *m_actions[N_ACTIONS];
     GtkToggleAction *m_toggleActions[N_TOGGLE_ACTIONS];
 

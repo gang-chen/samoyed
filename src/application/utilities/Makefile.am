@@ -1,8 +1,11 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
+    extension-point.cpp \
     lock-file.cpp \
     miscellaneous.cpp \
+    plugin.cpp \
+    plugin-manager.cpp \
     revision.cpp \
     signal.cpp \
     text-buffer.cpp \
@@ -12,12 +15,15 @@ libutilities_la_SOURCES = \
     worker.cpp \
     buffer.hpp \
     change-hint.hpp \
+    extension-point.hpp \
     file-loader.hpp \
     file-saver.hpp \
     lock-file.hpp \
     managed.hpp \
     manager.hpp \
     miscellaneous.hpp \
+    plugin.hpp \
+    plugin-manager.hpp \
     range.hpp \
     revision.hpp \
     scheduler.hpp \
@@ -30,6 +36,7 @@ libutilities_la_SOURCES = \
 
 libutilities_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS)
+    $(GTK_CFLAGS) \
+    $(XML_CFLAGS)
 
 libutilities_la_CXXFLAGS = -Werror -Wall

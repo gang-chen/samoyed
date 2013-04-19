@@ -27,7 +27,7 @@ class ProjectConfiguration;
  * accessed separately.  They are collected together into the project abstract
  * syntax tree because they are updated together and they are project specific.
  */
-class ProjectAst
+class ProjectAst: public Managed<ProjectAst>
 {
 public:
     typedef ComparablePointer<const char *> Key;

@@ -1,27 +1,31 @@
 // Extension point - actions.
 // Copyright (C) 2013 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "actions-extension-point.hpp"
 #include <list>
 #include <string>
 #include <libxml/tree.h>
 
-#define ID "actions"
-
 namespace Samoyed
 {
 
-ActionsExtensionPoint::ActionsExtensionPoint()
+ActionsExtensionPoint::ActionsExtensionPoint():
+    ExtensionPoint("actions")
 {
-    ExtensionPoint::registerExtensionPoint(ID, this);
+    ExtensionPoint::registerExtensionPoint(this);
 }
 
 bool
 ActionsExtensionPoint::addExtensionInternally(const char *pluginId,
+                                              const char *extensionId,
                                               xmlDocPtr doc,
                                               xmlNodePtr node,
                                               std::list<std::string> &errors)
 {
+    return true;
 }
 
 }

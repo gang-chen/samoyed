@@ -182,6 +182,12 @@ void TextFile::onLoaded(FileLoader &loader)
             onChanged(Change(-1, -1, begin, end - begin), NULL, true);
     }
     while (it.goToNextBulk());
+
+    // Notify editors.
+    for (TextEditor *editor = static_cast<TextEditor *>(editors());
+         editor;
+         editor = static_cast<TextEditor *>(editor->nextInFile()))
+        editor->onFileLoaded();
 }
 
 void TextFile::insert(int line, int column, const char *text, int length,

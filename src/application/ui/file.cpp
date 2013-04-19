@@ -350,13 +350,15 @@ bool File::closeEditor(Editor &editor)
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_CANCEL)
             return false;
+        m_closing = true;
         if (response != GTK_RESPONSE_NO)
         {
-            m_closing = true;
             save();
             return true;
         }
     }
+    else
+        m_closing = true;
 
     // Go ahead.
     continueClosing();

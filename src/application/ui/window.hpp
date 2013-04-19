@@ -213,7 +213,13 @@ private:
     static gboolean onConfigureEvent(GtkWidget *widget,
                                      GdkEvent *event,
                                      Window *window);
+    static void onToolbarVisibilityChanged(GtkWidget *toolbar,
+                                           GParamSpec *spec,
+                                           Window *window);
     static void showHideSidePane(GtkToggleAction *action, Window *window);
+    static void onSidePaneVisibilityChanged(GtkWidget *pane,
+                                            GParamSpec *spec,
+                                            GtkToggleAction *action);
 
     static void createNavigationPane(Window &window);
     static void createToolsPane(Window &window);
@@ -221,8 +227,7 @@ private:
 
     bool build(const Configuration &config);
 
-    void createMenuItemForSidePane(const char *id, const char *title,
-                                   bool visible);
+    void createMenuItemForSidePane(const Widget &pane);
     void createMenuItemsForSidePanesRecursively(const Widget &widget);
 
     static Created s_created;

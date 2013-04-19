@@ -309,7 +309,7 @@ bool Window::build(const Configuration &config)
     gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
 
     std::string uiFile(Application::instance().dataDirectoryName());
-    uiFile += G_DIR_SEPARATOR_S "actions-ui.xml";
+    uiFile += G_DIR_SEPARATOR_S "ui.xml";
     GError *error = NULL;
     gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), &error);
     if (error)
@@ -351,6 +351,8 @@ bool Window::build(const Configuration &config)
     gtk_grid_attach_next_to(GTK_GRID(m_grid),
                             m_toolbar, m_menuBar,
                             GTK_POS_BOTTOM, 1, 1);
+    g_signal_connect_after(m_toolbar, "notify::visible",
+                           G_CALLBACK(onToolbarVisibilityChanged), this);
 
     g_signal_connect(window, "delete-event",
                      G_CALLBACK(onDeleteEvent), this);
@@ -603,8 +605,7 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
     }
 
     // Add a menu item for showing or hiding the side pane.
-    createMenuItemForSidePane(pane.id(), pane.title(),
-                              gtk_widget_get_visible(pane.gtkWidget()));
+    createMenuItemForSidePane(pane);
 }
 
 Notebook &Window::navigationPane()
@@ -696,25 +697,26 @@ void Window::registerDefaultSidePanes()
     addCreatedCallback(createToolsPane);
 }
 
-void Window::createMenuItemForSidePane(const char *id, const char *title,
-                                       bool visible)
+void Window::createMenuItemForSidePane(const Widget &pane)
 {
-    std::string actionName(id);
+    std::string actionName(pane.id());
     actionName.insert(0, "show-hide-");
-    std::string titleText(title);
-    titleText.erase(std::remove(titleText.begin(), titleText.end(), '_'),
-                    titleText.end());
-    char *tooltip = g_strdup_printf(_("Show or hide %s"), titleText.c_str());
+    std::string title(pane.title());
+    title.erase(std::remove(title.begin(), title.end(), '_'), title.end());
+    char *tooltip = g_strdup_printf(_("Show or hide %s"), title.c_str());
     GtkActionGroup *group = gtk_action_group_new(actionName.c_str());
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
-                                                    title,
+                                                    title.c_str(),
                                                     tooltip,
                                                     NULL);
     g_free(tooltip);
-    gtk_toggle_action_set_active(action, visible);
+    gtk_toggle_action_set_active(action,
+                                 gtk_widget_get_visible(pane.gtkWidget()));
     g_signal_connect(action, "toggled",
                      G_CALLBACK(showHideSidePane), this);
-    gtk_action_group_add_action(group, GTK_ACTION(action));
+    g_signal_connect_after(pane.gtkWidget(), "notify::visible",
+                           G_CALLBACK(onSidePaneVisibilityChanged), action);
+    gtk_action_group_add_action(m_actions.actionGroup(), GTK_ACTION(action));
     gtk_ui_manager_insert_action_group(m_uiManager, group, 0);
     gtk_ui_manager_add_ui(m_uiManager,
                           gtk_ui_manager_new_merge_id(m_uiManager),
@@ -724,7 +726,6 @@ void Window::createMenuItemForSidePane(const char *id, const char *title,
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
-    g_object_unref(group);
 }
 
 void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
@@ -738,8 +739,7 @@ void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
         createMenuItemsForSidePanesRecursively(paned.child(1));
         return;
     }
-    createMenuItemForSidePane(widget.id(), widget.title(),
-                              gtk_widget_get_visible(widget.gtkWidget()));
+    createMenuItemForSidePane(widget);
 }
 
 void Window::showHideSidePane(GtkToggleAction *action, Window *window)
@@ -749,6 +749,13 @@ void Window::showHideSidePane(GtkToggleAction *action, Window *window)
     assert(pane);
     gtk_widget_set_visible(pane->gtkWidget(),
                            gtk_toggle_action_get_active(action));
+}
+
+void Window::onSidePaneVisibilityChanged(GtkWidget *pane,
+                                         GParamSpec *spec,
+                                         GtkToggleAction *action)
+{
+    gtk_toggle_action_set_active(action, gtk_widget_get_visible(pane));
 }
 
 gboolean Window::onConfigureEvent(GtkWidget *widget,
@@ -798,6 +805,7 @@ void Window::enterFullScreen()
     gtk_widget_hide(m_menuBar);
     gtk_window_fullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = true;
+    m_actions.onWindowFullScreenChanged(true);
 }
 
 void Window::leaveFullScreen()
@@ -816,6 +824,7 @@ void Window::leaveFullScreen()
     gtk_widget_show(m_menuBar);
     gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = false;
+    m_actions.onWindowFullScreenChanged(true);
 }
 
 Window::Configuration Window::configuration() const
@@ -830,6 +839,14 @@ Window::Configuration Window::configuration() const
     config.m_toolbarVisible = m_toolbarVisible;
     config.m_toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
     return config;
+}
+
+void Window::onToolbarVisibilityChanged(GtkWidget *toolbar,
+                                        GParamSpec *spec,
+                                        Window *window)
+{
+    window->m_actions.onToolbarVisibilityChanged(
+        gtk_widget_get_visible(toolbar));
 }
 
 }

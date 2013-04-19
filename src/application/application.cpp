@@ -23,6 +23,9 @@
 #include "ui/widget-with-bars.hpp"
 #include "ui/text-editor.hpp"
 #include "ui/source-editor.hpp"
+#include "resources/file-source-manager.hpp"
+#include "resources/project-configuration.hpp"
+#include "resources/project-ast-manager.hpp"
 #include <assert.h>
 #include <utility>
 #include <string>
@@ -174,9 +177,12 @@ gboolean Application::startUp(gpointer app)
     SourceEditor::createSharedData();
 
     // Create global objects.
-    a->m_pluginManager = new PluginManager();
+    a->m_pluginManager = new PluginManager;
     a->m_scheduler = new Scheduler;
     a->m_scheduler->size_controller().resize(THREAD_COUNT);
+    a->m_fileSourceManager = new FileSourceManager;
+    a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
+    a->m_projectAstManager = new ProjectAstManager;
 
     // All the background initialization is done.  Close the splash screen.
     delete a->m_splashScreen;

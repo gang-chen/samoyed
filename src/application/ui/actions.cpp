@@ -134,10 +134,6 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void selectAll(GtkAction *action, Samoyed::Window *window)
-{
-}
-
 void editPreferences(GtkAction *action, Samoyed::Window *window)
 {
 }
@@ -169,17 +165,17 @@ void showAbout(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void enterLeaveFullScreen(GtkToggleAction *action, Samoyed::Window *window)
-{
-    if (window->inFullScreen())
-        window->leaveFullScreen();
-    else
-        window->enterFullScreen();
-}
-
 void showHideToolbar(GtkToggleAction *action, Samoyed::Window *window)
 {
-    window->setToolbarVisible(!window->toolbarVisible());
+    window->setToolbarVisible(gtk_toggle_action_get_active(action));
+}
+
+void enterLeaveFullScreen(GtkToggleAction *action, Samoyed::Window *window)
+{
+    if (gtk_toggle_action_get_active(action))
+        window->enterFullScreen();
+    else
+        window->leaveFullScreen();
 }
 
 const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
@@ -258,8 +254,6 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
     { "delete", GTK_STOCK_DELETE, N_("_Delete"), NULL,
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
-    { "select-all", NULL, N_("_Select All"), NULL,
-      N_("Select all objects"), G_CALLBACK(selectAll) },
     { "edit-preferences", GTK_STOCK_PREFERENCES, N_("Pre_ferences"), NULL,
       N_("Edit your preferences"), G_CALLBACK(editPreferences) },
 
@@ -283,12 +277,12 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
 const GtkToggleActionEntry
 toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 {
+    { "show-hide-toolbar", NULL, N_("_Toolbar"), NULL,
+      N_("Show or hide toolbar"), G_CALLBACK(showHideToolbar), TRUE },
     { "enter-leave-full-screen", GTK_STOCK_FULLSCREEN,
       N_("_Full Screen"), "F11",
       N_("Enter or leave full screen mode"),
-      G_CALLBACK(enterLeaveFullScreen), FALSE },
-    { "show-hide-toolbar", NULL, N_("_Toolbar"), NULL,
-      N_("Show or hide toolbar"), G_CALLBACK(showHideToolbar), TRUE }
+      G_CALLBACK(enterLeaveFullScreen), FALSE }
 };
 
 }
@@ -296,7 +290,7 @@ toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 namespace Samoyed
 {
 
-Actions::Actions(Window *window): m_window(window)
+Actions::Actions(Window *window)
 {
     m_actionGroup = gtk_action_group_new("actions");
     gtk_action_group_set_translation_domain(m_actionGroup, NULL);
@@ -324,16 +318,25 @@ Actions::~Actions()
     g_object_unref(m_actionGroup);
 }
 
-void Actions::onEditorAdded(const Editor &editor)
+void Actions::onProjectOpened()
 {
 }
 
-void Actions::onEditorClosed(const Editor &editor)
+void Actions::onProjectClosed()
 {
 }
 
-void Actions::onFileChanged(const File &file)
+void Actions::onToolbarVisibilityChanged(bool visibility)
 {
+    gtk_toggle_action_set_active(toggleAction(TOGGLE_ACTION_SHOW_HIDE_TOOLBAR),
+                                 visibility);
+}
+
+void Actions::onWindowFullScreenChanged(bool inFullScreen)
+{
+    gtk_toggle_action_set_active(toggleAction(
+                                     TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN),
+                                 inFullScreen);
 }
 
 }

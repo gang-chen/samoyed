@@ -5,40 +5,25 @@
 #define SMYD_PLUGIN_HPP
 
 #include <string>
+#include <boost/utility.hpp>
 
 namespace Samoyed
 {
 
-class Plugin
+class Plugin: boost::noncopyable
 {
 public:
-    Plugin(const char *id): m_id(id), m_refCount(0) {}
+    Plugin(const char *id): m_id(id) {}
 
-    /**
-     * Activate this plugin if it is inactive.  Otherwise, increase the
-     * reference count.
-     * @return True iff the plugin is active.
-     */
-    bool activate();
+    virtual bool startUp() { return true; }
 
-    /**
-     * Decrease the reference count, and if the reference count reaches zero,
-     * deactive and destroy this plugin.
-     * @return True iff the plugin is deactived and destroyed.
-     */
-    bool deactivate();
+    virtual void shutDown() {}
 
 protected:
     virtual ~Plugin() {}
 
-    virtual bool activateInterally() { return true; }
-
-    virtual void deactiveInternally() {}
-
 private:
     std::string m_id;
-
-    int m_refCount;
 };
 
 }

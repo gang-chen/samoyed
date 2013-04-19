@@ -4,14 +4,16 @@
 #ifndef SMYD_PLUGIN_MANAGER_HPP
 #define SMYD_PLUGIN_MANAGER_HPP
 
+#include "miscellaneous.hpp"
 #include <map>
+#include <boost/utility.hpp>
 
 namespace Samoyed
 {
 
 class Plugin;
 
-class PluginManager
+class PluginManager: boost::noncopyable
 {
 public:
     /**
@@ -22,10 +24,12 @@ public:
 
     Plugin *findPlugin(const char *pluginId);
 
-    Plugin *activatePlugin(const char *pluginId);
+    Plugin *activatePlugin(const char *pluginId, const char *extensionId);
 
 private:
-    std::map<std::string, Plugin *> m_pluginTable;
+    typedef std::map<ComparablePointer<const char *>, Plugin *> PluginTable;
+
+    PluginTable m_pluginTable;
 };
 
 }

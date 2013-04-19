@@ -12,6 +12,8 @@ namespace Samoyed
 
 class FileSourceManager: public Manager<FileSource>
 {
+public:
+    FileSourceManager(): Manager<FileSource>(30) {}
 };
 
 }

@@ -133,7 +133,7 @@ private:
     public:
         RevisionUpdate(const Revision &revision, const GError *error):
             m_revision(revision),
-            m_error(g_error_copy(error))
+            m_error(error ? g_error_copy(error) : NULL)
         {}
         virtual ~RevisionUpdate()
         {
@@ -203,7 +203,7 @@ private:
                     const GError *error,
                     TextBuffer *buffer):
             m_revision(revision),
-            m_error(g_error_copy(error)),
+            m_error(error ? g_error_copy(error) : NULL),
             m_buffer(buffer)
         {}
         virtual ~Replacement();
