@@ -115,7 +115,7 @@ protected:
 
     void addChildInternally(Widget &child, int index);
 
-    void removeChildInternally(Widget &child);
+    virtual void removeChildInternally(Widget &child);
 
 private:
     static void setFocusChild(GtkWidget *container,

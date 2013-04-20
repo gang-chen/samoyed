@@ -210,10 +210,12 @@ CLEAN_UP:
 
 void Application::continueQuitting()
 {
-    assert(!m_firstWindow);
-    assert(!m_lastWindow);
+    assert(!m_firstProject);
+    assert(!m_lastProject);
     assert(!m_firstFile);
     assert(!m_lastFile);
+    assert(!m_firstWindow);
+    assert(!m_lastWindow);
 
     m_quitting = false;
 
@@ -528,7 +530,7 @@ void Application::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
-    if (m_quitting && !m_firstProject && !m_firstWindow)
+    if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
         continueQuitting();
 }
 
@@ -558,6 +560,8 @@ void Application::removeFile(File &file)
 {
     m_fileTable.erase(file.uri());
     file.removeFromList(m_firstFile, m_lastFile);
+    if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
+        continueQuitting();
 }
 
 void Application::addWindow(Window &window)
@@ -572,7 +576,7 @@ void Application::removeWindow(Window &window)
     window.removeFromList(m_firstWindow, m_lastWindow);
     if (&window == m_currentWindow)
         m_currentWindow = m_firstWindow;
-    if (m_quitting && !m_firstProject && !m_firstWindow)
+    if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
         continueQuitting();
 }
 

@@ -39,10 +39,10 @@ class FileSaver;
 class File: public boost::noncopyable
 {
 public:
-    typedef boost::signals2::signal<void (const File &file)> Opened;
-    typedef boost::signals2::signal<void (const File &file)> Close;
-    typedef boost::signals2::signal<void (const File &file)> Loaded;
-    typedef boost::signals2::signal<void (const File &file)> Saved;
+    typedef boost::signals2::signal<void (File &file)> Opened;
+    typedef boost::signals2::signal<void (File &file)> Close;
+    typedef boost::signals2::signal<void (File &file)> Loaded;
+    typedef boost::signals2::signal<void (File &file)> Saved;
 
     /**
      * A change.  Derived classes should define their concrete changes.

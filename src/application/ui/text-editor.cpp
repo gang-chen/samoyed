@@ -198,13 +198,15 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
         return false;
     GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
     GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
+    GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
     g_signal_connect(buffer, "insert-text",
                      G_CALLBACK(insert), this);
     g_signal_connect(buffer, "delete-range",
                      G_CALLBACK(remove), this);
     g_object_unref(buffer);
-    setGtkWidget(view);
-    gtk_widget_show_all(view);
+    gtk_container_add(GTK_CONTAINER(sw), view);
+    setGtkWidget(sw);
+    gtk_widget_show_all(sw);
     return true;
 }
 
@@ -235,17 +237,20 @@ Widget::XmlElement *TextEditor::save() const
 
 bool TextEditor::frozen() const
 {
-    return gtk_text_view_get_editable(GTK_TEXT_VIEW(gtkWidget()));
+    return gtk_text_view_get_editable(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
 }
 
 void TextEditor::freeze()
 {
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(gtkWidget()), FALSE);
+    gtk_text_view_set_editable(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))), FALSE);
 }
 
 void TextEditor::unfreeze()
 {
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(gtkWidget()), TRUE);
+    gtk_text_view_set_editable(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))), TRUE);
 }
 
 void TextEditor::getCursor(int &line, int &column) const
@@ -256,8 +261,8 @@ void TextEditor::getCursor(int &line, int &column) const
         column = m_initialCursorColumn;
         return;
     }
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
@@ -271,21 +276,22 @@ void TextEditor::setCursor(int line, int column)
     {
         m_initialCursorLine = line;
         m_initialCursorColumn = column;
+        return;
     }
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextView *view = GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(view);
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                             line, column);
     gtk_text_buffer_place_cursor(buffer, &iter);
-    gtk_text_view_place_cursor_onscreen(GTK_TEXT_VIEW(gtkWidget()));
+    gtk_text_view_place_cursor_onscreen(view);
 }
 
 void TextEditor::getSelectedRange(int &line, int &column,
                                   int &line2, int &column2) const
 {
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     GtkTextMark *mark;
     GtkTextIter iter;
     mark = gtk_text_buffer_get_insert(buffer);
@@ -301,8 +307,8 @@ void TextEditor::getSelectedRange(int &line, int &column,
 void TextEditor::selectRange(int line, int column,
                              int line2, int column2)
 {
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     GtkTextIter iter, iter2;
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                             line, column);
@@ -314,23 +320,23 @@ void TextEditor::selectRange(int line, int column,
 
 int TextEditor::characterCount() const
 {
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     return gtk_text_buffer_get_char_count(buffer);
 }
 
 int TextEditor::lineCount() const
 {
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     return gtk_text_buffer_get_line_count(buffer);
 }
 
 char *TextEditor::text(int beginLine, int beginColumn,
                        int endLine, int endColumn) const
 {
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     GtkTextIter begin, end;
     gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
                                             beginLine, beginColumn);
@@ -346,8 +352,8 @@ void TextEditor::onFileChanged(const File::Change &change)
 {
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
-    GtkTextBuffer *buffer =
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkWidget()));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     m_bypassEdits = true;
     if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
@@ -409,6 +415,8 @@ void TextEditor::onFileLoaded()
     setCursor(m_initialCursorLine, m_initialCursorColumn);
     m_initialCursorLine = 0;
     m_initialCursorColumn = 0;
+    gtk_text_view_place_cursor_onscreen(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
 }
 
 }

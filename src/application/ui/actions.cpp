@@ -80,6 +80,8 @@ void openFile(GtkAction *action, Samoyed::Window *window)
 
 void saveFile(GtkAction *action, Samoyed::Window *window)
 {
+    static_cast<Samoyed::Editor &>(window->currentEditorGroup().current()).
+        file().save();
 }
 
 void saveAllFiles(GtkAction *action, Samoyed::Window *window)
@@ -88,6 +90,8 @@ void saveAllFiles(GtkAction *action, Samoyed::Window *window)
 
 void reloadFile(GtkAction *action, Samoyed::Window *window)
 {
+    static_cast<Samoyed::Editor &>(window->currentEditorGroup().current()).
+        file().load(true);
 }
 
 void closeFile(GtkAction *action, Samoyed::Window *window)

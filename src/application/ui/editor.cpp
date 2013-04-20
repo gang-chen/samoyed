@@ -113,7 +113,8 @@ xmlNodePtr Editor::XmlElement::write() const
     return node;
 }
 
-Editor::XmlElement::XmlElement(const Editor &editor)
+Editor::XmlElement::XmlElement(const Editor &editor):
+    Widget::XmlElement(editor)
 {
     m_uri = editor.file().uri();
     if (editor.project())

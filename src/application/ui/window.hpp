@@ -137,9 +137,11 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    virtual void removeChild(Widget &child);
+
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    virtual int childCount() const { return m_child ? 1 : 0; }
+    virtual int childCount() const { return 1; }
 
     virtual Widget &child(int index) { return *m_child; }
     virtual const Widget &child(int index) const { return *m_child; }
@@ -161,13 +163,15 @@ public:
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, double size);
 
+    void removeSidePane(Widget &pane);
+
     Notebook &navigationPane();
     const Notebook &navigationPane() const;
     Notebook &toolsPane();
     const Notebook &toolsPane() const;
 
-    WidgetWithBars &mainArea() { return *m_mainArea; }
-    const WidgetWithBars &mainArea() const { return *m_mainArea; }
+    WidgetWithBars &mainArea();
+    const WidgetWithBars &mainArea() const;
 
     Notebook &currentEditorGroup();
     const Notebook &currentEditorGroup() const;
@@ -201,6 +205,20 @@ protected:
     virtual void removeChildInternally(Widget &child);
 
 private:
+    struct SidePaneData
+    {
+        GtkToggleAction *m_action;
+        gulong m_signalHandlerId;
+        guint m_uiMergeId;
+        SidePaneData(GtkToggleAction *action,
+                     gulong signalHandlerId,
+                     guint uiMergeId):
+            m_action(action),
+            m_signalHandlerId(signalHandlerId),
+            m_uiMergeId(uiMergeId)
+        {}
+    };
+
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
                                   Window *window);
@@ -227,8 +245,9 @@ private:
 
     bool build(const Configuration &config);
 
-    void createMenuItemForSidePane(const Widget &pane);
-    void createMenuItemsForSidePanesRecursively(const Widget &widget);
+    void createMenuItemForSidePane(Widget &pane);
+    void createMenuItemsForSidePanesRecursively(Widget &widget);
+    void onSidePaneClosed(const SidePaneData *data, const Widget &pane);
 
     static Created s_created;
     static SidePaneCreated s_navigationPaneCreated;
@@ -241,8 +260,6 @@ private:
     GtkWidget *m_toolbar;
 
     Widget *m_child;
-
-    WidgetWithBars *m_mainArea;
 
     /**
      * The GTK+ UI manager that creates the menu bar, toolbar and popup menu in

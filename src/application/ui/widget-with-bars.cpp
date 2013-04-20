@@ -365,10 +365,14 @@ void WidgetWithBars::removeBar(Bar &bar)
     WidgetContainer::removeChildInternally(bar);
 }
 
-void WidgetWithBars::removeChildInternally(Widget &child)
+void WidgetWithBars::removeChild(Widget &child)
 {
-    assert(&child == m_mainChild);
+    // Only the main child can be removed.  And all the child bars are already
+    // removed.
+    assert(closing());
+    assert(barCount() == 0);
     removeMainChild(child);
+    delete this;
 }
 
 void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)
@@ -390,9 +394,11 @@ void WidgetWithBars::setFocusChild(GtkWidget *container,
                                    GtkWidget *child,
                                    WidgetWithBars *widget)
 {
-    for (int i = 0; i < widget->childCount(); ++i)
-        if (widget->child(i).gtkWidget() == child)
-            widget->setCurrentChildIndex(i);
+    if (widget->m_mainChild && widget->m_mainChild->gtkWidget() == child)
+        widget->setCurrentChildIndex(0);
+    for (int i = 0; i < widget->barCount(); ++i)
+        if (widget->m_bars[i] && widget->m_bars[i]->gtkWidget() == child)
+            widget->setCurrentChildIndex(i + 1);
 }
 
 }

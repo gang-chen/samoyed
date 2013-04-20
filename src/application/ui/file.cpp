@@ -19,6 +19,7 @@
 #include <string>
 #include <map>
 #include <boost/any.hpp>
+#include <boost/bind.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gio/gio.h>

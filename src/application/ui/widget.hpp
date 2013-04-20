@@ -9,6 +9,7 @@
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
+#include <boost/signals2/signal.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -20,6 +21,8 @@ class WidgetContainer;
 class Widget: public boost::noncopyable
 {
 public:
+    typedef boost::signals2::signal<void (Widget &widget)> Closed;
+
     /**
      * An XML element used to save and restore a widget.
      */
@@ -142,6 +145,10 @@ public:
      */
     void setCurrent();
 
+    boost::signals2::connection
+    addClosedCallback(const Closed::slot_type &callback)
+    { return m_closed.connect(callback); }
+
 protected:
     Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}
 
@@ -167,6 +174,8 @@ private:
     WidgetContainer *m_parent;
 
     bool m_closing;
+
+    Closed m_closed;
 };
 
 }

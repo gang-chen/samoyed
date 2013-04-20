@@ -45,17 +45,30 @@ namespace
 
 int serialNumber = 0;
 
-Samoyed::WidgetWithBars *findMainArea(Samoyed::Widget &root)
+Samoyed::Widget *findPane(Samoyed::Widget &root, const char *id)
 {
-    if (strcmp(root.id(), MAIN_AREA_ID) == 0)
-        return static_cast<Samoyed::WidgetWithBars *>(&root);
+    if (strcmp(root.id(), id) == 0)
+        return &root;
     if (strcmp(root.id(), PANED_ID) != 0)
         return NULL;
     Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(root);
-    Samoyed::WidgetWithBars *mainArea = findMainArea(paned.child(0));
-    if (mainArea)
-        return mainArea;
-    return findMainArea(paned.child(1));
+    Samoyed::Widget *child = findPane(paned.child(0), id);
+    if (child)
+        return child;
+    return findPane(paned.child(1), id);
+}
+
+const Samoyed::Widget *findPane(const Samoyed::Widget &root, const char *id)
+{
+    if (strcmp(root.id(), id) == 0)
+        return &root;
+    if (strcmp(root.id(), PANED_ID) != 0)
+        return NULL;
+    const Samoyed::Paned &paned = static_cast<const Samoyed::Paned &>(root);
+    const Samoyed::Widget *child = findPane(paned.child(0), id);
+    if (child)
+        return child;
+    return findPane(paned.child(1), id);
 }
 
 }
@@ -292,7 +305,6 @@ Window::Window():
     m_menuBar(NULL),
     m_toolbar(NULL),
     m_child(NULL),
-    m_mainArea(NULL),
     m_uiManager(NULL),
     m_actions(this),
     m_inFullScreen(false),
@@ -406,8 +418,9 @@ bool Window::setup(const Configuration &config)
     Notebook *editorGroup =
         Notebook::create(EDITOR_GROUP_ID "-0", EDITOR_GROUP_ID,
                          true, true, false);
-    m_mainArea = WidgetWithBars::create(MAIN_AREA_ID, *editorGroup);
-    addChildInternally(*m_mainArea);
+    WidgetWithBars *mainArea =
+        WidgetWithBars::create(MAIN_AREA_ID, *editorGroup);
+    addChildInternally(*mainArea);
 
     // Set the title.
     setTitle(_("Samoyed IDE"));
@@ -439,11 +452,6 @@ bool Window::restore(XmlElement &xmlElement)
     if (!build(xmlElement.configuration()))
         return false;
     addChildInternally(*child);
-
-    // Find the main area.
-    m_mainArea = findMainArea(*child);
-    if (!m_mainArea)
-        return false;
 
     // Extract the serial number of the window from its identifier, and update
     // the global serial number.
@@ -541,6 +549,13 @@ void Window::removeChildInternally(Widget &child)
     WidgetContainer::removeChildInternally(child);
 }
 
+void Window::removeChild(Widget &child)
+{
+    assert(closing());
+    removeChildInternally(child);
+    delete this;
+}
+
 void Window::replaceChild(Widget &oldChild, Widget &newChild)
 {
     removeChildInternally(oldChild);
@@ -557,30 +572,12 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
 
 Widget *Window::findSidePane(const char *id)
 {
-    Widget *pane;
-    WidgetContainer *container = m_mainArea->parent();
-    while (container != this)
-    {
-        pane = container->findChild(id);
-        if (pane)
-            return pane;
-        container = container->parent();
-    }
-    return NULL;
+    return findPane(*m_child, id);
 }
 
 const Widget *Window::findSidePane(const char *id) const
 {
-    const Widget *pane;
-    const WidgetContainer *container = m_mainArea->parent();
-    while (container != this)
-    {
-        pane = container->findChild(id);
-        if (pane)
-            return pane;
-        container = container->parent();
-    }
-    return NULL;
+    return findPane(*m_child, id);
 }
 
 void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
@@ -599,13 +596,18 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      pane, neighbor, size);
         break;
-    case SIDE_RIGHT:
+    default:
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      neighbor, pane, 1. - size);
     }
 
     // Add a menu item for showing or hiding the side pane.
     createMenuItemForSidePane(pane);
+}
+
+void Window::removeSidePane(Widget &pane)
+{
+    pane.parent()->removeChild(pane);
 }
 
 Notebook &Window::navigationPane()
@@ -628,9 +630,20 @@ const Notebook &Window::toolsPane() const
     return static_cast<const Notebook &>(*findSidePane(TOOLS_PANE_ID));
 }
 
+WidgetWithBars &Window::mainArea()
+{
+    return static_cast<WidgetWithBars &>(*findPane(*m_child, MAIN_AREA_ID));
+}
+
+const WidgetWithBars &Window::mainArea() const
+{
+    return
+        static_cast<const WidgetWithBars &>(*findPane(*m_child, MAIN_AREA_ID));
+}
+
 Notebook &Window::currentEditorGroup()
 {
-    Widget *current = &m_mainArea->child(0).current();
+    Widget *current = &mainArea().child(0).current();
     while (strncmp(current->id(), EDITOR_GROUP_ID, 12) != 0)
         current = current->parent();
     return static_cast<Notebook &>(*current);
@@ -638,7 +651,7 @@ Notebook &Window::currentEditorGroup()
 
 const Notebook &Window::currentEditorGroup() const
 {
-    const Widget *current = &m_mainArea->child(0).current();
+    const Widget *current = &mainArea().child(0).current();
     while (strncmp(current->id(), EDITOR_GROUP_ID, 12) != 0)
         current = current->parent();
     return static_cast<const Notebook &>(*current);
@@ -666,7 +679,7 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      *newEditorGroup, current, 0.5);
         break;
-    case SIDE_RIGHT:
+    default:
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      current, *newEditorGroup, 0.5);
     }
@@ -697,14 +710,13 @@ void Window::registerDefaultSidePanes()
     addCreatedCallback(createToolsPane);
 }
 
-void Window::createMenuItemForSidePane(const Widget &pane)
+void Window::createMenuItemForSidePane(Widget &pane)
 {
     std::string actionName(pane.id());
     actionName.insert(0, "show-hide-");
     std::string title(pane.title());
     title.erase(std::remove(title.begin(), title.end(), '_'), title.end());
     char *tooltip = g_strdup_printf(_("Show or hide %s"), title.c_str());
-    GtkActionGroup *group = gtk_action_group_new(actionName.c_str());
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
                                                     title.c_str(),
                                                     tooltip,
@@ -714,32 +726,45 @@ void Window::createMenuItemForSidePane(const Widget &pane)
                                  gtk_widget_get_visible(pane.gtkWidget()));
     g_signal_connect(action, "toggled",
                      G_CALLBACK(showHideSidePane), this);
-    g_signal_connect_after(pane.gtkWidget(), "notify::visible",
-                           G_CALLBACK(onSidePaneVisibilityChanged), action);
+    gulong signalHandlerId =
+        g_signal_connect_after(pane.gtkWidget(), "notify::visible",
+                               G_CALLBACK(onSidePaneVisibilityChanged), action);
     gtk_action_group_add_action(m_actions.actionGroup(), GTK_ACTION(action));
-    gtk_ui_manager_insert_action_group(m_uiManager, group, 0);
+    guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
-                          gtk_ui_manager_new_merge_id(m_uiManager),
+                          mergeId,
                           "/main-menu-bar/view/side-panes",
                           actionName.c_str(),
                           actionName.c_str(),
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
+    pane.addClosedCallback(
+        boost::bind(&Window::onSidePaneClosed, this,
+                    new SidePaneData(action, signalHandlerId, mergeId), _1));
 }
 
-void Window::createMenuItemsForSidePanesRecursively(const Widget &widget)
+void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
 {
-    if (&widget == m_mainArea)
+    if (strcmp(widget.id(), MAIN_AREA_ID) == 0)
         return;
     if (strcmp(widget.id(), PANED_ID) == 0)
     {
-        const Paned &paned = static_cast<const Paned &>(widget);
+        Paned &paned = static_cast<Paned &>(widget);
         createMenuItemsForSidePanesRecursively(paned.child(0));
         createMenuItemsForSidePanesRecursively(paned.child(1));
         return;
     }
     createMenuItemForSidePane(widget);
+}
+
+void Window::onSidePaneClosed(const SidePaneData *data, const Widget &pane)
+{
+    gtk_ui_manager_remove_ui(m_uiManager, data->m_uiMergeId);
+    g_signal_handler_disconnect(pane.gtkWidget(), data->m_signalHandlerId);
+    gtk_action_group_remove_action(m_actions.actionGroup(),
+                                   GTK_ACTION(data->m_action));
+    delete data;
 }
 
 void Window::showHideSidePane(GtkToggleAction *action, Window *window)

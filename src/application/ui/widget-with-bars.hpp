@@ -66,10 +66,11 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    virtual void removeChild(Widget &child);
+
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    virtual int childCount() const
-    { return (m_mainChild ? 1 : 0) + barCount(); }
+    virtual int childCount() const { return 1 + barCount(); }
 
     virtual Widget &child(int index)
     { return index == 0 ? *m_mainChild : *m_bars[index - 1]; }
@@ -110,8 +111,6 @@ protected:
     void addMainChild(Widget &child);
 
     void removeMainChild(Widget &child);
-
-    virtual void removeChildInternally(Widget &child);
 
 private:
     static void setFocusChild(GtkWidget *container,
