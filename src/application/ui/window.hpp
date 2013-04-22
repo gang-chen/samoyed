@@ -247,7 +247,7 @@ private:
 
     void createMenuItemForSidePane(Widget &pane);
     void createMenuItemsForSidePanesRecursively(Widget &widget);
-    void onSidePaneClosed(const SidePaneData *data, const Widget &pane);
+    void onRemoveSidePane(const Widget &pane, const SidePaneData *data);
 
     static Created s_created;
     static SidePaneCreated s_navigationPaneCreated;
