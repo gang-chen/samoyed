@@ -187,8 +187,8 @@ Widget *TextEditor::XmlElement::restoreWidget()
 TextEditor::TextEditor(TextFile &file, Project *project):
     Editor(file, project),
     m_bypassEdits(false),
-    m_initialCursorLine(0),
-    m_initialCursorColumn(0)
+    m_presetCursorLine(0),
+    m_presetCursorColumn(0)
 {
 }
 
@@ -257,8 +257,8 @@ void TextEditor::getCursor(int &line, int &column) const
 {
     if (file().loading())
     {
-        line = m_initialCursorLine;
-        column = m_initialCursorColumn;
+        line = m_presetCursorLine;
+        column = m_presetCursorColumn;
         return;
     }
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
@@ -274,8 +274,8 @@ void TextEditor::setCursor(int line, int column)
 {
     if (file().loading())
     {
-        m_initialCursorLine = line;
-        m_initialCursorColumn = column;
+        m_presetCursorLine = line;
+        m_presetCursorColumn = column;
         return;
     }
     GtkTextView *view = GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
@@ -412,11 +412,9 @@ void TextEditor::remove(GtkTextBuffer *buffer,
 
 void TextEditor::onFileLoaded()
 {
-    setCursor(m_initialCursorLine, m_initialCursorColumn);
-    m_initialCursorLine = 0;
-    m_initialCursorColumn = 0;
-    gtk_text_view_place_cursor_onscreen(
-        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
+    setCursor(m_presetCursorLine, m_presetCursorColumn);
+    m_presetCursorLine = 0;
+    m_presetCursorColumn = 0;
 }
 
 }
