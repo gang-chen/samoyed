@@ -129,7 +129,7 @@ public:
     WidgetContainer *parent() { return m_parent; }
     const WidgetContainer *parent() const { return m_parent; }
 
-    void setParent(WidgetContainer *parent) { m_parent = parent; }
+    void setParent(WidgetContainer *parent);
 
     bool closing() const { return m_closing; }
 
@@ -148,8 +148,6 @@ public:
     boost::signals2::connection
     addUnparentCallback(const Closed::slot_type &callback)
     { return m_unparent.connect(callback); }
-
-    void unparent() { m_unparent(*this); }
 
 protected:
     Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}
