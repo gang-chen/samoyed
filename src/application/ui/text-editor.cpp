@@ -284,7 +284,8 @@ void TextEditor::setCursor(int line, int column)
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                             line, column);
     gtk_text_buffer_place_cursor(buffer, &iter);
-    gtk_text_view_place_cursor_onscreen(view);
+    gtk_text_view_scroll_mark_onscreen(view,
+                                       gtk_text_buffer_get_insert(buffer));
 }
 
 void TextEditor::getSelectedRange(int &line, int &column,

@@ -163,8 +163,6 @@ public:
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, double size);
 
-    void removeSidePane(Widget &pane);
-
     Notebook &navigationPane();
     const Notebook &navigationPane() const;
     Notebook &toolsPane();
@@ -225,15 +223,20 @@ private:
     static gboolean onFocusInEvent(GtkWidget *widget,
                                    GdkEvent *event,
                                    Window *window);
-    static gboolean onWindowStateEvent(GtkWidget *widget,
-                                       GdkEvent *event,
-                                       Window *window);
     static gboolean onConfigureEvent(GtkWidget *widget,
                                      GdkEvent *event,
                                      Window *window);
+    static gboolean onWindowStateEvent(GtkWidget *widget,
+                                       GdkEvent *event,
+                                       Window *window);
+    static gboolean onKeyPressEvent(GtkWidget *widget,
+                                    GdkEvent *event,
+                                    Window *window);
+
     static void onToolbarVisibilityChanged(GtkWidget *toolbar,
                                            GParamSpec *spec,
                                            Window *window);
+
     static void showHideSidePane(GtkToggleAction *action, Window *window);
     static void onSidePaneVisibilityChanged(GtkWidget *pane,
                                             GParamSpec *spec,
@@ -247,13 +250,11 @@ private:
 
     void createMenuItemForSidePane(Widget &pane);
     void createMenuItemsForSidePanesRecursively(Widget &widget);
-    void onRemoveSidePane(const Widget &pane, const SidePaneData *data);
+    void onSidePaneClosed(const Widget &pane, const SidePaneData *data);
 
     static Created s_created;
     static SidePaneCreated s_navigationPaneCreated;
     static SidePaneCreated s_toolsPaneCreated;
-
-    GtkWidget *m_grid;
 
     GtkWidget *m_menuBar;
 

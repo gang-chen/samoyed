@@ -385,6 +385,19 @@ Paned *Paned::split(const char *id,
     }
     parent = original->parent();
 
+    // If the original widget is mapped, save its size and set the position of
+    // the new paned widget.  Note that if the original widget is mapped, then
+    // the paned widget will be mapped after replacing the original one, but its
+    // size will not be allocated.
+    int totalSize = -1;
+    if (gtk_widget_get_mapped(original->gtkWidget()))
+    {
+        if (orientation == ORIENTATION_HORIZONTAL)
+            totalSize = gtk_widget_get_allocated_width(original->gtkWidget());
+        else
+            totalSize = gtk_widget_get_allocated_height(original->gtkWidget());
+    }
+
     // Create a paned widget to hold the two widgets.
     Paned *paned = new Paned;
     if (!paned->WidgetContainer::setup(id))
@@ -406,7 +419,20 @@ Paned *Paned::split(const char *id,
     paned->m_currentChildIndex = newChildIndex;
 
     gtk_widget_show_all(p);
-    paned->setPosition(position);
+
+    if (totalSize != -1)
+    {
+        GValue handleSize = G_VALUE_INIT;
+        g_value_init(&handleSize, G_TYPE_INT);
+        gtk_widget_style_get_property(paned->gtkWidget(),
+                                      "handle-size", &handleSize);
+        gtk_paned_set_position(GTK_PANED(paned->gtkWidget()),
+                               (totalSize - g_value_get_int(&handleSize)) *
+                               position);
+    }
+    else
+        paned->setPosition(position);
+
     return paned;
 }
 
@@ -453,7 +479,6 @@ void Paned::setPositionInternally()
                            (totalSize - g_value_get_int(&handleSize)) *
                            m_position);
     m_position = -1.;
-                                                                                
 }
 
 void Paned::setPositionOnMapped(GtkWidget *widget, Paned *paned)

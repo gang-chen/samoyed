@@ -301,7 +301,6 @@ Window::XmlElement::~XmlElement()
 }
 
 Window::Window():
-    m_grid(NULL),
     m_menuBar(NULL),
     m_toolbar(NULL),
     m_child(NULL),
@@ -346,13 +345,15 @@ bool Window::build(const Configuration &config)
     }
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    m_grid = gtk_grid_new();
+    gtk_window_add_accel_group(GTK_WINDOW(window),
+                               gtk_ui_manager_get_accel_group(m_uiManager));
 
-    gtk_container_add(GTK_CONTAINER(window), m_grid);
+    GtkWidget *grid = gtk_grid_new();
+    gtk_container_add(GTK_CONTAINER(window), grid);
 
     m_menuBar = gtk_ui_manager_get_widget(m_uiManager, "/main-menu-bar");
     gtk_widget_set_hexpand(m_menuBar, TRUE);
-    gtk_grid_attach_next_to(GTK_GRID(m_grid),
+    gtk_grid_attach_next_to(GTK_GRID(grid),
                             m_menuBar, NULL,
                             GTK_POS_BOTTOM, 1, 1);
 
@@ -360,7 +361,7 @@ bool Window::build(const Configuration &config)
     gtk_style_context_add_class(gtk_widget_get_style_context(m_toolbar),
                                 GTK_STYLE_CLASS_PRIMARY_TOOLBAR);
     gtk_widget_set_hexpand(m_toolbar, TRUE);
-    gtk_grid_attach_next_to(GTK_GRID(m_grid),
+    gtk_grid_attach_next_to(GTK_GRID(grid),
                             m_toolbar, m_menuBar,
                             GTK_POS_BOTTOM, 1, 1);
     g_signal_connect_after(m_toolbar, "notify::visible",
@@ -374,6 +375,8 @@ bool Window::build(const Configuration &config)
                      G_CALLBACK(onConfigureEvent), this);
     g_signal_connect(window, "window-state-event",
                      G_CALLBACK(onWindowStateEvent), this);
+    g_signal_connect(window, "key-press-event",
+                     G_CALLBACK(onKeyPressEvent), this);
 
     setGtkWidget(window);
 
@@ -391,7 +394,7 @@ bool Window::build(const Configuration &config)
     gtk_window_set_default_size(GTK_WINDOW(window), m_width, m_height);
     m_toolbarVisible = config.m_toolbarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
-    gtk_widget_show_all(m_grid);
+    gtk_widget_show_all(grid);
     if (!m_toolbarVisible)
         setToolbarVisible(false);
     if (config.m_inFullScreen)
@@ -452,6 +455,8 @@ bool Window::restore(XmlElement &xmlElement)
     if (!build(xmlElement.configuration()))
         return false;
     addChildInternally(*child);
+
+    gtk_widget_grab_focus(current().gtkWidget());
 
     // Extract the serial number of the window from its identifier, and update
     // the global serial number.
@@ -536,7 +541,7 @@ void Window::addChildInternally(Widget &child)
     assert(!m_child);
     WidgetContainer::addChildInternally(child);
     m_child = &child;
-    gtk_grid_attach_next_to(GTK_GRID(m_grid),
+    gtk_grid_attach_next_to(GTK_GRID(gtk_bin_get_child(GTK_BIN(gtkWidget()))),
                             child.gtkWidget(), m_toolbar,
                             GTK_POS_BOTTOM, 1, 1);
 }
@@ -546,7 +551,8 @@ void Window::removeChildInternally(Widget &child)
     assert(&child == m_child);
     m_child = NULL;
     g_object_ref(child.gtkWidget());
-    gtk_container_remove(GTK_CONTAINER(m_grid), child.gtkWidget());
+    gtk_container_remove(GTK_CONTAINER(gtk_bin_get_child(GTK_BIN(gtkWidget()))),
+                         child.gtkWidget());
     WidgetContainer::removeChildInternally(child);
 }
 
@@ -604,11 +610,6 @@ void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
 
     // Add a menu item for showing or hiding the side pane.
     createMenuItemForSidePane(pane);
-}
-
-void Window::removeSidePane(Widget &pane)
-{
-    pane.parent()->removeChild(pane);
 }
 
 Notebook &Window::navigationPane()
@@ -740,9 +741,9 @@ void Window::createMenuItemForSidePane(Widget &pane)
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
-    pane.addUnparentCallback(
-        boost::bind(&Window::onRemoveSidePane, this,
-                    -1, new SidePaneData(action, signalHandlerId, mergeId)));
+    pane.addClosedCallback(
+        boost::bind(&Window::onSidePaneClosed, this,
+                    _1, new SidePaneData(action, signalHandlerId, mergeId)));
 }
 
 void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
@@ -759,7 +760,7 @@ void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
     createMenuItemForSidePane(widget);
 }
 
-void Window::onRemoveSidePane(const Widget &pane, const SidePaneData *data)
+void Window::onSidePaneClosed(const Widget &pane, const SidePaneData *data)
 {
     gtk_ui_manager_remove_ui(m_uiManager, data->m_uiMergeId);
     g_signal_handler_disconnect(pane.gtkWidget(), data->m_signalHandlerId);
@@ -873,6 +874,25 @@ void Window::onToolbarVisibilityChanged(GtkWidget *toolbar,
 {
     window->m_actions.onToolbarVisibilityChanged(
         gtk_widget_get_visible(toolbar));
+}
+
+gboolean Window::onKeyPressEvent(GtkWidget *widget,
+                                 GdkEvent *event,
+                                 Window *window)
+{
+    gboolean handled = FALSE;
+
+    // Handle focus widget key events.
+    if (!handled)
+        handled = gtk_window_propagate_key_event(GTK_WINDOW(widget),
+                                                 &event->key);
+
+    // Handle mnemonics and accelerators.
+    if (!handled)
+        handled = gtk_window_activate_key(GTK_WINDOW(widget),
+                                          &event->key);
+
+    return handled;
 }
 
 }

@@ -21,7 +21,7 @@ class WidgetContainer;
 class Widget: public boost::noncopyable
 {
 public:
-    typedef boost::signals2::signal<void (Widget &widget)> Unparent;
+    typedef boost::signals2::signal<void (Widget &widget)> Closed;
 
     /**
      * An XML element used to save and restore a widget.
@@ -129,7 +129,7 @@ public:
     WidgetContainer *parent() { return m_parent; }
     const WidgetContainer *parent() const { return m_parent; }
 
-    void setParent(WidgetContainer *parent);
+    void setParent(WidgetContainer *parent) { m_parent = parent; }
 
     bool closing() const { return m_closing; }
 
@@ -146,8 +146,8 @@ public:
     void setCurrent();
 
     boost::signals2::connection
-    addUnparentCallback(const Closed::slot_type &callback)
-    { return m_unparent.connect(callback); }
+    addClosedCallback(const Closed::slot_type &callback)
+    { return m_closed.connect(callback); }
 
 protected:
     Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}
@@ -175,7 +175,7 @@ private:
 
     bool m_closing;
 
-    Unparent m_unparent;
+    Closed m_closed;
 };
 
 }

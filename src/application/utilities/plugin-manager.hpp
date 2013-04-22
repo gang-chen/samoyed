@@ -24,7 +24,9 @@ public:
 
     Plugin *findPlugin(const char *pluginId);
 
-    Plugin *activatePlugin(const char *pluginId, const char *extensionId);
+    Plugin *activatePlugin(const char *pluginId);
+
+    void deactivatePlugin(const char *pluginId);
 
 private:
     typedef std::map<ComparablePointer<const char *>, Plugin *> PluginTable;

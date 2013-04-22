@@ -138,6 +138,7 @@ bool Widget::restore(XmlElement &xmlElement)
 
 Widget::~Widget()
 {
+    m_closed(*this);
     if (m_parent)
         m_parent->removeChild(*this);
     if (m_gtkWidget)
@@ -158,13 +159,6 @@ void Widget::setDescription(const char *description)
         m_parent->onChildDescriptionChanged(*this);
 }
 
-void Widget::setParent(WidgetContainer *parent)
-{
-    if (m_parent && !parent)
-        m_unparent(*this);
-    m_parent = parent;
-}
-
 void Widget::setCurrent()
 {
     // The purpose is to switch the current page in each notebook to the desired
@@ -179,8 +173,9 @@ void Widget::setCurrent()
     }
 
     // Set this widget as the current widget.
-    gtk_widget_grab_focus(gtkWidget());
-    gtk_window_present(GTK_WINDOW(child->gtkWidget()));
+    gtk_widget_grab_focus(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+    if (!gtk_widget_get_visible(child->gtkWidget()))
+        gtk_window_present(GTK_WINDOW(child->gtkWidget()));
 }
 
 void Widget::setGtkWidget(GtkWidget *gtkWidget)

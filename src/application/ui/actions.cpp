@@ -68,14 +68,18 @@ void openFile(GtkAction *action, Samoyed::Window *window)
     std::list<std::pair<Samoyed::File *, Samoyed::Editor *> > opened;
     Samoyed::File::openByDialog(NULL, opened);
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    Samoyed::Editor *editor = NULL;
     for (std::list<std::pair<Samoyed::File *, Samoyed::Editor *> >::
              const_iterator it = opened.begin();
          it != opened.end();
          ++it)
     {
-        if (!it->second->parent())
-            editorGroup.addChild(*it->second, editorGroup.childCount());
+        editor = it->second;
+        if (!editor->parent())
+            editorGroup.addChild(*editor, editorGroup.childCount());
     }
+    if (editor)
+        editor->setCurrent();
 }
 
 void saveFile(GtkAction *action, Samoyed::Window *window)

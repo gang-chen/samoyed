@@ -13,13 +13,13 @@ namespace Samoyed
 class Plugin: boost::noncopyable
 {
 public:
-    Plugin(const char *id): m_id(id) {}
+    static Plugin *activate(const char *id);
 
+protected:
     virtual bool startUp() { return true; }
 
     virtual void shutDown() {}
 
-protected:
     virtual ~Plugin() {}
 
 private:
