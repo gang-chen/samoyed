@@ -543,6 +543,7 @@ void Window::addChildInternally(Widget &child)
 
 void Window::removeChildInternally(Widget &child)
 {
+    assert(&child == m_child);
     m_child = NULL;
     g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(m_grid), child.gtkWidget());
@@ -739,9 +740,9 @@ void Window::createMenuItemForSidePane(Widget &pane)
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
-    pane.addClosedCallback(
-        boost::bind(&Window::onSidePaneClosed, this,
-                    new SidePaneData(action, signalHandlerId, mergeId), _1));
+    pane.addUnparentCallback(
+        boost::bind(&Window::onRemoveSidePane, this,
+                    -1, new SidePaneData(action, signalHandlerId, mergeId)));
 }
 
 void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
@@ -758,7 +759,7 @@ void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
     createMenuItemForSidePane(widget);
 }
 
-void Window::onSidePaneClosed(const SidePaneData *data, const Widget &pane)
+void Window::onRemoveSidePane(const Widget &pane, const SidePaneData *data)
 {
     gtk_ui_manager_remove_ui(m_uiManager, data->m_uiMergeId);
     g_signal_handler_disconnect(pane.gtkWidget(), data->m_signalHandlerId);
