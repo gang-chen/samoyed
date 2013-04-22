@@ -103,8 +103,8 @@ private:
 
     bool m_bypassEdits;
 
-    int m_initialCursorLine;
-    int m_initialCursorColumn;
+    int m_presetCursorLine;
+    int m_presetCursorColumn;
 };
 
 }
