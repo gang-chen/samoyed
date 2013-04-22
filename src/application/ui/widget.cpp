@@ -138,7 +138,6 @@ bool Widget::restore(XmlElement &xmlElement)
 
 Widget::~Widget()
 {
-    m_closed(*this);
     if (m_parent)
         m_parent->removeChild(*this);
     if (m_gtkWidget)
