@@ -173,7 +173,7 @@ void Widget::setCurrent()
     }
 
     // Set this widget as the current widget.
-    gtk_widget_grab_focus(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+    grabFocus();
     if (!gtk_widget_get_visible(child->gtkWidget()))
         gtk_window_present(GTK_WINDOW(child->gtkWidget()));
 }
