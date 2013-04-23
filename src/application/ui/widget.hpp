@@ -140,6 +140,9 @@ public:
      */
     virtual XmlElement *save() const = 0;
 
+    virtual void grabFocus()
+    { gtk_widget_grab_focus(gtkWidget()); }
+
     /**
      * Set this widget as the current widget.
      */
