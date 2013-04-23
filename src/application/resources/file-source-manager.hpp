@@ -12,8 +12,11 @@ namespace Samoyed
 
 class FileSourceManager: public Manager<FileSource>
 {
+private:
+    static const int CACHE_SIZE = 20;
+
 public:
-    FileSourceManager(): Manager<FileSource>(30) {}
+    FileSourceManager(): Manager<FileSource>(CACHE_SIZE) {}
 };
 
 }
