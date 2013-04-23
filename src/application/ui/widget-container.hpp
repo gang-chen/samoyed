@@ -32,8 +32,7 @@ public:
                             std::list<std::string> &errors);
     };
 
-    virtual void grabFocus()
-    { current().grabFocus(); }
+    virtual void grabFocus();
 
     virtual Widget &current();
     virtual const Widget &current() const;
