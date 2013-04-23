@@ -456,7 +456,7 @@ bool Window::restore(XmlElement &xmlElement)
         return false;
     addChildInternally(*child);
 
-    gtk_widget_grab_focus(current().gtkWidget());
+    grabFocus();
 
     // Extract the serial number of the window from its identifier, and update
     // the global serial number.
@@ -892,6 +892,10 @@ gboolean Window::onKeyPressEvent(GtkWidget *widget,
         handled = gtk_window_activate_key(GTK_WINDOW(widget),
                                           &event->key);
 
+    // The above code is copied from the default handler of GtkWindow but the
+    // order is swapped.  If not handled, the default handler will execute the
+    // code again but won't take any action.  This is a waste of time.  But I
+    // don't know how to bypass the code.
     return handled;
 }
 
