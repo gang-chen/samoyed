@@ -25,14 +25,17 @@
 #define CURSOR_LINE "cursor-line"
 #define CURSOR_COLUMN "cursor-column"
 
+#define SCROLL_MARGIN 0.02
+
 namespace
 {
 
 gboolean scrollToCursor(gpointer view)
 {
-    gtk_text_view_scroll_mark_onscreen(
+    gtk_text_view_scroll_to_mark(
         GTK_TEXT_VIEW(view),
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(view)));
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(view)),
+        SCROLL_MARGIN, FALSE, 0., 0.);
     return FALSE;
 }
 
@@ -297,8 +300,9 @@ void TextEditor::setCursor(int line, int column)
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                             line, column);
     gtk_text_buffer_place_cursor(buffer, &iter);
-    gtk_text_view_scroll_mark_onscreen(view,
-                                       gtk_text_buffer_get_insert(buffer));
+    gtk_text_view_scroll_to_mark(view,
+                                 gtk_text_buffer_get_insert(buffer),
+                                 SCROLL_MARGIN, FALSE, 0., 0.);
 }
 
 void TextEditor::getSelectedRange(int &line, int &column,
