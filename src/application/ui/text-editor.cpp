@@ -25,6 +25,19 @@
 #define CURSOR_LINE "cursor-line"
 #define CURSOR_COLUMN "cursor-column"
 
+namespace
+{
+
+gboolean scrollToCursor(gpointer view)
+{
+    gtk_text_view_scroll_mark_onscreen(
+        GTK_TEXT_VIEW(view),
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(view)));
+    return FALSE;
+}
+
+}
+
 namespace Samoyed
 {
 
@@ -413,9 +426,21 @@ void TextEditor::remove(GtkTextBuffer *buffer,
 
 void TextEditor::onFileLoaded()
 {
-    setCursor(m_presetCursorLine, m_presetCursorColumn);
+    GtkTextView *view = GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(view);
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
+                                            m_presetCursorLine,
+                                            m_presetCursorColumn);
+    gtk_text_buffer_place_cursor(buffer, &iter);
+    g_idle_add(scrollToCursor, view);
     m_presetCursorLine = 0;
     m_presetCursorColumn = 0;
+}
+
+void TextEditor::grabFocus()
+{
+    gtk_widget_grab_focus(gtk_bin_get_child(GTK_BIN(gtkWidget())));
 }
 
 }
