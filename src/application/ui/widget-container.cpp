@@ -74,6 +74,15 @@ void WidgetContainer::removeChild(Widget &child)
         delete this;
 }
 
+void WidgetContainer::grabFocus()
+{
+    Widget &current = this->current();
+    if (&current == this)
+        Widget::grabFocus();
+    else
+        current.grabFocus();
+}
+
 Widget &WidgetContainer::current()
 {
     return (currentChildIndex() >= 0 ?
