@@ -13,7 +13,7 @@ namespace Samoyed
 
 class Plugin;
 
-class PluginManager: boost::noncopyable
+class PluginManager: public boost::noncopyable
 {
 public:
     /**
@@ -21,6 +21,12 @@ public:
      * Add plugin extensions to extension points.
      */
     void scanPlugins();
+
+    bool isPluginEnabled(const char *pluginId);
+
+    bool enablePlugin(const char *pluginId);
+
+    bool disablePlugin(const char *pluginId);
 
     Plugin *findPlugin(const char *pluginId);
 
@@ -32,6 +38,10 @@ private:
     typedef std::map<ComparablePointer<const char *>, Plugin *> PluginTable;
 
     PluginTable m_pluginTable;
+
+    int m_nCachedPlugins;
+    Plugin *m_lruCachedPlugin;
+    Plugin *m_mruCachedPlugin;
 };
 
 }
