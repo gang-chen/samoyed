@@ -167,7 +167,7 @@ protected:
                 objectToSwap = cacheObject(oldObject);
             ++newObject->m_refCount;
         }
-        delete *objectToSwap;
+        delete objectToSwap;
     }
 
     Table m_table;
