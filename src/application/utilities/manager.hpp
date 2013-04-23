@@ -6,7 +6,6 @@
 
 #include <assert.h>
 #include <utility>
-#include <list>
 #include <map>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
@@ -101,8 +100,7 @@ protected:
         }
     }
 
-    void cacheObject(Object *object,
-                     std::list<Object *> &objectsToSwap)
+    Object *cacheObject(Object *object)
     {
         // Cache the object.
         if (m_mruCachedObject)
@@ -113,20 +111,22 @@ protected:
         m_mruCachedObject = object;
         ++m_nCachedObjects;
 
-        // If the cache is full, swap the least recently used cached objects out
+        // If the cache is full, swap the least recently used cached object out
         // of memory.
-        while (m_nCachedObjects > m_cacheSize)
+        if (m_nCachedObjects > m_cacheSize)
         {
-            Object *object = m_lruCachedObject;
-            if (object->m_nextCached)
-                object->m_nextCached->m_prevCached = object->m_prevCached;
+            Object *objectToSwap = m_lruCachedObject;
+            if (objectToSwap->m_nextCached)
+                objectToSwap->m_nextCached->m_prevCached =
+                    objectToSwap->m_prevCached;
             else
-                m_mruCachedObject = object->m_prevCached;
-            m_lruCachedObject = object->m_nextCached;
-            m_table.erase(object->key());
-            objectsToSwap.push_back(object);
+                m_mruCachedObject = objectToSwap->m_prevCached;
+            m_lruCachedObject = objectToSwap->m_nextCached;
+            m_table.erase(objectToSwap->key());
             --m_nCachedObjects;
+            return objectToSwap;
         }
+        return NULL;
     }
 
     void increaseReference(Object *object)
@@ -137,13 +137,13 @@ protected:
 
     void decreaseReference(Object *object)
     {
-        std::list<Object *> objectsToSwap;
+        Object *objectToSwap = NULL;
         bool del = false;
         {
             boost::mutex::scoped_lock lock(m_mutex);
             if (--object->m_refCount == 0)
             {
-                cacheObject(object, objectsToSwap);
+                objectToSwap = cacheObject(object);
                 // If no one holds any reference to objects, it is safe to
                 // destroy the manager.
                 if (m_destroy &&
@@ -152,30 +152,22 @@ protected:
                     del = true;
             }
         }
-        for (typename std::list<Object *>::const_iterator it =
-                 objectsToSwap.begin();
-             it != objectsToSwap.end();
-             ++it)
-            delete *it;
+        delete objectToSwap;
         if (del)
             delete this;
     }
 
     void switchReference(Object *newObject, Object *oldObject)
     {
-        std::list<Object *> objectsToSwap;
+        Object *objectToSwap = NULL;
         if (newObject != oldObject)
         {
             boost::mutex::scoped_lock lock(m_mutex);
             if (--oldObject->m_refCount == 0)
-                cacheObject(oldObject, objectsToSwap);
+                objectToSwap = cacheObject(oldObject);
             ++newObject->m_refCount;
         }
-        for (typename std::list<Object *>::const_iterator it =
-                 objectsToSwap.begin();
-             it != objectsToSwap.end();
-             ++it)
-            delete *it;
+        delete *objectToSwap;
     }
 
     Table m_table;
