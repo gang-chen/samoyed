@@ -64,8 +64,8 @@ public:
         bool m_toolbarVisibleInFullScreen;
         Configuration():
             m_screenIndex(-1),
-            m_width(400),
-            m_height(300),
+            m_width(-1),
+            m_height(-1),
             m_inFullScreen(false),
             m_maximized(true),
             m_toolbarVisible(true),
