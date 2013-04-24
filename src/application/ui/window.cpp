@@ -43,6 +43,8 @@
 namespace
 {
 
+const int DEFAULT_SIZE_RATIO = 0.7;
+
 int serialNumber = 0;
 
 Samoyed::Widget *findPane(Samoyed::Widget &root, const char *id)
@@ -391,7 +393,14 @@ bool Window::build(const Configuration &config)
 
     m_width = config.m_width;
     m_height = config.m_height;
+    if (m_width == -1)
+    {
+        GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(window));
+        m_width = gdk_screen_get_width(screen) * DEFAULT_SIZE_RATIO;
+        m_height = gdk_screen_get_height(screen) * DEFAULT_SIZE_RATIO;
+    }
     gtk_window_set_default_size(GTK_WINDOW(window), m_width, m_height);
+
     m_toolbarVisible = config.m_toolbarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
     gtk_widget_show_all(grid);
@@ -441,6 +450,7 @@ Window *Window::create(const Configuration &config)
         delete window;
         return NULL;
     }
+    window->grabFocus();
     gtk_widget_show(window->gtkWidget());
     return window;
 }
@@ -455,8 +465,6 @@ bool Window::restore(XmlElement &xmlElement)
     if (!build(xmlElement.configuration()))
         return false;
     addChildInternally(*child);
-
-    grabFocus();
 
     // Extract the serial number of the window from its identifier, and update
     // the global serial number.
@@ -473,6 +481,7 @@ bool Window::restore(XmlElement &xmlElement)
 
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
 
+    grabFocus();
     gtk_widget_show(gtkWidget());
     return true;
 }
