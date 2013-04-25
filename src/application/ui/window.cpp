@@ -43,7 +43,7 @@
 namespace
 {
 
-const int DEFAULT_SIZE_RATIO = 0.7;
+const float DEFAULT_SIZE_RATIO = 0.7;
 
 int serialNumber = 0;
 

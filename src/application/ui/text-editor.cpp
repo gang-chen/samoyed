@@ -34,7 +34,8 @@ gboolean scrollToCursor(gpointer view)
 {
     gtk_text_view_scroll_to_mark(
         GTK_TEXT_VIEW(view),
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(view)),
+        gtk_text_buffer_get_insert(
+            gtk_text_view_get_buffer(GTK_TEXT_VIEW(view))),
         SCROLL_MARGIN, FALSE, 0., 0.);
     return FALSE;
 }
@@ -373,9 +374,15 @@ void TextEditor::onFileChanged(const File::Change &change)
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
     m_bypassEdits = true;
-    if (tc.type == TextFile::Change::TYPE_INSERTION)
+    if (tc.m_type == File::Change::TYPE_INIT)
     {
-        const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
+        char *text = static_cast<const TextFile &>(file()).text(0, 0, -1, -1);
+        gtk_text_buffer_insert_at_cursor(buffer, text, -1);
+        g_free(text);
+    }
+    else if (tc.m_type == TextFile::Change::TYPE_INSERTION)
+    {
+        const TextFile::Change::Value::Insertion &ins = tc.m_value.insertion;
         if (ins.line == -1 && ins.column == -1)
             gtk_text_buffer_insert_at_cursor(buffer, ins.text, ins.length);
         else
@@ -388,7 +395,7 @@ void TextEditor::onFileChanged(const File::Change &change)
     }
     else
     {
-        const TextFile::Change::Value::Removal &rem = tc.value.removal;
+        const TextFile::Change::Value::Removal &rem = tc.m_value.removal;
         GtkTextIter begin, end;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
                                                 rem.beginLine, rem.beginColumn);

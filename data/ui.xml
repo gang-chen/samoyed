@@ -52,8 +52,11 @@
 
     <menu name="view" action="view">
       <menuitem name="new-window" action="create-window"/>
-      <menuitem name="new-editor-group" action="create-editor-group"/>
       <menuitem name="new-editor" action="create-editor"/>
+      <menuitem name="split-editor-vertically"
+                action="split-editor-vertically"/>
+      <menuitem name="split-editor-horizontally"
+                action="split-editor-horizontally"/>
       <separator/>
       <menuitem name="toolbar" action="show-hide-toolbar"/>
       <placeholder name="side-panes"/>

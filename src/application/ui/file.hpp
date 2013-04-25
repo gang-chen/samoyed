@@ -47,7 +47,16 @@ public:
     /**
      * A change.  Derived classes should define their concrete changes.
      */
-    class Change {};
+    class Change
+    {
+    public:
+        enum Type
+        {
+            TYPE_INIT
+        };
+        int m_type;
+        Change(int type): m_type(type) {}
+    };
 
     /**
      * @param change The change that was made.

@@ -46,6 +46,9 @@ public:
     virtual Widget &child(int index) = 0;
     virtual const Widget &child(int index) const = 0;
 
+    Widget &currentChild() { return child(currentChildIndex()); }
+    const Widget &currentChild() const { return child(currentChildIndex()); }
+
     int childIndex(const Widget &child) const;
 
     virtual int currentChildIndex() const = 0;

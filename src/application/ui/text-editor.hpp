@@ -60,6 +60,8 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    virtual void grabFocus();
+
     virtual void onFileChanged(const File::Change &change);
 
     virtual bool frozen() const;

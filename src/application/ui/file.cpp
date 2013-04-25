@@ -7,6 +7,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "window.hpp"
+#include "notebook.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/file-loader.hpp"
@@ -196,7 +197,7 @@ File::open(const char *uri, Project *project,
     file = (*factory)(uri, project, options);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
-    editor = file->createEditor(project);
+    editor = file->createEditorInternally(project);
     if (!editor)
     {
         delete file;
@@ -230,12 +231,20 @@ void File::openByDialog(Project *project,
         _("Create a _new editor even if the file is already opened"));
     gtk_grid_attach_next_to(GTK_GRID(grid), newEditorButton,
                             NULL, GTK_POS_BOTTOM, 1, 1);
+    GtkWidget *newGroupButton = gtk_check_button_new_with_mnemonic(
+        _("Create a new editor group to hold the new editor"));
+    gtk_grid_attach_next_to(GTK_GRID(grid), newGroupButton,
+                            NULL, GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(grid);
     gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog), grid);
 
+    Notebook *editorGroup = NULL;
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
         GSList *uris, *uri;
+        if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(newGroupButton)))
+            editorGroup = &Application::instance().currentWindow().
+                currentEditorGroup();
         uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
         uri = uris;
         while (uri)
@@ -245,7 +254,18 @@ void File::openByDialog(Project *project,
                      gtk_toggle_button_get_active(
                          GTK_TOGGLE_BUTTON(newEditorButton)));
             if (fileEditor.first)
+            {
                 opened.push_back(fileEditor);
+
+                if (!fileEditor.second->parent())
+                {
+                    if (!editorGroup)
+                        editorGroup = Application::instance().currentWindow().
+                            splitCurrentEditorGroup(Window::SIDE_RIGHT);
+                    editorGroup->addChild(*fileEditor.second,
+                                          editorGroup->currentChildIndex());
+                }
+            }
             uri = uri->next;
         }
         g_slist_free_full(uris, g_free);
@@ -269,6 +289,13 @@ Editor *File::createEditor(Project *project)
         m_closing = false;
         m_reopening = true;
     }
+
+    if (!m_loading)
+    {
+        assert(m_firstEditor != editor);
+        editor->onFileChanged(Change(Change::TYPE_INIT));
+    }
+
     return editor;
 }
 

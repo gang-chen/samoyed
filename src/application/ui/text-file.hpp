@@ -21,9 +21,9 @@ public:
     {
         enum Type
         {
-            TYPE_INSERTION,
+            TYPE_INSERTION = TYPE_INIT + 1,
             TYPE_REMOVAL
-        } type;
+        };
         union Value
         {
             struct Insertion
@@ -40,22 +40,22 @@ public:
                 int endLine;
                 int endColumn;
             } removal;
-        } value;
+        } m_value;
         Change(int line, int column, const char *text, int length):
-            type(TYPE_INSERTION)
+            File::Change(TYPE_INSERTION)
         {
-            value.insertion.line = line;
-            value.insertion.column = column;
-            value.insertion.text = text;
-            value.insertion.length = length;
+            m_value.insertion.line = line;
+            m_value.insertion.column = column;
+            m_value.insertion.text = text;
+            m_value.insertion.length = length;
         }
         Change(int beginLine, int beginColumn, int endLine, int endColumn):
-            type(TYPE_REMOVAL)
+            File::Change(TYPE_REMOVAL)
         {
-            value.removal.beginLine = beginLine;
-            value.removal.beginColumn = beginColumn;
-            value.removal.endLine = endLine;
-            value.removal.endColumn = endColumn;
+            m_value.removal.beginLine = beginLine;
+            m_value.removal.beginColumn = beginColumn;
+            m_value.removal.endLine = endLine;
+            m_value.removal.endColumn = endColumn;
         }
     };
 

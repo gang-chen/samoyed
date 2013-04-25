@@ -15,6 +15,11 @@ class Plugin: boost::noncopyable
 public:
     static Plugin *activate(const char *id);
 
+    bool deactivate();
+
+    void addToCache(Plugin *lru, Plugin *mru);
+    void removeFromCache(Plugin *lru, Plugin *mru);
+
 protected:
     virtual bool startUp() { return true; }
 
@@ -24,6 +29,9 @@ protected:
 
 private:
     std::string m_id;
+
+    Plugin *m_nextCached;
+    Plugin *m_prevCached;
 };
 
 }

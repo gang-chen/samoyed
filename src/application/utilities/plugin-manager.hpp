@@ -16,6 +16,8 @@ class Plugin;
 class PluginManager: public boost::noncopyable
 {
 public:
+    PluginManager();
+
     /**
      * Scan plugins in the plugins directory.  Read in plugin manifest files.
      * Add plugin extensions to extension points.
