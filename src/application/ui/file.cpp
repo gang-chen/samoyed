@@ -262,10 +262,12 @@ void File::openByDialog(Project *project,
                     if (!editorGroup)
                         editorGroup = Application::instance().currentWindow().
                             splitCurrentEditorGroup(Window::SIDE_RIGHT);
-                    editorGroup->addChild(
-                        *fileEditor.second,
-                        editorGroup->currentChildIndex() == -1 ?
-                        0 : editorGroup->currentChildIndex());
+                    Application::instance().currentWindow().
+                        addEditorToEditorGroup(
+                            *fileEditor.second,
+                            *editorGroup,
+                            editorGroup->currentChildIndex() == -1 ?
+                            0 : editorGroup->currentChildIndex());
                 }
             }
             uri = uri->next;
