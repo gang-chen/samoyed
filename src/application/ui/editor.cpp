@@ -119,6 +119,11 @@ Editor::XmlElement::XmlElement(const Editor &editor):
     m_uri = editor.file().uri();
     if (editor.project())
         m_projectUri = editor.project()->uri();
+
+    // Remove the edited mark from the title.
+    std::string title = this->title();
+    if (editor.file().edited())
+        setTitle(title.c_str() + 2);
 }
 
 Editor *Editor::XmlElement::restoreEditor(
@@ -201,14 +206,14 @@ bool Editor::close()
 
 void Editor::onFileEditedStateChanged()
 {
+    std::string title = this->title();
     if (m_file.edited())
     {
-        std::string title = this->title();
         title.insert(0, "* ");
         setTitle(title.c_str());
     }
     else
-        setTitle(title() + 2);
+        setTitle(title.c_str() + 2);
 }
 
 }

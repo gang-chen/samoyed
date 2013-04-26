@@ -300,6 +300,8 @@ Editor *File::createEditor(Project *project)
         assert(m_firstEditor != editor);
         assert(m_lastEditor == editor);
         editor->onFileChanged(Change(Change::TYPE_INIT));
+        if (edited())
+            editor->onFileEditedStateChanged();
     }
 
     return editor;

@@ -18,11 +18,14 @@ public:
     ViewsExtensionPoint();
 
 protected:
-    virtual bool addExtensionInternally(const char *pluginId,
-                                        const char *extensionId,
-                                        xmlDocPtr doc,
-                                        xmlNodePtr node,
-                                        std::list<std::string> &errors);
+    virtual bool registerExtensionInternally(const char *pluginId,
+                                             const char *extensionId,
+                                             xmlDocPtr doc,
+                                             xmlNodePtr node,
+                                             std::list<std::string> &errors);
+
+    virtual bool unregisterExtensionInternally(const char *pluginId,
+                                               const char *extensionId);
 };
 
 }

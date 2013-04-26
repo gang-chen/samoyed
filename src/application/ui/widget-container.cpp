@@ -67,13 +67,6 @@ xmlNodePtr WidgetContainer::XmlElement::write() const
     return node;
 }
 
-void WidgetContainer::removeChild(Widget &child)
-{
-    removeChildInternally(child);
-    if (closing() && childCount() == 0)
-        delete this;
-}
-
 void WidgetContainer::grabFocus()
 {
     Widget &current = this->current();
@@ -131,6 +124,7 @@ void WidgetContainer::removeChildInternally(Widget &child)
     assert(child.parent() == this);
     child.setParent(NULL);
     m_childTable.erase(child.id());
+    m_childRemoved(*this, child);
 }
 
 }

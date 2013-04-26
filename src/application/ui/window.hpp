@@ -183,7 +183,8 @@ public:
      */
     Notebook *splitCurrentEditorGroup(Side side);
 
-    void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup);
+    void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
+                                int index);
 
     bool toolbarVisible() const;
     void setToolbarVisible(bool visible);
@@ -203,7 +204,7 @@ protected:
 
     void addChildInternally(Widget &child);
 
-    virtual void removeChildInternally(Widget &child);
+    void removeChildInternally(Widget &child);
 
 private:
     struct SidePaneData

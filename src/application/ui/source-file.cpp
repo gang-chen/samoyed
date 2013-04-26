@@ -14,6 +14,7 @@
 #include <utility>
 #include <list>
 #include <map>
+#include <string>
 #include <boost/any.hpp>
 #include <glib/gi18n-lib.h>
 
@@ -71,7 +72,12 @@ void SourceFile::registerType()
 SourceFile::SourceFile(const char *uri, const char *encoding):
     TextFile(uri, encoding)
 {
-    m_source = Application::instance().fileSourceManager().reference(uri);
+    std::string uriEncoding;
+    uriEncoding += uri;
+    uriEncoding += '?';
+    uriEncoding += encoding;
+    m_source = Application::instance().fileSourceManager().
+        reference(uriEncoding.c_str());
 }
 
 SourceFile::~SourceFile()

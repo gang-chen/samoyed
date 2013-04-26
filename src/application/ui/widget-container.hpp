@@ -9,6 +9,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -17,6 +18,9 @@ namespace Samoyed
 class WidgetContainer: public Widget
 {
 public:
+    typedef boost::signals2::signal<void (WidgetContainer &container,
+                                          Widget &child)> ChildRemoved;
+
     class XmlElement: public Widget::XmlElement
     {
     public:
@@ -37,7 +41,7 @@ public:
     virtual Widget &current();
     virtual const Widget &current() const;
 
-    virtual void removeChild(Widget &child);
+    virtual void removeChild(Widget &child) = 0;
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild) = 0;
 
@@ -62,15 +66,21 @@ public:
 
     virtual void onChildDescriptionChanged(const Widget &child) {}
 
+    boost::signals2::connection
+    addChildRemovedCallback(const ChildRemoved::slot_type &callback)
+    { return m_childRemoved.connect(callback); }
+
 protected:
     void addChildInternally(Widget &child);
 
-    virtual void removeChildInternally(Widget &child);
+    void removeChildInternally(Widget &child);
 
 private:
     typedef std::map<ComparablePointer<const char *>, Widget *> WidgetTable;
 
     WidgetTable m_childTable;
+
+    ChildRemoved m_childRemoved;
 };
 
 }

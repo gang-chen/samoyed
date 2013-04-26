@@ -375,7 +375,7 @@ Widget::XmlElement *Notebook::save() const
     return new XmlElement(*this);
 }
 
-void Notebook::addChildInternally(Widget &child, int index)
+void Notebook::addChild(Widget &child, int index)
 {
     // Create the tab label.
     GtkWidget *title;
@@ -423,7 +423,7 @@ void Notebook::addChildInternally(Widget &child, int index)
     }
 }
 
-void Notebook::removeChildInternally(Widget &child)
+void Notebook::removeChild(Widget &child)
 {
     g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(gtkWidget()), child.gtkWidget());
@@ -432,8 +432,8 @@ void Notebook::removeChildInternally(Widget &child)
 void Notebook::replaceChild(Widget &oldChild, Widget &newChild)
 {
     int index = childIndex(oldChild);
-    removeChildInternally(oldChild);
-    addChildInternally(newChild, index);
+    addChild(newChild, index);
+    removeChild(oldChild);
 }
 
 void Notebook::onChildTitleChanged(const Widget &child)
@@ -477,7 +477,7 @@ void Notebook::onPageAdded(GtkWidget *widget, GtkWidget *child, int index,
 {
     Widget *ch = Widget::getFromGtkWidget(child);
     assert(ch);
-    notebook->WidgetContainer::addChildInternally(*ch);
+    notebook->addChildInternally(*ch);
     notebook->m_children.insert(notebook->m_children.begin() + index, ch);
 }
 
@@ -487,7 +487,10 @@ void Notebook::onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
     Widget *ch = Widget::getFromGtkWidget(child);
     assert(ch);
     notebook->m_children.erase(notebook->m_children.begin() + index);
-    notebook->WidgetContainer::removeChildInternally(*ch);
+    notebook->removeChildInternally(*ch);
+    if ((notebook->automaticClose() || notebook->closing()) &&
+        notebook->childCount() == 0)
+        delete notebook;
 }
 
 }

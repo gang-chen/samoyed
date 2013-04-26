@@ -18,11 +18,18 @@ ViewsExtensionPoint::ViewsExtensionPoint():
     ExtensionPoint::registerExtensionPoint(this);
 }
 
-bool ViewsExtensionPoint::addExtensionInternally(const char *pluginId,
-                                                 const char *extensionId,
-                                                 xmlDocPtr doc,
-                                                 xmlNodePtr node,
-                                                 std::list<std::string> &errors)
+bool ViewsExtensionPoint::registerExtensionInternally(
+    const char *pluginId,
+    const char *extensionId,
+    xmlDocPtr doc,
+    xmlNodePtr node,
+    std::list<std::string> &errors)
+{
+    return true;
+}
+
+bool ViewsExtensionPoint::unregisterExtensionInternally(const char *pluginId,
+                                                        const char *extensionId)
 {
     return true;
 }

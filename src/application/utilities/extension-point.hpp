@@ -17,10 +17,14 @@ namespace Samoyed
 class ExtensionPoint: boost::noncopyable
 {
 public:
-    static bool addExtension(const char *pluginId,
+    static bool registerExtension(const char *pluginId,
                              xmlDocPtr doc,
                              xmlNodePtr node,
+                             std::string &extensionId,
                              std::list<std::string> &errors);
+
+    static bool unregisterExtension(const char *pluginId,
+                                    const char *extensionId);
 
     ExtensionPoint(const char *id): m_id(id) {}
 
@@ -29,11 +33,15 @@ public:
 protected:
     static bool registerExtensionPoint(ExtensionPoint *point);
 
-    virtual bool addExtensionInternally(const char *pluginId,
-                                        const char *extensionId,
-                                        xmlDocPtr doc,
-                                        xmlNodePtr node,
-                                        std::list<std::string> &errors) = 0;
+    virtual bool registerExtensionInternally(const char *pluginId,
+                                             const char *extensionId,
+                                             xmlDocPtr doc,
+                                             xmlNodePtr node,
+                                             std::list<std::string> &errors)
+        = 0;
+
+    virtual bool unregisterExtensionInternally(const char *pluginId,
+                                               const char *extensionId) = 0;
 
 private:
     typedef std::map<ComparablePointer<const char *>, ExtensionPoint *>

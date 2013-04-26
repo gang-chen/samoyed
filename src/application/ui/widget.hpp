@@ -66,6 +66,8 @@ public:
         const char *description() const { return m_description.c_str(); }
         bool visible() const { return m_visible; }
 
+        void setTitle(const char *title) { m_title = title; }
+
     protected:
         typedef
         boost::function<XmlElement *(xmlDocPtr doc,

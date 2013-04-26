@@ -5,11 +5,13 @@
 # include <config.h>
 #endif
 #include "plugin-manager.hpp"
+#include "plugin.hpp"
+#include "extension-point.hpp"
 
 namespace
 {
 
-const int CACHE_SIZE = 4;
+const int CACHE_SIZE = 8;
 
 }
 
@@ -21,6 +23,56 @@ PluginManager::PluginManager():
     m_lruCachedPlugin(NULL),
     m_mruCachedPlugin(NULL)
 {
+}
+
+void PluginManager::scanPlugins()
+{
+}
+
+bool PluginManager::enablePlugin(const char *pluginId)
+{
+    PluginData *data = findPluginData(pluginId);
+    if (!data)
+        return false;
+
+    if (data->m_enabled)
+        return true;
+
+    // Mark the plugin as enabled.
+    data->m_enabled = true;
+
+    // Read the plugin manifest file and register extensions.
+    if (!readPluginManifestFile(data->m_dirName.c_str()))
+        data->m_enabled = false;
+
+    return data->m_enabled;
+}
+
+bool PluginManager::disablePlugin(const char *pluginId)
+{
+    PluginData *data = findPluginData(pluginId);
+    if (!data)
+        return false;
+
+    if (!data->m_enabled)
+        return true;
+
+    // If the plugin is active, try to deactivate it.
+    Plugin *plugin = findPlugin(pluginId);
+    if (plugin)
+        if (!deactivatePlugin(*plugin))
+            return false;
+
+    // Unregister the extensions from extension points.
+
+    // Mark the plugin as disabled.
+    data->m_enabled = false;
+    return true;
+}
+
+Plugin *PluginManager::activatePlugin(const char *pluginId)
+{
+    return NULL;
 }
 
 }

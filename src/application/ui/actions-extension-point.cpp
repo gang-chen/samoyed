@@ -18,12 +18,19 @@ ActionsExtensionPoint::ActionsExtensionPoint():
     ExtensionPoint::registerExtensionPoint(this);
 }
 
+bool ActionsExtensionPoint::registerExtensionInternally(
+    const char *pluginId,
+    const char *extensionId,
+    xmlDocPtr doc,
+    xmlNodePtr node,
+    std::list<std::string> &errors)
+{
+    return true;
+}
+
 bool
-ActionsExtensionPoint::addExtensionInternally(const char *pluginId,
-                                              const char *extensionId,
-                                              xmlDocPtr doc,
-                                              xmlNodePtr node,
-                                              std::list<std::string> &errors)
+ActionsExtensionPoint::unregisterExtensionInternally(const char *pluginId,
+                                                     const char *extensionId)
 {
     return true;
 }

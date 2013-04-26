@@ -75,6 +75,8 @@ bool TextFileLoader::step()
     char buffer[BUFFER_SIZE];
     char *cp;
 
+    m_buffer = new TextBuffer;
+
     // Open the file.
     file = g_file_new_for_uri(uri());
     fileStream = g_file_read(file, NULL, &m_error);
@@ -102,7 +104,6 @@ bool TextFileLoader::step()
         goto CLEAN_UP;
 
     // Read, convert and insert.
-    m_buffer = new TextBuffer;
     cp = buffer;
     for (;;)
     {

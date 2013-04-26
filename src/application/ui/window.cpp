@@ -74,13 +74,27 @@ const Samoyed::Widget *findPane(const Samoyed::Widget &root, const char *id)
     return findPane(paned.child(1), id);
 }
 
-void onEditorClosed(Samoyed::Widget &widget)
+void onEditorRemoved(Samoyed::WidgetContainer &container,
+                     Samoyed::Widget &child)
 {
     // If this is the last editor in the group and the group is not the last
     // group in the window, close the group.
-    if (widget.parent()->childCount() == 1 &&
-        strcmp(widget.parent()->parent()->id(), MAIN_AREA_ID) != 0)
-        widget.parent()->close();
+    if (container.childCount() == 0 &&
+        strcmp(container.parent()->id(), MAIN_AREA_ID) != 0)
+        static_cast<Samoyed::Notebook &>(container).setAutomaticClose(true);
+}
+
+void addEditorRemovedCallbacks(Samoyed::Widget &widget)
+{
+    if (strcmp(widget.id(), PANED_ID) == 0)
+    {
+        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
+        addEditorRemovedCallbacks(paned.child(0));
+        addEditorRemovedCallbacks(paned.child(1));
+        return;
+    }
+    static_cast<Samoyed::WidgetContainer &>(widget).
+        addChildRemovedCallback(onEditorRemoved);
 }
 
 }
@@ -486,6 +500,9 @@ bool Window::restore(XmlElement &xmlElement)
             serialNumber = sn + 1;
     }
 
+    // Start to observe all editors.
+    addEditorRemovedCallbacks(mainArea().mainChild());
+
     // Create menu items for the side panes.
     createMenuItemsForSidePanesRecursively(*child);
 
@@ -711,7 +728,7 @@ void Window::addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                     int index)
 {
     editorGroup.addChild(editor, index);
-    editor.addClosedCallback(onEditorClosed);
+    editorGroup.addChildRemovedCallback(onEditorRemoved);
 }
 
 void Window::createNavigationPane(Window &window)

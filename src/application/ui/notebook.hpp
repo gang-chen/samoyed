@@ -78,8 +78,9 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    void addChild(Widget &child, int index)
-    { addChildInternally(child, index); }
+    void addChild(Widget &child, int index);
+
+    virtual void removeChild(Widget &child);
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
@@ -105,11 +106,15 @@ public:
     bool canDragChildren() const { return m_canDragChildren; }
     bool useUnderline() const { return m_useUnderline; }
 
+    bool automaticClose() const { return m_autoClose; }
+    void setAutomaticClose(bool autoClose) { m_autoClose = autoClose; }
+
 protected:
     Notebook():
         m_createCloseButtons(false),
         m_canDragChildren(false),
-        m_useUnderline(false)
+        m_useUnderline(false),
+        m_autoClose(false)
     {}
 
     virtual ~Notebook();
@@ -120,10 +125,6 @@ protected:
                bool useUnderline);
 
     bool restore(XmlElement &xmlElement);
-
-    void addChildInternally(Widget &child, int index);
-
-    virtual void removeChildInternally(Widget &child);
 
 private:
     static void onCloseButtonClicked(GtkButton *button, Widget *child);
@@ -138,6 +139,7 @@ private:
     bool m_createCloseButtons;
     bool m_canDragChildren;
     bool m_useUnderline;
+    bool m_autoClose;
 
     std::vector<Widget *> m_children;
 };

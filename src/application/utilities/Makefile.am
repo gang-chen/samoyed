@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
+    extension.cpp \
     extension-point.cpp \
     lock-file.cpp \
     miscellaneous.cpp \
@@ -15,6 +16,7 @@ libutilities_la_SOURCES = \
     worker.cpp \
     buffer.hpp \
     change-hint.hpp \
+    extension.hpp \
     extension-point.hpp \
     file-loader.hpp \
     file-saver.hpp \
