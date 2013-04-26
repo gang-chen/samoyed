@@ -20,6 +20,7 @@ namespace Samoyed
 class WidgetWithBars;
 class Notebook;
 class Paned;
+class Editor;
 
 /**
  * A window represents a top-level window.  A window is a container that manages
@@ -181,6 +182,8 @@ public:
      * @return The new editor group.
      */
     Notebook *splitCurrentEditorGroup(Side side);
+
+    void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup);
 
     bool toolbarVisible() const;
     void setToolbarVisible(bool visible);
