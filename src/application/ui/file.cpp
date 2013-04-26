@@ -262,8 +262,10 @@ void File::openByDialog(Project *project,
                     if (!editorGroup)
                         editorGroup = Application::instance().currentWindow().
                             splitCurrentEditorGroup(Window::SIDE_RIGHT);
-                    editorGroup->addChild(*fileEditor.second,
-                                          editorGroup->currentChildIndex());
+                    editorGroup->addChild(
+                        *fileEditor.second,
+                        editorGroup->currentChildIndex() == -1 ?
+                        0 : editorGroup->currentChildIndex());
                 }
             }
             uri = uri->next;
@@ -290,9 +292,11 @@ Editor *File::createEditor(Project *project)
         m_reopening = true;
     }
 
+    // If the file is loaded, initiliaze the editor with the current contents.
     if (!m_loading)
     {
         assert(m_firstEditor != editor);
+        assert(m_lastEditor == editor);
         editor->onFileChanged(Change(Change::TYPE_INIT));
     }
 
