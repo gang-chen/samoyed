@@ -9,6 +9,7 @@
 #include "paned.hpp"
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
+#include "editor.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <assert.h>
@@ -43,7 +44,7 @@
 namespace
 {
 
-const float DEFAULT_SIZE_RATIO = 0.7;
+const double DEFAULT_SIZE_RATIO = 0.7;
 
 int serialNumber = 0;
 
@@ -71,6 +72,15 @@ const Samoyed::Widget *findPane(const Samoyed::Widget &root, const char *id)
     if (child)
         return child;
     return findPane(paned.child(1), id);
+}
+
+void onEditorClosed(Samoyed::Widget &widget)
+{
+    // If this is the last editor in the group and the group is not the last
+    // group in the window, close the group.
+    if (widget.parent()->childCount() == 1 &&
+        strcmp(widget.parent()->parent()->id(), MAIN_AREA_ID) != 0)
+        widget.parent()->close();
 }
 
 }
@@ -695,6 +705,13 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
                      current, *newEditorGroup, 0.5);
     }
     return newEditorGroup;
+}
+
+void Window::addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
+                                    int index)
+{
+    editorGroup.addChild(editor, index);
+    editor.addClosedCallback(onEditorClosed);
 }
 
 void Window::createNavigationPane(Window &window)
