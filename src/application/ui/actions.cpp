@@ -162,9 +162,8 @@ void splitEditorVertically(GtkAction *action, Samoyed::Window *window)
         Samoyed::Editor *editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file().
             createEditor(NULL);
-        Samoyed::Notebook *newEditorGroup =
-            window->splitCurrentEditorGroup(Samoyed::Window::SIDE_BOTTOM);
-        newEditorGroup->addChild(*editor, newEditorGroup->currentChildIndex());
+        window->splitCurrentEditorGroup(Samoyed::Window::SIDE_BOTTOM)->
+            addChild(*editor, 0);
         editor->setCurrent();
     }
 }
@@ -177,9 +176,8 @@ void splitEditorHorizontally(GtkAction *action, Samoyed::Window *window)
         Samoyed::Editor *editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file().
             createEditor(NULL);
-        Samoyed::Notebook *newEditorGroup =
-            window->splitCurrentEditorGroup(Samoyed::Window::SIDE_RIGHT);
-        newEditorGroup->addChild(*editor, newEditorGroup->currentChildIndex());
+        window->splitCurrentEditorGroup(Samoyed::Window::SIDE_RIGHT)->
+            addChild(*editor, 0);
         editor->setCurrent();
     }
 }
