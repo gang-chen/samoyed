@@ -731,15 +731,10 @@ void File::unfreezeInternally()
     }
 }
 
-void File::onChanged(const Change &change,
-                     const Editor *committer,
-                     bool loading)
+void File::onChanged(const Change &change, bool loading)
 {
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
-    {
-        if (editor != committer)
-            editor->onFileChanged(change);
-    }
+        editor->onFileChanged(change);
     m_changed(*this, change, loading);
 }
 
