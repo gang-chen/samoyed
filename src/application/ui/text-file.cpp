@@ -190,30 +190,26 @@ void TextFile::onLoaded(FileLoader &loader)
         editor->onFileLoaded();
 }
 
-void TextFile::insert(int line, int column, const char *text, int length,
-                      TextEditor *committer)
+void TextFile::insert(int line, int column, const char *text, int length)
 {
-    Removal *undo = insertOnly(line, column, text, length, committer);
+    Removal *undo = insertOnly(line, column, text, length);
     saveUndo(undo);
 }
 
 void TextFile::remove(int beginLine, int beginColumn,
-                      int endLine, int endColumn,
-                      TextEditor *committer)
+                      int endLine, int endColumn);
 {
     Insertion *undo = removeOnly(beginLine, beginColumn,
-                                 endLine, endColumn,
-                                 committer);
+                                 endLine, endColumn);
     saveUndo(undo);
 }
 
 TextFile::Removal *
-TextFile::insertOnly(int line, int column, const char *text, int length,
-                     TextEditor *committer)
+TextFile::insertOnly(int line, int column, const char *text, int length);
 {
     int oldLineCount = lineCount();
     onInserted(line, column, text, length);
-    onChanged(Change(line, column, text, length), committer, false);
+    onChanged(Change(line, column, text, length), false);
     int newLineCount = lineCount();
     int endLine, endColumn;
     endLine = line + newLineCount - oldLineCount;
@@ -237,16 +233,13 @@ TextFile::insertOnly(int line, int column, const char *text, int length,
 
 TextFile::Insertion *
 TextFile::removeOnly(int beginLine, int beginColumn,
-                     int endLine, int endColumn,
-                     TextEditor *committer)
+                     int endLine, int endColumn)
 {
     char *removed = text(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
     g_free(removed);
     onRemoved(beginLine, beginColumn, endLine, endColumn);
-    onChanged(Change(beginLine, beginColumn, endLine, endColumn),
-              committer,
-              false);
+    onChanged(Change(beginLine, beginColumn, endLine, endColumn), false);
     return undo;
 }
 
