@@ -176,8 +176,7 @@ public:
      * @param length The number of the bytes to be inserted, or -1 to insert the
      * text until '\0'.
      */
-    void insert(int line, int column, const char *text, int length,
-                TextEditor *committer);
+    void insert(int line, int column, const char *text, int length);
 
     /**
      * @param beginLine The line number of the first character to be removed,
@@ -190,8 +189,7 @@ public:
      * removed, the character index, starting from 0; or -1 to remove the text
      * until the last column.
      */
-    void remove(int beginLine, int beginColumn, int endLine, int endColumn,
-                TextEditor *committer);
+    void remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
 protected:
     TextFile(const char *uri, const char *encoding):
@@ -222,12 +220,10 @@ private:
                         const std::map<std::string, boost::any> &options);
 
     Removal *insertOnly(int line, int column,
-                        const char *text, int length,
-                        TextEditor *committer);
+                        const char *text, int length);
 
     Insertion *removeOnly(int beginLine, int beginColumn,
-                          int endLine, int endColumn,
-                          TextEditor *committer);
+                          int endLine, int endColumn);
 
     std::string m_encoding;
 };
