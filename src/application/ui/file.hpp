@@ -289,14 +289,14 @@ protected:
     virtual ~File();
 
     /**
-     * This function is called by a derived class to notify all editors except
-     * the committer and observers after changed.
+     * This function is called by a derived class to notify all editors and
+     * observers after changed.
      */
-    void onChanged(const Change &change, const Editor *committer, bool loading);
+    void onChanged(const Change &change, bool loading);
 
     /**
      * This function is called by a derived class to save the reverse edit of a
-     * newly committed edit primitive.
+     * newly performed edit primitive.
      */
     void saveUndo(EditPrimitive *undo);
 
