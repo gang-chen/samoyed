@@ -45,10 +45,10 @@ gboolean scrollToCursor(gpointer view)
 namespace Samoyed
 {
 
-bool TextEditor::XmlElement::registerReader()
+void TextEditor::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader(TEXT_EDITOR,
-                                              Widget::XmlElement::Reader(read));
+    Widget::XmlElement::registerReader(TEXT_EDITOR,
+                                       Widget::XmlElement::Reader(read));
 }
 
 bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
@@ -203,6 +203,7 @@ Widget *TextEditor::XmlElement::restoreWidget()
 
 TextEditor::TextEditor(TextFile &file, Project *project):
     Editor(file, project),
+    m_bypassFileChanged(false),
     m_bypassEdits(false),
     m_presetCursorLine(0),
     m_presetCursorColumn(0)
@@ -369,6 +370,8 @@ char *TextEditor::text(int beginLine, int beginColumn,
 
 void TextEditor::onFileChanged(const File::Change &change)
 {
+    if (m_bypassFileChanged)
+        return;
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
@@ -415,10 +418,12 @@ void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
 {
     if (editor->m_bypassEdits)
         return;
+    editor->m_bypassFileChanged = true;
     static_cast<TextFile &>(editor->file()).insert(
         gtk_text_iter_get_line(location),
         gtk_text_iter_get_line_offset(location),
-        text, length, editor);
+        text, length);
+    editor->m_bypassFileChanged = false;
 }
 
 void TextEditor::remove(GtkTextBuffer *buffer,
@@ -427,12 +432,13 @@ void TextEditor::remove(GtkTextBuffer *buffer,
 {
     if (editor->m_bypassEdits)
         return;
+    editor->m_bypassFileChanged = true;
     static_cast<TextFile &>(editor->file()).remove(
         gtk_text_iter_get_line(begin),
         gtk_text_iter_get_line_offset(begin),
         gtk_text_iter_get_line(end),
-        gtk_text_iter_get_line_offset(end),
-        editor);
+        gtk_text_iter_get_line_offset(end));
+    editor->m_bypassFileChanged = false;
 }
 
 void TextEditor::onFileLoaded()

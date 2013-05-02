@@ -14,6 +14,12 @@ namespace Samoyed
 
 class Extension;
 
+/**
+ * A plugin contains some extensions.  A plugin can be dynamically activated by
+ * the plugin manager when any extension it provides is required.  A plugin can
+ * be dynamically deactivated by the plugin manager when none of its extension
+ * is required and its task is completed.
+ */
 class Plugin: boost::noncopyable
 {
 public:
@@ -21,12 +27,14 @@ public:
 
     bool deactivate();
 
-    Extension *extension(const char *extensionId);
+    Extension *loadExtension(const char *extensionId);
+
+    void onExtensionReleased(Extension &extension);
 
     bool cached() const { return m_nextCached; }
 
-    void addToCache(Plugin *lru, Plugin *mru);
-    void removeFromCache(Plugin *lru, Plugin *mru);
+    void addToCache(Plugin *&lru, Plugin *&mru);
+    void removeFromCache(Plugin *&lru, Plugin *&mru);
 
 protected:
     /**
@@ -41,7 +49,12 @@ protected:
      */
     virtual bool shutDown() { return true; }
 
+    Plugin(const char *id);
+
     virtual ~Plugin();
+
+    void addExtension(Extension &extension);
+    void removeExtension(Extension &extension);
 
 private:
     typedef std::map<ComparablePointer<const char *>, Extension *>

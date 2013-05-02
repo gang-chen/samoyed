@@ -36,10 +36,10 @@ void SourceEditor::destroySharedData()
     g_object_unref(s_sharedTagTable);
 }
 
-bool SourceEditor::XmlElement::registerReader()
+void SourceEditor::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader(SOURCE_EDITOR,
-                                              Widget::XmlElement::Reader(read));
+    Widget::XmlElement::registerReader(SOURCE_EDITOR,
+                                       Widget::XmlElement::Reader(read));
 }
 
 bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,

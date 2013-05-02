@@ -77,7 +77,7 @@ public:
     class XmlElement: public WidgetContainer::XmlElement
     {
     public:
-        static bool registerReader();
+        static void registerReader();
 
         virtual ~XmlElement();
         static XmlElement *read(xmlDocPtr doc,

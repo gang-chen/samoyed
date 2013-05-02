@@ -19,7 +19,6 @@ ViewsExtensionPoint::ViewsExtensionPoint():
 }
 
 bool ViewsExtensionPoint::registerExtensionInternally(
-    const char *pluginId,
     const char *extensionId,
     xmlDocPtr doc,
     xmlNodePtr node,
@@ -28,10 +27,8 @@ bool ViewsExtensionPoint::registerExtensionInternally(
     return true;
 }
 
-bool ViewsExtensionPoint::unregisterExtensionInternally(const char *pluginId,
-                                                        const char *extensionId)
+void ViewsExtensionPoint::unregisterExtensionInternally(const char *extensionId)
 {
-    return true;
 }
 
 }

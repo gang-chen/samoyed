@@ -28,10 +28,10 @@ namespace Samoyed
 std::map<std::string, Widget::XmlElement::Reader>
     Widget::XmlElement::s_readerRegistry;
 
-bool Widget::XmlElement::registerReader(const char *className,
+void Widget::XmlElement::registerReader(const char *className,
                                         const Reader &reader)
 {
-    return s_readerRegistry.insert(std::make_pair(className, reader)).second;
+    s_readerRegistry.insert(std::make_pair(className, reader));
 }
 
 Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,

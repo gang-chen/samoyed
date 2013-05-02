@@ -29,10 +29,10 @@
 namespace Samoyed
 {
 
-bool Notebook::XmlElement::registerReader()
+void Notebook::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader(NOTEBOOK,
-                                              Widget::XmlElement::Reader(read));
+    Widget::XmlElement::registerReader(NOTEBOOK,
+                                       Widget::XmlElement::Reader(read));
 }
 
 bool Notebook::XmlElement::readInternally(xmlDocPtr doc,

@@ -31,7 +31,7 @@ namespace Samoyed
 File::Edit *TextFile::Insertion::execute(File &file) const
 {
     return static_cast<TextFile &>(file).
-        insertOnly(m_line, m_column, m_text.c_str(), m_text.length(), NULL);
+        insertOnly(m_line, m_column, m_text.c_str(), m_text.length());
 }
 
 bool TextFile::Insertion::merge(File::EditPrimitive *edit)
@@ -75,7 +75,7 @@ bool TextFile::Insertion::merge(File::EditPrimitive *edit)
 File::Edit *TextFile::Removal::execute(File &file) const
 {
     return static_cast<TextFile &>(file).
-        removeOnly(m_beginLine, m_beginColumn, m_endLine, m_endColumn, NULL);
+        removeOnly(m_beginLine, m_beginColumn, m_endLine, m_endColumn);
 }
 
 bool TextFile::Removal::merge(File::EditPrimitive *edit)
@@ -174,12 +174,12 @@ void TextFile::onLoaded(FileLoader &loader)
     // Copy the contents in the loader's buffer to the editors.
     const TextBuffer *buffer = ld.buffer();
     TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
-    onChanged(Change(0, 0, -1, -1), NULL, true);
+    onChanged(Change(0, 0, -1, -1), true);
     do
     {
         const char *begin, *end;
         if (it.getAtomsBulk(begin, end))
-            onChanged(Change(-1, -1, begin, end - begin), NULL, true);
+            onChanged(Change(-1, -1, begin, end - begin), true);
     }
     while (it.goToNextBulk());
 
@@ -197,7 +197,7 @@ void TextFile::insert(int line, int column, const char *text, int length)
 }
 
 void TextFile::remove(int beginLine, int beginColumn,
-                      int endLine, int endColumn);
+                      int endLine, int endColumn)
 {
     Insertion *undo = removeOnly(beginLine, beginColumn,
                                  endLine, endColumn);
@@ -205,7 +205,7 @@ void TextFile::remove(int beginLine, int beginColumn,
 }
 
 TextFile::Removal *
-TextFile::insertOnly(int line, int column, const char *text, int length);
+TextFile::insertOnly(int line, int column, const char *text, int length)
 {
     int oldLineCount = lineCount();
     onInserted(line, column, text, length);

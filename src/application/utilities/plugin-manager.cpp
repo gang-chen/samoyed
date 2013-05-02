@@ -58,10 +58,6 @@ bool PluginManager::disablePlugin(const char *pluginId)
         return true;
 
     // If the plugin is active, try to deactivate it.
-    Plugin *plugin = findPlugin(pluginId);
-    if (plugin)
-        if (!deactivatePlugin(*plugin))
-            return false;
 
     // Unregister the extensions from extension points.
 
@@ -70,9 +66,8 @@ bool PluginManager::disablePlugin(const char *pluginId)
     return true;
 }
 
-Plugin *PluginManager::activatePlugin(const char *pluginId)
+void PluginManager::activatePlugins()
 {
-    return NULL;
 }
 
 }

@@ -48,7 +48,9 @@ public:
         std::string m_projectUri;
     };
 
-    // This function can be called by the file only.
+    /**
+     * This function can be called by the file only.
+     */
     virtual ~Editor();
 
     File &file() { return m_file; }
@@ -64,6 +66,9 @@ public:
      */
     virtual void onFileChanged(const File::Change &change) {}
 
+    /**
+     * This function is called by the file when its edited state is changed.
+     */
     virtual void onFileEditedStateChanged();
 
     virtual bool frozen() const = 0;

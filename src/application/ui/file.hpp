@@ -35,6 +35,11 @@ class FileSaver;
  * only.
  *
  * A file saves the editing history, supporting undo and redo.
+ *
+ * To edit a file, the derived class performs the edit, notifies the base class
+ * of the change and requests the base class to save the reverse edit.  To undo
+ * or redo an edit, the base class executes the saved edit, which performs the
+ * real edit and notifies the base class of the change.
  */
 class File: public boost::noncopyable
 {
@@ -43,6 +48,11 @@ public:
     typedef boost::signals2::signal<void (File &file)> Close;
     typedef boost::signals2::signal<void (File &file)> Loaded;
     typedef boost::signals2::signal<void (File &file)> Saved;
+
+    typedef
+    boost::function<File *(const char *uri, Project *project,
+                           const std::map<std::string, boost::any> &options)>
+    	Factory;
 
     /**
      * A change.  Derived classes should define their concrete changes.
@@ -126,6 +136,8 @@ public:
     private:
         std::list<Edit *> m_edits;
     };
+
+    static void registerType(const char *type, const Factory &factory);
 
     /**
      * Open a file in an editor.
@@ -268,11 +280,6 @@ public:
     { return m_changed.connect(callback); }
 
 protected:
-    typedef
-    boost::function<File *(const char *uri, Project *project,
-                           const std::map<std::string, boost::any> &options)>
-    	Factory;
-
     struct TypeRecord
     {
         std::string m_type;
@@ -281,8 +288,6 @@ protected:
             m_type(type), m_factory(factory)
         {}
     };
-
-    static void registerType(const char *type, const Factory &factory);
 
     File(const char *uri);
 
@@ -300,7 +305,6 @@ protected:
      */
     void saveUndo(EditPrimitive *undo);
 
-    // Functions implemented by derived classes and called by the base class.
     virtual Editor *createEditorInternally(Project *project) = 0;
 
     virtual FileLoader *createLoader(unsigned int priority,

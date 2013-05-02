@@ -109,10 +109,10 @@ Window::Created Window::s_created;
 Window::SidePaneCreated Window::s_navigationPaneCreated;
 Window::SidePaneCreated Window::s_toolsPaneCreated;
 
-bool Window::XmlElement::registerReader()
+void Window::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader(WINDOW,
-                                              Widget::XmlElement::Reader(read));
+    Widget::XmlElement::registerReader(WINDOW,
+                                       Widget::XmlElement::Reader(read));
 }
 
 bool Window::XmlElement::readInternally(xmlDocPtr doc,

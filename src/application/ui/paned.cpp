@@ -28,10 +28,10 @@
 namespace Samoyed
 {
 
-bool Paned::XmlElement::registerReader()
+void Paned::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader(PANED,
-                                              Widget::XmlElement::Reader(read));
+    Widget::XmlElement::registerReader(PANED,
+                                       Widget::XmlElement::Reader(read));
 }
 
 bool Paned::XmlElement::readInternally(xmlDocPtr doc,

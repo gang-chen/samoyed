@@ -29,6 +29,14 @@ public:
     class XmlElement: public boost::noncopyable
     {
     public:
+        typedef
+        boost::function<XmlElement *(xmlDocPtr doc,
+                                     xmlNodePtr node,
+                                     std::list<std::string> &errors)> Reader;
+
+        static void registerReader(const char *className,
+                                   const Reader &reader);
+
         virtual ~XmlElement() {}
 
         /**
@@ -69,14 +77,6 @@ public:
         void setTitle(const char *title) { m_title = title; }
 
     protected:
-        typedef
-        boost::function<XmlElement *(xmlDocPtr doc,
-                                     xmlNodePtr node,
-                                     std::list<std::string> &errors)> Reader;
-
-        static bool registerReader(const char *className,
-                                   const Reader &reader);
-
         XmlElement(): m_visible(true) {}
 
         bool readInternally(xmlDocPtr doc,

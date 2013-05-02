@@ -173,7 +173,7 @@ protected:
     Table m_table;
 
     /**
-     * Used to assign unique ID's to objects.
+     * Used to assign unique identifiers to objects.
      */
     unsigned long m_serialNumber;
 

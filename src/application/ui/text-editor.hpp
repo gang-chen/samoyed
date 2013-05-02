@@ -24,7 +24,7 @@ public:
     class XmlElement: public Editor::XmlElement
     {
     public:
-        static bool registerReader();
+        static void registerReader();
 
         static XmlElement *read(xmlDocPtr doc,
                                 xmlNodePtr node,
@@ -103,6 +103,7 @@ private:
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
 
+    bool m_bypassFileChanged;
     bool m_bypassEdits;
 
     int m_presetCursorLine;

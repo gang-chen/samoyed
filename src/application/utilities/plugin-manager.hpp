@@ -9,11 +9,13 @@
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
+#include <boost/thread/mutex.hpp>
 
 namespace Samoyed
 {
 
 class Plugin;
+class Extension;
 
 class PluginManager: public boost::noncopyable
 {
@@ -54,16 +56,25 @@ public:
 
     bool disablePlugin(const char *pluginId);
 
-    Plugin *findPlugin(const char *pluginId) const;
+    void activatePlugins();
 
-    Plugin *activatePlugin(const char *pluginId);
-
-    bool deactivatePlugin(Plugin &plugin);
+    /**
+     * Load an extension from a plugin.  If the plugin is inactive, activate it
+     * first.
+     * @param extensionId The full identifier of the requested extension.
+     */
+    Extension *loadExtension(const char *extensionId);
 
 private:
     typedef std::map<ComparablePointer<const char *>, Plugin *> PluginTable;
 
     bool readPluginManifestFile(const char *pluginDirName);
+
+    /**
+     * Deactivate a plugin.  This function can be called by the plugin itself
+     * only, when none of its extension is used and its task is completed.
+     */
+    bool deactivatePlugin(Plugin &plugin);
 
     PluginRegistry m_pluginRegistry;
 
@@ -72,6 +83,10 @@ private:
     int m_nCachedPlugins;
     Plugin *m_lruCachedPlugin;
     Plugin *m_mruCachedPlugin;
+
+    mutable boost::mutex m_mutex;
+
+    friend class Plugin;
 };
 
 }

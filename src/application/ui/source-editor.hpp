@@ -18,16 +18,13 @@ namespace Samoyed
 class SourceFile;
 class Project;
 
-/**
- * A source editor
- */
 class SourceEditor: public TextEditor
 {
 public:
     class XmlElement: public TextEditor::XmlElement
     {
     public:
-        static bool registerReader();
+        static void registerReader();
 
         static XmlElement *read(xmlDocPtr doc,
                                 xmlNodePtr node,

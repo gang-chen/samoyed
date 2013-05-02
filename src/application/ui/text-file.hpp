@@ -12,6 +12,11 @@
 namespace Samoyed
 {
 
+/**
+ * A text file does not contain any data memorizing its contents.  The
+ * associated text editors contain data memorizing the file contents.  Accesses
+ * to the file contents are redirected to the text editors.
+ */
 class TextFile: public File
 {
 public:

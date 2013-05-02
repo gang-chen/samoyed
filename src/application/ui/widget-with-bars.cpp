@@ -25,10 +25,10 @@
 namespace Samoyed
 {
 
-bool WidgetWithBars::XmlElement::registerReader()
+void WidgetWithBars::XmlElement::registerReader()
 {
-    return Widget::XmlElement::registerReader(WIDGET_WITH_BARS,
-                                              Widget::XmlElement::Reader(read));
+    Widget::XmlElement::registerReader(WIDGET_WITH_BARS,
+                                       Widget::XmlElement::Reader(read));
 }
 
 bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,

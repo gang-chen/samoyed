@@ -11,16 +11,15 @@ namespace Samoyed
 
 ExtensionPoint::Registry ExtensionPoint::s_registry;
 
+void ExtensionPoint::registerExtensionPoint(ExtensionPoint *point)
+{
+}
+
 bool ExtensionPoint::registerExtension(const char *pluginId,
                                        xmlDocPtr doc,
                                        xmlNodePtr node,
                                        std::string &extensionId,
                                        std::list<std::string> &errors)
-{
-    return true;
-}
-
-bool ExtensionPoint::registerExtensionPoint(ExtensionPoint *point)
 {
     return true;
 }

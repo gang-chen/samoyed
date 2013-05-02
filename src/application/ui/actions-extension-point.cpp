@@ -19,7 +19,6 @@ ActionsExtensionPoint::ActionsExtensionPoint():
 }
 
 bool ActionsExtensionPoint::registerExtensionInternally(
-    const char *pluginId,
     const char *extensionId,
     xmlDocPtr doc,
     xmlNodePtr node,
@@ -28,11 +27,9 @@ bool ActionsExtensionPoint::registerExtensionInternally(
     return true;
 }
 
-bool
-ActionsExtensionPoint::unregisterExtensionInternally(const char *pluginId,
-                                                     const char *extensionId)
+void
+ActionsExtensionPoint::unregisterExtensionInternally(const char *extensionId)
 {
-    return true;
 }
 
 }
