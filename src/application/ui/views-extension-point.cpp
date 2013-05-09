@@ -15,7 +15,7 @@ namespace Samoyed
 ViewsExtensionPoint::ViewsExtensionPoint():
     ExtensionPoint("views")
 {
-    ExtensionPoint::registerExtensionPoint(this);
+    ExtensionPoint::registerExtensionPoint(*this);
 }
 
 bool ViewsExtensionPoint::registerExtensionInternally(
@@ -27,7 +27,7 @@ bool ViewsExtensionPoint::registerExtensionInternally(
     return true;
 }
 
-void ViewsExtensionPoint::unregisterExtensionInternally(const char *extensionId)
+void ViewsExtensionPoint::unregisterExtension(const char *extensionId)
 {
 }
 

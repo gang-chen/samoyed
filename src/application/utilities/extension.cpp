@@ -5,7 +5,15 @@
 # include <config.h>
 #endif
 #include "extension.hpp"
+#include "plugin.hpp"
 
 namespace Samoyed
 {
+
+void Extension::release()
+{
+    if (--m_refCount == 0)
+        m_plugin.onExtensionReleased();
+}
+
 }

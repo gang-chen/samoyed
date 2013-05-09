@@ -15,7 +15,9 @@ namespace Samoyed
 {
 
 /**
- * An extension point registered extensions.
+ * An extension point is a place where extensions are plugged.  An extension
+ * point defines the protocol between it and extensions.  An extension point
+ * loads extensions from plugins and calls functions provided by extensions.
  *
  * Each concrete extension point class has one and only one instance.  All
  * instances are registered to the base class.
@@ -23,35 +25,37 @@ namespace Samoyed
 class ExtensionPoint: boost::noncopyable
 {
 public:
-    static void registerExtensionPoint(ExtensionPoint *point);
+    static void registerExtensionPoint(ExtensionPoint &point);
 
+    /**
+     * Register an extension by parsing an extension element in a plugin
+     * manifest file.
+     */
     static bool registerExtension(const char *pluginId,
                                   xmlDocPtr doc,
                                   xmlNodePtr node,
+                                  ExtensionPoint *&extensionPoint,
                                   std::string &extensionId,
                                   std::list<std::string> &errors);
 
-    static void unregisterExtension(const char *pluginId,
-                                    const char *extensionId);
+    virtual void unregisterExtension(const char *extensionId) = 0;
 
     ExtensionPoint(const char *id): m_id(id) {}
 
     const char *id() const { return m_id.c_str(); }
 
-protected:
     /**
-     * @param extensionId The full identifier of the extension.
+     * Activate an extension.  An extension will not be activated if the
+     * activation can be triggered by specific events only.
      */
+    virtual bool activateExtension(const char *extensionId) = 0;
+
+protected:
     virtual bool registerExtensionInternally(const char *extensionId,
                                              xmlDocPtr doc,
                                              xmlNodePtr node,
                                              std::list<std::string> &errors)
         = 0;
-
-    /**
-     * @param extensionId The full identifier of the extension.
-     */
-    virtual void unregisterExtensionInternally(const char *extensionId) = 0;
 
 private:
     typedef std::map<ComparablePointer<const char *>, ExtensionPoint *>
@@ -59,7 +63,7 @@ private:
 
     static Registry s_registry;
 
-    std::string m_id;
+    const std::string m_id;
 };
 
 }

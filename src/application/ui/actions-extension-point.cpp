@@ -15,7 +15,7 @@ namespace Samoyed
 ActionsExtensionPoint::ActionsExtensionPoint():
     ExtensionPoint("actions")
 {
-    ExtensionPoint::registerExtensionPoint(this);
+    ExtensionPoint::registerExtensionPoint(*this);
 }
 
 bool ActionsExtensionPoint::registerExtensionInternally(
@@ -27,8 +27,7 @@ bool ActionsExtensionPoint::registerExtensionInternally(
     return true;
 }
 
-void
-ActionsExtensionPoint::unregisterExtensionInternally(const char *extensionId)
+void ActionsExtensionPoint::unregisterExtension(const char *extensionId)
 {
 }
 

@@ -16,65 +16,81 @@ namespace Samoyed
 
 class Plugin;
 class Extension;
+class ExtensionPoint;
 
 class PluginManager: public boost::noncopyable
 {
 public:
-    struct PluginData
+    class PluginInfo
     {
-        struct Extension
+    public:
+        struct ExtensionInfo
         {
             std::string m_extensionId;
-            std::string m_extensionPointId;
+            ExtensionPoint *m_extensionPoint;
         };
 
+        static PluginInfo *create(const char *dirName);
+
+        bool enabled() const { return m_enabled; }
+        void enable() { m_enabled = true; }
+        void disable() { m_enabled = false; }
+
+        const char *dirName() const { return m_dirName.c_str(); }
+        const char *id() const { return m_id.c_str(); }
+        const char *name() const { return m_name.c_str(); }
+        const char *description() const { return m_description.c_str(); }
+        const char *libraryName() const { return m_libraryName.c_str(); }
+
+        const std::list<ExtensionInfo> &extensions() const
+        { return m_extensions; }
+        void activateExtensions();
+
+    private:
+        PluginInfo(const char *dirName): m_enabled(true), m_dirName(dirName) {}
+
+        bool m_enabled;
+        std::string m_dirName;
         std::string m_id;
         std::string m_name;
         std::string m_description;
         std::string m_libraryName;
-        std::string m_dirName;
-        bool m_enabled;
-        std::list<Extension> m_extensions;
+        std::list<ExtensionInfo> m_extensions;
     };
 
-    typedef std::map<ComparablePointer<const char *>, PluginData>
+    typedef std::map<ComparablePointer<const char *>, PluginInfo>
         PluginRegistry;
 
     PluginManager();
 
     /**
      * Scan plugins in the plugins directory.  Read plugin manifest files.
-     * Register plugins.  Register plugin extensions to extension points.
+     * Register plugin extensions to extension points and activate them.
      */
     void scanPlugins();
 
     const PluginRegistry &pluginRegistry() const { return m_pluginRegistry; }
 
-    PluginData *findPluginData(const char *pluginId) const;
+    PluginInfo *findPluginInfo(const char *pluginId) const;
 
-    bool enablePlugin(const char *pluginId);
+    void enablePlugin(const char *pluginId);
 
-    bool disablePlugin(const char *pluginId);
-
-    void activatePlugins();
+    void disablePlugin(const char *pluginId);
 
     /**
      * Load an extension from a plugin.  If the plugin is inactive, activate it
      * first.
-     * @param extensionId The full identifier of the requested extension.
      */
-    Extension *loadExtension(const char *extensionId);
+    Extension *loadExtension(const char *pluginId, const char *extensionId);
 
 private:
     typedef std::map<ComparablePointer<const char *>, Plugin *> PluginTable;
-
-    bool readPluginManifestFile(const char *pluginDirName);
 
     /**
      * Deactivate a plugin.  This function can be called by the plugin itself
      * only, when none of its extension is used and its task is completed.
      */
-    bool deactivatePlugin(Plugin &plugin);
+    void deactivatePlugin(Plugin &plugin);
 
     PluginRegistry m_pluginRegistry;
 

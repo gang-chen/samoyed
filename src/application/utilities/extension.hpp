@@ -12,15 +12,16 @@ namespace Samoyed
 class Plugin;
 
 /**
- * An extension extends a defined extension point.  An extension is contained by
- * a plugin.  An extension has a unique identifier among extensions in a plugin.
- * The full identifier of an extension is formed by concatenating the identifier
- * of the containing plugin and the identifier of the extension, which is unique
- * among all extensions.
+ * An extension is an interface provided by a plugin and called by an extension
+ * point.
  */
 class Extension: public boost::noncopyable
 {
 public:
+    Extension(const char *id, const Plugin &plugin):
+        m_id(id), m_plugin(plugin), m_refCount(0)
+    {}
+
     bool released() const { return m_refCount == 0; }
 
     /**
@@ -33,8 +34,10 @@ public:
      */
     void release();
 
+    const char *id() const { return m_id.c_str(); }
+
 private:
-    std::string m_id;
+    const std::string m_id;
 
     const Plugin &m_plugin;
 

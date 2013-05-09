@@ -17,13 +17,13 @@ class ViewsExtensionPoint: public ExtensionPoint
 public:
     ViewsExtensionPoint();
 
+    virtual void unregisterExtension(const char *extensionId);
+
 protected:
     virtual bool registerExtensionInternally(const char *extensionId,
                                              xmlDocPtr doc,
                                              xmlNodePtr node,
                                              std::list<std::string> &errors);
-
-    virtual void unregisterExtensionInternally(const char *extensionId);
 };
 
 }

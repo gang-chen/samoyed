@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "plugin.hpp"
+#include "plugin-manager.hpp"
 
 namespace Samoyed
 {

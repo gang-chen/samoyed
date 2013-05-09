@@ -7,6 +7,7 @@
 #include "plugin-manager.hpp"
 #include "plugin.hpp"
 #include "extension-point.hpp"
+#include <libxml/tree.h>
 
 namespace
 {
@@ -17,6 +18,12 @@ const int CACHE_SIZE = 8;
 
 namespace Samoyed
 {
+
+PluginManager::PluginInfo *PluginManager::PluginInfo::create(const char *dirName)
+{
+    PluginInfo *info = new PluginInfo(dirName);
+    return info;
+}
 
 PluginManager::PluginManager():
     m_nCachedPlugins(0),
@@ -29,45 +36,41 @@ void PluginManager::scanPlugins()
 {
 }
 
-bool PluginManager::enablePlugin(const char *pluginId)
+void PluginManager::enablePlugin(const char *pluginId)
 {
-    PluginData *data = findPluginData(pluginId);
-    if (!data)
-        return false;
+    PluginInfo *info = findPluginInfo(pluginId);
+    if (info->enabled())
+        return;
 
-    if (data->m_enabled)
-        return true;
+    info->enable();
 
-    // Mark the plugin as enabled.
-    data->m_enabled = true;
-
-    // Read the plugin manifest file and register extensions.
-    if (!readPluginManifestFile(data->m_dirName.c_str()))
-        data->m_enabled = false;
-
-    return data->m_enabled;
+    // Activate extensions.
+    info->activateExtensions();
 }
 
-bool PluginManager::disablePlugin(const char *pluginId)
+void PluginManager::disablePlugin(const char *pluginId)
 {
-    PluginData *data = findPluginData(pluginId);
-    if (!data)
-        return false;
-
-    if (!data->m_enabled)
-        return true;
-
-    // If the plugin is active, try to deactivate it.
-
-    // Unregister the extensions from extension points.
+    PluginInfo *info = findPluginInfo(pluginId);
+    if (!info->enabled())
+        return;
 
     // Mark the plugin as disabled.
-    data->m_enabled = false;
-    return true;
+    info->disable();
+
+    // If the plugin is active, force to deactivate it.
 }
 
-void PluginManager::activatePlugins()
+Extension *PluginManager::loadExtension(const char *pluginId,
+                                        const char *extensionId)
 {
+    PluginInfo *info = findPluginInfo(pluginId);
+    if (!info->enabled())
+        return NULL;
+
+    // If the plugin in inactive, activate it.
+    Plugin *plugin = Plugin::activate(pluginId);
+
+    return plugin->referenceExtension(extensionId);
 }
 
 }
