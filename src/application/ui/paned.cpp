@@ -6,10 +6,10 @@
 #endif
 #include "paned.hpp"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <list>
 #include <string>
+#include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <glib-object.h>
@@ -71,7 +71,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
             else
             {
                 cp = g_strdup_printf(
-                    _("Line %d: Unknown orientation \"%s\".\n"),
+                    _("Line %d: Invalid orientation \"%s\".\n"),
                     child->line, value);
                 errors.push_back(cp);
                 g_free(cp);
@@ -111,7 +111,19 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_currentChildIndex = atoi(value);
+            try
+            {
+                m_currentChildIndex = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, CURRENT_CHILD_INDEX, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -119,7 +131,19 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_position = atof(value);
+            try
+            {
+                m_position = boost::lexical_cast<double>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid real number \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, POSITION, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
     }
@@ -174,7 +198,7 @@ Paned::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr Paned::XmlElement::write() const
 {
-    char *cp;
+    std::string str;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(PANED));
     xmlAddChild(node, WidgetContainer::XmlElement::write());
@@ -189,16 +213,14 @@ xmlNodePtr Paned::XmlElement::write() const
     xmlAddChild(children, m_children[0]->write());
     xmlAddChild(children, m_children[1]->write());
     xmlAddChild(node, children);
-    cp = g_strdup_printf("%d", m_currentChildIndex);
+    str = boost::lexical_cast<std::string>(m_currentChildIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
-    cp = g_strdup_printf("%f", m_position);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_position);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(POSITION),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     return node;
 }
 

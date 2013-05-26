@@ -8,10 +8,10 @@
 #include "file.hpp"
 #include "project.hpp"
 #include "../application.hpp"
-#include <stdlib.h>
 #include <string.h>
 #include <list>
 #include <string>
+#include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <libxml/tree.h>
@@ -158,13 +158,10 @@ Editor::~Editor()
 
 bool Editor::setup()
 {
-    char *id = g_strdup_printf(EDITOR_ID "-%d", serialNumber++);
-    if (!Widget::setup(id))
-    {
-        g_free(id);
+    std::string id(EDITOR_ID "-");
+    id += boost::lexical_cast<std::string>(serialNumber++);
+    if (!Widget::setup(id.c_str()))
         return false;
-    }
-    g_free(id);
     char *fileName = g_filename_from_uri(m_file.uri(), NULL, NULL);
     char *title = g_filename_display_basename(fileName);
     setTitle(title);
@@ -183,9 +180,15 @@ bool Editor::restore(XmlElement &xmlElement)
     const char *cp = strrchr(id(), '-');
     if (cp)
     {
-        int sn = atoi(cp + 1);
-        if (sn >= serialNumber)
-            serialNumber = sn + 1;
+        try
+        {
+            int sn = boost::lexical_cast<int>(cp + 1);
+            if (sn >= serialNumber)
+                serialNumber = sn + 1;
+        }
+        catch (boost::bad_lexical_cast &)
+        {
+        }
     }
     return true;
 }

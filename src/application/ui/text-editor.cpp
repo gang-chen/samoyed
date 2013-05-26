@@ -7,12 +7,12 @@
 #include "text-editor.hpp"
 #include "text-file.hpp"
 #include "../utilities/miscellaneous.hpp"
-#include <stdlib.h>
 #include <string.h>
 #include <list>
 #include <map>
 #include <string>
 #include <boost/any.hpp>
+#include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gio/gio.h>
@@ -88,7 +88,19 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_cursorLine = atoi(value);
+            try
+            {
+                m_cursorLine = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, CURSOR_LINE, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -96,7 +108,19 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_cursorColumn = atoi(value);
+            try
+            {
+                m_cursorColumn = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, CURSOR_COLUMN, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
     }
@@ -153,23 +177,21 @@ TextEditor::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr TextEditor::XmlElement::write() const
 {
-    char *cp;
+    std::string str;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(TEXT_EDITOR));
     xmlAddChild(node, Editor::XmlElement::write());
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(ENCODING),
                     reinterpret_cast<const xmlChar *>(encoding()));
-    cp = g_strdup_printf("%d", m_cursorLine);
+    str = boost::lexical_cast<std::string>(m_cursorLine);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURSOR_LINE),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
-    cp = g_strdup_printf("%d", m_cursorColumn);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_cursorColumn);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURSOR_COLUMN),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     return node;
 }
 

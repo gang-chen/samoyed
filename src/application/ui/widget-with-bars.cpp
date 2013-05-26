@@ -6,11 +6,11 @@
 #endif
 #include "widget-with-bars.hpp"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <list>
 #include <string>
 #include <vector>
+#include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -100,7 +100,19 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_currentChildIndex = atoi(value);
+            try
+            {
+                m_currentChildIndex = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, CURRENT_CHILD_INDEX, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
     }
@@ -148,7 +160,7 @@ WidgetWithBars::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr WidgetWithBars::XmlElement::write() const
 {
-    char *cp;
+    std::string str;
     xmlNodePtr node =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(WIDGET_WITH_BARS));
     xmlAddChild(node, WidgetContainer::XmlElement::write());
@@ -163,11 +175,10 @@ xmlNodePtr WidgetWithBars::XmlElement::write() const
          ++it)
         xmlAddChild(bars, (*it)->write());
     xmlAddChild(node, bars);
-    cp = g_strdup_printf("%d", m_currentChildIndex);
+    str = boost::lexical_cast<std::string>(m_currentChildIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     return node;
 }
 

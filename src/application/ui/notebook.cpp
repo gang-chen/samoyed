@@ -7,11 +7,11 @@
 #include "notebook.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <list>
 #include <string>
 #include <vector>
+#include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -74,7 +74,19 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_createCloseButtons = atoi(value);
+            try
+            {
+                m_createCloseButtons = boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, CREATE_CLOSE_BUTTONS, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -82,7 +94,19 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_canDragChildren = atoi(value);
+            try
+            {
+                m_canDragChildren = boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, CAN_DRAG_CHILDREN, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -90,7 +114,19 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_useUnderline = atoi(value);
+            try
+            {
+                m_useUnderline = boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, USE_UNDERLINE, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -111,7 +147,19 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_currentChildIndex = atoi(value);
+            try
+            {
+                m_currentChildIndex = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, CURRENT_CHILD_INDEX, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
     }
@@ -153,7 +201,7 @@ Notebook::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr Notebook::XmlElement::write() const
 {
-    char *cp;
+    std::string str;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(NOTEBOOK));
     xmlAddChild(node, WidgetContainer::XmlElement::write());
@@ -161,18 +209,18 @@ xmlNodePtr Notebook::XmlElement::write() const
         xmlNewTextChild(node, NULL,
                         reinterpret_cast<const xmlChar *>(GROUP_NAME),
                         reinterpret_cast<const xmlChar *>(groupName()));
+    str = boost::lexical_cast<std::string>(m_createCloseButtons);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CREATE_CLOSE_BUTTONS),
-                    reinterpret_cast<const xmlChar *>(m_createCloseButtons ?
-                                                      "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_canDragChildren);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CAN_DRAG_CHILDREN),
-                    reinterpret_cast<const xmlChar *>(m_canDragChildren ?
-                                                      "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_useUnderline);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(USE_UNDERLINE),
-                    reinterpret_cast<const xmlChar *>(m_useUnderline ?
-                                                      "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     xmlNodePtr children =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(CHILDREN));
     for (std::vector<Widget::XmlElement *>::const_iterator it =
@@ -181,11 +229,10 @@ xmlNodePtr Notebook::XmlElement::write() const
          ++it)
         xmlAddChild(children, (*it)->write());
     xmlAddChild(node, children);
-    cp = g_strdup_printf("%d", m_currentChildIndex);
+    str = boost::lexical_cast<std::string>(m_currentChildIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     return node;
 }
 

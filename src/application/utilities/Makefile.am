@@ -2,7 +2,7 @@ noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
     extension.cpp \
-    extension-point.cpp \
+    extension-point-manager.cpp \
     lock-file.cpp \
     miscellaneous.cpp \
     plugin.cpp \
@@ -18,6 +18,7 @@ libutilities_la_SOURCES = \
     change-hint.hpp \
     extension.hpp \
     extension-point.hpp \
+    extension-point-manager.hpp \
     file-loader.hpp \
     file-saver.hpp \
     lock-file.hpp \
@@ -39,6 +40,7 @@ libutilities_la_SOURCES = \
 libutilities_la_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS) \
+    $(GMODULE_CFLAGS) \
     $(XML_CFLAGS)
 
 libutilities_la_CXXFLAGS = -Werror -Wall

@@ -13,12 +13,12 @@
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <algorithm>
 #include <list>
 #include <string>
 #include <vector>
+#include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 #include <gdk/gdk.h>
@@ -145,7 +145,19 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_screenIndex = atoi(value);
+            try
+            {
+                m_configuration.m_screenIndex = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, SCREEN_INDEX, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -153,7 +165,19 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_width = atoi(value);
+            try
+            {
+                m_configuration.m_width = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, WIDTH, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -161,7 +185,19 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_height = atoi(value);
+            try
+            {
+                m_configuration.m_height = boost::lexical_cast<int>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                      "%s.\n"),
+                    child->line, value, HEIGHT, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -169,7 +205,20 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_inFullScreen = atoi(value);
+            try
+            {
+                m_configuration.m_inFullScreen =
+                    boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, IN_FULL_SCREEN, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -177,7 +226,19 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_maximized = atoi(value);
+            try
+            {
+                m_configuration.m_maximized = boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, MAXIMIZED, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -185,7 +246,20 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_toolbarVisible = atoi(value);
+            try
+            {
+                m_configuration.m_toolbarVisible =
+                    boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, TOOLBAR_VISIBLE, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -193,7 +267,21 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_configuration.m_toolbarVisibleInFullScreen = atoi(value);
+            try
+            {
+                m_configuration.m_toolbarVisibleInFullScreen =
+                    boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, TOOLBAR_VISIBLE_IN_FULL_SCREEN,
+                    exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -260,42 +348,40 @@ Window::XmlElement *Window::XmlElement::read(xmlDocPtr doc,
 
 xmlNodePtr Window::XmlElement::write() const
 {
-    char *cp;
+    std::string str;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(WINDOW));
     xmlAddChild(node, WidgetContainer::XmlElement::write());
-    cp = g_strdup_printf("%d", m_configuration.m_screenIndex);
+    str = boost::lexical_cast<std::string>(m_configuration.m_screenIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(SCREEN_INDEX),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
-    cp = g_strdup_printf("%d", m_configuration.m_width);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.m_width);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(WIDTH),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
-    cp = g_strdup_printf("%d", m_configuration.m_height);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.m_height);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(HEIGHT),
-                    reinterpret_cast<const xmlChar *>(cp));
-    g_free(cp);
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.m_inFullScreen);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(IN_FULL_SCREEN),
-                    reinterpret_cast<const xmlChar *>(
-                        m_configuration.m_inFullScreen ? "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.m_maximized);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(MAXIMIZED),
-                    reinterpret_cast<const xmlChar *>(
-                        m_configuration.m_maximized ? "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.m_toolbarVisible);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE),
-                    reinterpret_cast<const xmlChar *>(
-                        m_configuration.m_toolbarVisible ? "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(
+        m_configuration.m_toolbarVisibleInFullScreen);
     xmlNewTextChild(
         node, NULL,
         reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE_IN_FULL_SCREEN),
-        reinterpret_cast<const xmlChar *>(
-            m_configuration.m_toolbarVisibleInFullScreen ? "1" : "0"));
+        reinterpret_cast<const xmlChar *>(str.c_str()));
     xmlNodePtr child = xmlNewNode(NULL,
                                   reinterpret_cast<const xmlChar *>(CHILD));
     xmlAddChild(child, m_child->write());
@@ -440,13 +526,10 @@ bool Window::build(const Configuration &config)
 
 bool Window::setup(const Configuration &config)
 {
-    char *id = g_strdup_printf(WINDOW_ID "-%d", serialNumber++);
-    if (!WidgetContainer::setup(id))
-    {
-        g_free(id);
+    std::string id(WINDOW_ID "-%d");
+    id += boost::lexical_cast<std::string>(serialNumber++);
+    if (!WidgetContainer::setup(id.c_str()))
         return false;
-    }
-    g_free(id);
     if (!build(config))
         return false;
 
@@ -495,9 +578,15 @@ bool Window::restore(XmlElement &xmlElement)
     const char *cp = strrchr(id(), '-');
     if (cp)
     {
-        int sn = atoi(cp + 1);
-        if (sn >= serialNumber)
-            serialNumber = sn + 1;
+        try
+        {
+            int sn = boost::lexical_cast<int>(cp + 1);
+            if (sn >= serialNumber)
+                serialNumber = sn + 1;
+        }
+        catch (boost::bad_lexical_cast &)
+        {
+        }
     }
 
     // Start to observe all editors.

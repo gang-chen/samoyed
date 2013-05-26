@@ -5,6 +5,8 @@
 # include <config.h>
 #endif
 #include "views-extension-point.hpp"
+#include "../application.hpp"
+#include "../utilities/extension-point-manager.hpp"
 #include <list>
 #include <string>
 #include <libxml/tree.h>
@@ -15,20 +17,26 @@ namespace Samoyed
 ViewsExtensionPoint::ViewsExtensionPoint():
     ExtensionPoint("views")
 {
-    ExtensionPoint::registerExtensionPoint(*this);
+    Application::instance().extensionPointManager().
+        registerExtensionPoint(*this);
 }
 
-bool ViewsExtensionPoint::registerExtensionInternally(
-    const char *extensionId,
-    xmlDocPtr doc,
-    xmlNodePtr node,
-    std::list<std::string> &errors)
+bool ViewsExtensionPoint::registerExtension(const char *pluginId,
+                                            const char *extensionId,
+                                            xmlDocPtr doc,
+                                            xmlNodePtr node,
+                                            std::list<std::string> &errors)
 {
     return true;
 }
 
 void ViewsExtensionPoint::unregisterExtension(const char *extensionId)
 {
+}
+
+bool ViewsExtensionPoint::activateExtension(char const *extensionId)
+{
+    return false;
 }
 
 }

@@ -5,6 +5,7 @@
 #define SMYD_EXTENSION_HPP
 
 #include <string>
+#include <boost/utility.hpp>
 
 namespace Samoyed
 {
@@ -18,7 +19,7 @@ class Plugin;
 class Extension: public boost::noncopyable
 {
 public:
-    Extension(const char *id, const Plugin &plugin):
+    Extension(const char *id, Plugin &plugin):
         m_id(id), m_plugin(plugin), m_refCount(0)
     {}
 
@@ -39,7 +40,7 @@ public:
 private:
     const std::string m_id;
 
-    const Plugin &m_plugin;
+    Plugin &m_plugin;
 
     int m_refCount;
 };

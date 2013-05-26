@@ -27,4 +27,5 @@ libsamoyed_la_LIBADD = \
     $(BOOST_THREAD_LIB) \
     $(BOOST_REGEX_LIB) \
     $(GTK_LIBS) \
+    $(GMODULE_LIBS) \
     $(XML_LIBS)

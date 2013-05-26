@@ -5,11 +5,10 @@
 #define SMYD_PLUGIN_MANAGER_HPP
 
 #include "miscellaneous.hpp"
-#include <list>
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
-#include <boost/thread/mutex.hpp>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -21,60 +20,51 @@ class ExtensionPoint;
 class PluginManager: public boost::noncopyable
 {
 public:
-    class PluginInfo
+    struct PluginInfo
     {
     public:
         struct ExtensionInfo
         {
-            std::string m_extensionId;
-            ExtensionPoint *m_extensionPoint;
+            std::string id;
+            std::string pointId;
+            xmlNodePtr xmlNode;
+            ExtensionInfo *next;
         };
 
-        static PluginInfo *create(const char *dirName);
-
-        bool enabled() const { return m_enabled; }
-        void enable() { m_enabled = true; }
-        void disable() { m_enabled = false; }
-
-        const char *dirName() const { return m_dirName.c_str(); }
-        const char *id() const { return m_id.c_str(); }
-        const char *name() const { return m_name.c_str(); }
-        const char *description() const { return m_description.c_str(); }
-        const char *libraryName() const { return m_libraryName.c_str(); }
-
-        const std::list<ExtensionInfo> &extensions() const
-        { return m_extensions; }
-        void activateExtensions();
-
-    private:
-        PluginInfo(const char *dirName): m_enabled(true), m_dirName(dirName) {}
-
-        bool m_enabled;
-        std::string m_dirName;
-        std::string m_id;
-        std::string m_name;
-        std::string m_description;
-        std::string m_libraryName;
-        std::list<ExtensionInfo> m_extensions;
+        bool unregister;
+        bool enabled;
+        std::string id;
+        std::string name;
+        std::string description;
+        std::string module;
+        ExtensionInfo *extensions;
+        xmlDocPtr xmlDoc;
     };
-
-    typedef std::map<ComparablePointer<const char *>, PluginInfo>
-        PluginRegistry;
 
     PluginManager();
 
     /**
-     * Scan plugins in the plugins directory.  Read plugin manifest files.
-     * Register plugin extensions to extension points and activate them.
+     * Read a plugin manifest file and register the plugin.  Register plugin
+     * extensions to extension points and activate them.
      */
-    void scanPlugins();
+    bool registerPlugin(const char *pluginManifestFileName);
 
-    const PluginRegistry &pluginRegistry() const { return m_pluginRegistry; }
+    /**
+     * Unregister a plugin.  If the plugin is active, try to deactivate it.  A
+     * plugin will be actually unregistered after it is deactivated.
+     */
+    void unregisterPlugin(const char *pluginId);
 
-    PluginInfo *findPluginInfo(const char *pluginId) const;
+    const PluginInfo *findPluginInfo(const char *pluginId) const;
 
+    /**
+     * Enable a plugin and try to activate it.
+     */
     void enablePlugin(const char *pluginId);
 
+    /**
+     * Disable a plugin.  If the plugin is active, try to deactivate it.
+     */
     void disablePlugin(const char *pluginId);
 
     /**
@@ -83,8 +73,11 @@ public:
      */
     Extension *loadExtension(const char *pluginId, const char *extensionId);
 
-private:
-    typedef std::map<ComparablePointer<const char *>, Plugin *> PluginTable;
+    /**
+     * Scan plugin manifest files in sub-directories of a directory and register
+     * the plugins.
+     */
+    void scanPlugins(const char *pluignsDirName);
 
     /**
      * Deactivate a plugin.  This function can be called by the plugin itself
@@ -92,17 +85,18 @@ private:
      */
     void deactivatePlugin(Plugin &plugin);
 
-    PluginRegistry m_pluginRegistry;
+private:
+    typedef std::map<ComparablePointer<const char *>, PluginInfo *> Registry;
 
-    PluginTable m_pluginTable;
+    typedef std::map<ComparablePointer<const char *>, Plugin *> Table;
+
+    Registry m_registry;
+
+    Table m_table;
 
     int m_nCachedPlugins;
     Plugin *m_lruCachedPlugin;
     Plugin *m_mruCachedPlugin;
-
-    mutable boost::mutex m_mutex;
-
-    friend class Plugin;
 };
 
 }

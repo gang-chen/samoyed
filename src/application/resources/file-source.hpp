@@ -30,13 +30,13 @@ class SourceFile;
  * A file source represents the source code contents of a source file.  It is a
  * shared thread-safe read-only resource.
  *
- * The key of a file source is the URI of the file.  The scope of file sources
- * is global.
+ * The key of a file source consists of the URI and the encoding of the file.
+ * The scope of file sources is global.
  *
  * When a file is opened, the file source will be also created and be
- * automatically updated with user edits committed to the file.  In such a case,
- * the file source is a mirror of the opened file, and cannot be loaded from the
- * external file.
+ * automatically updated with user edits to the file.  In such a case, the file
+ * source is a mirror of the opened file, and cannot be loaded from the external
+ * file.
  */
 class FileSource: public Managed<FileSource>
 {

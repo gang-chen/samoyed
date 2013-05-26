@@ -7,12 +7,14 @@
 #include "widget.hpp"
 #include "widget-container.hpp"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <list>
 #include <map>
 #include <string>
 #include <utility>
+#include <boost/lexical_cast.hpp>
+#include <glib.h>
+#include <glib/gi18n-lib.h>
 #include <libxml/tree.h>
 
 #define WIDGET "widget"
@@ -51,7 +53,7 @@ bool Widget::XmlElement::readInternally(xmlDocPtr doc,
                                         xmlNodePtr node,
                                         std::list<std::string> &errors)
 {
-    char *value;
+    char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -86,7 +88,19 @@ bool Widget::XmlElement::readInternally(xmlDocPtr doc,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
-            m_visible = atoi(value);
+            try
+            {
+                m_visible = boost::lexical_cast<bool>(value);
+            }
+            catch (boost::bad_lexical_cast &exp)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: Invalid Boolean value \"%s\" for element "
+                      "\"%s\". %s.\n"),
+                    child->line, value, VISIBLE, exp.what());
+                errors.push_back(cp);
+                g_free(cp);
+            }
             xmlFree(value);
         }
     }
@@ -95,6 +109,7 @@ bool Widget::XmlElement::readInternally(xmlDocPtr doc,
 
 xmlNodePtr Widget::XmlElement::write() const
 {
+    std::string str;
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(WIDGET));
     xmlNewTextChild(node, NULL,
@@ -108,9 +123,10 @@ xmlNodePtr Widget::XmlElement::write() const
         xmlNewTextChild(node, NULL,
                         reinterpret_cast<const xmlChar *>(DESCRIPTION),
                         reinterpret_cast<const xmlChar *>(description()));
+    str = boost::lexical_cast<std::string>(m_visible);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(VISIBLE),
-                    reinterpret_cast<const xmlChar *>(m_visible ? "1" : "0"));
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     return node;
 }
 

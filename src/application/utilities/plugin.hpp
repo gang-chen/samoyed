@@ -15,21 +15,27 @@ namespace Samoyed
 class Extension;
 
 /**
- * A plugin adds functionality to the host application or host plugins.  A
- * plugin contributes its functionality by plugging some extensions into the
- * extension points defined by the host application or host plugins.  A plugin
- * will be automatically activated by the plugin manager when any extension it
- * provides is used.  A plugin will be automatically deactivated by the plugin
- * manager when none of its extension is used and its task is completed.
+ * A plugin adds functionality to the host application or plugins.  A plugin
+ * contributes its functionality by plugging some extensions into the extension
+ * points defined by the host application or plugins.  A plugin will be
+ * automatically activated by the plugin manager when any extension it provides
+ * is used.  A plugin will be automatically deactivated by the plugin manager
+ * when none of its extension is used and its task is completed.
  */
-class Plugin: boost::noncopyable
+class Plugin: public boost::noncopyable
 {
 public:
-    static Plugin *activate(const char *id);
+    static Plugin *activate(const char *id, const char *module);
 
-    bool forceDeactivate();
+    virtual ~Plugin();
 
-    void deactivate();
+    const char *id() const { return m_id.c_str(); }
+
+    /**
+     * Deactivate a plugin.
+     * @return True iff the plugin is deactivated.
+     */
+    bool deactivate();
 
     Extension *referenceExtension(const char *extensionId);
 
@@ -50,8 +56,6 @@ protected:
     virtual void shutDown() = 0;
 
     Plugin(const char *id);
-
-    virtual ~Plugin();
 
     void addExtension(Extension &extension);
     void removeExtension(Extension &extension);

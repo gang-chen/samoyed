@@ -13,7 +13,7 @@ namespace Samoyed
 void Extension::release()
 {
     if (--m_refCount == 0)
-        m_plugin.onExtensionReleased();
+        m_plugin.onExtensionReleased(*this);
 }
 
 }
