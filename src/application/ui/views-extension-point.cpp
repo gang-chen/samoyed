@@ -11,20 +11,21 @@
 #include <string>
 #include <libxml/tree.h>
 
+#define VIEWS "views"
+
 namespace Samoyed
 {
 
 ViewsExtensionPoint::ViewsExtensionPoint():
-    ExtensionPoint("views")
+    ExtensionPoint(VIEWS)
 {
     Application::instance().extensionPointManager().
         registerExtensionPoint(*this);
 }
 
-bool ViewsExtensionPoint::registerExtension(const char *pluginId,
-                                            const char *extensionId,
-                                            xmlDocPtr doc,
-                                            xmlNodePtr node,
+bool ViewsExtensionPoint::registerExtension(const char *extensionId,
+                                            xmlDocPtr xmlDoc,
+                                            xmlNodePtr xmlNode,
                                             std::list<std::string> &errors)
 {
     return true;
@@ -34,9 +35,8 @@ void ViewsExtensionPoint::unregisterExtension(const char *extensionId)
 {
 }
 
-bool ViewsExtensionPoint::activateExtension(char const *extensionId)
+void ViewsExtensionPoint::onExtensionEnabled(char const *extensionId)
 {
-    return false;
 }
 
 }

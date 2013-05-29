@@ -15,7 +15,7 @@ namespace Samoyed
 /**
  * An extension point is a place where extensions are plugged.  An extension
  * point defines the protocol between it and extensions.  An extension point
- * loads extensions from plugins and calls functions provided by extensions.
+ * requests extensions from plugins and calls functions of extensions.
  */
 class ExtensionPoint: public boost::noncopyable
 {
@@ -24,19 +24,14 @@ public:
 
     const char *id() const { return m_id.c_str(); }
 
-    virtual bool registerExtension(const char *pluginId,
-                                   const char *extensionId,
-                                   xmlDocPtr doc,
-                                   xmlNodePtr node,
+    virtual bool registerExtension(const char *extensionId,
+                                   xmlDocPtr xmlDoc,
+                                   xmlNodePtr xmlNode,
                                    std::list<std::string> &errors) = 0;
 
     virtual void unregisterExtension(const char *extensionId) = 0;
 
-    /**
-     * Activate an extension.  An extension will not be activated if the
-     * activation can be triggered by specific events only.
-     */
-    virtual bool activateExtension(const char *extensionId) = 0;
+    virtual void onExtensionEnabled(const char *extensionId) = 0;
 
 private:
     const std::string m_id;

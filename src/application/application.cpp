@@ -180,7 +180,7 @@ gboolean Application::startUp(gpointer app)
 
     // Create global objects.
     a->m_extensionPointManager = new ExtensionPointManager;
-    a->m_pluginManager = new PluginManager;
+    a->m_pluginManager = new PluginManager();
     a->m_scheduler = new Scheduler;
     a->m_scheduler->size_controller().resize(THREAD_COUNT);
     a->m_fileSourceManager = new FileSourceManager;

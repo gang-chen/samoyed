@@ -17,15 +17,14 @@ class ActionsExtensionPoint: public ExtensionPoint
 public:
     ActionsExtensionPoint();
 
-    virtual bool registerExtension(const char *pluginId,
-                                   const char *extensionId,
-                                   xmlDocPtr doc,
-                                   xmlNodePtr node,
+    virtual bool registerExtension(const char *extensionId,
+                                   xmlDocPtr xmlDoc,
+                                   xmlNodePtr xmlNode,
                                    std::list<std::string> &errors);
 
     virtual void unregisterExtension(const char *extensionId);
 
-    virtual bool activateExtension(const char *extensionId);
+    virtual void onExtensionEnabled(const char *extensionId);
 };
 
 }

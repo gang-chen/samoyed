@@ -11,38 +11,35 @@ namespace Samoyed
 {
 
 class Plugin;
+class ExtensionPoint;
 
 /**
  * An extension is an interface provided by a plugin and called by an extension
  * point.
+ *
+ * The identifier of an extension is formed by concatenating the identifier of
+ * the containing plugin and an identifier which is unique among extensions in
+ * the containing plugin.
  */
 class Extension: public boost::noncopyable
 {
 public:
-    Extension(const char *id, Plugin &plugin):
-        m_id(id), m_plugin(plugin), m_refCount(0)
+    Extension(const char *id, Plugin &plugin, ExtensionPoint &extensionPoint):
+        m_id(id), m_plugin(plugin), m_extensionPoint(extensionPoint)
     {}
 
-    bool released() const { return m_refCount == 0; }
-
-    /**
-     * Reference an extension before using it.
-     */
-    void reference() { ++m_refCount; }
-
-    /**
-     * Release an extension after using it.
-     */
-    void release();
+    virtual ~Extension();
 
     const char *id() const { return m_id.c_str(); }
+
+    ExtensionPoint &extensionPoint() const { return m_extensionPoint; }
 
 private:
     const std::string m_id;
 
     Plugin &m_plugin;
 
-    int m_refCount;
+    ExtensionPoint &m_extensionPoint;
 };
 
 }

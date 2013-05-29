@@ -41,7 +41,7 @@ public:
         xmlDocPtr xmlDoc;
     };
 
-    PluginManager();
+    PluginManager(const char *modulesDirName);
 
     /**
      * Read a plugin manifest file and register the plugin.  Register plugin
@@ -50,7 +50,7 @@ public:
     bool registerPlugin(const char *pluginManifestFileName);
 
     /**
-     * Unregister a plugin.  If the plugin is active, try to deactivate it.  A
+     * Unregister a plugin.  If the plugin is active, try to deactivate it.  The
      * plugin will be actually unregistered after it is deactivated.
      */
     void unregisterPlugin(const char *pluginId);
@@ -68,10 +68,15 @@ public:
     void disablePlugin(const char *pluginId);
 
     /**
-     * Load an extension from a plugin.  If the plugin is inactive, activate it
-     * first.
+     * Activate a plugin.
      */
-    Extension *loadExtension(const char *pluginId, const char *extensionId);
+    Plugin *activatePlugin(const char *pluginId);
+
+    /**
+     * Deactivate a plugin.  This function can be called by the plugin itself
+     * only, when none of its extension is used and its tasks are completed.
+     */
+    void deactivatePlugin(Plugin &plugin);
 
     /**
      * Scan plugin manifest files in sub-directories of a directory and register
@@ -79,16 +84,14 @@ public:
      */
     void scanPlugins(const char *pluignsDirName);
 
-    /**
-     * Deactivate a plugin.  This function can be called by the plugin itself
-     * only, when none of its extension is used and its task is completed.
-     */
-    void deactivatePlugin(Plugin &plugin);
-
 private:
     typedef std::map<ComparablePointer<const char *>, PluginInfo *> Registry;
 
     typedef std::map<ComparablePointer<const char *>, Plugin *> Table;
+
+    void unregisterPluginInternally(PluginInfo &pluginInfo);
+
+    const std::string m_modulesDirName;
 
     Registry m_registry;
 

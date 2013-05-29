@@ -22,23 +22,15 @@ public:
 
     void unregisterExtensionPoint(ExtensionPoint &extPoint);
 
-    /**
-     * Register an extension and activate it if required by default.
-     */
-    void registerExtension(const char *pluginId,
-                           const char *extensionId,
+    void registerExtension(const char *extensionId,
                            const char *extensionPointId,
-                           xmlDocPtr doc,
-                           xmlNodePtr node);
+                           xmlDocPtr xmlDoc,
+                           xmlNodePtr xmlNode);
 
-    /**
-     * Unregister an inactive extension.
-     */
     void unregisterExtension(const char *extensionId,
                              const char *extensionPointId);
 
-    void activateExtension(const char *extensionId,
-                           const char *extensionPointId);
+    ExtensionPoint *extensionPoint(const char *extensionPointId) const;
 
 private:
     typedef std::map<ComparablePointer<const char *>, ExtensionPoint *>
@@ -46,7 +38,6 @@ private:
 
     struct ExtensionInfo
     {
-        std::string pluginId;
         std::string extensionId;
         xmlDocPtr xmlDoc;
         xmlNodePtr xmlNode;

@@ -7,12 +7,23 @@
 #include "plugin-manager.hpp"
 #include "plugin.hpp"
 #include "extension-point-manager.hpp"
+#include "extension-point.hpp"
 #include "../application.hpp"
 #include <utility>
+#include <glib.h>
+#include <gmodule.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+
+#define PLUGIN "plugin"
+#define ID "id"
+#define NAME "name"
+#define DESCRIPTION "description"
+#define MODULE "module"
+#define EXTENSION "extension"
+#define POINT "point"
 
 namespace
 {
@@ -24,7 +35,8 @@ const int CACHE_SIZE = 8;
 namespace Samoyed
 {
 
-PluginManager::PluginManager():
+PluginManager::PluginManager(const char *modulesDirName):
+    m_modulesDirName(modulesDirName),
     m_nCachedPlugins(0),
     m_lruCachedPlugin(NULL),
     m_mruCachedPlugin(NULL)
@@ -55,7 +67,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
         return false;
     }
 
-    if (strcmp(reinterpret_cast<const char *>(node->name), "plugin") != 0)
+    if (strcmp(reinterpret_cast<const char *>(node->name), PLUGIN) != 0)
     {
         xmlFreeDoc(doc);
         return false;
@@ -70,7 +82,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
-        if (strcmp(reinterpret_cast<const char *>(child->name), "id") == 0)
+        if (strcmp(reinterpret_cast<const char *>(child->name), ID) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -79,7 +91,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "name") == 0)
+                        NAME) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -88,7 +100,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "description") == 0)
+                        DESCRIPTION) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -97,7 +109,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "module") == 0)
+                        MODULE) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeListGetString(doc, child->children, 1));
@@ -106,7 +118,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
             xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        "extension") == 0)
+                        EXTENSION) == 0)
         {
             PluginInfo::ExtensionInfo *ext = new PluginInfo::ExtensionInfo;
             for (xmlNodePtr grandChild = child->children;
@@ -114,16 +126,16 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                  grandChild = grandChild->next)
             {
                 if (strcmp(reinterpret_cast<const char *>(grandChild->name),
-                           "id") == 0)
+                           ID) == 0)
                 {
                     value = reinterpret_cast<char *>(
                         xmlNodeListGetString(doc, child->children, 1));
                     if (value)
-                        ext->id = value;
+                        ext->id = info->id + '.' + value;
                     xmlFree(value);
                 }
                 else if (strcmp(reinterpret_cast<const char *>(grandChild->name),
-                                "point") == 0)
+                                POINT) == 0)
                 {
                     value = reinterpret_cast<char *>(
                         xmlNodeListGetString(doc, child->children, 1));
@@ -158,17 +170,32 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
 
     m_registry.insert(std::make_pair(info->id.c_str(), info));
 
-    for (PluginInfo::ExtensionInfo *ext = info->extensions; ext; ext = ext->next)
+    for (PluginInfo::ExtensionInfo *ext = info->extensions;
+         ext;
+         ext = ext->next)
     {
         Application::instance().extensionPointManager().
-            registerExtension(info->id.c_str(),
-                              ext->id.c_str(),
+            registerExtension(ext->id.c_str(),
                               ext->pointId.c_str(),
                               doc,
                               ext->xmlNode);
     }
 
     return true;
+}
+
+void PluginManager::unregisterPluginInternally(PluginInfo &pluginInfo)
+{
+    for (PluginInfo::ExtensionInfo *ext = pluginInfo.extensions;
+         ext;
+         ext = ext->next)
+    {
+        Application::instance().extensionPointManager().
+            unregisterExtension(ext->id.c_str(),
+                                ext->pointId.c_str());
+    }
+    m_registry.erase(pluginInfo.id.c_str());
+    delete &pluginInfo;
 }
 
 void PluginManager::unregisterPlugin(const char *pluginId)
@@ -184,6 +211,8 @@ void PluginManager::unregisterPlugin(const char *pluginId)
     Table::const_iterator it = m_table.find(pluginId);
     if (it != m_table.end())
         it->second->deactivate();
+    else
+        unregisterPluginInternally(*info);
 }
 
 void PluginManager::enablePlugin(const char *pluginId)
@@ -196,9 +225,15 @@ void PluginManager::enablePlugin(const char *pluginId)
     info->enabled = true;
 
     // Activate extensions.
-    for (PluginInfo::ExtensionInfo *ext = info->extensions; ext; ext = ext->next)
-        Application::instance().extensionPointManager().
-            activateExtension(ext->id.c_str(), ext->pointId.c_str());
+    for (PluginInfo::ExtensionInfo *ext = info->extensions;
+         ext;
+         ext = ext->next)
+    {
+        ExtensionPoint *point = Application::instance().extensionPointManager().
+            extensionPoint(ext->pointId.c_str());
+        if (point)
+            point->onExtensionEnabled(ext->id.c_str());
+    }
 }
 
 void PluginManager::disablePlugin(const char *pluginId)
@@ -216,28 +251,31 @@ void PluginManager::disablePlugin(const char *pluginId)
         it->second->deactivate();
 }
 
-Extension *PluginManager::loadExtension(const char *pluginId,
-                                        const char *extensionId)
+Plugin *PluginManager::activatePlugin(const char *pluginId)
 {
     PluginInfo *info = m_registry.find(pluginId)->second;
     if (info->unregister || !info->enabled)
         return NULL;
 
-    Plugin *plugin;
+    char *module = g_module_build_path(m_modulesDirName.c_str(),
+                                       info->module.c_str());
+    std::string error;
+    Plugin *plugin = Plugin::activate(pluginId, module, error);
+    g_free(module);
+    if (!plugin)
+        return NULL;
+    m_table.insert(std::make_pair(plugin->id(), plugin));
+    return plugin;
+}
 
-    // If the plugin is inactive, activate it.
-    Table::const_iterator it = m_table.find(pluginId);
-    if (it == m_table.end())
-    {
-        plugin = Plugin::activate(pluginId, info->module.c_str());
-        if (!plugin)
-            return NULL;
-        m_table.insert(std::make_pair(plugin->id(), plugin));
-    }
-    else
-        plugin = it->second;
-
-    return plugin->referenceExtension(extensionId);
+void PluginManager::deactivatePlugin(Plugin &plugin)
+{
+    m_table.erase(plugin.id());
+    std::string pluginId(plugin.id());
+    delete &plugin;
+    PluginInfo *info = m_registry.find(pluginId.c_str())->second;
+    if (info->unregister)
+        unregisterPluginInternally(*info);
 }
 
 void PluginManager::scanPlugins(const char *pluginsDirName)

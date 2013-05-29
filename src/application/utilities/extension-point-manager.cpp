@@ -23,8 +23,7 @@ void ExtensionPointManager::registerExtensionPoint(ExtensionPoint &extPoint)
     {
         std::list<std::string> errors;
         for (ExtensionInfo *ext = it->second; ext; ext = ext->next)
-            extPoint.registerExtension(ext->pluginId.c_str(),
-                                       ext->extensionId.c_str(),
+            extPoint.registerExtension(ext->extensionId.c_str(),
                                        ext->xmlDoc,
                                        ext->xmlNode,
                                        errors);
@@ -44,17 +43,15 @@ void ExtensionPointManager::unregisterExtensionPoint(ExtensionPoint &extPoint)
     m_registry.erase(extPoint.id());
 }
 
-void ExtensionPointManager::registerExtension(const char *pluginId,
-                                              const char *extensionId,
+void ExtensionPointManager::registerExtension(const char *extensionId,
                                               const char *extensionPointId,
-                                              xmlDocPtr doc,
-                                              xmlNodePtr node)
+                                              xmlDocPtr xmlDoc,
+                                              xmlNodePtr xmlNode)
 {
     ExtensionInfo *ext = new ExtensionInfo;
-    ext->pluginId = pluginId;
     ext->extensionId = extensionId;
-    ext->xmlDoc = doc;
-    ext->xmlNode = node;
+    ext->xmlDoc = xmlDoc;
+    ext->xmlNode = xmlNode;
     ExtensionRegistry::iterator it = m_extensionRegistry.find(extensionPointId);
     if (it != m_extensionRegistry.end())
     {
@@ -71,10 +68,9 @@ void ExtensionPointManager::registerExtension(const char *pluginId,
     if (it2 != m_registry.end())
     {
         std::list<std::string> errors;
-        it2->second->registerExtension(pluginId,
-                                       extensionId,
-                                       doc,
-                                       node,
+        it2->second->registerExtension(extensionId,
+                                       xmlDoc,
+                                       xmlNode,
                                        errors);
     }
 }
@@ -86,14 +82,29 @@ void ExtensionPointManager::unregisterExtension(const char *extensionId,
     if (it != m_registry.end())
         it->second->unregisterExtension(extensionId);
 
+    ExtensionRegistry::iterator it2 =
+        m_extensionRegistry.find(extensionPointId);
+    for (ExtensionInfo **ext = &it2->second; *ext; ext = &(*ext)->next)
+    {
+        if ((*ext)->extensionId == extensionId)
+        {
+            ExtensionInfo *t = *ext;
+            *ext = t->next;
+            delete t;
+            break;
+        }
+    }
+    if (!it2->second)
+        m_extensionRegistry.erase(it2);
 }
 
-void ExtensionPointManager::activateExtension(const char *extensionId,
-                                              const char *extensionPointId)
+ExtensionPoint *
+ExtensionPointManager::extensionPoint(const char *extensionPointId) const
 {
     Registry::const_iterator it = m_registry.find(extensionPointId);
     if (it != m_registry.end())
-        it->second->activateExtension(extensionId);
+        return it->second;
+    return NULL;
 }
 
 }

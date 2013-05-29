@@ -10,10 +10,9 @@
 namespace Samoyed
 {
 
-void Extension::release()
+Extension::~Extension()
 {
-    if (--m_refCount == 0)
-        m_plugin.onExtensionReleased(*this);
+    m_plugin.onExtensionDestroyed(*this);
 }
 
 }
