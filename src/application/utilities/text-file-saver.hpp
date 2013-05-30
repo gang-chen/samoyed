@@ -18,7 +18,8 @@ namespace Samoyed
 class TextFileSaver: public FileSaver
 {
 public:
-    TextFileSaver(unsigned int priority,
+    TextFileSaver(Scheduler &scheduler,
+                  unsigned int priority,
                   const Callback &callback,
                   const char *uri,
                   char *text,

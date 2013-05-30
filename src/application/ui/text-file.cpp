@@ -11,6 +11,7 @@
 #include "../utilities/text-buffer.hpp"
 #include "../utilities/text-file-loader.hpp"
 #include "../utilities/text-file-saver.hpp"
+#include "../application.hpp"
 #include <map>
 #include <boost/any.hpp>
 #include <glib/gi18n-lib.h>
@@ -153,13 +154,18 @@ Editor *TextFile::createEditorInternally(Project *project)
 FileLoader *TextFile::createLoader(unsigned int priority,
                                    const Worker::Callback &callback)
 {
-    return new TextFileLoader(priority, callback, uri(), encoding());
+    return new TextFileLoader(Application::instance().scheduler(),
+                              priority,
+                              callback,
+                              uri(),
+                              encoding());
 }
 
 FileSaver *TextFile::createSaver(unsigned int priority,
                                  const Worker::Callback &callback)
 {
-    return new TextFileSaver(priority,
+    return new TextFileSaver(Application::instance().scheduler(),
+                             priority,
                              callback,
                              uri(),
                              text(0, 0, -1, -1),

@@ -3,9 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ worker.cpp -DSMYD_UNIT_TEST -DSMYD_WORKER_UNIT_TEST\
- `pkg-config --cflags --libs glib-2.0` -I../../../libs -lboost_thread -pthread\
- -Werror -Wall -o worker
+g++ worker.cpp -DSMYD_WORKER_UNIT_TEST `pkg-config --cflags --libs glib-2.0`\
+ -I../../../libs -lboost_thread -pthread -Werror -Wall -o worker
 */
 
 #ifdef HAVE_CONFIG_H
@@ -13,9 +12,6 @@ g++ worker.cpp -DSMYD_UNIT_TEST -DSMYD_WORKER_UNIT_TEST\
 #endif
 #include "worker.hpp"
 #include "scheduler.hpp"
-#ifndef SMYD_UNIT_TEST
-# include "../application.hpp"
-#endif
 #include <assert.h>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -26,19 +22,12 @@ g++ worker.cpp -DSMYD_UNIT_TEST -DSMYD_WORKER_UNIT_TEST\
 #endif
 #include <glib.h>
 
-#ifdef SMYD_UNIT_TEST
-extern Samoyed::Scheduler scheduler;
-#endif
-
 namespace Samoyed
 {
 
 Worker::ExecutionWrapper::ExecutionWrapper(Worker &worker):
     m_worker(worker)
 {
-#ifndef SMYD_UNIT_TEST
-    Application::instance().setThreadWorker(&m_worker);
-#endif
     if (!m_worker.m_blocked)
         m_worker.begin();
 }
@@ -47,20 +36,6 @@ Worker::ExecutionWrapper::~ExecutionWrapper()
 {
     if (!m_worker.m_blocked)
         m_worker.end();
-#ifndef SMYD_UNIT_TEST
-    Application::instance().setThreadWorker(NULL);
-#endif
-}
-
-unsigned int Worker::defaultPriorityInCurrentThread()
-{
-#ifdef SMYD_UNIT_TEST
-    return PRIORITY_INTERACTIVE;
-#else
-    if (Application::instance().inMainThread())
-        return PRIORITY_INTERACTIVE;
-    return Application::instance().threadWorker()->priority();
-#endif
 }
 
 void Worker::operator()()
@@ -83,20 +58,10 @@ void Worker::operator()()
             m_block = false;
             return;
         }
-        unsigned int hpp =
-#ifdef SMYD_UNIT_TEST
-            scheduler.
-#else
-            Application::instance().scheduler().
-#endif
-            highestPendingWorkerPriority();
+        unsigned int hpp = m_scheduler.highestPendingWorkerPriority();
         if (hpp > m_priority)
         {
-#ifdef SMYD_UNIT_TEST
-            scheduler.schedule(*this);
-#else
-            Application::instance().scheduler().schedule(*this);
-#endif
+            m_scheduler.schedule(*this);
 #ifdef SMYD_WORKER_UNIT_TEST
             printf("%s: Priority %u preempted by priority %u\n",
                    description(), m_priority, hpp);
@@ -157,25 +122,14 @@ void Worker::operator()()
                     m_blocked = true;
                     return;
                 }
-                unsigned int hpp =
-#ifdef SMYD_UNIT_TEST
-                    scheduler.
-#else
-                    Application::instance().scheduler().
-#endif
-                    highestPendingWorkerPriority();
+                unsigned int hpp = m_scheduler.highestPendingWorkerPriority();
                 if (hpp > m_priority)
                 {
                     // FIXME It is possible that multiple low priority workers
                     // are preempted by a higher priority.  But actually only
                     // one worker is needed.
                     m_state = STATE_READY;
-#ifdef SMYD_UNIT_TEST
-                    scheduler.
-#else
-                    Application::instance().scheduler().
-#endif
-                        schedule(*this);
+                    m_scheduler.schedule(*this);
 #ifdef SMYD_WORKER_UNIT_TEST
                     printf("%s: Priority %u preempted by priority %u\n",
                            description(), m_priority, hpp);
@@ -245,11 +199,7 @@ void Worker::unblock()
     else if (m_state == STATE_BLOCKED)
     {
         m_state = STATE_READY;
-#ifdef SMYD_UNIT_TEST
-        scheduler.schedule(*this);
-#else
-        Application::instance().scheduler().schedule(*this);
-#endif
+        m_scheduler.schedule(*this);
     }
     // If the worker was finished or canceled, do nothing.
 }
@@ -257,8 +207,6 @@ void Worker::unblock()
 }
 
 #ifdef SMYD_WORKER_UNIT_TEST
-
-Samoyed::Scheduler scheduler;
 
 class Alarm: public Samoyed::Worker
 {
@@ -279,10 +227,11 @@ public:
         int m_times;
     };
 
-    Alarm(unsigned int priority,
+    Alarm(Samoyed::Scheduler &scheduler,
+          unsigned int priority,
           const Callback &callback,
           int id, int sec, int times):
-        Samoyed::Worker(priority, callback),
+        Samoyed::Worker(scheduler, priority, callback),
         m_id(id), m_sec(sec), m_times(times), m_updatedTimes(0), m_tick(0)
     {
         char *desc =
@@ -341,7 +290,12 @@ private:
 class AlarmDriver
 {
 public:
-    AlarmDriver(unsigned int priority, int id, int sec, int times = 0):
+    AlarmDriver(Samoyed::Scheduler &scheduler,
+                unsigned int priority,
+                int id,
+                int sec,
+                int times = 0):
+        m_scheduler(scheduler),
         m_priority(priority),
         m_id(id),
         m_sec(sec),
@@ -381,11 +335,12 @@ public:
         else
         {
             // If no worker exists, create a new worker.
-            m_alarm = new Alarm(m_priority,
+            m_alarm = new Alarm(m_scheduler,
+                                m_priority,
                                 boost::bind(&AlarmDriver::onAlarmFinished,
                                             this, _1),
                                 m_id, m_sec, times);
-            scheduler.schedule(*m_alarm);
+            m_scheduler.schedule(*m_alarm);
         }
     }
 
@@ -408,15 +363,17 @@ private:
         delete &worker;
         if (m_updatedTimes > 0)
         {
-            m_alarm = new Alarm(m_priority,
+            m_alarm = new Alarm(m_scheduler,
+                                m_priority,
                                 boost::bind(&AlarmDriver::onAlarmFinished,
                                             this, _1),
                                 m_id, m_sec, m_updatedTimes);
-            scheduler.schedule(*m_alarm);
+            m_scheduler.schedule(*m_alarm);
             m_updatedTimes = 0;
         }
     }
 
+    Samoyed::Scheduler &m_scheduler;
     unsigned int m_priority;
     int m_id;
     int m_sec;
@@ -427,7 +384,12 @@ private:
 
 int main()
 {
-    AlarmDriver d1(1, 1, 1), d2(2, 2, 2), d3(3, 3, 3), d4(4, 4, 4), d5(5, 5, 5);
+    Samoyed::Scheduler scheduler;
+    AlarmDriver d1(scheduler, 1, 1, 1),
+                d2(scheduler, 2, 2, 2),
+                d3(scheduler, 3, 3, 3),
+                d4(scheduler, 4, 4, 4),
+                d5(scheduler, 5, 5, 5);
     boost::system_time t = boost::get_system_time();
     printf("Alarm 1 runs 10 times\n");
     d1.run(10, false);

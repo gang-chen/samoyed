@@ -419,6 +419,17 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
     }
 }
 
+Session::UnsavedFileListRequestWorker::
+    UnsavedFileListRequestWorker(unsigned int priority,
+                                 const Callback &callback,
+                                 Session &session):
+    Worker(Application::instance().scheduler(),
+           priority,
+           callback),
+    m_session(session)
+{
+}
+
 bool Session::UnsavedFileListRequestWorker::step()
 {
     m_session.executeQueuedUnsavedFileListRequests();

@@ -25,7 +25,8 @@ namespace Samoyed
 
 void FileSource::Loading::execute(FileSource &source)
 {
-    TextFileLoader loader(Worker::defaultPriorityInCurrentThread(),
+    TextFileLoader loader(Application::instance().scheduler(),
+                          Worker::PRIORITY_INTERACTIVE,
                           Worker::Callback(),
                           source.uri(),
                           source.encoding());
@@ -97,7 +98,7 @@ void FileSource::Replacement::execute(FileSource &source)
 FileSource::WriteExecutionWorker::WriteExecutionWorker(unsigned int priority,
                                                        const Callback &callback,
                                                        FileSource &source):
-    Worker(priority, callback),
+    Worker(Application::instance().scheduler(), priority, callback),
     m_source(&source)
 {
     char *desc =
@@ -287,7 +288,7 @@ void FileSource::requestWrite(Write *write)
         if (!m_writeWorker)
         {
             m_writeWorker = new WriteExecutionWorker(
-                Worker::defaultPriorityInCurrentThread(),
+                Worker::PRIORITY_INTERACTIVE,
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
             Application::instance().scheduler().schedule(*m_writeWorker);
@@ -311,7 +312,7 @@ void FileSource::onWriteWorkerDone(Worker &worker)
             // Some new write requests were queued.  Create a new background
             // worker to execute them.
             m_writeWorker = new WriteExecutionWorker(
-                Worker::defaultPriorityInCurrentThread(),
+                Worker::PRIORITY_INTERACTIVE,
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
             Application::instance().scheduler().schedule(*m_writeWorker);

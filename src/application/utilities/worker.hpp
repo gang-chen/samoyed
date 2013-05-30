@@ -12,6 +12,8 @@
 namespace Samoyed
 {
 
+class Scheduler;
+
 /**
  * A worker carries out a specific task in a background thread.  A worker can
  * be canceled, blocked, updated or preempted.  Workers are cooperative to
@@ -82,7 +84,10 @@ public:
      * canceled.  The callback is called without locking the mutex, allowing
      * the callback to destroy this worker.
      */
-    Worker(unsigned int priority, const Callback &callback):
+    Worker(Scheduler &scheduler,
+           unsigned int priority,
+           const Callback &callback):
+        m_scheduler(scheduler),
         m_priority(priority),
         m_state(STATE_READY),
         m_cancel(false),
@@ -211,6 +216,8 @@ private:
     private:
         Worker &m_worker;
     };
+
+    Scheduler &m_scheduler;
 
     const unsigned int m_priority;
 

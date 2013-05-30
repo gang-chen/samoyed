@@ -13,6 +13,7 @@
 namespace Samoyed
 {
 
+class ExtensionPointManager;
 class Plugin;
 class Extension;
 class ExtensionPoint;
@@ -41,7 +42,8 @@ public:
         xmlDocPtr xmlDoc;
     };
 
-    PluginManager(const char *modulesDirName);
+    PluginManager(ExtensionPointManager &extensionPointMgr,
+                  const char *modulesDirName);
 
     /**
      * Read a plugin manifest file and register the plugin.  Register plugin
@@ -90,6 +92,8 @@ private:
     typedef std::map<ComparablePointer<const char *>, Plugin *> Table;
 
     void unregisterPluginInternally(PluginInfo &pluginInfo);
+
+    ExtensionPointManager &m_extensionPointManager;
 
     const std::string m_modulesDirName;
 

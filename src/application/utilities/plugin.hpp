@@ -13,6 +13,7 @@
 namespace Samoyed
 {
 
+class PluginManager;
 class Extension;
 class ExtensionPoint;
 
@@ -27,7 +28,8 @@ class ExtensionPoint;
 class Plugin: public boost::noncopyable
 {
 public:
-    static Plugin *activate(const char *id,
+    static Plugin *activate(PluginManager &manager,
+                            const char *id,
                             const char *moduleFileName,
                             std::string &error);
 
@@ -42,10 +44,12 @@ public:
      */
     bool deactivate();
 
-    virtual Extension *createExtension(const char *extensionId,
-                                       ExtensionPoint &extensionPoint) = 0;
+    virtual bool active() const = 0;
 
-    void onExtensionDestroyed(Extension &extension);
+    Extension *acquireExtension(const char *extensionId,
+                                ExtensionPoint &extensionPoint);
+
+    void releaseExtension(Extension &extension);
 
     bool cached() const { return m_nextCached; }
 
@@ -53,13 +57,18 @@ public:
     void removeFromCache(Plugin *&lru, Plugin *&mru);
 
 protected:
-    Plugin(const char *id, GModule *module);
+    Plugin(PluginManager &manager, const char *id, GModule *module);
 
-    virtual bool used() const = 0;
+    virtual Extension *createExtension(const char *extensionId,
+                                       ExtensionPoint &extensionPoint) = 0;
+
+    int m_activeExtensionCount;
 
 private:
     typedef std::map<ComparablePointer<const char *>, Extension *>
         ExtensionTable;
+
+    PluginManager &m_manager;
 
     const std::string m_id;
 

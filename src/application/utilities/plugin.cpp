@@ -1,24 +1,33 @@
 // Plugin.
 // Copyright (C) 2013 Gang Chen.
 
+/*
+UNIT TEST BUILD
+g++ plugin.cpp -DSMYD_PLUGIN_UNIT_TEST `pkg-config --cflags --libs gmodule-2.0`\
+ -Werror -Wall -fPIC -DPIC -shared -Wl,-soname,libhelloworld.so -o
+libhelloworld.so
+*/
+
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "plugin.hpp"
 #include "plugin-manager.hpp"
 #include "extension.hpp"
-#include "../application.hpp"
 #include <utility>
 #include <map>
 #include <string>
 #include <gmodule.h>
 
-#define CREATE_PLUGIN "create_plugin"
+#ifndef SMYD_PLUGIN_UNIT_TEST
+
+#define CREATE_PLUGIN "createPlugin"
 
 namespace
 {
 
-typedef Samoyed::Plugin *(*PluginFactory)(const char *id,
+typedef Samoyed::Plugin *(*PluginFactory)(Samoyed::PluginManager &manager,
+                                          const char *id,
                                           GModule *module,
                                           std::string &error);
 
@@ -27,7 +36,9 @@ typedef Samoyed::Plugin *(*PluginFactory)(const char *id,
 namespace Samoyed
 {
 
-Plugin::Plugin(const char *id, GModule *module):
+Plugin::Plugin(PluginManager &manager, const char *id, GModule *module):
+    m_activeExtensionCount(0),
+    m_manager(manager),
     m_id(id),
     m_module(module),
     m_nextCached(NULL),
@@ -40,7 +51,8 @@ Plugin::~Plugin()
     g_module_close(m_module);
 }
 
-Plugin *Plugin::activate(const char *id,
+Plugin *Plugin::activate(PluginManager &manager,
+                         const char *id,
                          const char *moduleFileName,
                          std::string &error)
 {
@@ -58,7 +70,7 @@ Plugin *Plugin::activate(const char *id,
         g_module_close(module);
         return NULL;
     }
-    Plugin *plugin = factory(id, module, error);
+    Plugin *plugin = factory(manager, id, module, error);
     if (!plugin)
     {
         g_module_close(module);
@@ -72,11 +84,28 @@ bool Plugin::deactivate()
     return false;
 }
 
-void Plugin::onExtensionDestroyed(Extension &extension)
+Extension *Plugin::acquireExtension(const char *extensionId,
+                                    ExtensionPoint &extensionPoint)
 {
-    m_extensionTable.erase(extension.id());
-    if (m_extensionTable.empty() && !used())
-        Application::instance().pluginManager().deactivatePlugin(*this);
+    ExtensionTable::const_iterator it = m_extensionTable.find(extensionId);
+    if (it != m_extensionTable.end())
+    {
+        ++m_activeExtensionCount;
+        return it->second;
+    }
+    Extension *ext = createExtension(extensionId, extensionPoint);
+    if (!ext)
+        return NULL;
+    m_extensionTable.insert(std::make_pair(ext->id(), ext));
+    ++m_activeExtensionCount;
+    return ext;
+}
+
+void Plugin::releaseExtension(Extension &extension)
+{
+    --m_activeExtensionCount;
+    if (!active())
+        m_manager.deactivatePlugin(*this);
 }
 
 void Plugin::addToCache(Plugin *&lru, Plugin *&mru)
@@ -99,3 +128,24 @@ void Plugin::removeFromCache(Plugin *&lru, Plugin *&mru)
 }
 
 }
+
+#else
+
+class HelloWorldPlugin: public Samoyed::Plugin
+{
+public:
+    HelloWorldPlugin(Samoyed::PluginManager &manager,
+                     const char *id,
+                     GModule *module):
+        Samoyed::Plugin(manager, id, module)
+    {}
+}
+
+Samoyed::Plugin *createPlugin(Samoyed::PluginManager &manager,
+                              const char *id,
+                              GModule *module,
+                              std::string &error)
+{
+}
+
+#endif

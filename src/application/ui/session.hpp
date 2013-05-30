@@ -131,10 +131,7 @@ private:
     public:
         UnsavedFileListRequestWorker(unsigned int priority,
                                      const Callback &callback,
-                                     Session &session):
-            Worker(priority, callback),
-            m_session(session)
-        {}
+                                     Session &session);
         virtual bool step();
 
     private:

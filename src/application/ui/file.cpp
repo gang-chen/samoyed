@@ -613,7 +613,7 @@ bool File::load(bool userRequest)
     }
     m_loading = true;
     freezeInternally();
-    m_loader = createLoader(Worker::defaultPriorityInCurrentThread(),
+    m_loader = createLoader(Worker::PRIORITY_INTERACTIVE,
                             boost::bind(&File::onLoadedWrapper, this, _1));
     Application::instance().scheduler().schedule(*m_loader);
     return true;
@@ -625,7 +625,7 @@ void File::save()
     m_saving = true;
     freezeInternally();
     FileSaver *saver =
-        createSaver(Worker::defaultPriorityInCurrentThread(),
+        createSaver(Worker::PRIORITY_INTERACTIVE,
                     boost::bind(&File::onSavedWrapper, this, _1));
     Application::instance().scheduler().schedule(*saver);
 }

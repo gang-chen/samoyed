@@ -72,7 +72,6 @@ Application::Application():
     m_projectConfigManager(NULL),
     m_projectAstManager(NULL),
     m_mainThreadId(boost::this_thread::get_id()),
-    m_threadWorker(NULL),
     m_firstProject(NULL),
     m_lastProject(NULL),
     m_firstFile(NULL),
@@ -180,7 +179,8 @@ gboolean Application::startUp(gpointer app)
 
     // Create global objects.
     a->m_extensionPointManager = new ExtensionPointManager;
-    a->m_pluginManager = new PluginManager();
+    a->m_pluginManager = new PluginManager(a->extensionPointManager(),
+                                           a->librariesDirectoryName());
     a->m_scheduler = new Scheduler;
     a->m_scheduler->size_controller().resize(THREAD_COUNT);
     a->m_fileSourceManager = new FileSourceManager;

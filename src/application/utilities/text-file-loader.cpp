@@ -4,9 +4,8 @@
 /*
 UNIT TEST BUILD
 g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
- -DSMYD_UNIT_TEST -DSMYD_TEXT_FILE_LOADER_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -I../../../libs -lboost_thread\
- -pthread -Werror -Wall -o text-file-loader
+ -DSMYD_TEXT_FILE_LOADER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
+ -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-loader
 */
 
 #ifdef HAVE_CONFIG_H
@@ -15,8 +14,8 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
 #include "text-file-loader.hpp"
 #include "text-buffer.hpp"
 #include "utf8.hpp"
+#include "scheduler.hpp"
 #ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
-# include "scheduler.hpp"
 # include <assert.h>
 # include <stdio.h>
 # include <string.h>
@@ -45,11 +44,12 @@ const int BUFFER_SIZE = 10000;
 namespace Samoyed
 {
 
-TextFileLoader::TextFileLoader(unsigned int priority,
+TextFileLoader::TextFileLoader(Scheduler &scheduler,
+                               unsigned int priority,
                                const Callback &callback,
                                const char *uri,
                                const char *encoding):
-    FileLoader(priority, callback, uri),
+    FileLoader(scheduler, priority, callback, uri),
     m_encoding(encoding),
     m_buffer(NULL)
 {
@@ -191,12 +191,11 @@ void onDone(Samoyed::Worker &worker)
     delete &loader;
 }
 
-Samoyed::Scheduler scheduler(3);
-
 int main()
 {
     g_type_init();
 
+    Samoyed::Scheduler scheduler(3);
     textGbk = new char[strlen(TEXT_GBK) * BUFFER_SIZE + 1];
     textUtf8 = new char[strlen(TEXT_UTF8) * BUFFER_SIZE + 1];
     int i;
@@ -226,7 +225,7 @@ int main()
         return -1;
     }
     Samoyed::TextFileLoader *loader1 =
-        new Samoyed::TextFileLoader(1, onDone, uri1, "GBK");
+        new Samoyed::TextFileLoader(scheduler, 1, onDone, uri1, "GBK");
     g_free(uri1);
 
     std::string fileName2(pwd);
@@ -243,7 +242,7 @@ int main()
         return -1;
     }
     Samoyed::TextFileLoader *loader2 =
-        new Samoyed::TextFileLoader(1, onDone, uri2, "UTF-8");
+        new Samoyed::TextFileLoader(scheduler, 1, onDone, uri2, "UTF-8");
     g_free(uri2);
 
     std::string fileName3(pwd);
@@ -260,7 +259,7 @@ int main()
         return -1;
     }
     Samoyed::TextFileLoader *loader3 =
-        new Samoyed::TextFileLoader(1, onDone, uri3, "UTF-8");
+        new Samoyed::TextFileLoader(scheduler, 1, onDone, uri3, "UTF-8");
     g_free(uri3);
 
     scheduler.schedule(*loader1);

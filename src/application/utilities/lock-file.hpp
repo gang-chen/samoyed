@@ -42,10 +42,6 @@ public:
 private:
     static void onCrashed(int signalNumber);
 
-    static bool s_crashHandlerRegistered;
-
-    static LockFile *s_first, *s_last;
-
     const std::string m_fileName;
 
     bool m_locked;

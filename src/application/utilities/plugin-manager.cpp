@@ -8,7 +8,6 @@
 #include "plugin.hpp"
 #include "extension-point-manager.hpp"
 #include "extension-point.hpp"
-#include "../application.hpp"
 #include <utility>
 #include <glib.h>
 #include <gmodule.h>
@@ -35,7 +34,9 @@ const int CACHE_SIZE = 8;
 namespace Samoyed
 {
 
-PluginManager::PluginManager(const char *modulesDirName):
+PluginManager::PluginManager(ExtensionPointManager &extensionPointMgr,
+                             const char *modulesDirName):
+    m_extensionPointManager(extensionPointMgr),
     m_modulesDirName(modulesDirName),
     m_nCachedPlugins(0),
     m_lruCachedPlugin(NULL),
@@ -131,7 +132,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                     value = reinterpret_cast<char *>(
                         xmlNodeListGetString(doc, child->children, 1));
                     if (value)
-                        ext->id = info->id + '.' + value;
+                        ext->id = info->id + '/' + value;
                     xmlFree(value);
                 }
                 else if (strcmp(reinterpret_cast<const char *>(grandChild->name),
@@ -174,7 +175,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
          ext;
          ext = ext->next)
     {
-        Application::instance().extensionPointManager().
+        m_extensionPointManager.
             registerExtension(ext->id.c_str(),
                               ext->pointId.c_str(),
                               doc,
@@ -190,7 +191,7 @@ void PluginManager::unregisterPluginInternally(PluginInfo &pluginInfo)
          ext;
          ext = ext->next)
     {
-        Application::instance().extensionPointManager().
+        m_extensionPointManager.
             unregisterExtension(ext->id.c_str(),
                                 ext->pointId.c_str());
     }
@@ -229,7 +230,7 @@ void PluginManager::enablePlugin(const char *pluginId)
          ext;
          ext = ext->next)
     {
-        ExtensionPoint *point = Application::instance().extensionPointManager().
+        ExtensionPoint *point = m_extensionPointManager.
             extensionPoint(ext->pointId.c_str());
         if (point)
             point->onExtensionEnabled(ext->id.c_str());
@@ -260,7 +261,7 @@ Plugin *PluginManager::activatePlugin(const char *pluginId)
     char *module = g_module_build_path(m_modulesDirName.c_str(),
                                        info->module.c_str());
     std::string error;
-    Plugin *plugin = Plugin::activate(pluginId, module, error);
+    Plugin *plugin = Plugin::activate(*this, pluginId, module, error);
     g_free(module);
     if (!plugin)
         return NULL;

@@ -4,9 +4,8 @@
 /*
 UNIT TEST BUILD
 g++ text-file-saver.cpp worker.cpp revision.cpp\
- -DSMYD_UNIT_TEST -DSMYD_TEXT_FILE_SAVER_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -I../../../libs -lboost_thread\
- -pthread -Werror -Wall -o text-file-saver
+ -DSMYD_TEXT_FILE_SAVER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
+ -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-saver
 */
 
 #ifdef HAVE_CONFIG_H
@@ -14,8 +13,8 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 #endif
 #include "text-file-saver.hpp"
 #include "revision.hpp"
+#include "scheduler.hpp"
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
-# include "scheduler.hpp"
 # include <stdio.h>
 # include <string.h>
 #endif
@@ -32,13 +31,14 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 namespace Samoyed
 {
 
-TextFileSaver::TextFileSaver(unsigned int priority,
+TextFileSaver::TextFileSaver(Scheduler &scheduler,
+                             unsigned int priority,
                              const Callback &callback,
                              const char *uri,
                              char *text,
                              int length,
                              const char *encoding):
-    FileSaver(priority, callback, uri),
+    FileSaver(scheduler, priority, callback, uri),
     m_text(text),
     m_length(length),
     m_encoding(encoding)
@@ -159,11 +159,11 @@ void onDone(Samoyed::Worker &worker)
     delete &saver;
 }
 
-Samoyed::Scheduler scheduler(1);
-
 int main()
 {
     g_type_init();
+
+    Samoyed::Scheduler scheduler(2);
 
     char *pwd = g_get_current_dir();
 
@@ -177,7 +177,8 @@ int main()
     }
     char *textUtf8 = g_strdup(TEXT_UTF8);
     Samoyed::TextFileSaver *saver1 =
-        new Samoyed::TextFileSaver(1, onDone, uri1, textUtf8, -1, "GBK");
+        new Samoyed::TextFileSaver(scheduler, 1, onDone, uri1, textUtf8, -1,
+                                   "GBK");
     g_free(uri1);
 
     std::string fileName2(pwd);
@@ -190,7 +191,8 @@ int main()
     }
     char *text2Utf8 = g_strdup(TEXT_UTF8);
     Samoyed::TextFileSaver *saver2 =
-        new Samoyed::TextFileSaver(1, onDone, uri2, text2Utf8, -1, "UTF-8");
+        new Samoyed::TextFileSaver(scheduler, 1, onDone, uri2, text2Utf8, -1,
+                                   "UTF-8");
     g_free(uri2);
 
     scheduler.schedule(*saver1);

@@ -32,18 +32,18 @@ namespace
 
 const int MAX_HOST_NAME_LENGTH = 500, MAX_PROCESS_ID_LENGTH = 500;
 
+bool crashHandlerRegistered = false;
+
+Samoyed::LockFile *first = NULL, *last = NULL;
+
 }
 
 namespace Samoyed
 {
 
-bool LockFile::s_crashHandlerRegistered = false;
-
-LockFile *LockFile::s_first = NULL, *LockFile::s_last = NULL;
-
 void LockFile::onCrashed(int signalNumber)
 {
-    for (LockFile *l = s_first; l; l = l->next())
+    for (LockFile *l = first; l; l = l->next())
     {
         if (l->m_locked)
             l->unlock(false);
@@ -55,19 +55,19 @@ LockFile::LockFile(const char *fileName):
     m_locked(false),
     m_lockingProcessId(-1)
 {
-    if (!s_crashHandlerRegistered)
+    if (!crashHandlerRegistered)
     {
         Signal::registerCrashHandler(onCrashed);
-        s_crashHandlerRegistered = true;
+        crashHandlerRegistered = true;
     }
-    addToList(s_first, s_last);
+    addToList(first, last);
 }
 
 LockFile::~LockFile()
 {
     if (m_locked)
         unlock(false);
-    removeFromList(s_first, s_last);
+    removeFromList(first, last);
 }
 
 LockFile::State LockFile::queryState()

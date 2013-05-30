@@ -19,7 +19,8 @@ class TextBuffer;
 class TextFileLoader: public FileLoader
 {
 public:
-    TextFileLoader(unsigned int priority,
+    TextFileLoader(Scheduler &scheduler,
+                   unsigned int priority,
                    const Callback &callback,
                    const char *uri,
                    const char *encoding);

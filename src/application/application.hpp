@@ -9,7 +9,6 @@
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/thread/thread.hpp>
-#include <boost/thread/tss.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -19,7 +18,6 @@ class Session;
 class ExtensionPointManager;
 class PluginManager;
 class Scheduler;
-class Worker;
 class Project;
 class File;
 template<class> class Manager;
@@ -105,12 +103,6 @@ public:
      */
     bool inMainThread() const
     { return boost::this_thread::get_id() == m_mainThreadId; }
-
-    Worker *threadWorker() const
-    { return m_threadWorker.get(); }
-
-    void setThreadWorker(Worker *worker)
-    { m_threadWorker.reset(worker); }
 
     Project *findProject(const char *uri);
     const Project *findProject(const char *uri) const;
@@ -204,8 +196,6 @@ private:
     ProjectAstManager *m_projectAstManager;
 
     boost::thread::id m_mainThreadId;
-
-    boost::thread_specific_ptr<Worker> m_threadWorker;
 
     ProjectTable m_projectTable;
     Project *m_firstProject;

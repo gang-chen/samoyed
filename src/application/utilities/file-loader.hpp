@@ -15,10 +15,11 @@ namespace Samoyed
 class FileLoader: public Worker
 {
 public:
-    FileLoader(unsigned int priority,
+    FileLoader(Scheduler &scheduler,
+               unsigned int priority,
                const Callback &callback,
                const char *uri):
-        Worker(priority, callback),
+        Worker(scheduler, priority, callback),
         m_error(NULL),
         m_uri(uri)
     {}
