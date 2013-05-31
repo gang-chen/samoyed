@@ -62,7 +62,7 @@ protected:
     virtual Extension *createExtension(const char *extensionId,
                                        ExtensionPoint &extensionPoint) = 0;
 
-    int m_activeExtensionCount;
+    bool hasActiveExtensions() const { return m_activeExtensionCount; }
 
 private:
     typedef std::map<ComparablePointer<const char *>, Extension *>
@@ -75,6 +75,8 @@ private:
     GModule *m_module;
 
     ExtensionTable m_extensionTable;
+
+    int m_activeExtensionCount;
 
     Plugin *m_nextCached;
     Plugin *m_prevCached;
