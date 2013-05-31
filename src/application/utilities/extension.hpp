@@ -28,9 +28,11 @@ public:
         m_id(id), m_plugin(plugin), m_extensionPoint(extensionPoint)
     {}
 
-    virtual ~Extension();
+    virtual ~Extension() {}
 
     const char *id() const { return m_id.c_str(); }
+
+    Plugin &plugin() const { return m_plugin; }
 
     ExtensionPoint &extensionPoint() const { return m_extensionPoint; }
 
