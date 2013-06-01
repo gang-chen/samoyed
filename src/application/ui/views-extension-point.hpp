@@ -1,4 +1,4 @@
-// Extension point - views.
+// Extension point: views.
 // Copyright (C) 2013 Gang Chen.
 
 #ifndef SMYD_VIEWS_EXTENSION_POINT_HPP
@@ -25,6 +25,7 @@ public:
     virtual void unregisterExtension(const char *extensionId);
 
     virtual void onExtensionEnabled(const char *extensionId);
+
 };
 
 }

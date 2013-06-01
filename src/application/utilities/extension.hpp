@@ -18,28 +18,29 @@ class ExtensionPoint;
  * point.
  *
  * The identifier of an extension is formed by concatenating the identifier of
- * the containing plugin and an identifier which is unique among extensions in
- * the containing plugin.
+ * the plugin the provides it and an identifier which is unique among extensions
+ * in the plugin.
  */
 class Extension: public boost::noncopyable
 {
 public:
     Extension(const char *id, Plugin &plugin, ExtensionPoint &extensionPoint):
-        m_id(id), m_plugin(plugin), m_extensionPoint(extensionPoint)
+        m_plugin(plugin), m_id(id), m_extensionPoint(extensionPoint)
     {}
 
     virtual ~Extension() {}
 
     const char *id() const { return m_id.c_str(); }
 
-    Plugin &plugin() const { return m_plugin; }
-
     ExtensionPoint &extensionPoint() const { return m_extensionPoint; }
+
+    void release();
+
+protected:
+    Plugin &m_plugin;
 
 private:
     const std::string m_id;
-
-    Plugin &m_plugin;
 
     ExtensionPoint &m_extensionPoint;
 };

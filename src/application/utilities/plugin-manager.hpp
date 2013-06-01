@@ -34,6 +34,7 @@ public:
 
         bool unregister;
         bool enabled;
+        std::string directoryName;
         std::string id;
         std::string name;
         std::string description;
@@ -42,8 +43,13 @@ public:
         xmlDocPtr xmlDoc;
     };
 
+    typedef std::map<ComparablePointer<const char *>, PluginInfo *> Registry;
+
     PluginManager(ExtensionPointManager &extensionPointMgr,
-                  const char *modulesDirName);
+                  const char *modulesDirName,
+                  int cacheSize);
+
+    ~PluginManager();
 
     /**
      * Read a plugin manifest file and register the plugin.  Register plugin
@@ -59,6 +65,8 @@ public:
 
     const PluginInfo *findPluginInfo(const char *pluginId) const;
 
+    const Registry &pluginRegistry() const { return m_registry; }
+
     /**
      * Enable a plugin and try to activate it.
      */
@@ -70,9 +78,11 @@ public:
     void disablePlugin(const char *pluginId);
 
     /**
-     * Activate a plugin.
+     * Acquire an extension.  If the plugin that provides the extension is
+     * inactive, activate it.
      */
-    Plugin *activatePlugin(const char *pluginId);
+    Extension *acquireExtension(const char *extensionId,
+                                ExtensionPoint &extensionPoint);
 
     /**
      * Deactivate a plugin.  This function can be called by the plugin itself
@@ -87,8 +97,6 @@ public:
     void scanPlugins(const char *pluignsDirName);
 
 private:
-    typedef std::map<ComparablePointer<const char *>, PluginInfo *> Registry;
-
     typedef std::map<ComparablePointer<const char *>, Plugin *> Table;
 
     void unregisterPluginInternally(PluginInfo &pluginInfo);
@@ -101,6 +109,7 @@ private:
 
     Table m_table;
 
+    const int m_cacheSize;
     int m_nCachedPlugins;
     Plugin *m_lruCachedPlugin;
     Plugin *m_mruCachedPlugin;

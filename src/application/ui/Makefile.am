@@ -36,7 +36,8 @@ libui_la_SOURCES = \
     splash-screen.hpp \
     text-editor.hpp \
     text-file.hpp \
-    view-extension-point.hpp \
+    view-extension.hpp \
+    views-extension-point.hpp \
     widget.hpp \
     widget-container.hpp \
     widget-with-bars.hpp \

@@ -16,6 +16,8 @@ namespace Samoyed
 
 class Session;
 class ExtensionPointManager;
+class ActionsExtensionPoint;
+class ViewsExtensionPoint;
 class PluginManager;
 class Scheduler;
 class Project;
@@ -184,6 +186,9 @@ private:
     bool m_switchingSession;
 
     ExtensionPointManager *m_extensionPointManager;
+
+    ActionsExtensionPoint *m_actionsExtensionPoint;
+    ViewsExtensionPoint *m_viewsExtensionPoint;
 
     PluginManager *m_pluginManager;
 

@@ -18,8 +18,6 @@ AC_DEFINE(SAMOYED_MINOR_VERSION, samoyed_minor_version, [Samoyed minor version])
 AC_SUBST(SAMOYED_MINOR_VERSION, samoyed_minor_version)
 AC_DEFINE(SAMOYED_MICRO_VERSION, samoyed_micro_version, [Samoyed micro version])
 AC_SUBST(SAMOYED_MICRO_VERSION, samoyed_micro_version)
-AC_DEFINE(SAMOYED_VERSION, samoyed_version, [Samoyed version])
-AC_SUBST(SAMOYED_VERSION, samoyed_version)
 
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -37,7 +35,7 @@ PKG_PROG_PKG_CONFIG([0.26])
 
 AC_CANONICAL_HOST
 os_win32=no
-case $host_os in
+case "$host_os" in
   *-*-mingw*)
     os_win32=yes
     ;;
@@ -47,8 +45,8 @@ AM_CONDITIONAL(OS_WIN32, test "$os_win32" = "yes")
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION([0.18])
 IT_PROG_INTLTOOL([0.40])
-AC_SUBST([GETTEXT_PACKAGE], [PACKAGE_TARNAME])
 AC_DEFINE([GETTEXT_PACKAGE], [PACKAGE_TARNAME], [Translation domain])
+AC_SUBST([GETTEXT_PACKAGE], [PACKAGE_TARNAME])
 
 AX_BOOST_BASE([1.42])
 AX_BOOST_THREAD
@@ -59,8 +57,11 @@ PKG_CHECK_MODULES([GMODULE], [gmodule-2.0 >= 2.32.0])
 PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
 
-LIBSAMOYED_LIBS='$(top_builddir)/src/application/libsamoyed.la'
-AC_SUBST(LIBSAMOYED_LIBS)
+SAMOYED_LIBS="\$(top_builddir)/src/application/libsamoyed.la"
+AC_SUBST(SAMOYED_LIBS)
+
+SAMOYED_PLUGIN_LDFLAGS="-module -avoid-version"
+AC_SUBST(SAMOYED_PLUGIN_LDFLAGS)
 
 AC_CONFIG_FILES([
 Makefile

@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
+    extension.cpp \
     extension-point-manager.cpp \
     lock-file.cpp \
     miscellaneous.cpp \

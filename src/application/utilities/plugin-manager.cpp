@@ -8,6 +8,7 @@
 #include "plugin.hpp"
 #include "extension-point-manager.hpp"
 #include "extension-point.hpp"
+#include <string.h>
 #include <utility>
 #include <glib.h>
 #include <gmodule.h>
@@ -35,13 +36,35 @@ namespace Samoyed
 {
 
 PluginManager::PluginManager(ExtensionPointManager &extensionPointMgr,
-                             const char *modulesDirName):
+                             const char *modulesDirName,
+                             int cacheSize):
     m_extensionPointManager(extensionPointMgr),
     m_modulesDirName(modulesDirName),
+    m_cacheSize(cacheSize),
     m_nCachedPlugins(0),
     m_lruCachedPlugin(NULL),
     m_mruCachedPlugin(NULL)
 {
+}
+
+PluginManager::~PluginManager()
+{
+    for (Table::iterator it = m_table.begin(); it != m_table.end();)
+    {
+        Table::iterator it2 = it;
+        ++it;
+        Plugin *plugin = it2->second;
+        m_table.erase(it2);
+        plugin->destroy();
+    }
+    for (Registry::iterator it = m_registry.begin(); it != m_registry.end();)
+    {
+        Registry::iterator it2 = it;
+        ++it;
+        PluginInfo *info = it2->second;
+        m_registry.erase(it2);
+        delete info;
+    }
 }
 
 const PluginManager::PluginInfo *
@@ -77,6 +100,9 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     PluginInfo *info = new PluginInfo;
     info->unregister = false;
     info->enabled = true;
+    char *dirName = g_path_get_dirname(pluginManifestFileName);
+    info->directoryName = dirName;
+    g_free(dirName);
     info->extensions = NULL;
     info->xmlDoc = doc;
 
@@ -130,7 +156,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                            ID) == 0)
                 {
                     value = reinterpret_cast<char *>(
-                        xmlNodeListGetString(doc, child->children, 1));
+                        xmlNodeListGetString(doc, grandChild->children, 1));
                     if (value)
                         ext->id = info->id + '/' + value;
                     xmlFree(value);
@@ -139,7 +165,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                                 POINT) == 0)
                 {
                     value = reinterpret_cast<char *>(
-                        xmlNodeListGetString(doc, child->children, 1));
+                        xmlNodeListGetString(doc, grandChild->children, 1));
                     if (value)
                         ext->pointId = value;
                     xmlFree(value);
@@ -252,28 +278,73 @@ void PluginManager::disablePlugin(const char *pluginId)
         it->second->deactivate();
 }
 
-Plugin *PluginManager::activatePlugin(const char *pluginId)
+Extension *PluginManager::acquireExtension(const char *extensionId,
+                                           ExtensionPoint &extensionPoint)
 {
-    PluginInfo *info = m_registry.find(pluginId)->second;
+    std::string pluginId(extensionId, strrchr(extensionId, '/') - extensionId);
+
+    PluginInfo *info = m_registry.find(pluginId.c_str())->second;
     if (info->unregister || !info->enabled)
         return NULL;
 
-    char *module = g_module_build_path(m_modulesDirName.c_str(),
-                                       info->module.c_str());
-    std::string error;
-    Plugin *plugin = Plugin::activate(*this, pluginId, module, error);
-    g_free(module);
-    if (!plugin)
-        return NULL;
-    m_table.insert(std::make_pair(plugin->id(), plugin));
-    return plugin;
+    Plugin *plugin;
+    bool newPlugin;
+    Table::const_iterator it = m_table.find(pluginId.c_str());
+    if (it != m_table.end())
+    {
+        plugin = it->second;
+        if (plugin->cached())
+        {
+            plugin->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
+            --m_nCachedPlugins;
+            newPlugin = true;
+        }
+        else
+            newPlugin = false;
+    }
+    else
+    {
+        char *module = g_module_build_path(m_modulesDirName.c_str(),
+                                           info->module.c_str());
+        std::string error;
+        plugin = Plugin::activate(*this, pluginId.c_str(), module, error);
+        g_free(module);
+        if (!plugin)
+            return NULL;
+        m_table.insert(std::make_pair(plugin->id(), plugin));
+        newPlugin = true;
+    }
+
+    Extension *ext = plugin->acquireExtension(extensionId, extensionPoint);
+    if (!ext && newPlugin)
+    {
+        plugin->addToCache(m_lruCachedPlugin, m_mruCachedPlugin);
+        if (++m_nCachedPlugins > m_cacheSize)
+        {
+            Plugin *p = m_lruCachedPlugin;
+            m_table.erase(p->id());
+            p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
+            p->destroy();
+            --m_nCachedPlugins;
+        }
+    }
+    return ext;
 }
 
 void PluginManager::deactivatePlugin(Plugin &plugin)
 {
-    m_table.erase(plugin.id());
     std::string pluginId(plugin.id());
-    delete &plugin;
+
+    plugin.addToCache(m_lruCachedPlugin, m_mruCachedPlugin);
+    if (++m_nCachedPlugins > m_cacheSize)
+    {
+        Plugin *p = m_lruCachedPlugin;
+        m_table.erase(p->id());
+        p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
+        p->destroy();
+        --m_nCachedPlugins;
+    }
+
     PluginInfo *info = m_registry.find(pluginId.c_str())->second;
     if (info->unregister)
         unregisterPluginInternally(*info);
@@ -281,6 +352,24 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
 
 void PluginManager::scanPlugins(const char *pluginsDirName)
 {
+    GError *error = NULL;
+    GDir *dir = g_dir_open(pluginsDirName, 0, &error);
+    if (error)
+    {
+        return;
+    }
+
+    const char *pluginDirName;
+    while ((pluginDirName = g_dir_read_name(dir)))
+    {
+        std::string manifestFileName(pluginsDirName);
+        manifestFileName += G_DIR_SEPARATOR;
+        manifestFileName += pluginDirName;
+        manifestFileName += G_DIR_SEPARATOR_S "plugin.xml";
+        if (g_file_test(manifestFileName.c_str(), G_FILE_TEST_IS_REGULAR))
+            registerPlugin(manifestFileName.c_str());
+    }
+    g_dir_close(dir);
 }
 
 }

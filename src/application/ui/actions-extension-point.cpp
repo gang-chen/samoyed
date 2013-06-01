@@ -1,4 +1,4 @@
-// Extension point - actions.
+// Extension point: actions.
 // Copyright (C) 2013 Gang Chen.
 
 #ifdef HAVE_CONFIG_H

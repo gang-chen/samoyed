@@ -58,7 +58,7 @@ public:
         bool del = false;
         {
             boost::mutex::scoped_lock lock(m_mutex);
-            m_destroy = true; 
+            m_destroy = true;
             // If no one holds any reference to objects, it is safe to destroy
             // the manager.
             if (m_table.size() ==
@@ -178,7 +178,7 @@ protected:
     unsigned long m_serialNumber;
 
     // Cache.
-    int m_cacheSize;
+    const int m_cacheSize;
     int m_nCachedObjects;
     Object *m_lruCachedObject;
     Object *m_mruCachedObject;

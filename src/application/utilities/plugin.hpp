@@ -33,8 +33,6 @@ public:
                             const char *moduleFileName,
                             std::string &error);
 
-    virtual ~Plugin();
-
     const char *id() const { return m_id.c_str(); }
 
     /**
@@ -44,12 +42,12 @@ public:
      */
     bool deactivate();
 
-    virtual bool active() const = 0;
-
     Extension *acquireExtension(const char *extensionId,
                                 ExtensionPoint &extensionPoint);
 
     void releaseExtension(Extension &extension);
+
+    void destroy();
 
     bool cached() const { return m_nextCached; }
 
@@ -59,10 +57,14 @@ public:
 protected:
     Plugin(PluginManager &manager, const char *id, GModule *module);
 
+    virtual ~Plugin();
+
     virtual Extension *createExtension(const char *extensionId,
                                        ExtensionPoint &extensionPoint) = 0;
 
-    bool hasActiveExtensions() const { return m_activeExtensionCount; }
+    virtual bool completed() const = 0;
+
+    void onCompleted();
 
 private:
     typedef std::map<ComparablePointer<const char *>, Extension *>
@@ -76,7 +78,7 @@ private:
 
     ExtensionTable m_extensionTable;
 
-    int m_activeExtensionCount;
+    int m_nActiveExtensions;
 
     Plugin *m_nextCached;
     Plugin *m_prevCached;

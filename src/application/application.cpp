@@ -24,6 +24,8 @@
 #include "ui/widget-with-bars.hpp"
 #include "ui/text-editor.hpp"
 #include "ui/source-editor.hpp"
+#include "ui/actions-extension-point.hpp"
+#include "ui/views-extension-point.hpp"
 #include "resources/file-source-manager.hpp"
 #include "resources/project-configuration.hpp"
 #include "resources/project-ast-manager.hpp"
@@ -44,6 +46,7 @@ namespace
 {
 
 const int THREAD_COUNT = 8;
+const int PLUGIN_CACHE_SIZE = 4;
 
 bool terminate = false;
 
@@ -66,6 +69,8 @@ Application::Application():
     m_creatingSession(false),
     m_switchingSession(false),
     m_extensionPointManager(NULL),
+    m_actionsExtensionPoint(NULL),
+    m_viewsExtensionPoint(NULL),
     m_pluginManager(NULL),
     m_scheduler(NULL),
     m_fileSourceManager(NULL),
@@ -179,19 +184,26 @@ gboolean Application::startUp(gpointer app)
 
     // Create global objects.
     a->m_extensionPointManager = new ExtensionPointManager;
+    a->m_actionsExtensionPoint = new ActionsExtensionPoint;
+    a->m_viewsExtensionPoint = new ViewsExtensionPoint;
     a->m_pluginManager = new PluginManager(a->extensionPointManager(),
-                                           a->librariesDirectoryName());
-    a->m_scheduler = new Scheduler;
-    a->m_scheduler->size_controller().resize(THREAD_COUNT);
+                                           a->librariesDirectoryName(),
+                                           PLUGIN_CACHE_SIZE);
+    a->m_scheduler = new Scheduler(THREAD_COUNT);
     a->m_fileSourceManager = new FileSourceManager;
     a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
     a->m_projectAstManager = new ProjectAstManager;
 
+    if (a->startSession())
+    {
+        std::string pluginsDirName(a->dataDirectoryName());
+        pluginsDirName += G_DIR_SEPARATOR_S "plugins";
+        a->m_pluginManager->scanPlugins(pluginsDirName.c_str());
+    }
+
     // All the background initialization is done.  Close the splash screen.
     delete a->m_splashScreen;
     a->m_splashScreen = NULL;
-
-    a->startSession();
 
     goto CLEAN_UP;
 
@@ -260,6 +272,8 @@ void Application::shutDown()
 
     delete m_scheduler;
     delete m_pluginManager;
+    delete m_actionsExtensionPoint;
+    delete m_viewsExtensionPoint;
     delete m_extensionPointManager;
     SourceEditor::destroySharedData();
 }
