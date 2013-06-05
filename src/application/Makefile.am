@@ -1,6 +1,6 @@
 SUBDIRS = resources ui utilities
 
-lib_LTLIBRARIES = libsamoyed.la
+pkglib_LTLIBRARIES = libsamoyed.la
 
 libsamoyed_la_SOURCES = \
     application.cpp \
@@ -16,7 +16,9 @@ libsamoyed_la_CPPFLAGS = \
 
 libsamoyed_la_CXXFLAGS = -Werror -Wall
 
-libsamoyed_la_LDFLAGS = $(BOOST_LDFLAGS)
+libsamoyed_la_LDFLAGS = \
+    $(BOOST_LDFLAGS) \
+    -avoid-version
 
 libsamoyed_la_LIBADD = \
     resources/libresources.la \

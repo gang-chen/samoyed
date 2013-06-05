@@ -53,7 +53,7 @@ public:
 
     /**
      * Read a plugin manifest file and register the plugin.  Register plugin
-     * extensions to extension points and activate them.
+     * extensions to extension points and activate them if desired.
      */
     bool registerPlugin(const char *pluginManifestFileName);
 

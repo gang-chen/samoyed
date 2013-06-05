@@ -39,6 +39,8 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
     bool containerSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    WIDGET_CONTAINER) == 0)
         {
@@ -89,6 +91,8 @@ bool WidgetWithBars::XmlElement::readInternally(xmlDocPtr doc,
                  grandChild;
                  grandChild = grandChild->next)
             {
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
                 Bar::XmlElement *bar =
                     Bar::XmlElement::read(doc, grandChild, errors);
                 if (bar)

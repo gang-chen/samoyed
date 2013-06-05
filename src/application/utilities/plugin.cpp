@@ -1,13 +1,6 @@
 // Plugin.
 // Copyright (C) 2013 Gang Chen.
 
-/*
-UNIT TEST BUILD
-g++ plugin.cpp -DSMYD_PLUGIN_UNIT_TEST `pkg-config --cflags --libs gmodule-2.0`\
- -Werror -Wall -fPIC -DPIC -shared -Wl,-soname,libhelloworld.so -o
- libhelloworld.so
-*/
-
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -17,6 +10,7 @@ g++ plugin.cpp -DSMYD_PLUGIN_UNIT_TEST `pkg-config --cflags --libs gmodule-2.0`\
 #include <utility>
 #include <map>
 #include <string>
+#include <glib/gi18n-lib.h>
 #include <gmodule.h>
 
 #ifndef SMYD_PLUGIN_UNIT_TEST
@@ -59,6 +53,11 @@ Plugin *Plugin::activate(PluginManager &manager,
                                     static_cast<GModuleFlags>(0));
     if (!module)
     {
+        char *cp = g_strdup_printf(
+            _("Samoyed failed to load dynamic library \"%s\". %s.\n"),
+            moduleFileName, g_module_error());
+        error = cp;
+        g_free(cp);
         return NULL;
     }
     PluginFactory factory;
@@ -66,6 +65,12 @@ Plugin *Plugin::activate(PluginManager &manager,
                          CREATE_PLUGIN,
                          reinterpret_cast<gpointer *>(&factory)))
     {
+        char *cp = g_strdup_printf(
+            _("Samoyed could not find symbol \"%s\" in dynamic library \"%s\". "
+              "%s.\n"),
+            CREATE_PLUGIN, moduleFileName, g_module_error());
+        error = cp;
+        g_free(cp);
         g_module_close(module);
         return NULL;
     }

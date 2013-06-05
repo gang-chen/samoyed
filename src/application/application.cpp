@@ -162,6 +162,9 @@ gboolean Application::startUp(gpointer app)
 {
     Application *a = static_cast<Application *>(app);
 
+    std::string pluginsDirName(a->librariesDirectoryName());
+    pluginsDirName += G_DIR_SEPARATOR_S "plugins";
+
     if (!a->makeUserDirectory())
         goto ERROR_OUT;
 
@@ -187,7 +190,7 @@ gboolean Application::startUp(gpointer app)
     a->m_actionsExtensionPoint = new ActionsExtensionPoint;
     a->m_viewsExtensionPoint = new ViewsExtensionPoint;
     a->m_pluginManager = new PluginManager(a->extensionPointManager(),
-                                           a->librariesDirectoryName(),
+                                           pluginsDirName.c_str(),
                                            PLUGIN_CACHE_SIZE);
     a->m_scheduler = new Scheduler(THREAD_COUNT);
     a->m_fileSourceManager = new FileSourceManager;

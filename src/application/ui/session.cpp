@@ -98,6 +98,8 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
     XmlElementSession *session = new XmlElementSession;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    PROJECTS) == 0)
         {
@@ -105,6 +107,8 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                  grandChild;
                  grandChild = grandChild->next)
             {
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
                 if (strcmp(reinterpret_cast<const char *>(grandChild->name),
                            PROJECT) == 0)
                 {
@@ -124,6 +128,8 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                  grandChild;
                  grandChild = grandChild->next)
             {
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
                 if (strcmp(reinterpret_cast<const char *>(grandChild->name),
                            WINDOW) == 0)
                 {

@@ -29,6 +29,8 @@ WidgetContainer::XmlElement::readInternally(xmlDocPtr doc,
     bool widgetSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    WIDGET) == 0)
         {

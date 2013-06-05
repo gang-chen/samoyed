@@ -8,9 +8,11 @@
 #include "plugin.hpp"
 #include "extension-point-manager.hpp"
 #include "extension-point.hpp"
+#include "miscellaneous.hpp"
 #include <string.h>
 #include <utility>
 #include <glib.h>
+#include <glib/gi18n-lib.h>
 #include <gmodule.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
@@ -78,9 +80,34 @@ PluginManager::findPluginInfo(const char *pluginId) const
 
 bool PluginManager::registerPlugin(const char *pluginManifestFileName)
 {
+    // Parse the plugin manifest file.
     xmlDocPtr doc = xmlParseFile(pluginManifestFileName);
     if (!doc)
     {
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to register a plugin from plugin manifest file "
+              "\"%s\"."),
+            pluginManifestFileName);
+        xmlErrorPtr error = xmlGetLastError();
+        if (error)
+            Samoyed::gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to parse plugin manifest file \"%s\". %s."),
+                pluginManifestFileName, error->message);
+        else
+            Samoyed::gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to parse plugin manifest file \"%s\"."),
+                pluginManifestFileName);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
         return false;
     }
 
@@ -88,12 +115,48 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     if (!node)
     {
         xmlFreeDoc(doc);
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to register a plugin from plugin manifest file "
+              "\"%s\"."),
+            pluginManifestFileName);
+        Samoyed::gtkMessageDialogAddDetails(
+            dialog,
+            _("Plugin manifest file \"%s\" is empty."),
+            pluginManifestFileName);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
         return false;
     }
 
     if (strcmp(reinterpret_cast<const char *>(node->name), PLUGIN) != 0)
     {
         xmlFreeDoc(doc);
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to register a plugin from plugin manifest file "
+              "\"%s\"."),
+            pluginManifestFileName);
+        Samoyed::gtkMessageDialogAddDetails(
+            dialog,
+            _("Line %d: Root element is \"%s\"; should be \"%s\".\n"),
+            node->line,
+            reinterpret_cast<const char *>(node->name),
+            PLUGIN);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
         return false;
     }
 
@@ -109,6 +172,8 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
         if (strcmp(reinterpret_cast<const char *>(child->name), ID) == 0)
         {
             value = reinterpret_cast<char *>(
@@ -152,6 +217,8 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                  grandChild;
                  grandChild = grandChild->next)
             {
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
                 if (strcmp(reinterpret_cast<const char *>(grandChild->name),
                            ID) == 0)
                 {
@@ -173,10 +240,45 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
             }
             if (ext->id.empty())
             {
+                GtkWidget *dialog;
+                dialog = gtk_message_dialog_new(
+                    NULL,
+                    GTK_DIALOG_DESTROY_WITH_PARENT,
+                    GTK_MESSAGE_ERROR,
+                    GTK_BUTTONS_CLOSE,
+                    _("Samoyed found an error in plugin manifest file \"%s\"."),
+                    pluginManifestFileName);
+                Samoyed::gtkMessageDialogAddDetails(
+                    dialog,
+                    _("Line %d: Identifier missing for extension; extension "
+                      "skipped.\n"),
+                    child->line);
+                gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                                GTK_RESPONSE_CLOSE);
+                gtk_dialog_run(GTK_DIALOG(dialog));
+                gtk_widget_destroy(dialog);
                 delete ext;
             }
             else if (ext->pointId.empty())
             {
+                GtkWidget *dialog;
+                dialog = gtk_message_dialog_new(
+                    NULL,
+                    GTK_DIALOG_DESTROY_WITH_PARENT,
+                    GTK_MESSAGE_ERROR,
+                    GTK_BUTTONS_CLOSE,
+                    _("Samoyed found an error in plugin manifest file \"%s\"."),
+                    pluginManifestFileName);
+                Samoyed::gtkMessageDialogAddDetails(
+                    dialog,
+                    _("Line %d: Extension point missing for extension \"%s\"; "
+                      "extension skipped.\n"),
+                    child->line,
+                    ext->id.c_str());
+                gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                                GTK_RESPONSE_CLOSE);
+                gtk_dialog_run(GTK_DIALOG(dialog));
+                gtk_widget_destroy(dialog);
                 delete ext;
             }
             else
@@ -188,15 +290,79 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
         }
     }
 
+    if (info->id.empty())
+    {
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to register a plugin from plugin manifest file "
+              "\"%s\"."),
+            pluginManifestFileName);
+        Samoyed::gtkMessageDialogAddDetails(
+            dialog,
+            _("Identifier missing for plugin.\n"));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        xmlFreeDoc(info->xmlDoc);
+        delete info;
+        return false;
+    }
+    if (info->module.empty())
+    {
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to register a plugin from plugin manifest file "
+              "\"%s\"."),
+            pluginManifestFileName);
+        Samoyed::gtkMessageDialogAddDetails(
+            dialog,
+            _("Module missing for plugin \"%s\".\n"),
+            info->id.c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        xmlFreeDoc(info->xmlDoc);
+        delete info;
+        return false;
+    }
     if (!info->extensions)
     {
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to register a plugin from plugin manifest file "
+              "\"%s\"."),
+            pluginManifestFileName);
+        Samoyed::gtkMessageDialogAddDetails(
+            dialog,
+            _("No extension provided by plugin \"%s\".\n"),
+            info->id.c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
         xmlFreeDoc(info->xmlDoc);
         delete info;
         return false;
     }
 
+    // Register the plugin.
     m_registry.insert(std::make_pair(info->id.c_str(), info));
 
+    // Register the extensions.
     for (PluginInfo::ExtensionInfo *ext = info->extensions;
          ext;
          ext = ext->next)
@@ -287,6 +453,8 @@ Extension *PluginManager::acquireExtension(const char *extensionId,
     if (info->unregister || !info->enabled)
         return NULL;
 
+    // Retrieve the plugin if it is active, fetch the plugin from the cache if
+    // it is cached or create it.
     Plugin *plugin;
     bool newPlugin;
     Table::const_iterator it = m_table.find(pluginId.c_str());
@@ -310,11 +478,31 @@ Extension *PluginManager::acquireExtension(const char *extensionId,
         plugin = Plugin::activate(*this, pluginId.c_str(), module, error);
         g_free(module);
         if (!plugin)
+        {
+            GtkWidget *dialog;
+            dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to activate plugin \"%s\"."),
+                pluginId.c_str());
+            if (!error.empty())
+                Samoyed::gtkMessageDialogAddDetails(
+                    dialog,
+                    _("%s"),
+                    error.c_str());
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
             return NULL;
+        }
         m_table.insert(std::make_pair(plugin->id(), plugin));
         newPlugin = true;
     }
 
+    // Acquire the extension from the plugin.
     Extension *ext = plugin->acquireExtension(extensionId, extensionPoint);
     if (!ext && newPlugin)
     {
@@ -345,6 +533,7 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
         --m_nCachedPlugins;
     }
 
+    // If requested, unregister the plugin after it is deactivated.
     PluginInfo *info = m_registry.find(pluginId.c_str())->second;
     if (info->unregister)
         unregisterPluginInternally(*info);

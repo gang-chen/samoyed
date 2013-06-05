@@ -10,6 +10,7 @@ libui_la_SOURCES = \
     file.cpp \
     notebook.cpp \
     paned.cpp \
+    preferences.cpp \
     project.cpp \
     session.cpp \
     source-editor.cpp \
@@ -29,6 +30,7 @@ libui_la_SOURCES = \
     file.hpp \
     notebook.hpp \
     paned.hpp \
+    preferences.hpp \
     project.hpp \
     session.hpp \
     source-editor.hpp \

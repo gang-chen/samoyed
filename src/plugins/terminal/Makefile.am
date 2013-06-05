@@ -1,4 +1,6 @@
-pkglib_LTLIBRARIES = libterminal.la
+pluginlibdir = $(pkglibdir)/plugins
+
+pluginlib_LTLIBRARIES = libterminal.la
 
 libterminal_la_SOURCES = \
     terminal-plugin.cpp \
@@ -17,6 +19,6 @@ libterminal_la_LIBADD = \
 
 libterminal_la_LDFLAGS = $(SAMOYED_PLUGIN_LDFLAGS)
 
-plugindatadir = $(pkgdatadir)/plugins/terminal
+terminaldatadir = $(pkgdatadir)/plugins/terminal
 
-plugindata_DATA = plugin.xml
+terminaldata_DATA = plugin.xml

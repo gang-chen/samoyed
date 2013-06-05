@@ -56,6 +56,8 @@ bool Widget::XmlElement::readInternally(xmlDocPtr doc,
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    ID) == 0)
         {
