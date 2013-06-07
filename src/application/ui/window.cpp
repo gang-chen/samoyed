@@ -421,7 +421,7 @@ Window::Window():
     m_toolbar(NULL),
     m_child(NULL),
     m_uiManager(NULL),
-    m_actions(this),
+    m_actions(new Actions(this)),
     m_inFullScreen(false),
     m_maximized(false),
     m_toolbarVisible(true),
@@ -433,7 +433,9 @@ Window::Window():
 bool Window::build(const Configuration &config)
 {
     m_uiManager = gtk_ui_manager_new();
-    gtk_ui_manager_insert_action_group(m_uiManager, m_actions.actionGroup(), 0);
+    gtk_ui_manager_insert_action_group(m_uiManager,
+                                       m_actions->actionGroup(),
+                                       0);
 
     std::string uiFile(Application::instance().dataDirectoryName());
     uiFile += G_DIR_SEPARATOR_S "ui.xml";
@@ -850,6 +852,7 @@ void Window::registerDefaultSidePanes()
 
 void Window::createMenuItemForSidePane(Widget &pane)
 {
+    SidePaneData *data = new SidePaneData;
     std::string actionName(pane.id());
     actionName.insert(0, "show-hide-");
     std::string title(pane.title());
@@ -866,8 +869,8 @@ void Window::createMenuItemForSidePane(Widget &pane)
                      G_CALLBACK(showHideSidePane), this);
     gulong signalHandlerId =
         g_signal_connect_after(pane.gtkWidget(), "notify::visible",
-                               G_CALLBACK(onSidePaneVisibilityChanged), action);
-    gtk_action_group_add_action(m_actions.actionGroup(), GTK_ACTION(action));
+                               G_CALLBACK(onSidePaneVisibilityChanged), data);
+    gtk_action_group_add_action(m_actions->actionGroup(), GTK_ACTION(action));
     guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
                           mergeId,
@@ -877,9 +880,30 @@ void Window::createMenuItemForSidePane(Widget &pane)
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     g_object_unref(action);
-    pane.addClosedCallback(
-        boost::bind(&Window::onSidePaneClosed, this,
-                    _1, new SidePaneData(action, signalHandlerId, mergeId)));
+    std::string actionName2(pane.id());
+    actionName2 += "-views";
+    std::string title2(pane.title());
+    title2.erase(std::remove(title2.begin(), title2.end(), '_'), title2.end());
+    title2 += " Views";
+    GtkAction *action2 = gtk_action_new(actionName2.c_str(),
+                                        title2.c_str(),
+                                        NULL,
+                                        NULL);
+    gtk_action_group_add_action(m_actions->actionGroup(), action2);
+    gtk_ui_manager_add_ui(m_uiManager,
+                          mergeId,
+                          "/main-menu-bar/view/side-panes",
+                          actionName2.c_str(),
+                          actionName2.c_str(),
+                          GTK_UI_MANAGER_MENU,
+                          FALSE);
+    g_object_unref(action2);
+    pane.addClosedCallback(boost::bind(&Window::onSidePaneClosed,
+                                       this, _1, data));
+    data->action = action;
+    data->action2 = action2;
+    data->signalHandlerId = signalHandlerId;
+    data->uiMergeId = mergeId;
 }
 
 void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
@@ -898,10 +922,12 @@ void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
 
 void Window::onSidePaneClosed(const Widget &pane, const SidePaneData *data)
 {
-    gtk_ui_manager_remove_ui(m_uiManager, data->m_uiMergeId);
-    g_signal_handler_disconnect(pane.gtkWidget(), data->m_signalHandlerId);
-    gtk_action_group_remove_action(m_actions.actionGroup(),
-                                   GTK_ACTION(data->m_action));
+    gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeId);
+    g_signal_handler_disconnect(pane.gtkWidget(), data->signalHandlerId);
+    gtk_action_group_remove_action(m_actions->actionGroup(),
+                                   GTK_ACTION(data->action));
+    gtk_action_group_remove_action(m_actions->actionGroup(),
+                                   GTK_ACTION(data->action2));
     delete data;
 }
 
@@ -916,9 +942,10 @@ void Window::showHideSidePane(GtkToggleAction *action, Window *window)
 
 void Window::onSidePaneVisibilityChanged(GtkWidget *pane,
                                          GParamSpec *spec,
-                                         GtkToggleAction *action)
+                                         const SidePaneData *data)
 {
-    gtk_toggle_action_set_active(action, gtk_widget_get_visible(pane));
+    gtk_toggle_action_set_active(data->action, gtk_widget_get_visible(pane));
+    gtk_action_set_visible(data->action2, gtk_widget_get_visible(pane));
 }
 
 gboolean Window::onConfigureEvent(GtkWidget *widget,
@@ -968,7 +995,7 @@ void Window::enterFullScreen()
     gtk_widget_hide(m_menuBar);
     gtk_window_fullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = true;
-    m_actions.onWindowFullScreenChanged(true);
+    m_actions->onWindowFullScreenChanged(true);
 }
 
 void Window::leaveFullScreen()
@@ -987,7 +1014,7 @@ void Window::leaveFullScreen()
     gtk_widget_show(m_menuBar);
     gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = false;
-    m_actions.onWindowFullScreenChanged(true);
+    m_actions->onWindowFullScreenChanged(true);
 }
 
 Window::Configuration Window::configuration() const
@@ -1008,7 +1035,7 @@ void Window::onToolbarVisibilityChanged(GtkWidget *toolbar,
                                         GParamSpec *spec,
                                         Window *window)
 {
-    window->m_actions.onToolbarVisibilityChanged(
+    window->m_actions->onToolbarVisibilityChanged(
         gtk_widget_get_visible(toolbar));
 }
 

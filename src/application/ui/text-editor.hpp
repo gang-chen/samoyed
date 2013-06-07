@@ -74,15 +74,19 @@ public:
 
     int lineCount() const;
 
+    int maxColumnInLine(int line) const;
+
+    bool isValidCursor(int line, int column) const;
+
     char *text(int beginLine, int beginColumn,
                int endLine, int endColumn) const;
 
     void getCursor(int &line, int &column) const;
-    void setCursor(int line, int column);
+    bool setCursor(int line, int column);
 
     void getSelectedRange(int &line, int &column,
                           int &line2, int &column2) const;
-    void selectRange(int line, int column,
+    bool selectRange(int line, int column,
                      int line2, int column2);
 
     void onFileLoaded();
@@ -103,7 +107,6 @@ private:
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
 
-    bool m_bypassFileChanged;
     bool m_bypassEdits;
 
     int m_presetCursorLine;

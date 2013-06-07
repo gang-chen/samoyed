@@ -35,6 +35,8 @@ public:
                 int column;
                 const char *text;
                 int length;
+                int newLine;
+                int newColumn;
             } insertion;
             struct Removal
             {
@@ -44,13 +46,17 @@ public:
                 int endColumn;
             } removal;
         } m_value;
-        Change(int line, int column, const char *text, int length):
+        Change(int line, int column,
+               const char *text, int length,
+               int newLine, int newColumn):
             File::Change(TYPE_INSERTION)
         {
             m_value.insertion.line = line;
             m_value.insertion.column = column;
             m_value.insertion.text = text;
             m_value.insertion.length = length;
+            m_value.insertion.newLine = newLine;
+            m_value.insertion.newColumn = newColumn;
         }
         Change(int beginLine, int beginColumn, int endLine, int endColumn):
             File::Change(TYPE_REMOVAL)
@@ -154,6 +160,8 @@ public:
 
     int lineCount() const;
 
+    int maxColumnInLine(int line) const;
+
     /**
      * @param beginLine The line number of the first character to be returned,
      * starting from 0.
@@ -178,8 +186,9 @@ public:
      * @param text The text to be inserted.
      * @param length The number of the bytes to be inserted, or -1 to insert the
      * text until '\0'.
+     * @return True iff inserted successfully.
      */
-    void insert(int line, int column, const char *text, int length);
+    bool insert(int line, int column, const char *text, int length);
 
     /**
      * @param beginLine The line number of the first character to be removed,
@@ -191,8 +200,9 @@ public:
      * @param endColumn The column number of the exclusive last character to be
      * removed, the character index, starting from 0; or -1 to remove the text
      * until the last column.
+     * @return True iff removed successfully.
      */
-    void remove(int beginLine, int beginColumn, int endLine, int endColumn);
+    bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
 protected:
     TextFile(const char *uri, const char *encoding):
@@ -209,14 +219,6 @@ protected:
                                    const Worker::Callback &callback);
 
     virtual void onLoaded(FileLoader &loader);
-
-    virtual void onInserted(int line, int column,
-                            const char *text, int length)
-    {}
-
-    virtual void onRemoved(int beginLine, int beginColumn,
-                           int endLine, int endColumn)
-    {}
 
 private:
     static File *create(const char *uri, Project *project,

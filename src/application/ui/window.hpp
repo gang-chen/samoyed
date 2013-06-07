@@ -5,7 +5,6 @@
 #define SMYD_WINDOW_HPP
 
 #include "widget-container.hpp"
-#include "actions.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
@@ -17,6 +16,7 @@
 namespace Samoyed
 {
 
+class Actions;
 class WidgetWithBars;
 class Notebook;
 class Paned;
@@ -209,16 +209,10 @@ protected:
 private:
     struct SidePaneData
     {
-        GtkToggleAction *m_action;
-        gulong m_signalHandlerId;
-        guint m_uiMergeId;
-        SidePaneData(GtkToggleAction *action,
-                     gulong signalHandlerId,
-                     guint uiMergeId):
-            m_action(action),
-            m_signalHandlerId(signalHandlerId),
-            m_uiMergeId(uiMergeId)
-        {}
+        GtkToggleAction *action;
+        GtkAction *action2;
+        gulong signalHandlerId;
+        guint uiMergeId;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -244,7 +238,7 @@ private:
     static void showHideSidePane(GtkToggleAction *action, Window *window);
     static void onSidePaneVisibilityChanged(GtkWidget *pane,
                                             GParamSpec *spec,
-                                            GtkToggleAction *action);
+                                            const SidePaneData *data);
 
     static void createNavigationPane(Window &window);
     static void createToolsPane(Window &window);
@@ -252,6 +246,7 @@ private:
 
     bool build(const Configuration &config);
 
+    void createMenuItemForSidePaneView(Widget &view);
     void createMenuItemForSidePane(Widget &pane);
     void createMenuItemsForSidePanesRecursively(Widget &widget);
     void onSidePaneClosed(const Widget &pane, const SidePaneData *data);
@@ -272,7 +267,7 @@ private:
      */
     GtkUIManager *m_uiManager;
 
-    Actions m_actions;
+    Actions *m_actions;
 
     int m_width;
     int m_height;

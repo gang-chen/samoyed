@@ -294,7 +294,7 @@ Editor *File::createEditor(Project *project)
         m_reopening = true;
     }
 
-    // If the file is loaded, initiliaze the editor with the current contents.
+    // If the file is loaded, initialize the editor with the current contents.
     if (!m_loading)
     {
         assert(m_firstEditor != editor);
@@ -733,6 +733,9 @@ void File::unfreezeInternally()
 
 void File::onChanged(const Change &change, bool loading)
 {
+    // First notify editors so that the other observers can see the changed
+    // contents, since some derived files actually store their contents in the
+    // corresponding editors and the editors actually perform the changes.
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
         editor->onFileChanged(change);
     m_changed(*this, change, loading);

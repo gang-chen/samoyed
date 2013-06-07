@@ -12,6 +12,7 @@
 #include "../utilities/text-file-loader.hpp"
 #include "../utilities/text-file-saver.hpp"
 #include "../application.hpp"
+#include <algorithm>
 #include <map>
 #include <boost/any.hpp>
 #include <glib/gi18n-lib.h>
@@ -139,6 +140,11 @@ int TextFile::lineCount() const
     return static_cast<const TextEditor *>(editors())->lineCount();
 }
 
+int TextFile::maxColumnInLine(int line) const
+{
+    return static_cast<const TextEditor *>(editors())->maxColumnInLine(line);
+}
+
 char *TextFile::text(int beginLine, int beginColumn,
                      int endLine, int endColumn) const
 {
@@ -185,7 +191,7 @@ void TextFile::onLoaded(FileLoader &loader)
     {
         const char *begin, *end;
         if (it.getAtomsBulk(begin, end))
-            onChanged(Change(-1, -1, begin, end - begin), true);
+            onChanged(Change(-1, -1, begin, end - begin, -1, -1), true);
     }
     while (it.goToNextBulk());
 
@@ -196,44 +202,90 @@ void TextFile::onLoaded(FileLoader &loader)
         editor->onFileLoaded();
 }
 
-void TextFile::insert(int line, int column, const char *text, int length)
+bool TextFile::insert(int line, int column, const char *text, int length)
 {
+    if (!static_cast<TextEditor *>(editors())->isValidCursor(line, column))
+        return false;
     Removal *undo = insertOnly(line, column, text, length);
     saveUndo(undo);
+    return true;
 }
 
-void TextFile::remove(int beginLine, int beginColumn,
+bool TextFile::remove(int beginLine, int beginColumn,
                       int endLine, int endColumn)
 {
+    if (!static_cast<TextEditor *>(editors())->isValidCursor(beginLine,
+                                                             beginColumn) ||
+        !static_cast<TextEditor *>(editors())->isValidCursor(endLine,
+                                                             endColumn))
+        return false;
+
+    // Order the two positions.
+    if (beginLine > endLine)
+    {
+        std::swap(beginLine, endLine);
+        std::swap(beginColumn, endColumn);
+    }
+    else if (beginLine == endLine && beginColumn > endColumn)
+        std::swap(beginColumn, endColumn);
+
     Insertion *undo = removeOnly(beginLine, beginColumn,
                                  endLine, endColumn);
     saveUndo(undo);
+    return true;
 }
 
 TextFile::Removal *
 TextFile::insertOnly(int line, int column, const char *text, int length)
 {
-    int oldLineCount = lineCount();
-    onInserted(line, column, text, length);
-    onChanged(Change(line, column, text, length), false);
-    int newLineCount = lineCount();
-    int endLine, endColumn;
-    endLine = line + newLineCount - oldLineCount;
-    if (oldLineCount == newLineCount)
-        endColumn = column + Utf8::countCharacters(text, length);
-    else
+    // Compute the new position after insertion.
+    int nLines = 0, nColumns = 0;
+    if (length == -1)
+        length = strlen(text);
+    const char *cp = text + length - 1;
+    while (cp >= text)
     {
-        if (length == -1)
-            length = strlen(text);
-        const char *cp = text + length - 1;
-        endColumn = 0;
-        while (*cp != '\n')
+        if (*cp == '\n')
         {
             cp = Utf8::begin(cp - 1);
-            ++endColumn;
+            if (*cp == '\r')
+                cp = Utf8::begin(cp - 1);
+            nLines++;
+        }
+        if (*cp == '\r')
+        {
+            cp = Utf8::begin(cp - 1);
+            nLines++;
+            break;
+        }
+        cp = Utf8::begin(cp - 1);
+        ++nColumns;
+    }
+    while (cp >= text)
+    {
+        if (*cp == '\n')
+        {
+            cp = Utf8::begin(cp - 1);
+            if (*cp == '\r')
+                cp = Utf8::begin(cp - 1);
+            nLines++;
+        }
+        if (*cp == '\r')
+        {
+            cp = Utf8::begin(cp - 1);
+            nLines++;
+            break;
         }
     }
-    Removal *undo = new Removal(line, column, endLine, endColumn);
+    int newLine, newColumn;
+    newLine = line + nLines;
+    if (nLines)
+        newColumn = nColumns;
+    else
+        newColumn = column + nColumns;
+
+    onChanged(Change(line, column, text, length, newLine, newColumn), false);
+    Removal *undo = new Removal(line, column, newLine, newColumn);
     return undo;
 }
 
@@ -244,7 +296,6 @@ TextFile::removeOnly(int beginLine, int beginColumn,
     char *removed = text(beginLine, beginColumn, endLine, endColumn);
     Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
     g_free(removed);
-    onRemoved(beginLine, beginColumn, endLine, endColumn);
     onChanged(Change(beginLine, beginColumn, endLine, endColumn), false);
     return undo;
 }
