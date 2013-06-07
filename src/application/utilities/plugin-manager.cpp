@@ -545,6 +545,25 @@ void PluginManager::scanPlugins(const char *pluginsDirName)
     GDir *dir = g_dir_open(pluginsDirName, 0, &error);
     if (error)
     {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance().windows() ?
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()) :
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to scan directory \"%s\" for plugins."),
+            pluginsDirName);
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to open directory \"%s\" to register plugins. "
+              "%s."),
+            pluginsDirName, error->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(error);
         return;
     }
 
