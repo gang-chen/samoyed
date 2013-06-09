@@ -33,8 +33,7 @@ int serialNumber = 0;
 namespace Samoyed
 {
 
-bool Editor::XmlElement::readInternally(xmlDocPtr doc,
-                                        xmlNodePtr node,
+bool Editor::XmlElement::readInternally(xmlNodePtr node,
                                         std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -56,7 +55,7 @@ bool Editor::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!Widget::XmlElement::readInternally(doc, child, errors))
+            if (!Widget::XmlElement::readInternally(child, errors))
                 return false;
             widgetSeen = true;
         }
@@ -64,18 +63,24 @@ bool Editor::XmlElement::readInternally(xmlDocPtr doc,
                         URI) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_uri = value;
-            xmlFree(value);
-            uriSeen = true;
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_uri = value;
+                xmlFree(value);
+                uriSeen = true;
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         PROJECT_URI) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_projectUri = value;
-            xmlFree(value);
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_projectUri = value;
+                xmlFree(value);
+            }
         }
     }
 

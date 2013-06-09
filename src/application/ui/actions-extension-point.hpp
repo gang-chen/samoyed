@@ -18,7 +18,6 @@ public:
     ActionsExtensionPoint();
 
     virtual bool registerExtension(const char *extensionId,
-                                   xmlDocPtr xmlDoc,
                                    xmlNodePtr xmlNode,
                                    std::list<std::string> &errors);
 

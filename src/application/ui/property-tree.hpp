@@ -10,94 +10,85 @@
 #include <string>
 #include <boost/any.hpp>
 #include <boost/function.hpp>
-#include <boost/signals2.hpp>
+#include <boost/signals2/signal.hpp>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
 
+class Widget;
+
 class PropertyTree
 {
 public:
-/*    typedef boost::function<bool (PropertyTree &prop,
+    typedef std::map<ComparablePointer<const char *>, PropertyTree *> Table;
+
+    typedef boost::function<bool (PropertyTree &prop,
                                   std::list<std::string> &errors)> Validator;
 
-    typedef boost::function<void (PropertyTree &prop)> Observer;
+    typedef boost::signals2::signal<void (PropertyTree &prop)> Changed;
 
-        virtual ~Item() {}
+    typedef boost::function<Widget *(PropertyTree &prop)> WidgetFactory;
 
-        const char *name() const { return m_name.c_str(); }
-        Type type() const { return m_type; }
-        const Group *parent() const { return m_parent; }
+    PropertyTree(const char *name, const boost::any &defaultValue);
+    ~PropertyTree();
 
-        void setValidator(const Validator &validator)
-        { m_validator = validator; }
-        bool validateThis(bool up, std::list<std::string> &errors) const;
-        virtual bool validate(std::list<std::string> &errors) const
-        { return validateThis(true, errors); }
+    const char *name() const { return m_name.c_str(); }
 
-    private:
-        const std::string m_name;
-        const Type m_type;
-        const Group *m_parent;
-        Validator m_validator;
-    };
+    const boost::any &get() const { return m_value; }
+    bool set(const boost::any &value, std::list<std::string> &errors);
+    bool reset(std::list<std::string> &errors);
 
-    class Boolean: public Item
-    {
-    public:
-        Boolean(const char *name, const Group *parent, bool defaultValue):
-            Item(name, TYPE_BOOLEAN, parent),
-            m_defaultValue(defaultValue),
-            m_value(defaultValue)
-        {}
+    void addChild(PropertyTree &child);
+    void removeChild(PropertyTree &child);
 
-        bool get() const { return m_value; }
-        bool set(bool value, std::list<std::string> &errors);
-        bool reset(std::list<std::string> &errors)
-        { return set(m_defaultValue, errors); }
+    const boost::any &get(const char *path) const;
+    bool set(const char *path,
+             const boost::any &value,
+             std::list<std::string> &errors);
+    bool reset(const char *path, std::list<std::string> errors);
 
-    private:
-        const bool m_defaultValue;
-        bool m_value;
-    };
+    bool set(const std::list<std::pair<const char *,
+                                       const boost::any> > &pathsValues,
+             std::list<std::string> &errors);
+    bool reset(const std::list<const char *> &paths);
 
-    class Group: public Item
-    {
-    public:
-        typedef std::map<ComparablePointer<const char *>, Item *> Table;
-        typedef boost::function<GtkWidget *()> WidgetFactory;
+    PropertyTree &child(const char *path);
+    const PropertyTree &child(const char *path) const;
+    void addChild(const char *path, const boost::any &defaultValue);
+    void removeChild(const char *path);
 
-        Group(const char *name, const Group *parent):
-            Item(name, TYPE_GROUP, parent)
-        {}
+    const PropertyTree *parent() const { return m_parent; }
 
-        virtual ~Group();
+    void setValidator(const Validator &validator)
+    { m_validator = validator; }
+    bool validate(std::list<std::string> &errors) const;
 
-        void addBoolean(const char *name, bool defaultValue);
-        void addGroup(const char *name);
-        const Table &items() const { return m_items; }
+    boost::signals2::connection addObserver(const Changed::slot_type &observer);
 
-        virtual bool validate(std::list<std::string> &errors) const;
+    void setEditorFactory(const WidgetFactory &editorFactory)
+    { m_editorFactory = editorFactory; }
 
-        void setEditor(const WidgetFactory &editorFactory);
-        GtkWidget *createEditor() const;
+    static PropertyTree *readXmlElement(xmlNodePtr xmlNode,
+                                        std::list<std::string> &errors);
+    xmlNodePtr writeXmlElement() const;
 
-    private:
-        Table m_items;
-        WidgetFactory m_editorFactory;
-    };
-
-    Preferences();
-
-    Group &root();
-    const Group &root() const;
-
-    bool getBoolean(const char *path) const;
-    bool setBoolean(const char *path, bool value);
-    bool resetBoolean(const char *path);
+    static PropertyTree *readXmlFile(const char *xmlFileName,
+                                     std::list<std::string> &errors);
+    bool writeXmlFile(const char *xmlFileName) const;
 
 private:
-*/
+    const std::string m_name;
+    boost::any m_value;
+    boost::any m_defaultValue;
+    PropertyTree *m_firstChild;
+    PropertyTree *m_lastChild;
+    Table m_children;
+    const PropertyTree *m_parent;
+    Validator m_validator;
+    Changed m_changed;
+    WidgetFactory m_editorFactory;
+    SAMOYED_DEFINE_DOUBLY_LINKED(PropertyTree)
 };
 
 }

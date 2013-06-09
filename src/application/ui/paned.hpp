@@ -28,8 +28,7 @@ public:
         static void registerReader();
 
         virtual ~XmlElement();
-        static XmlElement *read(xmlDocPtr doc,
-                                xmlNodePtr node,
+        static XmlElement *read(xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         XmlElement(const Paned &paned);
@@ -51,9 +50,7 @@ public:
             m_children[1] = NULL;
         }
 
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
     private:
         Paned::Orientation m_orientation;

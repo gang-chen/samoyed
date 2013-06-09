@@ -10,6 +10,7 @@
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
+#include <boost/any.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -23,6 +24,8 @@ class Widget: public boost::noncopyable
 public:
     typedef boost::signals2::signal<void (Widget &widget)> Closed;
 
+    typedef std::map<std::string, boost::any> PropertyMap;
+
     /**
      * An XML element used to save and restore a widget.
      */
@@ -30,8 +33,7 @@ public:
     {
     public:
         typedef
-        boost::function<XmlElement *(xmlDocPtr doc,
-                                     xmlNodePtr node,
+        boost::function<XmlElement *(xmlNodePtr node,
                                      std::list<std::string> &errors)> Reader;
 
         static void registerReader(const char *className,
@@ -47,8 +49,7 @@ public:
          * @return The created XML element storing the read information, or NULL
          * if any error is found.
          */
-        static XmlElement *read(xmlDocPtr doc,
-                                xmlNodePtr node,
+        static XmlElement *read(xmlNodePtr node,
                                 std::list<std::string> &errors);
 
         /**
@@ -73,15 +74,14 @@ public:
         const char *title() const { return m_title.c_str(); }
         const char *description() const { return m_description.c_str(); }
         bool visible() const { return m_visible; }
+        const PropertyMap &properties() const { return m_properties; }
 
         void setTitle(const char *title) { m_title = title; }
 
     protected:
         XmlElement(): m_visible(true) {}
 
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
     private:
         static std::map<std::string, Reader> s_readerRegistry;
@@ -90,6 +90,7 @@ public:
         std::string m_title;
         std::string m_description;
         bool m_visible;
+        PropertyMap m_properties;
     };
 
     /**
@@ -154,6 +155,10 @@ public:
     addClosedCallback(const Closed::slot_type &callback)
     { return m_closed.connect(callback); }
 
+    const boost::any *getProperty(const char *name) const;
+    void setProperty(const char *name, const boost::any &value);
+    const PropertyMap &properties() const { return m_properties; }
+
 protected:
     Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}
 
@@ -181,6 +186,8 @@ private:
     bool m_closing;
 
     Closed m_closed;
+
+    PropertyMap m_properties;
 };
 
 }

@@ -80,8 +80,7 @@ public:
         static void registerReader();
 
         virtual ~XmlElement();
-        static XmlElement *read(xmlDocPtr doc,
-                                xmlNodePtr node,
+        static XmlElement *read(xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         XmlElement(const Window &window);
@@ -93,9 +92,7 @@ public:
     protected:
         XmlElement(): m_child(NULL) {}
 
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
     private:
         Configuration m_configuration;
@@ -246,9 +243,8 @@ private:
 
     bool build(const Configuration &config);
 
-    void createMenuItemForSidePaneView(Widget &view);
     void createMenuItemForSidePane(Widget &pane);
-    void createMenuItemsForSidePanesRecursively(Widget &widget);
+    void setupSidePanesRecursively(Widget &widget);
     void onSidePaneClosed(const Widget &pane, const SidePaneData *data);
 
     static Created s_created;

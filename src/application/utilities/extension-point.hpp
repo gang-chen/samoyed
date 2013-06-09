@@ -25,7 +25,6 @@ public:
     const char *id() const { return m_id.c_str(); }
 
     virtual bool registerExtension(const char *extensionId,
-                                   xmlDocPtr xmlDoc,
                                    xmlNodePtr xmlNode,
                                    std::list<std::string> &errors) = 0;
 

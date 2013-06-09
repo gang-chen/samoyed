@@ -42,8 +42,7 @@ void SourceEditor::XmlElement::registerReader()
                                        Widget::XmlElement::Reader(read));
 }
 
-bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
-                                              xmlNodePtr node,
+bool SourceEditor::XmlElement::readInternally(xmlNodePtr node,
                                               std::list<std::string> &errors)
 {
     char *cp;
@@ -64,7 +63,7 @@ bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!TextEditor::XmlElement::readInternally(doc, child, errors))
+            if (!TextEditor::XmlElement::readInternally(child, errors))
                 return false;
             textEditorSeen = true;
         }
@@ -107,12 +106,10 @@ bool SourceEditor::XmlElement::readInternally(xmlDocPtr doc,
 }
 
 SourceEditor::XmlElement *
-SourceEditor::XmlElement::read(xmlDocPtr doc,
-                               xmlNodePtr node,
-                               std::list<std::string> &errors)
+SourceEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
-    if (!element->readInternally(doc, node, errors))
+    if (!element->readInternally(node, errors))
     {
         delete element;
         return NULL;

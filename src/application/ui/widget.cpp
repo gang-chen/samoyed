@@ -22,6 +22,7 @@
 #define TITLE "title"
 #define DESCRIPTION "description"
 #define VISIBLE "visible"
+#define PROPERTIES "properties"
 #define SAMOYED_WIDGET "samoyed-widget"
 
 namespace Samoyed
@@ -36,8 +37,7 @@ void Widget::XmlElement::registerReader(const char *className,
     s_readerRegistry.insert(std::make_pair(className, reader));
 }
 
-Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,
-                                             xmlNodePtr node,
+Widget::XmlElement* Widget::XmlElement::read(xmlNodePtr node,
                                              std::list<std::string> &errors)
 {
     std::string className(reinterpret_cast<const char *>(node->name));
@@ -46,11 +46,10 @@ Widget::XmlElement* Widget::XmlElement::read(xmlDocPtr doc,
     if (it == s_readerRegistry.end())
         // Silently ignore the unknown widget class.
         return NULL;
-    return it->second(doc, node, errors);
+    return it->second(node, errors);
 }
 
-bool Widget::XmlElement::readInternally(xmlDocPtr doc,
-                                        xmlNodePtr node,
+bool Widget::XmlElement::readInternally(xmlNodePtr node,
                                         std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -62,48 +61,76 @@ bool Widget::XmlElement::readInternally(xmlDocPtr doc,
                    ID) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 m_id = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         TITLE) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 m_title = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         DESCRIPTION) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 m_description = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         VISIBLE) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_visible = boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_visible = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, VISIBLE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        PROPERTIES) == 0)
+        {
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, VISIBLE, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
+                value = reinterpret_cast<char *>(
+                    xmlNodeGetContent(grandChild->children));
+                if (value)
+                {
+                    m_properties[reinterpret_cast<const char *>(
+                                 grandChild->name)] = value;
+                    xmlFree(value);
+                }
             }
-            xmlFree(value);
         }
     }
     return true;
@@ -129,15 +156,28 @@ xmlNodePtr Widget::XmlElement::write() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(VISIBLE),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
+    xmlNodePtr prop = xmlNewNode(NULL,
+                                 reinterpret_cast<const xmlChar *>(PROPERTIES));
+    for (PropertyMap::const_iterator it = m_properties.begin();
+         it != m_properties.end();
+         ++it)
+    {
+        //str = boost::lexical_cast<std::string>(it->second);
+        xmlNewTextChild(prop, NULL,
+                        reinterpret_cast<const xmlChar *>(it->first.c_str()),
+                        reinterpret_cast<const xmlChar *>(str.c_str()));
+    }
+    xmlAddChild(node, prop);
     return node;
 }
 
-Widget::XmlElement::XmlElement(const Widget &widget)
+Widget::XmlElement::XmlElement(const Widget &widget):
+    m_id(widget.id()),
+    m_title(widget.title()),
+    m_description(widget.description()),
+    m_visible(gtk_widget_get_visible(widget.gtkWidget())),
+    m_properties(widget.properties())
 {
-    m_id = widget.id();
-    m_title = widget.title();
-    m_description = widget.description();
-    m_visible = gtk_widget_get_visible(widget.gtkWidget());
 }
 
 bool Widget::setup(const char *id)
@@ -151,6 +191,7 @@ bool Widget::restore(XmlElement &xmlElement)
     m_id = xmlElement.id();
     m_title = xmlElement.title();
     m_description = xmlElement.description();
+    m_properties = xmlElement.properties();
     return true;
 }
 
@@ -208,6 +249,19 @@ Widget *Widget::getFromGtkWidget(GtkWidget *gtkWidget)
 {
     return static_cast<Widget *>(g_object_get_data(G_OBJECT(gtkWidget),
                                                    SAMOYED_WIDGET));
+}
+
+const boost::any *Widget::getProperty(const char *name) const
+{
+    PropertyMap::const_iterator it = m_properties.find(name);
+    if (it == m_properties.end())
+        return NULL;
+    return &it->second;
+}
+
+void Widget::setProperty(const char *name, const boost::any &value)
+{
+    m_properties[name] = value;
 }
 
 }

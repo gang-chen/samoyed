@@ -24,7 +24,6 @@ public:
 
     void registerExtension(const char *extensionId,
                            const char *extensionPointId,
-                           xmlDocPtr xmlDoc,
                            xmlNodePtr xmlNode);
 
     void unregisterExtension(const char *extensionId,
@@ -39,7 +38,6 @@ private:
     struct ExtensionInfo
     {
         std::string extensionId;
-        xmlDocPtr xmlDoc;
         xmlNodePtr xmlNode;
         ExtensionInfo *next;
     };

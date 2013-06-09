@@ -64,8 +64,7 @@ class XmlElementSession
 public:
     ~XmlElementSession();
 
-    static XmlElementSession *read(xmlDocPtr doc,
-                                   xmlNodePtr node,
+    static XmlElementSession *read(xmlNodePtr node,
                                    std::list<std::string> &errors);
     xmlNodePtr write() const;
     static XmlElementSession *saveSession();
@@ -78,8 +77,7 @@ private:
     std::vector<Samoyed::Window::XmlElement *> m_windows;
 };
 
-XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
-                                           xmlNodePtr node,
+XmlElementSession *XmlElementSession::read(xmlNodePtr node,
                                            std::list<std::string> &errors)
 {
     char *cp;
@@ -113,9 +111,7 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                            PROJECT) == 0)
                 {
                     Samoyed::Project::XmlElement *project =
-                        Samoyed::Project::XmlElement::read(doc,
-                                                           grandChild,
-                                                           errors);
+                        Samoyed::Project::XmlElement::read(grandChild, errors);
                     if (project)
                         session->m_projects.push_back(project);
                 }
@@ -134,9 +130,7 @@ XmlElementSession *XmlElementSession::read(xmlDocPtr doc,
                            WINDOW) == 0)
                 {
                     Samoyed::Window::XmlElement *window =
-                        Samoyed::Window::XmlElement::read(doc,
-                                                          grandChild,
-                                                          errors);
+                        Samoyed::Window::XmlElement::read(grandChild, errors);
                     if (window)
                         session->m_windows.push_back(window);
                 }
@@ -292,7 +286,7 @@ XmlElementSession *parseSessionFile(const char *fileName,
     }
 
     std::list<std::string> errors;
-    XmlElementSession *session = XmlElementSession::read(doc, node, errors);
+    XmlElementSession *session = XmlElementSession::read(node, errors);
     xmlFreeDoc(doc);
     if (!session)
     {

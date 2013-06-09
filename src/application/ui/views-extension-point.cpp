@@ -26,7 +26,6 @@ ViewsExtensionPoint::ViewsExtensionPoint():
 }
 
 bool ViewsExtensionPoint::registerExtension(const char *extensionId,
-                                            xmlDocPtr xmlDoc,
                                             xmlNodePtr xmlNode,
                                             std::list<std::string> &errors)
 {

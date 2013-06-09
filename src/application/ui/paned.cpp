@@ -34,8 +34,7 @@ void Paned::XmlElement::registerReader()
                                        Widget::XmlElement::Reader(read));
 }
 
-bool Paned::XmlElement::readInternally(xmlDocPtr doc,
-                                       xmlNodePtr node,
+bool Paned::XmlElement::readInternally(xmlNodePtr node,
                                        std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -56,8 +55,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!WidgetContainer::XmlElement::readInternally(doc, child,
-                                                             errors))
+            if (!WidgetContainer::XmlElement::readInternally(child, errors))
                 return false;
             containerSeen = true;
         }
@@ -65,20 +63,23 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                         ORIENTATION) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            if (strcmp(value, HORIZONTAL) == 0)
-                m_orientation = Paned::ORIENTATION_HORIZONTAL;
-            else if (strcmp(value, VERTICAL) == 0)
-                m_orientation = Paned::ORIENTATION_VERTICAL;
-            else
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid orientation \"%s\".\n"),
-                    child->line, value);
-                errors.push_back(cp);
-                g_free(cp);
+                if (strcmp(value, HORIZONTAL) == 0)
+                    m_orientation = Paned::ORIENTATION_HORIZONTAL;
+                else if (strcmp(value, VERTICAL) == 0)
+                    m_orientation = Paned::ORIENTATION_VERTICAL;
+                else
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid orientation \"%s\".\n"),
+                        child->line, value);
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CHILDREN) == 0)
@@ -90,7 +91,7 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                 if (grandChild->type != XML_ELEMENT_NODE)
                     continue;
                 Widget::XmlElement *ch =
-                    Widget::XmlElement::read(doc, grandChild, errors);
+                    Widget::XmlElement::read(grandChild, errors);
                 if (ch)
                 {
                     if (m_children[1])
@@ -114,41 +115,47 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
                         CURRENT_CHILD_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_currentChildIndex = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_currentChildIndex = boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, CURRENT_CHILD_INDEX, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, CURRENT_CHILD_INDEX, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         POSITION) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_position = boost::lexical_cast<double>(value);
+                try
+                {
+                    m_position = boost::lexical_cast<double>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid real number \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, POSITION, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid real number \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, POSITION, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
     }
 
@@ -187,12 +194,11 @@ bool Paned::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Paned::XmlElement *Paned::XmlElement::read(xmlDocPtr doc,
-                                           xmlNodePtr node,
+Paned::XmlElement *Paned::XmlElement::read(xmlNodePtr node,
                                            std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
-    if (!element->readInternally(doc, node, errors))
+    if (!element->readInternally(node, errors))
     {
         delete element;
         return NULL;

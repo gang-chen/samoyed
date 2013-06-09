@@ -51,8 +51,7 @@ void TextEditor::XmlElement::registerReader()
                                        Widget::XmlElement::Reader(read));
 }
 
-bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
-                                            xmlNodePtr node,
+bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
                                             std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -71,7 +70,7 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!Editor::XmlElement::readInternally(doc, child, errors))
+            if (!Editor::XmlElement::readInternally(child, errors))
                 return false;
             editorSeen = true;
         }
@@ -79,49 +78,58 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
                         ENCODING) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_encoding = value;
-            xmlFree(value);
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_encoding = value;
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CURSOR_LINE) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_cursorLine = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_cursorLine = boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, CURSOR_LINE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, CURSOR_LINE, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CURSOR_COLUMN) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_cursorColumn = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_cursorColumn = boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, CURSOR_COLUMN, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, CURSOR_COLUMN, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
     }
 
@@ -162,12 +170,10 @@ bool TextEditor::XmlElement::readInternally(xmlDocPtr doc,
 }
 
 TextEditor::XmlElement *
-TextEditor::XmlElement::read(xmlDocPtr doc,
-                             xmlNodePtr node,
-                             std::list<std::string> &errors)
+TextEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
-    if (!element->readInternally(doc, node, errors))
+    if (!element->readInternally(node, errors))
     {
         delete element;
         return NULL;

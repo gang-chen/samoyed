@@ -13,11 +13,13 @@
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include <assert.h>
+#include <ctype.h>
 #include <string.h>
 #include <algorithm>
 #include <list>
 #include <string>
 #include <vector>
+#include <boost/any.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
@@ -40,6 +42,9 @@
 #define MAIN_AREA_ID "main-area"
 #define EDITOR_GROUP_ID "editor-group"
 #define PANED_ID "paned"
+
+#define SIDE_PANE_MENU_ITEM_TITLE "side-pane-menu-item-title"
+#define SIDE_PANE_VIEWS_MENU_TITLE "side-pane-views-menu-title"
 
 namespace
 {
@@ -115,8 +120,7 @@ void Window::XmlElement::registerReader()
                                        Widget::XmlElement::Reader(read));
 }
 
-bool Window::XmlElement::readInternally(xmlDocPtr doc,
-                                        xmlNodePtr node,
+bool Window::XmlElement::readInternally(xmlNodePtr node,
                                         std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -137,8 +141,7 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!WidgetContainer::XmlElement::readInternally(doc,
-                                                             child, errors))
+            if (!WidgetContainer::XmlElement::readInternally(child, errors))
                 return false;
             containerSeen = true;
         }
@@ -146,145 +149,168 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
                         SCREEN_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_screenIndex = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_configuration.m_screenIndex =
+                        boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, SCREEN_INDEX, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, SCREEN_INDEX, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         WIDTH) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_width = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_configuration.m_width = boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, WIDTH, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, WIDTH, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         HEIGHT) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_height = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_configuration.m_height = boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, HEIGHT, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, HEIGHT, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         IN_FULL_SCREEN) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_inFullScreen =
-                    boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_configuration.m_inFullScreen =
+                        boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                          child->line, value, IN_FULL_SCREEN, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, IN_FULL_SCREEN, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         MAXIMIZED) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_maximized = boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_configuration.m_maximized =
+                        boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, MAXIMIZED, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, MAXIMIZED, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         TOOLBAR_VISIBLE) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_toolbarVisible =
-                    boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_configuration.m_toolbarVisible =
+                        boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, TOOLBAR_VISIBLE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, TOOLBAR_VISIBLE, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         TOOLBAR_VISIBLE_IN_FULL_SCREEN) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_configuration.m_toolbarVisibleInFullScreen =
-                    boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_configuration.m_toolbarVisibleInFullScreen =
+                        boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, TOOLBAR_VISIBLE_IN_FULL_SCREEN,
+                        exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, TOOLBAR_VISIBLE_IN_FULL_SCREEN,
-                    exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CHILD) == 0)
@@ -296,7 +322,7 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
                 if (grandChild->type != XML_ELEMENT_NODE)
                     continue;
                 Widget::XmlElement *ch =
-                    Widget::XmlElement::read(doc, grandChild, errors);
+                    Widget::XmlElement::read(grandChild, errors);
                 if (ch)
                 {
                     if (m_child)
@@ -337,12 +363,11 @@ bool Window::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Window::XmlElement *Window::XmlElement::read(xmlDocPtr doc,
-                                             xmlNodePtr node,
+Window::XmlElement *Window::XmlElement::read(xmlNodePtr node,
                                              std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
-    if (!element->readInternally(doc, node, errors))
+    if (!element->readInternally(node, errors))
     {
         delete element;
         return NULL;
@@ -394,9 +419,9 @@ xmlNodePtr Window::XmlElement::write() const
 }
 
 Window::XmlElement::XmlElement(const Window &window):
-    WidgetContainer::XmlElement(window)
+    WidgetContainer::XmlElement(window),
+    m_configuration(window.configuration())
 {
-    m_configuration = window.configuration();
     m_child = window.child(0).save();
 }
 
@@ -598,8 +623,8 @@ bool Window::restore(XmlElement &xmlElement)
     // Start to observe all editors.
     addEditorRemovedCallbacks(mainArea().mainChild());
 
-    // Create menu items for the side panes.
-    createMenuItemsForSidePanesRecursively(*child);
+    // Setup the side panes.
+    setupSidePanesRecursively(*child);
 
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
 
@@ -829,19 +854,27 @@ void Window::addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
 void Window::createNavigationPane(Window &window)
 {
     Notebook *pane =
-        Notebook::create(NAVIGATION_PANE_ID, NULL, false, false, true);
+        Notebook::create(NAVIGATION_PANE_ID, NULL, true, false, true);
     pane->setTitle(_("_Navigation Pane"));
-    s_navigationPaneCreated(*pane);
+    pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE,
+                      std::string(_("_Navigation Pane")));
+    pane->setProperty(SIDE_PANE_VIEWS_MENU_TITLE,
+                      std::string(_("Na_vigators")));
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 0.25);
+    s_navigationPaneCreated(*pane);
 }
 
 void Window::createToolsPane(Window &window)
 {
     Notebook *pane =
-        Notebook::create(TOOLS_PANE_ID, NULL, false, false, true);
+        Notebook::create(TOOLS_PANE_ID, NULL, true, false, true);
     pane->setTitle(_("_Tools Pane"));
-    s_toolsPaneCreated(*pane);
+    pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE,
+                      std::string(_("_Tools Pane")));
+    pane->setProperty(SIDE_PANE_VIEWS_MENU_TITLE,
+                      std::string(_("T_ools")));
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 0.33);
+    s_toolsPaneCreated(*pane);
 }
 
 void Window::registerDefaultSidePanes()
@@ -852,25 +885,47 @@ void Window::registerDefaultSidePanes()
 
 void Window::createMenuItemForSidePane(Widget &pane)
 {
+    std::string str, str2;
+    const boost::any *any;
+
     SidePaneData *data = new SidePaneData;
+
     std::string actionName(pane.id());
     actionName.insert(0, "show-hide-");
-    std::string title(pane.title());
-    title.erase(std::remove(title.begin(), title.end(), '_'), title.end());
-    char *tooltip = g_strdup_printf(_("Show or hide %s"), title.c_str());
+
+    any = pane.getProperty(SIDE_PANE_MENU_ITEM_TITLE);
+    const std::string *menuTitle = NULL;
+    if (any)
+        menuTitle = boost::any_cast<const std::string>(any);
+    if (!menuTitle)
+    {
+        str = pane.title();
+        str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
+        menuTitle = &str;
+    }
+
+    str2 = pane.title();
+    str2.erase(std::remove(str2.begin(), str2.end(), '_'), str2.end());
+    std::transform(str2.begin(), str2.end(), str2.begin(), tolower);
+    char *tooltip = g_strdup_printf(_("Show or hide %s"), str2.c_str());
+
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
-                                                    title.c_str(),
+                                                    menuTitle->c_str(),
                                                     tooltip,
                                                     NULL);
-    g_free(tooltip);
     gtk_toggle_action_set_active(action,
                                  gtk_widget_get_visible(pane.gtkWidget()));
     g_signal_connect(action, "toggled",
                      G_CALLBACK(showHideSidePane), this);
+    gtk_action_group_add_action(m_actions->actionGroup(), GTK_ACTION(action));
+
+    g_object_unref(action);
+    g_free(tooltip);
+
     gulong signalHandlerId =
         g_signal_connect_after(pane.gtkWidget(), "notify::visible",
                                G_CALLBACK(onSidePaneVisibilityChanged), data);
-    gtk_action_group_add_action(m_actions->actionGroup(), GTK_ACTION(action));
+
     guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
                           mergeId,
@@ -879,17 +934,30 @@ void Window::createMenuItemForSidePane(Widget &pane)
                           actionName.c_str(),
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
-    g_object_unref(action);
+
     std::string actionName2(pane.id());
     actionName2 += "-views";
-    std::string title2(pane.title());
-    title2.erase(std::remove(title2.begin(), title2.end(), '_'), title2.end());
-    title2 += " Views";
+
+    any = pane.getProperty(SIDE_PANE_MENU_ITEM_TITLE);
+    const std::string *menuTitle2 = NULL;
+    if (any)
+        menuTitle2 = boost::any_cast<const std::string>(any);
+    if (!menuTitle2)
+    {
+        str = pane.title();
+        str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
+        str += _(" Views");
+        menuTitle2 = &str;
+    }
+
     GtkAction *action2 = gtk_action_new(actionName2.c_str(),
-                                        title2.c_str(),
+                                        menuTitle2->c_str(),
                                         NULL,
                                         NULL);
     gtk_action_group_add_action(m_actions->actionGroup(), action2);
+
+    g_object_unref(action2);
+
     gtk_ui_manager_add_ui(m_uiManager,
                           mergeId,
                           "/main-menu-bar/view/side-panes",
@@ -897,27 +965,34 @@ void Window::createMenuItemForSidePane(Widget &pane)
                           actionName2.c_str(),
                           GTK_UI_MANAGER_MENU,
                           FALSE);
-    g_object_unref(action2);
+
     pane.addClosedCallback(boost::bind(&Window::onSidePaneClosed,
                                        this, _1, data));
+
     data->action = action;
     data->action2 = action2;
     data->signalHandlerId = signalHandlerId;
     data->uiMergeId = mergeId;
 }
 
-void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
+void Window::setupSidePanesRecursively(Widget &widget)
 {
     if (strcmp(widget.id(), MAIN_AREA_ID) == 0)
         return;
     if (strcmp(widget.id(), PANED_ID) == 0)
     {
         Paned &paned = static_cast<Paned &>(widget);
-        createMenuItemsForSidePanesRecursively(paned.child(0));
-        createMenuItemsForSidePanesRecursively(paned.child(1));
+        setupSidePanesRecursively(paned.child(0));
+        setupSidePanesRecursively(paned.child(1));
         return;
     }
+
     createMenuItemForSidePane(widget);
+
+    if (strcmp(widget.id(), NAVIGATION_PANE_ID) == 0)
+        s_navigationPaneCreated(widget);
+    else if (strcmp(widget.id(), TOOLS_PANE_ID) == 0)
+        s_toolsPaneCreated(widget);
 }
 
 void Window::onSidePaneClosed(const Widget &pane, const SidePaneData *data)

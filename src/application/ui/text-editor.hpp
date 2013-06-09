@@ -26,8 +26,7 @@ public:
     public:
         static void registerReader();
 
-        static XmlElement *read(xmlDocPtr doc,
-                                xmlNodePtr node,
+        static XmlElement *read(xmlNodePtr node,
                                 std::list<std::string> &errors);
         virtual xmlNodePtr write() const;
         XmlElement(const TextEditor &editor);
@@ -44,9 +43,7 @@ public:
             m_cursorColumn(0)
         {}
 
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
         Editor *restoreEditor(std::map<std::string, boost::any> &options);
 

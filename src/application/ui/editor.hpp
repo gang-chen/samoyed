@@ -37,9 +37,7 @@ public:
     protected:
         XmlElement() {}
 
-        bool readInternally(xmlDocPtr doc,
-                            xmlNodePtr node,
-                            std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
         Editor *restoreEditor(std::map<std::string, boost::any> &options);
 

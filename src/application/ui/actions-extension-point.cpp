@@ -24,7 +24,6 @@ ActionsExtensionPoint::ActionsExtensionPoint():
 }
 
 bool ActionsExtensionPoint::registerExtension(const char *extensionId,
-                                              xmlDocPtr xmlDoc,
                                               xmlNodePtr xmlNode,
                                               std::list<std::string> &errors)
 {

@@ -35,8 +35,7 @@ void Notebook::XmlElement::registerReader()
                                        Widget::XmlElement::Reader(read));
 }
 
-bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
-                                          xmlNodePtr node,
+bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                                           std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -57,8 +56,7 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!WidgetContainer::XmlElement::readInternally(doc,
-                                                             child, errors))
+            if (!WidgetContainer::XmlElement::readInternally(child, errors))
                 return false;
             containerSeen = true;
         }
@@ -66,70 +64,81 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                         GROUP_NAME) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 m_groupName = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CREATE_CLOSE_BUTTONS) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_createCloseButtons = boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_createCloseButtons = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, CREATE_CLOSE_BUTTONS, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, CREATE_CLOSE_BUTTONS, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CAN_DRAG_CHILDREN) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_canDragChildren = boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_canDragChildren = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, CAN_DRAG_CHILDREN, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, CAN_DRAG_CHILDREN, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         USE_UNDERLINE) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_useUnderline = boost::lexical_cast<bool>(value);
+                try
+                {
+                    m_useUnderline = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, USE_UNDERLINE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid Boolean value \"%s\" for element "
-                      "\"%s\". %s.\n"),
-                    child->line, value, USE_UNDERLINE, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CHILDREN) == 0)
@@ -141,7 +150,7 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                 if (grandChild->type != XML_ELEMENT_NODE)
                     continue;
                 Widget::XmlElement *ch =
-                    Widget::XmlElement::read(doc, grandChild, errors);
+                    Widget::XmlElement::read(grandChild, errors);
                 if (ch)
                     m_children.push_back(ch);
             }
@@ -150,21 +159,24 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
                         CURRENT_CHILD_INDEX) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            try
+                xmlNodeGetContent(child->children));
+            if (value)
             {
-                m_currentChildIndex = boost::lexical_cast<int>(value);
+                try
+                {
+                    m_currentChildIndex = boost::lexical_cast<int>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, CURRENT_CHILD_INDEX, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
             }
-            catch (boost::bad_lexical_cast &exp)
-            {
-                cp = g_strdup_printf(
-                    _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                      "%s.\n"),
-                    child->line, value, CURRENT_CHILD_INDEX, exp.what());
-                errors.push_back(cp);
-                g_free(cp);
-            }
-            xmlFree(value);
         }
     }
 
@@ -190,12 +202,11 @@ bool Notebook::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Notebook::XmlElement *Notebook::XmlElement::read(xmlDocPtr doc,
-                                                 xmlNodePtr node,
+Notebook::XmlElement *Notebook::XmlElement::read(xmlNodePtr node,
                                                  std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
-    if (!element->readInternally(doc, node, errors))
+    if (!element->readInternally(node, errors))
     {
         delete element;
         return NULL;

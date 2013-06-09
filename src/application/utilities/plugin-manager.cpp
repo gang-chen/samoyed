@@ -177,37 +177,45 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
         if (strcmp(reinterpret_cast<const char *>(child->name), ID) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 info->id = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         NAME) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 info->name = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         DESCRIPTION) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 info->description = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         MODULE) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
+                xmlNodeGetContent(child->children));
             if (value)
+            {
                 info->module = value;
-            xmlFree(value);
+                xmlFree(value);
+            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         EXTENSION) == 0)
@@ -223,19 +231,23 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                            ID) == 0)
                 {
                     value = reinterpret_cast<char *>(
-                        xmlNodeListGetString(doc, grandChild->children, 1));
+                        xmlNodeGetContent(grandChild->children));
                     if (value)
+                    {
                         ext->id = info->id + '/' + value;
-                    xmlFree(value);
+                        xmlFree(value);
+                    }
                 }
                 else if (strcmp(reinterpret_cast<const char *>(grandChild->name),
                                 POINT) == 0)
                 {
                     value = reinterpret_cast<char *>(
-                        xmlNodeListGetString(doc, grandChild->children, 1));
+                        xmlNodeGetContent(grandChild->children));
                     if (value)
+                    {
                         ext->pointId = value;
-                    xmlFree(value);
+                        xmlFree(value);
+                    }
                 }
             }
             if (ext->id.empty())
@@ -308,7 +320,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        xmlFreeDoc(info->xmlDoc);
+        xmlFreeDoc(doc);
         delete info;
         return false;
     }
@@ -331,7 +343,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        xmlFreeDoc(info->xmlDoc);
+        xmlFreeDoc(doc);
         delete info;
         return false;
     }
@@ -354,7 +366,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        xmlFreeDoc(info->xmlDoc);
+        xmlFreeDoc(doc);
         delete info;
         return false;
     }
@@ -370,7 +382,6 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
         m_extensionPointManager.
             registerExtension(ext->id.c_str(),
                               ext->pointId.c_str(),
-                              doc,
                               ext->xmlNode);
     }
 
@@ -546,8 +557,6 @@ void PluginManager::scanPlugins(const char *pluginsDirName)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().windows() ?
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()) :
             NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,

@@ -24,7 +24,6 @@ void ExtensionPointManager::registerExtensionPoint(ExtensionPoint &extPoint)
         std::list<std::string> errors;
         for (ExtensionInfo *ext = it->second; ext; ext = ext->next)
             extPoint.registerExtension(ext->extensionId.c_str(),
-                                       ext->xmlDoc,
                                        ext->xmlNode,
                                        errors);
     }
@@ -45,12 +44,10 @@ void ExtensionPointManager::unregisterExtensionPoint(ExtensionPoint &extPoint)
 
 void ExtensionPointManager::registerExtension(const char *extensionId,
                                               const char *extensionPointId,
-                                              xmlDocPtr xmlDoc,
                                               xmlNodePtr xmlNode)
 {
     ExtensionInfo *ext = new ExtensionInfo;
     ext->extensionId = extensionId;
-    ext->xmlDoc = xmlDoc;
     ext->xmlNode = xmlNode;
     ExtensionRegistry::iterator it = m_extensionRegistry.find(extensionPointId);
     if (it != m_extensionRegistry.end())
@@ -69,7 +66,6 @@ void ExtensionPointManager::registerExtension(const char *extensionId,
     {
         std::list<std::string> errors;
         it2->second->registerExtension(extensionId,
-                                       xmlDoc,
                                        xmlNode,
                                        errors);
     }

@@ -21,8 +21,7 @@ namespace Samoyed
 {
 
 bool
-WidgetContainer::XmlElement::readInternally(xmlDocPtr doc,
-                                            xmlNodePtr node,
+WidgetContainer::XmlElement::readInternally(xmlNodePtr node,
                                             std::list<std::string> &errors)
 {
     char *cp;
@@ -43,7 +42,7 @@ WidgetContainer::XmlElement::readInternally(xmlDocPtr doc,
                 g_free(cp);
                 return false;
             }
-            if (!Widget::XmlElement::readInternally(doc, child, errors))
+            if (!Widget::XmlElement::readInternally(child, errors))
                 return false;
             widgetSeen = true;
         }

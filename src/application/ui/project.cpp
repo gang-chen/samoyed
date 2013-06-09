@@ -22,8 +22,7 @@
 namespace Samoyed
 {
 
-bool Project::XmlElement::readInternally(xmlDocPtr doc,
-                                         xmlNodePtr node,
+bool Project::XmlElement::readInternally(xmlNodePtr node,
                                          std::list<std::string> &errors)
 {
     char *value, *cp;
@@ -34,10 +33,13 @@ bool Project::XmlElement::readInternally(xmlDocPtr doc,
                    URI) == 0)
         {
             value = reinterpret_cast<char *>(
-                xmlNodeListGetString(doc, child->children, 1));
-            m_uri = value;
-            xmlFree(value);
-            uriSeen = true;
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_uri = value;
+                xmlFree(value);
+                uriSeen = true;
+            }
         }
     }
 
@@ -53,12 +55,11 @@ bool Project::XmlElement::readInternally(xmlDocPtr doc,
     return true;
 }
 
-Project::XmlElement *Project::XmlElement::read(xmlDocPtr doc,
-                                               xmlNodePtr node,
+Project::XmlElement *Project::XmlElement::read(xmlNodePtr node,
                                                std::list<std::string> &errors)
 {
     XmlElement *element = new XmlElement;
-    if (!element->readInternally(doc, node, errors))
+    if (!element->readInternally(node, errors))
     {
         delete element;
         return NULL;
