@@ -2,55 +2,68 @@
 // Copyright (C) 2013 Gang Chen.
 
 #include "property-tree.hpp"
+#include <utility>
+#include <boost/lexical_cast.hpp>
 
 namespace Samoyed
 {
-/*
+
+PropertyTree::PropertyTree(const char *name,
+                           const boost::spirit::hold_any &defaultValue):
+    m_name(name),
+    m_value(defaultValue),
+    m_defaultValue(defaultValue),
+    m_firstChild(NULL),
+    m_lastChild(NULL)
+{
+}
+
 PropertyTree::~PropertyTree()
 {
     // Delete child trees.
+    m_children.clear();
+    for (PropertyTree *child = m_firstChild, *next; child; child = next)
+    {
+        next = child->m_next;
+        delete child;
+    }
 }
 
-bool PropertyTree::validateThis(bool up,
-                                     std::list<std::string> &errors) const
+bool PropertyTree::set(const boost::spirit::hold_any &value,
+                       std::list<std::string > &errors)
 {
-    bool valid = true;
-    if (m_validator)
-    {
-        if (!m_validator(*this, errors))
-            valid = false;
-    }
-    if (up && parent())
-    {
-        if (!parent()->validateThis(true, errors))
-            valid = false;
-    }
-    return valid;
-}
-
-bool Preferences::Boolean::set(bool value, std::list<std::string> &errors)
-{
-    bool oldValue = m_value;
+    boost::spirit::hold_any save = m_value;
     m_value = value;
-    if (!validateThis(true, errors))
+    if (!validate(errors))
     {
-        m_value = oldValue;
+        m_value = save;
         return false;
     }
+    m_changed(*this);
     return true;
 }
 
-bool Preferences::Group::validate(std::list<std::string> &errors) const
+void PropertyTree::addChild(PropertyTree &child)
+{
+    child.addToList(m_firstChild, m_lastChild);
+    m_children.insert(std::make_pair(child.name(), &child));
+}
+
+void PropertyTree::removeChild(PropertyTree& child)
+{
+    m_children.erase(child.name());
+    child.removeFromList(m_firstChild, m_lastChild);
+}
+
+bool PropertyTree::validate(std::list<std::string> &errors) const
 {
     bool valid = true;
-    for (Table::const_iterator it = m_items.begin(); it != m_items.end(); ++it)
+    for (Table::const_iterator it = m_children.begin();
+         it != m_children.end();
+         ++it)
     {
-        if (!it->second->validateThis(false, errors))
-            valid = false;
     }
-    if (!validateThis(true, errors))
-        valid = false;
     return valid;
 }
-*/
+
 }

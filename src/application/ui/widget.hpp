@@ -10,7 +10,6 @@
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
-#include <boost/any.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -24,7 +23,7 @@ class Widget: public boost::noncopyable
 public:
     typedef boost::signals2::signal<void (Widget &widget)> Closed;
 
-    typedef std::map<std::string, boost::any> PropertyMap;
+    typedef std::map<std::string, std::string> PropertyMap;
 
     /**
      * An XML element used to save and restore a widget.
@@ -155,8 +154,8 @@ public:
     addClosedCallback(const Closed::slot_type &callback)
     { return m_closed.connect(callback); }
 
-    const boost::any *getProperty(const char *name) const;
-    void setProperty(const char *name, const boost::any &value);
+    const std::string *getProperty(const char *name) const;
+    void setProperty(const char *name, const std::string &value);
     const PropertyMap &properties() const { return m_properties; }
 
 protected:

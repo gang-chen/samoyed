@@ -126,8 +126,9 @@ bool Widget::XmlElement::readInternally(xmlNodePtr node,
                     xmlNodeGetContent(grandChild->children));
                 if (value)
                 {
-                    m_properties[reinterpret_cast<const char *>(
-                                 grandChild->name)] = value;
+                    m_properties.insert(std::make_pair(
+                        reinterpret_cast<const char *>(grandChild->name),
+                        value));
                     xmlFree(value);
                 }
             }
@@ -162,10 +163,9 @@ xmlNodePtr Widget::XmlElement::write() const
          it != m_properties.end();
          ++it)
     {
-        //str = boost::lexical_cast<std::string>(it->second);
         xmlNewTextChild(prop, NULL,
                         reinterpret_cast<const xmlChar *>(it->first.c_str()),
-                        reinterpret_cast<const xmlChar *>(str.c_str()));
+                        reinterpret_cast<const xmlChar *>(it->second.c_str()));
     }
     xmlAddChild(node, prop);
     return node;
@@ -251,7 +251,7 @@ Widget *Widget::getFromGtkWidget(GtkWidget *gtkWidget)
                                                    SAMOYED_WIDGET));
 }
 
-const boost::any *Widget::getProperty(const char *name) const
+const std::string *Widget::getProperty(const char *name) const
 {
     PropertyMap::const_iterator it = m_properties.find(name);
     if (it == m_properties.end())
@@ -259,7 +259,7 @@ const boost::any *Widget::getProperty(const char *name) const
     return &it->second;
 }
 
-void Widget::setProperty(const char *name, const boost::any &value)
+void Widget::setProperty(const char *name, const std::string &value)
 {
     m_properties[name] = value;
 }

@@ -8,7 +8,7 @@
 #include <list>
 #include <map>
 #include <string>
-#include <boost/any.hpp>
+#include <boost/spirit/home/support/detail/hold_any.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
@@ -30,39 +30,42 @@ public:
 
     typedef boost::function<Widget *(PropertyTree &prop)> WidgetFactory;
 
-    PropertyTree(const char *name, const boost::any &defaultValue);
+    PropertyTree(const char *name, const boost::spirit::hold_any &defaultValue);
     ~PropertyTree();
 
     const char *name() const { return m_name.c_str(); }
 
-    const boost::any &get() const { return m_value; }
-    bool set(const boost::any &value, std::list<std::string> &errors);
-    bool reset(std::list<std::string> &errors);
+    const boost::spirit::hold_any &get() const { return m_value; }
+    bool set(const boost::spirit::hold_any &value,
+             std::list<std::string> &errors);
+    bool reset(std::list<std::string> &errors)
+    { return set(m_defaultValue, errors); }
 
     void addChild(PropertyTree &child);
     void removeChild(PropertyTree &child);
 
-    const boost::any &get(const char *path) const;
+    const boost::spirit::hold_any &get(const char *path) const;
     bool set(const char *path,
-             const boost::any &value,
+             const boost::spirit::hold_any &value,
              std::list<std::string> &errors);
     bool reset(const char *path, std::list<std::string> errors);
 
     bool set(const std::list<std::pair<const char *,
-                                       const boost::any> > &pathsValues,
+                                       const boost::spirit::hold_any> >
+                &pathsValues,
              std::list<std::string> &errors);
     bool reset(const std::list<const char *> &paths);
 
     PropertyTree &child(const char *path);
     const PropertyTree &child(const char *path) const;
-    void addChild(const char *path, const boost::any &defaultValue);
+    void addChild(const char *path,
+                  const boost::spirit::hold_any &defaultValue);
     void removeChild(const char *path);
 
     const PropertyTree *parent() const { return m_parent; }
 
     void setValidator(const Validator &validator)
     { m_validator = validator; }
-    bool validate(std::list<std::string> &errors) const;
 
     boost::signals2::connection addObserver(const Changed::slot_type &observer);
 
@@ -78,9 +81,11 @@ public:
     bool writeXmlFile(const char *xmlFileName) const;
 
 private:
+    bool validate(std::list<std::string> &errors) const;
+
     const std::string m_name;
-    boost::any m_value;
-    boost::any m_defaultValue;
+    boost::spirit::hold_any m_value;
+    boost::spirit::hold_any m_defaultValue;
     PropertyTree *m_firstChild;
     PropertyTree *m_lastChild;
     Table m_children;

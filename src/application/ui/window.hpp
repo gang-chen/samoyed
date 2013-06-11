@@ -161,6 +161,8 @@ public:
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, double size);
 
+    void onSidePaneChildAdded(Widget &paneChild);
+
     Notebook &navigationPane();
     const Notebook &navigationPane() const;
     Notebook &toolsPane();
@@ -204,12 +206,20 @@ protected:
     void removeChildInternally(Widget &child);
 
 private:
+    struct SidePaneChildData
+    {
+        GtkToggleAction *action;
+        gulong signalHandlerId;
+        guint uiMergeId;
+    };
+
     struct SidePaneData
     {
         GtkToggleAction *action;
         GtkAction *action2;
         gulong signalHandlerId;
         guint uiMergeId;
+        std::map<std::string, SidePaneChildData *> children;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -236,6 +246,10 @@ private:
     static void onSidePaneVisibilityChanged(GtkWidget *pane,
                                             GParamSpec *spec,
                                             const SidePaneData *data);
+    static void showHideSidePaneChild(GtkToggleAction *action, Window *window);
+    static void onSidePaneChildVisibilityChanged(GtkWidget *paneChild,
+                                                 GParamSpec *spec,
+                                                 const SidePaneChildData *data);
 
     static void createNavigationPane(Window &window);
     static void createToolsPane(Window &window);
@@ -244,8 +258,10 @@ private:
     bool build(const Configuration &config);
 
     void createMenuItemForSidePane(Widget &pane);
+    void createMenuItemForSidePaneChild(Widget &paneChild);
     void setupSidePanesRecursively(Widget &widget);
-    void onSidePaneClosed(const Widget &pane, const SidePaneData *data);
+    void onSidePaneClosed(const Widget &pane);
+    void onSidePaneChildClosed(const Widget &paneChild);
 
     static Created s_created;
     static SidePaneCreated s_navigationPaneCreated;
@@ -271,6 +287,8 @@ private:
     bool m_maximized;
     bool m_toolbarVisible;
     bool m_toolbarVisibleInFullScreen;
+
+    std::map<std::string, SidePaneData *> m_sidePaneData;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };
