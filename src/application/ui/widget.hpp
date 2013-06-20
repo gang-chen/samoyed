@@ -18,6 +18,17 @@ namespace Samoyed
 
 class WidgetContainer;
 
+/**
+ * A widget is owned by its parent widget if it is not a top-level widget.  To
+ * destroy a widget, the user cannot destroy it directly but should close it.
+ * When requested to be closed, a widget saves its working data, and requests
+ * its owner to destroy it if it does not contain any child, or closes its child
+ * widgets.  When requested to destroy a child widget, a widget removes the
+ * child widget, destroys the child, checks to see if the parent has been
+ * requested to be closed and all child widgets are destroyed, and if true
+ * requests the owner of the parent to destroy it. During this process, any
+ * participant may refuse to close itself, aborting the process.
+ */
 class Widget: public boost::noncopyable
 {
 public:
@@ -93,6 +104,11 @@ public:
     };
 
     /**
+     * This function can be called by the owner of this widget only.
+     */
+    virtual ~Widget();
+
+    /**
      * A widget is assigned an identifier, which is unique in its parent
      * container.
      * @return The identifier of the widget.
@@ -135,6 +151,9 @@ public:
 
     bool closing() const { return m_closing; }
 
+    /**
+     * Close this widget.
+     */
     virtual bool close() = 0;
 
     /**
@@ -161,8 +180,6 @@ public:
 protected:
     Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}
 
-    virtual ~Widget();
-
     bool setup(const char *id);
 
     bool restore(XmlElement &xmlElement);
@@ -170,6 +187,12 @@ protected:
     void setGtkWidget(GtkWidget *gtkWidget);
 
     void setClosing(bool closing) { m_closing = closing; }
+
+    /**
+     * Request the owner of this widget to destroy this widget.  This function
+     * is called after all child widgets are closed.
+     */
+    virtual void destroy();
 
 private:
     GtkWidget *m_gtkWidget;

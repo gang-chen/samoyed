@@ -53,6 +53,11 @@ public:
 
     static Project *open(const char *uri);
 
+    /**
+     * This function can be called by the application instance only.
+     */
+    ~Project();
+
     bool close();
 
     XmlElement *save() const;
@@ -66,14 +71,13 @@ public:
 
     void addEditor(Editor &editor);
     void removeEditor(Editor &editor);
+    void destroyEditor(Editor &editor);
 
     Editor *editors() { return m_firstEditor; }
     const Editor *editors() const { return m_firstEditor; }
 
 protected:
     Project(const char *uri);
-
-    ~Project();
 
     bool restore(XmlElement &xmlElement);
 

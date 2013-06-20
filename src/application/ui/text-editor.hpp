@@ -55,6 +55,8 @@ public:
 
     static TextEditor *create(TextFile &file, Project *project);
 
+    static void installPreferences();
+
     virtual Widget::XmlElement *save() const;
 
     virtual void grabFocus();

@@ -19,7 +19,12 @@ namespace Samoyed
 class Project;
 
 /**
- * An editor is used to edit an opened file in the context of an opend project.
+ * An editor is used to edit an opened file in the context of an opened project.
+ *
+ * To close an editor, the editor requests the file to close it, the file may
+ * save the modified contents, the project, if existing, or the file otherwise
+ * requests the owner of the editor to destroy it, and the project, if
+ * existing, and the file perform some actions after the editor is destroyed.
  */
 class Editor: public Widget
 {
@@ -49,7 +54,12 @@ public:
     /**
      * This function can be called by the file only.
      */
-    virtual ~Editor();
+    void destroyInFile();
+
+    /**
+     * This function can be called by the project only.
+     */
+    void destroyInProject();
 
     File &file() { return m_file; }
     const File &file() const { return m_file; }
@@ -77,6 +87,8 @@ public:
 
 protected:
     Editor(File &file, Project *project);
+
+    virtual ~Editor();
 
     bool setup();
 

@@ -197,9 +197,8 @@ bool Widget::restore(XmlElement &xmlElement)
 
 Widget::~Widget()
 {
+    assert(!m_parent);
     m_closed(*this);
-    if (m_parent)
-        m_parent->removeChild(*this);
     if (m_gtkWidget)
         gtk_widget_destroy(m_gtkWidget);
 }
@@ -262,6 +261,14 @@ const std::string *Widget::getProperty(const char *name) const
 void Widget::setProperty(const char *name, const std::string &value)
 {
     m_properties[name] = value;
+}
+
+void Widget::destroy()
+{
+    if (parent())
+        parent()->destroyChild(*this);
+    else
+        delete this;
 }
 
 }

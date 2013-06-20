@@ -33,6 +33,8 @@ class Editor;
  * editors, and side panes are the user interfaces of tools running all the
  * time.
  *
+ * A window is owned by the application instance.
+ *
  * When a window is created, two side panes are created and added to the window.
  * One is the navigation pane, which is to the left of the main area.  The other
  * is the tools pane, which is to the right of the main area.
@@ -131,6 +133,11 @@ public:
 
     static Window *create(const Configuration &config);
 
+    /**
+     * This function can be called by the application instance only.
+     */
+    virtual ~Window();
+
     virtual bool close();
 
     virtual Widget::XmlElement *save() const;
@@ -157,9 +164,9 @@ public:
      * @param pane The side pane to be added.
      * @param neighbor The widget that will be the neighbor of the side pane.
      * @param side The side the neighbor where the side pane will adjoin.
-     * @param size The ratio of the size of the side pane over the total size.
+     * @param size The size of the side pane.
      */
-    void addSidePane(Widget &pane, Widget &neighbor, Side side, double size);
+    void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
 
     void onSidePaneChildAdded(Widget &paneChild);
 
@@ -195,8 +202,6 @@ public:
 protected:
     Window();
 
-    virtual ~Window();
-
     bool setup(const Configuration &config);
 
     bool restore(XmlElement &xmlElement);
@@ -204,6 +209,8 @@ protected:
     void addChildInternally(Widget &child);
 
     void removeChildInternally(Widget &child);
+
+    virtual void destroy();
 
 private:
     struct SidePaneChildData

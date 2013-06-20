@@ -8,6 +8,7 @@
 #include "project.hpp"
 #include "window.hpp"
 #include "widget-with-bars.hpp"
+#include "property-tree.hpp"
 #include "bars/file-recovery-bar.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
@@ -41,6 +42,7 @@
 #define PROJECT "project"
 #define WINDOWS "windows"
 #define WINDOW "window"
+#define PREFERENCES "preferences"
 
 namespace
 {
@@ -136,6 +138,12 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
                 }
             }
         }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        PREFERENCES) == 0)
+        {
+            Samoyed::Application::instance().preferences().
+                readXmlElement(child, errors);
+        }
     }
     if (session->m_windows.empty())
     {
@@ -152,6 +160,7 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
 
 xmlNodePtr XmlElementSession::write() const
 {
+
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(SESSION));
     xmlNodePtr projects = xmlNewNode(NULL,
@@ -170,6 +179,9 @@ xmlNodePtr XmlElementSession::write() const
          ++it)
         xmlAddChild(windows, (*it)->write());
     xmlAddChild(node, windows);
+    xmlNodePtr prefs =
+        Samoyed::Application::instance().preferences().writeXmlElement();
+    xmlAddChild(node, prefs);
     return node;
 }
 
@@ -964,6 +976,8 @@ Session *Session::create(const char *name)
         return NULL;
     }
 
+    Application::instance().preferences().resetAll();
+
     // Create the main window for the new session.
     if (!Window::create(Window::Configuration()))
     {
@@ -1004,6 +1018,8 @@ Session *Session::restore(const char *name)
         delete session;
         return NULL;
     }
+
+    Application::instance().preferences().resetAll();
 
     // Read the session file.
     std::string sessionFileName(Application::instance().userDirectoryName());

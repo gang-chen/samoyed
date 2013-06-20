@@ -21,9 +21,11 @@
 #define ORIENTATION "orientation"
 #define HORIZONTAL "horizontal"
 #define VERTICAL "vertical"
+#define SIDE_PANE_INDEX "side-pane-index"
 #define CHILDREN "children"
 #define CURRENT_CHILD_INDEX "current-child-index"
-#define POSITION "position"
+#define CHILD1_SIZE_FRACTION "child1-size-fraction"
+#define SIDE_PANE_SIZE "side-pane-size"
 
 namespace Samoyed
 {
@@ -82,6 +84,31 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        SIDE_PANE_INDEX) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                try
+                {
+                    m_sidePaneIndex = boost::lexical_cast<double>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, SIDE_PANE_INDEX, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
+                if (m_sidePaneIndex < -1 || m_sidePaneIndex > 1)
+                    m_sidePaneIndex = -1;
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CHILDREN) == 0)
         {
             for (xmlNodePtr grandChild = child->children;
@@ -135,7 +162,7 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        POSITION) == 0)
+                        CHILD1_SIZE_FRACTION) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
@@ -143,14 +170,37 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_position = boost::lexical_cast<double>(value);
+                    m_child1SizeFraction = boost::lexical_cast<double>(value);
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
                     cp = g_strdup_printf(
                         _("Line %d: Invalid real number \"%s\" for element "
                           "\"%s\". %s.\n"),
-                        child->line, value, POSITION, exp.what());
+                        child->line, value, CHILD1_SIZE_FRACTION, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        SIDE_PANE_SIZE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                try
+                {
+                    m_sidePaneSize = boost::lexical_cast<double>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, SIDE_PANE_SIZE, exp.what());
                     errors.push_back(cp);
                     g_free(cp);
                 }
@@ -218,6 +268,10 @@ xmlNodePtr Paned::XmlElement::write() const
                     Paned::ORIENTATION_HORIZONTAL ?
                     reinterpret_cast<const xmlChar *>(HORIZONTAL) :
                     reinterpret_cast<const xmlChar *>(VERTICAL));
+    str = boost::lexical_cast<std::string>(m_sidePaneIndex);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(SIDE_PANE_INDEX),
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     xmlNodePtr children = xmlNewNode(NULL,
                                      reinterpret_cast<const xmlChar *>(CHILDREN));
     xmlAddChild(children, m_children[0]->write());
@@ -227,10 +281,20 @@ xmlNodePtr Paned::XmlElement::write() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURRENT_CHILD_INDEX),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_position);
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(POSITION),
-                    reinterpret_cast<const xmlChar *>(str.c_str()));
+    if (m_sidePaneIndex == -1)
+    {
+        str = boost::lexical_cast<std::string>(m_child1SizeFraction);
+        xmlNewTextChild(node, NULL,
+                        reinterpret_cast<const xmlChar *>(CHILD1_SIZE_FRACTION),
+                        reinterpret_cast<const xmlChar *>(str.c_str()));
+    }
+    else
+    {
+        str = boost::lexical_cast<std::string>(m_sidePaneSize);
+        xmlNewTextChild(node, NULL,
+                        reinterpret_cast<const xmlChar *>(SIDE_PANE_SIZE),
+                        reinterpret_cast<const xmlChar *>(str.c_str()));
+    }
     return node;
 }
 
@@ -238,10 +302,14 @@ Paned::XmlElement::XmlElement(const Paned &paned):
     WidgetContainer::XmlElement(paned)
 {
     m_orientation = paned.orientation();
+    m_sidePaneIndex = paned.sidePaneIndex();
     m_children[0] = paned.child(0).save();
     m_children[1] = paned.child(1).save();
     m_currentChildIndex = paned.currentChildIndex();
-    m_position = paned.position();
+    if (m_sidePaneIndex == -1)
+        m_child1SizeFraction = paned.child1SizeFraction();
+    else
+        m_sidePaneSize = paned.sidePaneSize();
 }
 
 Widget *Paned::XmlElement::restoreWidget()
@@ -263,6 +331,7 @@ Paned::XmlElement::~XmlElement()
 
 bool Paned::setup(const char *id,
                   Orientation orientation,
+                  int sidePaneIndex,
                   Widget &child1, Widget &child2)
 {
     if (!WidgetContainer::setup(id))
@@ -272,6 +341,7 @@ bool Paned::setup(const char *id,
                      G_CALLBACK(setFocusChild), this);
     setGtkWidget(paned);
     gtk_widget_show_all(paned);
+    m_sidePaneIndex = sidePaneIndex;
     addChildInternally(child1, 0);
     addChildInternally(child2, 1);
     return true;
@@ -280,15 +350,31 @@ bool Paned::setup(const char *id,
 Paned *Paned::create(const char *id,
                      Orientation orientation,
                      Widget &child1, Widget &child2,
-                     double position)
+                     double child1SizeFraction)
 {
     Paned *paned = new Paned;
-    if (!paned->setup(id, orientation, child1, child2))
+    if (!paned->setup(id, orientation, -1, child1, child2))
     {
         delete paned;
         return NULL;
     }
-    paned->setPosition(position);
+    paned->setChild1SizeFraction(child1SizeFraction);
+    return paned;
+}
+
+Paned *Paned::create(const char *id,
+                     Orientation orientation,
+                     int sidePaneIndex,
+                     Widget &child1, Widget &child2,
+                     int sidePaneSize)
+{
+    Paned *paned = new Paned;
+    if (!paned->setup(id, orientation, sidePaneIndex, child1, child2))
+    {
+        delete paned;
+        return NULL;
+    }
+    paned->setSidePaneSize(sidePaneSize);
     return paned;
 }
 
@@ -313,10 +399,14 @@ bool Paned::restore(XmlElement &xmlElement)
     setGtkWidget(paned);
     if (xmlElement.visible())
         gtk_widget_show_all(paned);
+    m_sidePaneIndex = xmlElement.sidePaneIndex();
     addChildInternally(*child1, 0);
     addChildInternally(*child2, 1);
     setCurrentChildIndex(xmlElement.currentChildIndex());
-    setPosition(xmlElement.position());
+    if (m_sidePaneIndex == -1)
+        setChild1SizeFraction(xmlElement.child1SizeFraction());
+    else
+        setSidePaneSize(xmlElement.sidePaneSize());
     return true;
 }
 
@@ -356,9 +446,11 @@ void Paned::addChildInternally(Widget &child, int index)
     WidgetContainer::addChildInternally(child);
     m_children[index] = &child;
     if (index == 0)
-        gtk_paned_pack1(GTK_PANED(gtkWidget()), child.gtkWidget(), TRUE, TRUE);
+        gtk_paned_pack1(GTK_PANED(gtkWidget()), child.gtkWidget(),
+                        index != m_sidePaneIndex, TRUE);
     else
-        gtk_paned_pack2(GTK_PANED(gtkWidget()), child.gtkWidget(), TRUE, TRUE);
+        gtk_paned_pack2(GTK_PANED(gtkWidget()), child.gtkWidget(),
+                        index != m_sidePaneIndex, TRUE);
 }
 
 void Paned::removeChildInternally(Widget &child)
@@ -385,7 +477,7 @@ void Paned::removeChild(Widget &child)
     parent()->replaceChild(*this, *remained);
 
     // Destroy this paned widget.
-    delete this;
+    destroyInternally();
 }
 
 void Paned::replaceChild(Widget &oldChild, Widget &newChild)
@@ -398,7 +490,7 @@ void Paned::replaceChild(Widget &oldChild, Widget &newChild)
 Paned *Paned::split(const char *id,
                     Orientation orientation,
                     Widget &child1, Widget &child2,
-                    double position)
+                    double child1SizeFraction)
 {
     Widget *original;
     WidgetContainer *parent;
@@ -441,6 +533,7 @@ Paned *Paned::split(const char *id,
     g_signal_connect(p, "set-focus-child",
                      G_CALLBACK(setFocusChild), paned);
     paned->setGtkWidget(p);
+    paned->m_sidePaneIndex = -1;
 
     // Replace the original widget with the paned widget.
     parent->replaceChild(*original, *paned);
@@ -460,10 +553,89 @@ Paned *Paned::split(const char *id,
                                       "handle-size", &handleSize);
         gtk_paned_set_position(GTK_PANED(paned->gtkWidget()),
                                (totalSize - g_value_get_int(&handleSize)) *
-                               position);
+                               child1SizeFraction);
     }
     else
-        paned->setPosition(position);
+        paned->setChild1SizeFraction(child1SizeFraction);
+
+    return paned;
+}
+
+Paned *Paned::split(const char *id,
+                    Orientation orientation,
+                    int sidePaneIndex,
+                    Widget &child1, Widget &child2,
+                    int sidePaneSize)
+{
+    Widget *original;
+    WidgetContainer *parent;
+    int newChildIndex;
+
+    if (child1.parent())
+    {
+        original = &child1;
+        newChildIndex = 1;
+    }
+    else
+    {
+        assert(child2.parent());
+        original = &child2;
+        newChildIndex = 0;
+    }
+    parent = original->parent();
+
+    // If the original widget is mapped, save its size and set the position of
+    // the new paned widget.  Note that if the original widget is mapped, then
+    // the paned widget will be mapped after replacing the original one, but its
+    // size will not be allocated.
+    int totalSize = -1;
+    if (gtk_widget_get_mapped(original->gtkWidget()))
+    {
+        if (orientation == ORIENTATION_HORIZONTAL)
+            totalSize = gtk_widget_get_allocated_width(original->gtkWidget());
+        else
+            totalSize = gtk_widget_get_allocated_height(original->gtkWidget());
+    }
+
+    // Create a paned widget to hold the two widgets.
+    Paned *paned = new Paned;
+    if (!paned->WidgetContainer::setup(id))
+    {
+        delete paned;
+        return NULL;
+    }
+    GtkWidget *p = gtk_paned_new(static_cast<GtkOrientation>(orientation));
+    g_signal_connect(p, "set-focus-child",
+                     G_CALLBACK(setFocusChild), paned);
+    paned->setGtkWidget(p);
+    paned->m_sidePaneIndex = sidePaneIndex;
+
+    // Replace the original widget with the paned widget.
+    parent->replaceChild(*original, *paned);
+
+    // Add the two widgets to the paned widget.
+    paned->addChildInternally(child1, 0);
+    paned->addChildInternally(child2, 1);
+    paned->m_currentChildIndex = newChildIndex;
+
+    gtk_widget_show_all(p);
+
+    if (totalSize != -1)
+    {
+        GValue handleSize = G_VALUE_INIT;
+        g_value_init(&handleSize, G_TYPE_INT);
+        gtk_widget_style_get_property(paned->gtkWidget(),
+                                      "handle-size", &handleSize);
+        if (sidePaneIndex == 0)
+            gtk_paned_set_position(GTK_PANED(paned->gtkWidget()),
+                                   sidePaneSize);
+        else
+            gtk_paned_set_position(GTK_PANED(paned->gtkWidget()),
+                                   totalSize - g_value_get_int(&handleSize) -
+                                   sidePaneSize);
+    }
+    else
+        paned->setSidePaneSize(sidePaneSize);
 
     return paned;
 }
@@ -477,10 +649,52 @@ void Paned::setFocusChild(GtkWidget *container,
             paned->setCurrentChildIndex(i);
 }
 
-double Paned::position() const
+void Paned::setPositionInternally()
 {
-    if (m_position > 0. && m_position < 1.)
-        return m_position;
+    int totalSize;
+    GValue handleSize = G_VALUE_INIT;
+    if (gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())) ==
+        GTK_ORIENTATION_HORIZONTAL)
+        totalSize = gtk_widget_get_allocated_width(gtkWidget());
+    else
+        totalSize = gtk_widget_get_allocated_height(gtkWidget());
+    g_value_init(&handleSize, G_TYPE_INT);
+    gtk_widget_style_get_property(gtkWidget(), "handle-size", &handleSize);
+    if (m_sidePaneIndex == -1)
+    {
+        gtk_paned_set_position(GTK_PANED(gtkWidget()),
+                               (totalSize - g_value_get_int(&handleSize)) *
+                               m_child1SizeFractionRequest);
+        m_child1SizeFractionRequest = -1.;
+    }
+    else if (m_sidePaneIndex == 0)
+    {
+        gtk_paned_set_position(GTK_PANED(gtkWidget()), m_sidePaneSizeRequest);
+        m_sidePaneSizeRequest = -1;
+    }
+    else
+    {
+        assert(m_sidePaneIndex == 1);
+        gtk_paned_set_position(GTK_PANED(gtkWidget()),
+                               totalSize - g_value_get_int(&handleSize) -
+                               m_sidePaneSizeRequest);
+        m_sidePaneSizeRequest = -1;
+    }
+}
+
+void Paned::setPositionOnMapped(GtkWidget *widget, Paned *paned)
+{
+    paned->setPositionInternally();
+    g_signal_handlers_disconnect_by_func(
+        widget,
+        reinterpret_cast<gpointer>(setPositionOnMapped),
+        paned);
+}
+
+double Paned::child1SizeFraction() const
+{
+    if (m_child1SizeFractionRequest > 0. && m_child1SizeFractionRequest < 1.)
+        return m_child1SizeFractionRequest;
     int totalSize;
     GValue handleSize = G_VALUE_INIT;
     if (gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())) ==
@@ -495,11 +709,26 @@ double Paned::position() const
          (totalSize - g_value_get_int(&handleSize)));
 }
 
-void Paned::setPositionInternally()
+void Paned::setChild1SizeFraction(double fraction)
 {
+    m_child1SizeFractionRequest = fraction;
+    if (gtk_widget_get_mapped(gtkWidget()))
+        setPositionInternally();
+    else
+        g_signal_connect_after(gtkWidget(),
+                               "map",
+                               G_CALLBACK(setPositionOnMapped),
+                               this);
+}
+
+int Paned::sidePaneSize() const
+{
+    if (m_sidePaneSizeRequest > 0)
+        return m_sidePaneSizeRequest;
+    if (m_sidePaneIndex == 0)
+        return gtk_paned_get_position(GTK_PANED(gtkWidget()));
     int totalSize;
     GValue handleSize = G_VALUE_INIT;
-    assert(m_position > 0. && m_position < 1.);
     if (gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())) ==
         GTK_ORIENTATION_HORIZONTAL)
         totalSize = gtk_widget_get_allocated_width(gtkWidget());
@@ -507,24 +736,13 @@ void Paned::setPositionInternally()
         totalSize = gtk_widget_get_allocated_height(gtkWidget());
     g_value_init(&handleSize, G_TYPE_INT);
     gtk_widget_style_get_property(gtkWidget(), "handle-size", &handleSize);
-    gtk_paned_set_position(GTK_PANED(gtkWidget()),
-                           (totalSize - g_value_get_int(&handleSize)) *
-                           m_position);
-    m_position = -1.;
+    return totalSize - g_value_get_int(&handleSize) -
+        gtk_paned_get_position(GTK_PANED(gtkWidget()));
 }
 
-void Paned::setPositionOnMapped(GtkWidget *widget, Paned *paned)
+void Paned::setSidePaneSize(int size)
 {
-    paned->setPositionInternally();
-    g_signal_handlers_disconnect_by_func(
-        widget,
-        reinterpret_cast<gpointer>(setPositionOnMapped),
-        paned);
-}
-
-void Paned::setPosition(double position)
-{
-    m_position = position;
+    m_sidePaneSizeRequest = size;
     if (gtk_widget_get_mapped(gtkWidget()))
         setPositionInternally();
     else

@@ -142,6 +142,19 @@ private:
     std::string m_string;
 };
 
+class Orientable
+{
+public:
+    enum Orientation
+    {
+        ORIENTATION_HORIZONTAL = GTK_ORIENTATION_HORIZONTAL,
+        ORIENTATION_VERTICAL = GTK_ORIENTATION_VERTICAL
+    };
+
+    virtual ~Orientable() {}
+    virtual Orientation orientation() const = 0;
+};
+
 bool isValidFileName(const char *fileName);
 
 bool removeFileOrDirectory(const char *name, GError **error);

@@ -25,15 +25,15 @@ public:
 
     void setFileUris(const std::set<std::string> &fileUris);
 
+    virtual Orientation orientation() const { return ORIENTATION_HORIZONTAL; }
+
 private:
     static void onRecover(GtkButton *button, FileRecoveryBar *bar);
     static void onShowDifferences(GtkButton *button, FileRecoveryBar *bar);
     static void onDiscard(GtkButton *button, FileRecoveryBar *bar);
     static void onClose(GtkButton *button, FileRecoveryBar *bar);
 
-    FileRecoveryBar():
-        Bar(ORIENTATION_HORIZONTAL),
-        m_store(NULL)
+    FileRecoveryBar(): m_store(NULL)
     {}
 
     virtual ~FileRecoveryBar();

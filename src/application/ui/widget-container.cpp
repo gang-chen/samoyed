@@ -128,4 +128,27 @@ void WidgetContainer::removeChildInternally(Widget &child)
     m_childRemoved(*this, child);
 }
 
+void WidgetContainer::destroyChild(Widget &child)
+{
+    // The removal of the child widget may cause this widget container to be
+    // destroyed.  Postpone destroying this widget container until the child is
+    // destroyed.
+    m_postponeDestroy = true;
+    removeChild(child);
+    m_postponeDestroy = false;
+    delete &child;
+
+    // Destroy this widget container.
+    if (m_requestDestroy)
+        destroy();
+}
+
+void WidgetContainer::destroyInternally()
+{
+    if (m_postponeDestroy)
+        m_requestDestroy = true;
+    else
+        destroy();
+}
+
 }

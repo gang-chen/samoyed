@@ -39,6 +39,8 @@ public:
     virtual Widget &current();
     virtual const Widget &current() const;
 
+    void destroyChild(Widget &child);
+
     virtual void removeChild(Widget &child) = 0;
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild) = 0;
@@ -69,9 +71,13 @@ public:
     { return m_childRemoved.connect(callback); }
 
 protected:
+    WidgetContainer(): m_postponeDestroy(false), m_requestDestroy(false) {}
+
     void addChildInternally(Widget &child);
 
     void removeChildInternally(Widget &child);
+
+    void destroyInternally();
 
 private:
     typedef std::map<ComparablePointer<const char *>, Widget *> WidgetTable;
@@ -79,6 +85,9 @@ private:
     WidgetTable m_childTable;
 
     ChildRemoved m_childRemoved;
+
+    bool m_postponeDestroy;
+    bool m_requestDestroy;
 };
 
 }

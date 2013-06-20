@@ -52,6 +52,8 @@ namespace
 
 const double DEFAULT_SIZE_RATIO = 0.7;
 
+const int SIDE_PANE_SIZE = 200;
+
 int serialNumber = 0;
 
 Samoyed::Widget *findPane(Samoyed::Widget &root, const char *id)
@@ -558,7 +560,7 @@ bool Window::build(const Configuration &config)
 
 bool Window::setup(const Configuration &config)
 {
-    std::string id(WINDOW_ID "-%d");
+    std::string id(WINDOW_ID "-");
     id += boost::lexical_cast<std::string>(serialNumber++);
     if (!WidgetContainer::setup(id.c_str()))
         return false;
@@ -642,6 +644,11 @@ Window::~Window()
         g_object_unref(m_uiManager);
 }
 
+void Window::destroy()
+{
+    Application::instance().destroyWindow(*this);
+}
+
 gboolean Window::onDeleteEvent(GtkWidget *widget,
                                GdkEvent *event,
                                Window *window)
@@ -717,7 +724,7 @@ void Window::removeChild(Widget &child)
 {
     assert(closing());
     removeChildInternally(child);
-    delete this;
+    destroyInternally();
 }
 
 void Window::replaceChild(Widget &oldChild, Widget &newChild)
@@ -744,25 +751,25 @@ const Widget *Window::findSidePane(const char *id) const
     return findPane(*m_child, id);
 }
 
-void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, double size)
+void Window::addSidePane(Widget &pane, Widget &neighbor, Side side, int size)
 {
     switch (side)
     {
     case SIDE_TOP:
-        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL, 0,
                      pane, neighbor, size);
         break;
     case SIDE_BOTTOM:
-        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
-                     neighbor, pane, 1. - size);
+        Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL, 1,
+                     neighbor, pane, size);
         break;
     case SIDE_LEFT:
-        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
+        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL, 0,
                      pane, neighbor, size);
         break;
     default:
-        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
-                     neighbor, pane, 1. - size);
+        Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL, 1,
+                     neighbor, pane, size);
     }
 
     // Add a menu item for showing or hiding the side pane.
@@ -864,7 +871,7 @@ void Window::createNavigationPane(Window &window)
     pane->setTitle(_("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE, _("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_TITLE, _("Na_vigators"));
-    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, 0.25);
+    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, SIDE_PANE_SIZE);
     s_navigationPaneCreated(*pane);
 }
 
@@ -875,7 +882,7 @@ void Window::createToolsPane(Window &window)
     pane->setTitle(_("_Tools Pane"));
     pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE, _("_Tools Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_TITLE, _("T_ools"));
-    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, 0.33);
+    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, SIDE_PANE_SIZE);
     s_toolsPaneCreated(*pane);
 }
 
@@ -1096,7 +1103,7 @@ void Window::onSidePaneChildClosed(const Widget &paneChild)
     gtk_action_group_remove_action(m_actions->actionGroup(),
                                    GTK_ACTION(data->action));
     paneData->children.erase(paneChild.id());
-    delete paneData;
+    delete data;
 }
 
 void Window::showHideSidePaneChild(GtkToggleAction *action, Window *window)
@@ -1157,6 +1164,12 @@ void Window::setToolbarVisible(bool visible)
 
 void Window::enterFullScreen()
 {
+    GtkWidget *button = gtk_button_new_with_label("X");
+    gtk_widget_show(button);
+    gtk_notebook_set_action_widget(GTK_NOTEBOOK(currentEditorGroup().gtkWidget()),
+                                   button,
+                                   GTK_PACK_END);
+
     m_toolbarVisible = gtk_widget_get_visible(m_toolbar);
     if (m_toolbarVisible)
     {
@@ -1176,6 +1189,10 @@ void Window::enterFullScreen()
 
 void Window::leaveFullScreen()
 {
+    gtk_notebook_set_action_widget(GTK_NOTEBOOK(currentEditorGroup().gtkWidget()),
+                                   NULL,
+                                   GTK_PACK_END);
+
     m_toolbarVisibleInFullScreen = gtk_widget_get_visible(m_toolbar);
     if (m_toolbarVisibleInFullScreen)
     {

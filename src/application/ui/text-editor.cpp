@@ -6,7 +6,9 @@
 #endif
 #include "text-editor.hpp"
 #include "text-file.hpp"
+#include "property-tree.hpp"
 #include "../utilities/miscellaneous.hpp"
+#include "../application.hpp"
 #include <string.h>
 #include <list>
 #include <map>
@@ -24,8 +26,11 @@
 #define ENCODING "encoding"
 #define CURSOR_LINE "cursor-line"
 #define CURSOR_COLUMN "cursor-column"
+#define FONT "font"
 
 #define SCROLL_MARGIN 0.02
+
+#define DEFAULT_FONT "Monospace 12"
 
 namespace
 {
@@ -38,6 +43,13 @@ gboolean scrollToCursor(gpointer view)
             gtk_text_view_get_buffer(GTK_TEXT_VIEW(view))),
         SCROLL_MARGIN, FALSE, 0., 0.);
     return FALSE;
+}
+
+void setFont(GtkWidget *view, const char *font)
+{
+    PangoFontDescription *fontDesc = pango_font_description_from_string(font);
+    gtk_widget_override_font(view, fontDesc);
+    pango_font_description_free(fontDesc);
 }
 
 }
@@ -251,6 +263,11 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     g_object_unref(buffer);
     gtk_container_add(GTK_CONTAINER(sw), view);
     setGtkWidget(sw);
+    std::string font =
+        boost::spirit::any_cast<std::string>(Application::instance().
+                                             preferences().
+                                             get(TEXT_EDITOR "/" FONT));
+    setFont(view, font.c_str());
     gtk_widget_show_all(sw);
     return true;
 }
@@ -508,6 +525,13 @@ void TextEditor::onFileLoaded()
 void TextEditor::grabFocus()
 {
     gtk_widget_grab_focus(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+}
+
+void TextEditor::installPreferences()
+{
+    PropertyTree &prop = Application::instance().preferences().
+        addChild(TEXT_EDITOR, boost::spirit::hold_any());
+    prop.addChild(FONT, boost::spirit::hold_any(std::string(DEFAULT_FONT)));
 }
 
 }

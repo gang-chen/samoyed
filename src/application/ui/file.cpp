@@ -289,7 +289,7 @@ Editor *File::createEditor(Project *project)
     {
         Editor *oldEditor = m_firstEditor;
         assert(m_firstEditor == m_lastEditor);
-        delete oldEditor;
+        oldEditor->destroyInFile();
         m_closing = false;
         m_reopening = true;
     }
@@ -313,12 +313,12 @@ void File::continueClosing()
     assert(m_firstEditor == m_lastEditor);
 
     Editor *lastEditor = m_firstEditor;
-    delete lastEditor;
+    lastEditor->destroyInFile();
 
     // Notify the observers right before deleting the file so that the observers
     // can access the intact concrete file.
     m_close(*this);
-    delete this;
+    Application::instance().destroyFile(*this);
 }
 
 bool File::closeEditor(Editor &editor)
@@ -328,7 +328,7 @@ bool File::closeEditor(Editor &editor)
 
     if (editor.nextInFile() || editor.previousInFile())
     {
-        delete &editor;
+        editor.destroyInFile();
         return true;
     }
 

@@ -35,16 +35,20 @@ public:
         virtual Widget *restoreWidget();
 
         Paned::Orientation orientation() const { return m_orientation; }
+        int sidePaneIndex() const { return m_sidePaneIndex; }
         Widget::XmlElement &child(int index) const
         { return *m_children[index]; }
         int currentChildIndex() const { return m_currentChildIndex; }
-        double position() const { return m_position; }
+        double child1SizeFraction() const
+        { return m_child1SizeFraction; }
+        int sidePaneSize() const { return m_sidePaneSize; }
 
     protected:
         XmlElement():
             m_orientation(Paned::ORIENTATION_HORIZONTAL),
+            m_sidePaneIndex(-1),
             m_currentChildIndex(0),
-            m_position(0.5)
+            m_child1SizeFraction(0.5)
         {
             m_children[0] = NULL;
             m_children[1] = NULL;
@@ -54,20 +58,34 @@ public:
 
     private:
         Paned::Orientation m_orientation;
+        int m_sidePaneIndex;
         Widget::XmlElement *m_children[2];
         int m_currentChildIndex;
-        double m_position;
+        double m_child1SizeFraction;
+        int m_sidePaneSize;
     };
 
     static Paned *create(const char *id,
                          Orientation orientation,
                          Widget &child1, Widget &child2,
-                         double position);
+                         double child1SizeFraction);
+
+    static Paned *create(const char *id,
+                         Orientation orientation,
+                         int sidePaneIndex,
+                         Widget &child1, Widget &child2,
+                         int sidePaneSize);
 
     static Paned *split(const char *id,
                         Orientation orientation,
                         Widget &child1, Widget &child2,
-                        double position);
+                        double child1SizeFraction);
+
+    static Paned *split(const char *id,
+                        Orientation orientation,
+                        int sidePaneIndex,
+                        Widget &child1, Widget &child2,
+                        int sidePaneSize);
 
     virtual bool close();
 
@@ -92,11 +110,19 @@ public:
             gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())));
     }
 
-    double position() const;
-    void setPosition(double position);
+    int sidePaneIndex() const { return m_sidePaneIndex; }
+
+    double child1SizeFraction() const;
+    void setChild1SizeFraction(double fraction);
+
+    int sidePaneSize() const;
+    void setSidePaneSize(int size);
 
 protected:
-    Paned(): m_currentChildIndex(0), m_position(-1.)
+    Paned():
+        m_currentChildIndex(0),
+        m_child1SizeFractionRequest(-1.),
+        m_sidePaneSizeRequest(-1)
     {
         m_children[0] = NULL;
         m_children[1] = NULL;
@@ -106,6 +132,7 @@ protected:
 
     bool setup(const char *id,
                Orientation orientation,
+               int sidePaneIndex,
                Widget &child1, Widget &child2);
 
     bool restore(XmlElement &xmlElement);
@@ -125,8 +152,9 @@ private:
     Widget *m_children[2];
 
     int m_currentChildIndex;
-
-    double m_position;
+    int m_sidePaneIndex;
+    double m_child1SizeFractionRequest;
+    int m_sidePaneSizeRequest;
 };
 
 }

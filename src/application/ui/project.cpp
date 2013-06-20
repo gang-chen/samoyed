@@ -119,7 +119,7 @@ bool Project::close()
     m_closing = true;
     if (!m_firstEditor)
     {
-        delete this;
+        Application::instance().destroyProject(*this);
         return true;
     }
 
@@ -179,8 +179,13 @@ void Project::removeEditor(Editor &editor)
             break;
         }
     editor.removeFromListInProject(m_firstEditor, m_lastEditor);
+}
+
+void Project::destroyEditor(Editor &editor)
+{
+    editor.destroyInProject();
     if (m_closing && !m_firstEditor)
-        delete this;
+        Application::instance().destroyProject(*this);
 }
 
 }

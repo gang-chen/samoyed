@@ -15,6 +15,7 @@ namespace Samoyed
 {
 
 class Session;
+class PropertyTree;
 class ExtensionPointManager;
 class ActionsExtensionPoint;
 class ViewsExtensionPoint;
@@ -82,6 +83,8 @@ public:
 
     Session *session() const { return m_session; }
 
+    PropertyTree &preferences() const { return *m_preferences; }
+
     ExtensionPointManager &extensionPointManager() const
     { return *m_extensionPointManager; }
 
@@ -110,8 +113,8 @@ public:
     const Project *findProject(const char *uri) const;
 
     void addProject(Project &project);
-
     void removeProject(Project &project);
+    void destroyProject(Project &project);
 
     Project *projects() { return m_firstProject; }
     const Project *projects() const { return m_firstProject; }
@@ -120,15 +123,15 @@ public:
     const File *findFile(const char *uri) const;
 
     void addFile(File &file);
-
     void removeFile(File &file);
+    void destroyFile(File &file);
 
     File *files() { return m_firstFile; }
     const File *files() const { return m_firstFile; }
 
     void addWindow(Window &window);
-
     void removeWindow(Window &window);
+    void destroyWindow(Window &window);
 
     Window &currentWindow() const { return *m_currentWindow; }
 
@@ -184,6 +187,8 @@ private:
     Session *m_session;
     bool m_creatingSession;
     bool m_switchingSession;
+
+    PropertyTree *m_preferences;
 
     ExtensionPointManager *m_extensionPointManager;
 

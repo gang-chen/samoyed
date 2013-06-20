@@ -406,7 +406,7 @@ bool Notebook::close()
     setClosing(true);
     if (m_children.empty())
     {
-        delete this;
+        destroyInternally();
         return true;
     }
 
@@ -552,7 +552,7 @@ void Notebook::onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
     notebook->removeChildInternally(*ch);
     if ((notebook->automaticClose() || notebook->closing()) &&
         notebook->childCount() == 0)
-        delete notebook;
+        notebook->destroyInternally();
 }
 
 }

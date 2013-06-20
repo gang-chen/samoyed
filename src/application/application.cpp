@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "application.hpp"
+#include "ui/property-tree.hpp"
 #include "ui/session.hpp"
 #include "ui/project.hpp"
 #include "ui/file.hpp"
@@ -42,6 +43,8 @@
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
 
+#define PREFERENCES "preferences"
+
 namespace
 {
 
@@ -68,6 +71,7 @@ Application::Application():
     m_session(NULL),
     m_creatingSession(false),
     m_switchingSession(false),
+    m_preferences(NULL),
     m_extensionPointManager(NULL),
     m_actionsExtensionPoint(NULL),
     m_viewsExtensionPoint(NULL),
@@ -172,6 +176,10 @@ gboolean Application::startUp(gpointer app)
         goto ERROR_OUT;
 
     Signal::registerCrashHandler(Session::onCrashed);
+
+    //. Initialize the preferences with the default values.
+    a->m_preferences = new PropertyTree(PREFERENCES);
+    TextEditor::installPreferences();
 
     // Initialize class data.
     TextFile::registerType();
@@ -278,6 +286,7 @@ void Application::shutDown()
     delete m_actionsExtensionPoint;
     delete m_viewsExtensionPoint;
     delete m_extensionPointManager;
+    delete m_preferences;
     SourceEditor::destroySharedData();
 }
 
@@ -551,6 +560,11 @@ void Application::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
+}
+
+void Application::destroyProject(Project &project)
+{
+    delete &project;
     if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
         continueQuitting();
 }
@@ -581,6 +595,11 @@ void Application::removeFile(File &file)
 {
     m_fileTable.erase(file.uri());
     file.removeFromList(m_firstFile, m_lastFile);
+}
+
+void Application::destroyFile(File &file)
+{
+    delete &file;
     if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
         continueQuitting();
 }
@@ -597,6 +616,11 @@ void Application::removeWindow(Window &window)
     window.removeFromList(m_firstWindow, m_lastWindow);
     if (&window == m_currentWindow)
         m_currentWindow = m_firstWindow;
+}
+
+void Application::destroyWindow(Window& window)
+{
+    delete &window;
     if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
         continueQuitting();
 }

@@ -5,7 +5,6 @@ noinst_LTLIBRARIES = libui.la
 libui_la_SOURCES = \
     actions.cpp \
     actions-extension-point.cpp \
-    bar.cpp \
     editor.cpp \
     file.cpp \
     notebook.cpp \

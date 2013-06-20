@@ -226,4 +226,17 @@ void Editor::onFileEditedStateChanged()
         setTitle(title.c_str() + 2);
 }
 
+void Editor::destroyInFile()
+{
+    if (m_project)
+        m_project->destroyEditor(*this);
+    else
+        destroy();
+}
+
+void Editor::destroyInProject()
+{
+    destroy();
+}
+
 }

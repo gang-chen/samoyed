@@ -162,6 +162,11 @@ public:
                              std::list<std::pair<File *, Editor *> > &opened);
 
     /**
+     * This function can be called by the application instance only.
+     */
+    virtual ~File();
+
+    /**
      * Create an editor.
      */
     Editor *createEditor(Project *project);
@@ -290,8 +295,6 @@ protected:
     };
 
     File(const char *uri);
-
-    virtual ~File();
 
     /**
      * This function is called by a derived class to notify all editors and
