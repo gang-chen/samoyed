@@ -452,7 +452,7 @@ void Notebook::addChild(Widget &child, int index)
         GtkWidget *closeImage = gtk_image_new_from_stock(GTK_STOCK_CLOSE,
                                                          GTK_ICON_SIZE_MENU);
         GtkWidget *closeButton = gtk_button_new();
-        gtk_container_add(GTK_CONTAINER(closeButton), closeImage);
+        gtk_button_set_image(GTK_BUTTON(closeButton), closeImage);
         gtk_widget_set_tooltip_text(closeButton, _("Close this editor"));
         g_signal_connect(closeButton, "clicked",
                          G_CALLBACK(onCloseButtonClicked), &child);
