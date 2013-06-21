@@ -1207,7 +1207,7 @@ void Window::leaveFullScreen()
     gtk_widget_show(m_menuBar);
     gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = false;
-    m_actions->onWindowFullScreenChanged(true);
+    m_actions->onWindowFullScreenChanged(false);
 }
 
 Window::Configuration Window::configuration() const
