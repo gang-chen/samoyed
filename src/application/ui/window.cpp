@@ -105,6 +105,48 @@ void addEditorRemovedCallbacks(Samoyed::Widget &widget)
         addChildRemovedCallback(onEditorRemoved);
 }
 
+void onLeaveFullScreen(GtkButton *button, Samoyed::Window *window)
+{
+    window->leaveFullScreen();
+}
+
+void addFullScreenButtons(Samoyed::Widget &widget, Samoyed::Window *window)
+{
+    if (strcmp(widget.id(), PANED_ID) == 0)
+    {
+        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
+        addFullScreenButtons(paned.child(0), window);
+        addFullScreenButtons(paned.child(1), window);
+        return;
+    }
+
+    GtkWidget *image = gtk_image_new_from_stock(GTK_STOCK_LEAVE_FULLSCREEN,
+                                                GTK_ICON_SIZE_MENU);
+    GtkWidget *button = gtk_button_new();
+    gtk_button_set_image(GTK_BUTTON(button), image);
+    gtk_widget_set_tooltip_text(button, _("Leave full screen mode"));
+    g_signal_connect(button, "clicked",
+                     G_CALLBACK(onLeaveFullScreen), window);
+    gtk_notebook_set_action_widget(GTK_NOTEBOOK(widget.gtkWidget()),
+                                   button,
+                                   GTK_PACK_END);
+    gtk_widget_show(button);
+}
+
+void removeFullScreenButtons(Samoyed::Widget &widget)
+{
+    if (strcmp(widget.id(), PANED_ID) == 0)
+    {
+        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
+        removeFullScreenButtons(paned.child(0));
+        removeFullScreenButtons(paned.child(1));
+        return;
+    }
+
+    gtk_widget_destroy(gtk_notebook_get_action_widget(
+        GTK_NOTEBOOK(widget.gtkWidget()), GTK_PACK_END);
+}
+
 }
 
 namespace Samoyed
@@ -1164,11 +1206,10 @@ void Window::setToolbarVisible(bool visible)
 
 void Window::enterFullScreen()
 {
-    GtkWidget *button = gtk_button_new_with_label("X");
-    gtk_widget_show(button);
-    gtk_notebook_set_action_widget(GTK_NOTEBOOK(currentEditorGroup().gtkWidget()),
-                                   button,
-                                   GTK_PACK_END);
+    // Add a "leave full screen" button to each editor group so that the user
+    // can easily find a UI element on the screen for leaving the full screen
+    // mode.
+    addFullScreenButtons(mainArea().mainChild());
 
     m_toolbarVisible = gtk_widget_get_visible(m_toolbar);
     if (m_toolbarVisible)
@@ -1189,9 +1230,7 @@ void Window::enterFullScreen()
 
 void Window::leaveFullScreen()
 {
-    gtk_notebook_set_action_widget(GTK_NOTEBOOK(currentEditorGroup().gtkWidget()),
-                                   NULL,
-                                   GTK_PACK_END);
+    removeFullScreenButtons(mainArea().mainChild());
 
     m_toolbarVisibleInFullScreen = gtk_widget_get_visible(m_toolbar);
     if (m_toolbarVisibleInFullScreen)
