@@ -15,17 +15,6 @@
 #include <glib.h>
 #include <glib/gi18n-lib.h>
 
-namespace
-{
-
-int comparePaths(const std::pair<const char *, boost::spirit::hold_any> &pv1,
-                 const std::pair<const char *, boost::spirit::hold_any> &pv2)
-{
-    return strcmp(pv1.first, pv2.first);
-}
-
-}
-
 namespace Samoyed
 {
 
