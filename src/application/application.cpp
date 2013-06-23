@@ -177,7 +177,7 @@ gboolean Application::startUp(gpointer app)
 
     Signal::registerCrashHandler(Session::onCrashed);
 
-    //. Initialize the preferences with the default values.
+    // Initialize the preferences with the default values.
     a->m_preferences = new PropertyTree(PREFERENCES);
     TextEditor::installPreferences();
 

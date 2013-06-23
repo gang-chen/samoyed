@@ -1,0 +1,16 @@
+<plugin>
+  <id>text-file-recoverer</id>
+  <name>Text file recoverer</name>
+  <description>This plugin adds text file recovery functionality.</description>
+  <module>text-file-recoverer</module>
+  <extension>
+    <id>file-observer</id>
+    <point>file-observers</point>
+    <mime-type>text/plain</mime-type>
+  </extension>
+  <extension>
+    <id>file-recoverer</id>
+    <point>file-recoverers</point>
+    <mime-type>text/plain</mime-type>
+  </extension>
+</plugin>

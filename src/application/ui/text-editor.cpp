@@ -30,7 +30,7 @@
 
 #define SCROLL_MARGIN 0.02
 
-#define DEFAULT_FONT "Monospace 12"
+#define DEFAULT_FONT "Monospace"
 
 namespace
 {

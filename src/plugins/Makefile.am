@@ -1,1 +1,3 @@
-SUBDIRS = terminal
+SUBDIRS = \
+    terminal \
+    text-file-recovery

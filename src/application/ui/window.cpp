@@ -52,7 +52,7 @@ namespace
 
 const double DEFAULT_SIZE_RATIO = 0.7;
 
-const int SIDE_PANE_SIZE = 200;
+const double SIDE_PANE_SIZE_RATIO = 0.25;
 
 int serialNumber = 0;
 
@@ -103,48 +103,6 @@ void addEditorRemovedCallbacks(Samoyed::Widget &widget)
     }
     static_cast<Samoyed::WidgetContainer &>(widget).
         addChildRemovedCallback(onEditorRemoved);
-}
-
-void onLeaveFullScreen(GtkButton *button, Samoyed::Window *window)
-{
-    window->leaveFullScreen();
-}
-
-void addFullScreenButtons(Samoyed::Widget &widget, Samoyed::Window *window)
-{
-    if (strcmp(widget.id(), PANED_ID) == 0)
-    {
-        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
-        addFullScreenButtons(paned.child(0), window);
-        addFullScreenButtons(paned.child(1), window);
-        return;
-    }
-
-    GtkWidget *image = gtk_image_new_from_stock(GTK_STOCK_LEAVE_FULLSCREEN,
-                                                GTK_ICON_SIZE_MENU);
-    GtkWidget *button = gtk_button_new();
-    gtk_button_set_image(GTK_BUTTON(button), image);
-    gtk_widget_set_tooltip_text(button, _("Leave full screen mode"));
-    g_signal_connect(button, "clicked",
-                     G_CALLBACK(onLeaveFullScreen), window);
-    gtk_notebook_set_action_widget(GTK_NOTEBOOK(widget.gtkWidget()),
-                                   button,
-                                   GTK_PACK_END);
-    gtk_widget_show(button);
-}
-
-void removeFullScreenButtons(Samoyed::Widget &widget)
-{
-    if (strcmp(widget.id(), PANED_ID) == 0)
-    {
-        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
-        removeFullScreenButtons(paned.child(0));
-        removeFullScreenButtons(paned.child(1));
-        return;
-    }
-
-    gtk_widget_destroy(gtk_notebook_get_action_widget(
-        GTK_NOTEBOOK(widget.gtkWidget()), GTK_PACK_END);
 }
 
 }
@@ -913,7 +871,8 @@ void Window::createNavigationPane(Window &window)
     pane->setTitle(_("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE, _("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_TITLE, _("Na_vigators"));
-    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT, SIDE_PANE_SIZE);
+    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT,
+                       window.configuration().m_width * SIDE_PANE_SIZE_RATIO);
     s_navigationPaneCreated(*pane);
 }
 
@@ -924,7 +883,8 @@ void Window::createToolsPane(Window &window)
     pane->setTitle(_("_Tools Pane"));
     pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE, _("_Tools Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_TITLE, _("T_ools"));
-    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT, SIDE_PANE_SIZE);
+    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT,
+                       window.configuration().m_width * SIDE_PANE_SIZE_RATIO);
     s_toolsPaneCreated(*pane);
 }
 
@@ -1206,11 +1166,6 @@ void Window::setToolbarVisible(bool visible)
 
 void Window::enterFullScreen()
 {
-    // Add a "leave full screen" button to each editor group so that the user
-    // can easily find a UI element on the screen for leaving the full screen
-    // mode.
-    addFullScreenButtons(mainArea().mainChild());
-
     m_toolbarVisible = gtk_widget_get_visible(m_toolbar);
     if (m_toolbarVisible)
     {
@@ -1230,8 +1185,6 @@ void Window::enterFullScreen()
 
 void Window::leaveFullScreen()
 {
-    removeFullScreenButtons(mainArea().mainChild());
-
     m_toolbarVisibleInFullScreen = gtk_widget_get_visible(m_toolbar);
     if (m_toolbarVisibleInFullScreen)
     {

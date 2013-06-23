@@ -338,7 +338,23 @@ void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
             if (value)
             {
                 std::istringstream stream(value);
-                stream >> m_value;
+                if (m_value.type() == typeid(std::string))
+                {
+                    // Read all characters including white-space characters.
+                    std::string str;
+                    std::istringstream::sentry se(stream, true);
+                    if (se)
+                    {
+                        for (char c = stream.rdbuf()->sgetc();
+                             std::char_traits<char>::not_eof(c);
+                             c = stream.rdbuf()->snextc())
+                            str += c;
+                        stream.setstate(std::istringstream::eofbit);
+                    }
+                    m_value = str;
+                }
+                else
+                    stream >> m_value;
                 xmlFree(value);
             }
         }
