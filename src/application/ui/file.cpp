@@ -8,6 +8,7 @@
 #include "editor.hpp"
 #include "window.hpp"
 #include "notebook.hpp"
+#include "property-tree.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/file-loader.hpp"
@@ -25,6 +26,8 @@
 #include <glib/gi18n-lib.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
+
+#define DIRECTORY_WHERE_FILE_OPENED "directory-where-file-opened"
 
 namespace
 {
@@ -86,6 +89,12 @@ void File::EditStack::clear()
          it != m_edits.rend();
          ++it)
         delete (*it);
+}
+
+void File::installHistories()
+{
+    Application::instance().histories().addChild(DIRECTORY_WHERE_FILE_OPENED,
+                                                 std::string());
 }
 
 std::list<File::TypeRecord> File::s_typeRegistry;
@@ -226,6 +235,11 @@ void File::openByDialog(Project *project,
             NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 
+    std::string lastDir = Application::instance().histories().
+        get<std::string>(DIRECTORY_WHERE_FILE_OPENED);
+    gtk_file_chooser_set_current_folder_uri(GTK_FILE_CHOOSER(dialog),
+                                            lastDir.c_str());
+
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *newEditorButton = gtk_check_button_new_with_mnemonic(
         _("Create a _new editor even if the file is already opened"));
@@ -266,11 +280,38 @@ void File::openByDialog(Project *project,
                         addEditorToEditorGroup(
                             *fileEditor.second,
                             *editorGroup,
-                            editorGroup->currentChildIndex() == -1 ?
-                            0 : editorGroup->currentChildIndex());
+                            editorGroup->currentChildIndex() + 1);
                 }
             }
             uri = uri->next;
+        }
+        if (uris)
+        {
+            char *hostName = NULL;
+            char *fileName =
+                g_filename_from_uri(static_cast<const char *>(uris->data),
+                                    &hostName, NULL);
+            if (fileName)
+            {
+                char *dirName = g_path_get_dirname(fileName);
+                if (dirName)
+                {
+                    char *uri = g_filename_to_uri(dirName, hostName, NULL);
+                    if (uri)
+                    {
+                        std::list<std::string> errors;
+                        Application::instance().histories().
+                            set(DIRECTORY_WHERE_FILE_OPENED,
+                                std::string(uri),
+                                false,
+                                errors);
+                        g_free(uri);
+                    }
+                    g_free(dirName);
+                }
+                g_free(fileName);
+            }
+            g_free(hostName);
         }
         g_slist_free_full(uris, g_free);
     }

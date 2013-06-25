@@ -22,8 +22,6 @@ public:
                                    std::list<std::string> &errors);
 
     virtual void unregisterExtension(const char *extensionId);
-
-    virtual void onExtensionEnabled(const char *extensionId);
 };
 
 }

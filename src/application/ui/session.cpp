@@ -43,6 +43,7 @@
 #define WINDOWS "windows"
 #define WINDOW "window"
 #define PREFERENCES "preferences"
+#define HISTORIES "histories"
 
 namespace
 {
@@ -144,6 +145,12 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
             Samoyed::Application::instance().preferences().
                 readXmlElement(child, errors);
         }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        HISTORIES) == 0)
+        {
+            Samoyed::Application::instance().histories().
+                readXmlElement(child, errors);
+        }
     }
     if (session->m_windows.empty())
     {
@@ -182,6 +189,9 @@ xmlNodePtr XmlElementSession::write() const
     xmlNodePtr prefs =
         Samoyed::Application::instance().preferences().writeXmlElement();
     xmlAddChild(node, prefs);
+    xmlNodePtr hists =
+        Samoyed::Application::instance().histories().writeXmlElement();
+    xmlAddChild(node, hists);
     return node;
 }
 
@@ -977,6 +987,7 @@ Session *Session::create(const char *name)
     }
 
     Application::instance().preferences().resetAll();
+    Application::instance().histories().resetAll();
 
     // Create the main window for the new session.
     if (!Window::create(Window::Configuration()))
@@ -1020,6 +1031,7 @@ Session *Session::restore(const char *name)
     }
 
     Application::instance().preferences().resetAll();
+    Application::instance().histories().resetAll();
 
     // Read the session file.
     std::string sessionFileName(Application::instance().userDirectoryName());

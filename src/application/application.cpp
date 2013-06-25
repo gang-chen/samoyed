@@ -44,6 +44,7 @@
 #include <gtk/gtk.h>
 
 #define PREFERENCES "preferences"
+#define HISTORIES "histories"
 
 namespace
 {
@@ -72,6 +73,7 @@ Application::Application():
     m_creatingSession(false),
     m_switchingSession(false),
     m_preferences(NULL),
+    m_histories(NULL),
     m_extensionPointManager(NULL),
     m_actionsExtensionPoint(NULL),
     m_viewsExtensionPoint(NULL),
@@ -181,6 +183,10 @@ gboolean Application::startUp(gpointer app)
     a->m_preferences = new PropertyTree(PREFERENCES);
     TextEditor::installPreferences();
 
+    // Initialize the histories with the default values.
+    a->m_histories = new PropertyTree(HISTORIES);
+    File::installHistories();
+
     // Initialize class data.
     TextFile::registerType();
     SourceFile::registerType();
@@ -286,6 +292,7 @@ void Application::shutDown()
     delete m_actionsExtensionPoint;
     delete m_viewsExtensionPoint;
     delete m_extensionPointManager;
+    delete m_histories;
     delete m_preferences;
     SourceEditor::destroySharedData();
 }

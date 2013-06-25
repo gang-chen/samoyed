@@ -99,6 +99,9 @@ public:
 private:
     typedef std::map<ComparablePointer<const char *>, Plugin *> Table;
 
+    void registerPluginExtensions(PluginInfo &pluginInfo);
+    void unregisterPluginExtensions(PluginInfo &pluginInfo);
+
     void unregisterPluginInternally(PluginInfo &pluginInfo);
 
     ExtensionPointManager &m_extensionPointManager;

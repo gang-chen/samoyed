@@ -139,6 +139,8 @@ public:
 
     static void registerType(const char *type, const Factory &factory);
 
+    static void installHistories();
+
     /**
      * Open a file in an editor.
      * @param uri The URI of the new file.

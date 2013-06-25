@@ -34,8 +34,4 @@ void ActionsExtensionPoint::unregisterExtension(const char *extensionId)
 {
 }
 
-void ActionsExtensionPoint::onExtensionEnabled(char const *extensionId)
-{
-}
-
 }

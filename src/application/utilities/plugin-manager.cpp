@@ -78,6 +78,31 @@ PluginManager::findPluginInfo(const char *pluginId) const
     return it->second;
 }
 
+void PluginManager::registerPluginExtensions(PluginInfo &pluginInfo)
+{
+    for (PluginInfo::ExtensionInfo *ext = pluginInfo.extensions;
+         ext;
+         ext = ext->next)
+    {
+        m_extensionPointManager.
+            registerExtension(ext->id.c_str(),
+                              ext->pointId.c_str(),
+                              ext->xmlNode);
+    }
+}
+
+void PluginManager::unregisterPluginExtensions(PluginInfo &pluginInfo)
+{
+    for (PluginInfo::ExtensionInfo *ext = pluginInfo.extensions;
+         ext;
+         ext = ext->next)
+    {
+        m_extensionPointManager.
+            unregisterExtension(ext->id.c_str(),
+                                ext->pointId.c_str());
+    }
+}
+
 bool PluginManager::registerPlugin(const char *pluginManifestFileName)
 {
     // Parse the plugin manifest file.
@@ -375,29 +400,14 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     m_registry.insert(std::make_pair(info->id.c_str(), info));
 
     // Register the extensions.
-    for (PluginInfo::ExtensionInfo *ext = info->extensions;
-         ext;
-         ext = ext->next)
-    {
-        m_extensionPointManager.
-            registerExtension(ext->id.c_str(),
-                              ext->pointId.c_str(),
-                              ext->xmlNode);
-    }
+    registerPluginExtensions(*info);
 
     return true;
 }
 
 void PluginManager::unregisterPluginInternally(PluginInfo &pluginInfo)
 {
-    for (PluginInfo::ExtensionInfo *ext = pluginInfo.extensions;
-         ext;
-         ext = ext->next)
-    {
-        m_extensionPointManager.
-            unregisterExtension(ext->id.c_str(),
-                                ext->pointId.c_str());
-    }
+    unregisterPluginExtensions(pluginInfo);
     m_registry.erase(pluginInfo.id.c_str());
     delete &pluginInfo;
 }
@@ -428,16 +438,8 @@ void PluginManager::enablePlugin(const char *pluginId)
     // Mark the plugin as enabled.
     info->enabled = true;
 
-    // Activate extensions.
-    for (PluginInfo::ExtensionInfo *ext = info->extensions;
-         ext;
-         ext = ext->next)
-    {
-        ExtensionPoint *point = m_extensionPointManager.
-            extensionPoint(ext->pointId.c_str());
-        if (point)
-            point->onExtensionEnabled(ext->id.c_str());
-    }
+    // Register the extensions.
+    registerPluginExtensions(*info);
 }
 
 void PluginManager::disablePlugin(const char *pluginId)
@@ -449,10 +451,13 @@ void PluginManager::disablePlugin(const char *pluginId)
     // Mark the plugin as disabled.
     info->enabled = false;
 
-    // If the plugin is active, try to deactivate it.
+    // If the plugin is active, try to deactivate it.  Otherwise, unregister its
+    // extensions.
     Table::const_iterator it = m_table.find(pluginId);
     if (it != m_table.end())
         it->second->deactivate();
+    else
+        unregisterPluginExtensions(*info);
 }
 
 Extension *PluginManager::acquireExtension(const char *extensionId,
@@ -533,21 +538,31 @@ Extension *PluginManager::acquireExtension(const char *extensionId,
 void PluginManager::deactivatePlugin(Plugin &plugin)
 {
     std::string pluginId(plugin.id());
+    PluginInfo *info = m_registry.find(pluginId.c_str())->second;
 
-    plugin.addToCache(m_lruCachedPlugin, m_mruCachedPlugin);
-    if (++m_nCachedPlugins > m_cacheSize)
+    // Cache the plugin only if it can be reused later.
+    if (info->unregister || !info->enabled)
+        plugin.destroy();
+    else
     {
-        Plugin *p = m_lruCachedPlugin;
-        m_table.erase(p->id());
-        p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
-        p->destroy();
-        --m_nCachedPlugins;
+        plugin.addToCache(m_lruCachedPlugin, m_mruCachedPlugin);
+        if (++m_nCachedPlugins > m_cacheSize)
+        {
+            Plugin *p = m_lruCachedPlugin;
+            m_table.erase(p->id());
+            p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
+            p->destroy();
+            --m_nCachedPlugins;
+        }
     }
 
     // If requested, unregister the plugin after it is deactivated.
-    PluginInfo *info = m_registry.find(pluginId.c_str())->second;
     if (info->unregister)
         unregisterPluginInternally(*info);
+
+    // If the plugin is disabled, unregister its extensions.
+    if (!info->enabled)
+        unregisterPluginExtensions(*info);
 }
 
 void PluginManager::scanPlugins(const char *pluginsDirName)

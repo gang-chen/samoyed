@@ -85,6 +85,8 @@ public:
 
     PropertyTree &preferences() const { return *m_preferences; }
 
+    PropertyTree &histories() const { return *m_histories; }
+
     ExtensionPointManager &extensionPointManager() const
     { return *m_extensionPointManager; }
 
@@ -189,6 +191,7 @@ private:
     bool m_switchingSession;
 
     PropertyTree *m_preferences;
+    PropertyTree *m_histories;
 
     ExtensionPointManager *m_extensionPointManager;
 

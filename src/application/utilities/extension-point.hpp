@@ -30,8 +30,6 @@ public:
 
     virtual void unregisterExtension(const char *extensionId) = 0;
 
-    virtual void onExtensionEnabled(const char *extensionId) = 0;
-
 private:
     const std::string m_id;
 };

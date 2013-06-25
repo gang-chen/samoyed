@@ -263,10 +263,8 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     g_object_unref(buffer);
     gtk_container_add(GTK_CONTAINER(sw), view);
     setGtkWidget(sw);
-    std::string font =
-        boost::spirit::any_cast<std::string>(Application::instance().
-                                             preferences().
-                                             get(TEXT_EDITOR "/" FONT));
+    std::string font = Application::instance().preferences().
+        get<std::string>(TEXT_EDITOR "/" FONT);
     setFont(view, font.c_str());
     gtk_widget_show_all(sw);
     return true;
@@ -530,8 +528,8 @@ void TextEditor::grabFocus()
 void TextEditor::installPreferences()
 {
     PropertyTree &prop = Application::instance().preferences().
-        addChild(TEXT_EDITOR, boost::spirit::hold_any());
-    prop.addChild(FONT, boost::spirit::hold_any(std::string(DEFAULT_FONT)));
+        addChild(TEXT_EDITOR);
+    prop.addChild(FONT, std::string(DEFAULT_FONT));
 }
 
 }

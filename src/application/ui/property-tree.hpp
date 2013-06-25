@@ -8,7 +8,8 @@
 #include <list>
 #include <map>
 #include <string>
-#include <boost/spirit/home/support/detail/hold_any.hpp>
+//#include <boost/spirit/home/support/detail/hold_any.hpp>
+#include "/home/gangchen/Downloads/hold_any.hpp"
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
@@ -47,6 +48,10 @@ public:
     PropertyTree(const char *name, const boost::spirit::hold_any &defaultValue);
     ~PropertyTree();
 
+    template<typename T> PropertyTree(const char *name, T &defaultValue):
+        PropertyTree(name, boost::spirit::hold_any(defaultValue))
+    {}
+
     const char *name() const { return m_name.c_str(); }
 
     const boost::spirit::hold_any &get() const { return m_value; }
@@ -55,6 +60,13 @@ public:
              std::list<std::string> &errors);
     bool reset(bool correct, std::list<std::string> &errors)
     { return set(m_defaultValue, correct, errors); }
+
+    template<typename T> const T &get() const
+    { return boost::spirit::any_cast<T>(get()); }
+    template<typename T> bool set(T &value,
+                                  bool correct,
+                                  std::list<std::string> &errors)
+    { return set(boost::spirit::hold_any(value), correct, errors); }
 
     void addChild(PropertyTree &child);
     void removeChild(PropertyTree &child);
@@ -65,6 +77,14 @@ public:
              bool correct,
              std::list<std::string> &errors);
     bool reset(const char *path, bool correct, std::list<std::string> &errors);
+
+    template<typename T> const T &get(const char *path) const
+    { return boost::spirit::any_cast<T>(get(path)); }
+    template<typename T> bool set(const char *path,
+                                  const T &value,
+                                  bool correct,
+                                  std::list<std::string> &errors)
+    { return set(path, boost::spirit::hold_any(value), correct, errors); }
 
     bool set(const std::list<std::pair<const char *,
                                        boost::spirit::hold_any> > &pathsValues,
@@ -80,6 +100,12 @@ public:
     const PropertyTree &child(const char *path) const;
     PropertyTree &addChild(const char *path,
                            const boost::spirit::hold_any &defaultValue);
+
+    PropertyTree &addChild(const char *path)
+    { return addChild(path, boost::spirit::hold_any()); }
+    template<typename T> PropertyTree &addChild(const char *path,
+                                                const T &defaultValue)
+    { return addChild(path, boost::spirit::hold_any(defaultValue)); }
 
     PropertyTree *parent() { return m_parent; }
     const PropertyTree *parent() const { return m_parent; }
@@ -97,8 +123,8 @@ public:
 
 private:
     const std::string m_name;
+    const boost::spirit::hold_any m_defaultValue;
     boost::spirit::hold_any m_value;
-    boost::spirit::hold_any m_defaultValue;
 
     PropertyTree *m_firstChild;
     PropertyTree *m_lastChild;

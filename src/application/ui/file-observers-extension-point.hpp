@@ -1,8 +1,8 @@
-// Extension point: views.
+// Extension point: file observers.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_VIEWS_EXTENSION_POINT_HPP
-#define SMYD_VIEWS_EXTENSION_POINT_HPP
+#ifndef SMYD_FILE_OBSERVERS_EXTENSION_POINT_HPP
+#define SMYD_FILE_OBSERVERS_EXTENSION_POINT_HPP
 
 #include <list>
 #include <string>
@@ -12,16 +12,18 @@
 namespace Samoyed
 {
 
-class ViewsExtensionPoint: public ExtensionPoint
+class FileObserversExtensionPoint: public ExtensionPoint
 {
 public:
-    ViewsExtensionPoint();
+    FileObserversExtensionPoint();
 
     virtual bool registerExtension(const char *extensionId,
                                    xmlNodePtr xmlNode,
                                    std::list<std::string> &errors);
 
     virtual void unregisterExtension(const char *extensionId);
+
+    virtual void onExtensionEnabled(const char *extensionId);
 };
 
 }

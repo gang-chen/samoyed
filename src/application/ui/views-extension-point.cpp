@@ -29,22 +29,10 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                                             xmlNodePtr xmlNode,
                                             std::list<std::string> &errors)
 {
-    // TEST
-    ViewExtension *ext = static_cast<ViewExtension *>(
-        Application::instance().pluginManager().acquireExtension(extensionId,
-                                                                 *this));
-    if (!ext)
-        return true;
-    ext->createView();
-    ext->release();
     return true;
 }
 
 void ViewsExtensionPoint::unregisterExtension(const char *extensionId)
-{
-}
-
-void ViewsExtensionPoint::onExtensionEnabled(char const *extensionId)
 {
 }
 
