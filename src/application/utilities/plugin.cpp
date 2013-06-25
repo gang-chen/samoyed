@@ -13,8 +13,6 @@
 #include <glib/gi18n-lib.h>
 #include <gmodule.h>
 
-#ifndef SMYD_PLUGIN_UNIT_TEST
-
 #define CREATE_PLUGIN "createPlugin"
 
 namespace
@@ -154,24 +152,3 @@ void Plugin::removeFromCache(Plugin *&lru, Plugin *&mru)
 }
 
 }
-
-#else
-
-class HelloWorldPlugin: public Samoyed::Plugin
-{
-public:
-    HelloWorldPlugin(Samoyed::PluginManager &manager,
-                     const char *id,
-                     GModule *module):
-        Samoyed::Plugin(manager, id, module)
-    {}
-}
-
-Samoyed::Plugin *createPlugin(Samoyed::PluginManager &manager,
-                              const char *id,
-                              GModule *module,
-                              std::string &error)
-{
-}
-
-#endif
