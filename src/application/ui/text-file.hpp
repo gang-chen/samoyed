@@ -110,7 +110,7 @@ public:
 
         virtual Edit *execute(File &file) const;
 
-        virtual bool merge(File::EditPrimitive *edit);
+        virtual bool merge(const File::EditPrimitive *edit);
 
     private:
         int m_line;
@@ -141,7 +141,7 @@ public:
 
         virtual Edit *execute(File &file) const;
 
-        virtual bool merge(File::EditPrimitive *edit);
+        virtual bool merge(const File::EditPrimitive *edit);
 
     private:
         int m_beginLine;

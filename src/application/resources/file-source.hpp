@@ -41,7 +41,7 @@ class SourceFile;
 class FileSource: public Managed<FileSource>
 {
 public:
-    typedef ComparablePointer<const char *> Key;
+    typedef ComparablePointer<const char> Key;
     typedef CastableString KeyHolder;
     Key key() const { return m_key.c_str(); }
 

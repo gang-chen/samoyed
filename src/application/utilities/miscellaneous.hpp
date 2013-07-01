@@ -110,23 +110,25 @@ public:
     operator int() const { return 0; }
 };
 
-template<class Pointer> class ComparablePointer
+template<class T> class ComparablePointer
 {
 public:
-    ComparablePointer(Pointer pointer): m_pointer(pointer) {}
-    operator Pointer() const { return m_pointer; }
-    bool operator<(const ComparablePointer<Pointer> cp) const
+    ComparablePointer(T *pointer): m_pointer(pointer) {}
+    operator T *() const { return m_pointer; }
+    T *operator->() const { return m_pointer; }
+    bool operator<(const ComparablePointer cp) const
     { return *m_pointer < *cp.m_pointer; }
 private:
-    Pointer m_pointer;
+    T *m_pointer;
 };
 
-template<> class ComparablePointer<const char *>
+template<> class ComparablePointer<const char>
 {
 public:
     ComparablePointer(const char *pointer): m_pointer(pointer) {}
     operator const char *() const { return m_pointer;}
-    bool operator<(const ComparablePointer<const char *> cp) const
+    const char *operator->() const { return m_pointer; }
+    bool operator<(const ComparablePointer cp) const
     { return strcmp(m_pointer, cp.m_pointer) < 0; }
 private:
     const char *m_pointer;
@@ -154,6 +156,8 @@ public:
     virtual ~Orientable() {}
     virtual Orientation orientation() const = 0;
 };
+
+int getNumberOfProcessors();
 
 bool isValidFileName(const char *fileName);
 

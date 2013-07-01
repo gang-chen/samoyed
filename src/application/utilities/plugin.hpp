@@ -67,7 +67,7 @@ protected:
     void onCompleted();
 
 private:
-    typedef std::map<ComparablePointer<const char *>, Extension *>
+    typedef std::map<ComparablePointer<const char>, Extension *>
         ExtensionTable;
 
     PluginManager &m_manager;

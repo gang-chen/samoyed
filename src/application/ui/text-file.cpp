@@ -36,12 +36,12 @@ File::Edit *TextFile::Insertion::execute(File &file) const
         insertOnly(m_line, m_column, m_text.c_str(), m_text.length());
 }
 
-bool TextFile::Insertion::merge(File::EditPrimitive *edit)
+bool TextFile::Insertion::merge(const File::EditPrimitive *edit)
 {
-    if (static_cast<TextFile::EditPrimitive *>(edit)->type() !=
+    if (static_cast<const TextFile::EditPrimitive *>(edit)->type() !=
         TYPE_INSERTION)
         return false;
-    Insertion *ins = static_cast<Insertion *>(edit);
+    const Insertion *ins = static_cast<const Insertion *>(edit);
     if (m_line == ins->m_line && m_column == ins->m_column)
     {
         m_text.append(ins->m_text);
@@ -80,11 +80,12 @@ File::Edit *TextFile::Removal::execute(File &file) const
         removeOnly(m_beginLine, m_beginColumn, m_endLine, m_endColumn);
 }
 
-bool TextFile::Removal::merge(File::EditPrimitive *edit)
+bool TextFile::Removal::merge(const File::EditPrimitive *edit)
 {
-    if (static_cast<TextFile::EditPrimitive *>(edit)->type() != TYPE_REMOVAL)
+    if (static_cast<const TextFile::EditPrimitive *>(edit)->type() !=
+        TYPE_REMOVAL)
         return false;
-    Removal *rem = static_cast<Removal *>(edit);
+    const Removal *rem = static_cast<const Removal *>(edit);
     if (m_beginLine == rem->m_beginLine)
     {
         if (m_beginColumn == rem->m_beginColumn &&

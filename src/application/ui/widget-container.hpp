@@ -80,7 +80,7 @@ protected:
     void destroyInternally();
 
 private:
-    typedef std::map<ComparablePointer<const char *>, Widget *> WidgetTable;
+    typedef std::map<ComparablePointer<const char>, Widget *> WidgetTable;
 
     WidgetTable m_childTable;
 

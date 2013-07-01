@@ -43,7 +43,7 @@ public:
         xmlDocPtr xmlDoc;
     };
 
-    typedef std::map<ComparablePointer<const char *>, PluginInfo *> Registry;
+    typedef std::map<ComparablePointer<const char>, PluginInfo *> Registry;
 
     PluginManager(ExtensionPointManager &extensionPointMgr,
                   const char *modulesDirName,
@@ -97,7 +97,7 @@ public:
     void scanPlugins(const char *pluignsDirName);
 
 private:
-    typedef std::map<ComparablePointer<const char *>, Plugin *> Table;
+    typedef std::map<ComparablePointer<const char>, Plugin *> Table;
 
     void registerPluginExtensions(PluginInfo &pluginInfo);
     void unregisterPluginExtensions(PluginInfo &pluginInfo);

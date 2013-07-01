@@ -10,8 +10,6 @@ namespace Samoyed
 {
 
 class Window;
-class Editor;
-class File;
 
 /**
  * This class defines and implements actions.
@@ -63,6 +61,8 @@ public:
 
         ACTION_CREATE_WINDOW,
         ACTION_CREATE_EDITOR,
+        ACTION_MOVE_EDITOR_DOWN,
+        ACTION_MOVE_EDITOR_RIGHT,
         ACTION_SPLIT_EDITOR_VERTICALLY,
         ACTION_SPLIT_EDITOR_HORIZONTALLY,
 
@@ -91,17 +91,20 @@ public:
 
     GtkActionGroup *actionGroup() const { return m_actionGroup; }
 
-    void onProjectOpened();
-    void onProjectClosed();
-
     void onToolbarVisibilityChanged(bool visibility);
     void onWindowFullScreenChanged(bool inFullScreen);
 
 private:
+    static gboolean updateSensitivity(gpointer actions);
+
+    Window *m_window;
+
     GtkAction *m_actions[N_ACTIONS];
     GtkToggleAction *m_toggleActions[N_TOGGLE_ACTIONS];
 
     GtkActionGroup *m_actionGroup;
+
+    unsigned int m_updaterId;
 };
 
 }

@@ -245,9 +245,15 @@ void File::openByDialog(Project *project,
         _("Create a _new editor even if the file is already opened"));
     gtk_grid_attach_next_to(GTK_GRID(grid), newEditorButton,
                             NULL, GTK_POS_BOTTOM, 1, 1);
-    GtkWidget *newGroupButton = gtk_check_button_new_with_mnemonic(
-        _("Create a new editor group to hold the new editor"));
-    gtk_grid_attach_next_to(GTK_GRID(grid), newGroupButton,
+    GtkWidget *newRightGroupButton = gtk_check_button_new_with_mnemonic(
+        _("Create a new editor group to the _right of the current one to hold "
+          "the new editor"));
+    gtk_grid_attach_next_to(GTK_GRID(grid), newRightGroupButton,
+                            NULL, GTK_POS_BOTTOM, 1, 1);
+    GtkWidget *newBelowGroupButton = gtk_check_button_new_with_mnemonic(
+        _("Create a new editor group _below the current one to hold the new "
+          "editor"));
+    gtk_grid_attach_next_to(GTK_GRID(grid), newBelowGroupButton,
                             NULL, GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(grid);
     gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog), grid);
@@ -256,7 +262,10 @@ void File::openByDialog(Project *project,
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
         GSList *uris, *uri;
-        if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(newGroupButton)))
+        if (!gtk_toggle_button_get_active(
+                GTK_TOGGLE_BUTTON(newRightGroupButton)) &&
+            !gtk_toggle_button_get_active(
+                GTK_TOGGLE_BUTTON(newBelowGroupButton)))
             editorGroup = &Application::instance().currentWindow().
                 currentEditorGroup();
         uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
@@ -274,8 +283,17 @@ void File::openByDialog(Project *project,
                 if (!fileEditor.second->parent())
                 {
                     if (!editorGroup)
-                        editorGroup = Application::instance().currentWindow().
-                            splitCurrentEditorGroup(Window::SIDE_RIGHT);
+                    {
+                        if (gtk_toggle_button_get_active(
+                                GTK_TOGGLE_BUTTON(newRightGroupButton)))
+                            editorGroup =
+                                Application::instance().currentWindow().
+                                splitCurrentEditorGroup(Window::SIDE_RIGHT);
+                        else
+                            editorGroup =
+                                Application::instance().currentWindow().
+                                splitCurrentEditorGroup(Window::SIDE_BOTTOM);
+                    }
                     Application::instance().currentWindow().
                         addEditorToEditorGroup(
                             *fileEditor.second,
@@ -287,31 +305,22 @@ void File::openByDialog(Project *project,
         }
         if (uris)
         {
-            char *hostName = NULL;
-            char *fileName =
-                g_filename_from_uri(static_cast<const char *>(uris->data),
-                                    &hostName, NULL);
-            if (fileName)
+            GFile *f = g_file_new_for_uri(
+                static_cast<const char *>(uris->data));
+            GFile *d = g_file_get_parent(f);
+            if (d)
             {
-                char *dirName = g_path_get_dirname(fileName);
-                if (dirName)
-                {
-                    char *uri = g_filename_to_uri(dirName, hostName, NULL);
-                    if (uri)
-                    {
-                        std::list<std::string> errors;
-                        Application::instance().histories().
-                            set(DIRECTORY_WHERE_FILE_OPENED,
-                                std::string(uri),
-                                false,
-                                errors);
-                        g_free(uri);
-                    }
-                    g_free(dirName);
-                }
-                g_free(fileName);
+                char *dirName = g_file_get_uri(d);
+                std::list<std::string> errors;
+                Application::instance().histories().
+                    set(DIRECTORY_WHERE_FILE_OPENED,
+                        std::string(dirName),
+                        false,
+                        errors);
+                g_free(dirName);
+                g_object_unref(d);
             }
-            g_free(hostName);
+            g_object_unref(f);
         }
         g_slist_free_full(uris, g_free);
     }
@@ -439,6 +448,16 @@ bool File::closeEditor(Editor &editor)
 
     // Go ahead.
     continueClosing();
+    return true;
+}
+
+bool File::close()
+{
+    if (m_closing)
+        return true;
+    for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
+        if (!editor->close())
+            return false;
     return true;
 }
 
@@ -700,7 +719,7 @@ void File::undo()
 
 void File::redo()
 {
-    assert(undoable());
+    assert(redoable());
     Edit *edit = m_redoHistory.top();
     m_redoHistory.pop();
     Edit *undo = edit->execute(*this);

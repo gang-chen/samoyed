@@ -8,6 +8,7 @@
 #include "../utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
+#include <set>
 #include <string>
 #include <boost/signals2/signal.hpp>
 #include <gtk/gtk.h>
@@ -42,7 +43,9 @@ class Editor;
 class Window: public WidgetContainer
 {
 public:
+    typedef boost::function<Widget *()> WidgetFactory;
     typedef boost::signals2::signal<void (Window &)> Created;
+    typedef boost::signals2::signal<void (Window &)> Restored;
     typedef boost::signals2::signal<void (Widget &)> SidePaneCreated;
 
     static const char *NAVIGATION_PANE_ID;
@@ -102,24 +105,28 @@ public:
     };
 
     /**
-     * Add a callback that will be called whenever a new window is created.  The
-     * callback typically creates default side panes.
+     * Add a callback that will be called whenever a new window is created.
      */
     static boost::signals2::connection
     addCreatedCallback(const Created::slot_type &callback)
     { return s_created.connect(callback); }
 
     /**
+     * Add a callback that will be called whenever a window is restored.
+     */
+    static boost::signals2::connection
+    addRestoredCallback(const Created::slot_type &callback)
+    { return s_restored.connect(callback); }
+
+    /**
      * Add a callback that will be called whenever a navigation pane is created.
-     * The callback typically creates default contents of a navigation pane.
      */
     static boost::signals2::connection
     addNavigationPaneCreatedCallback(const SidePaneCreated::slot_type &callback)
     { return s_navigationPaneCreated.connect(callback); }
 
     /**
-     * Add a callback that will be called whenever a tools pane is created.  The
-     * callback typically creates default contents of a tools pane.
+     * Add a callback that will be called whenever a tools pane is created.
      */
     static boost::signals2::connection
     addToolsPaneCreatedCallback(const SidePaneCreated::slot_type &callback)
@@ -167,8 +174,34 @@ public:
      * @param size The size of the side pane.
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
+										
+    /**
+     * Register a widget as a child of a side pane.  Add a menu item to let the
+     * user open or close the registered widget.
+     * @param paneId The identifier of the side pane to contain the widget.
+     * @param id The identifier of the widget.
+     * @param index The index of the widget among the children of the side pane.
+     * @param factory The widget factory.
+     */
+    void registerSidePaneChild(const char *paneId, const char *id, int index,
+                               const WidgetFactory &factory,
+                               const char *title);
 
-    void onSidePaneChildAdded(Widget &paneChild);
+    /**
+     * Unregister a child of a side pane.  If the child is opened, close it
+     * first.  Remove the menu item.
+     * @param paneId The identifier of the side pane.
+     * @param id The identifier of the child. 
+     */
+    void unregisterSidePaneChild(const char *paneId, const char *id);
+
+    /**
+     * Open a registered child of a side pane, if not opened.
+     * @param pane The side pane.
+     * @param id The identifier of the child. 
+     * @return The child of the side pane.
+     */
+    Widget *openSidePaneChild(const char *paneId, const char *id);
 
     Notebook &navigationPane();
     const Notebook &navigationPane() const;
@@ -215,9 +248,12 @@ protected:
 private:
     struct SidePaneChildData
     {
+        std::string id;
+        int index;
+        WidgetFactory factory;
         GtkToggleAction *action;
-        gulong signalHandlerId;
         guint uiMergeId;
+        bool operator<(const SidePaneChildData &rhs) const;
     };
 
     struct SidePaneData
@@ -226,7 +262,8 @@ private:
         GtkAction *action2;
         gulong signalHandlerId;
         guint uiMergeId;
-        std::map<std::string, SidePaneChildData *> children;
+        std::set<ComparablePointer<SidePaneChildData> > children;
+        std::map<ComparablePointer<const char>, SidePaneChildData *> table;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -253,10 +290,7 @@ private:
     static void onSidePaneVisibilityChanged(GtkWidget *pane,
                                             GParamSpec *spec,
                                             const SidePaneData *data);
-    static void showHideSidePaneChild(GtkToggleAction *action, Window *window);
-    static void onSidePaneChildVisibilityChanged(GtkWidget *paneChild,
-                                                 GParamSpec *spec,
-                                                 const SidePaneChildData *data);
+    static void openCloseSidePaneChild(GtkToggleAction *action, Window *window);
 
     static void createNavigationPane(Window &window);
     static void createToolsPane(Window &window);
@@ -265,12 +299,12 @@ private:
     bool build(const Configuration &config);
 
     void createMenuItemForSidePane(Widget &pane);
-    void createMenuItemForSidePaneChild(Widget &paneChild);
     void setupSidePanesRecursively(Widget &widget);
     void onSidePaneClosed(const Widget &pane);
-    void onSidePaneChildClosed(const Widget &paneChild);
+    void onSidePaneChildClosed(const Widget &paneChild, const Widget &pane);
 
     static Created s_created;
+    static Restored s_restored;
     static SidePaneCreated s_navigationPaneCreated;
     static SidePaneCreated s_toolsPaneCreated;
 
@@ -295,7 +329,7 @@ private:
     bool m_toolbarVisible;
     bool m_toolbarVisibleInFullScreen;
 
-    std::map<std::string, SidePaneData *> m_sidePaneData;
+    std::map<ComparablePointer<const char>, SidePaneData *> m_sidePaneData;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };

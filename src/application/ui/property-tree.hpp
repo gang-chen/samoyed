@@ -5,11 +5,10 @@
 #define SMYD_PROPERTY_TREE_HPP
 
 #include "../utilities/miscellaneous.hpp"
+#include "../../../libs/boost/spirit/home/support/detail/hold_any.hpp"
 #include <list>
 #include <map>
 #include <string>
-//#include <boost/spirit/home/support/detail/hold_any.hpp>
-#include "/home/gangchen/Downloads/hold_any.hpp"
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
@@ -22,7 +21,7 @@ class Widget;
 class PropertyTree
 {
 public:
-    typedef std::map<ComparablePointer<const char *>, PropertyTree *> Table;
+    typedef std::map<ComparablePointer<const char>, PropertyTree *> Table;
 
     /**
      * Validate a property tree.

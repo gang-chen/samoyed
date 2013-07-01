@@ -9,6 +9,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "notebook.hpp"
+#include "../application.hpp"
 #include <gtk/gtk.h>
 #include <glib/gi18n-lib.h>
 
@@ -17,10 +18,12 @@ namespace
 
 void createSession(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Application::instance().createSession();
 }
 
 void switchSession(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Application::instance().switchSession();
 }
 
 void manageSessions(GtkAction *action, Samoyed::Window *window)
@@ -29,6 +32,7 @@ void manageSessions(GtkAction *action, Samoyed::Window *window)
 
 void quitSession(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Application::instance().quit();
 }
 
 void createProject(GtkAction *action, Samoyed::Window *window)
@@ -73,26 +77,52 @@ void openFile(GtkAction *action, Samoyed::Window *window)
 
 void saveFile(GtkAction *action, Samoyed::Window *window)
 {
-    static_cast<Samoyed::Editor &>(window->currentEditorGroup().current()).
-        file().save();
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::File &file =
+            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+        if (file.edited() && !file.frozen() && !file.inEditGroup())
+            file.save();
+    }
 }
 
 void saveAllFiles(GtkAction *action, Samoyed::Window *window)
 {
+    for (Samoyed::File *file = Samoyed::Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (file->edited() && !file->frozen() && !file->inEditGroup())
+            file->save();
+    }
 }
 
 void reloadFile(GtkAction *action, Samoyed::Window *window)
 {
-    static_cast<Samoyed::Editor &>(window->currentEditorGroup().current()).
-        file().load(true);
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::File &file =
+            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+        if (!file.frozen() && !file.inEditGroup())
+            file.load(true);
+    }
 }
 
 void closeFile(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+        static_cast<Samoyed::Editor &>(editorGroup.current()).file().close();
 }
 
 void closeAllFiles(GtkAction *action, Samoyed::Window *window)
 {
+    for (Samoyed::File *file = Samoyed::Application::instance().files();
+         file;
+         file = file->next())
+        file->close();
 }
 
 void setupPage(GtkAction *action, Samoyed::Window *window)
@@ -109,10 +139,26 @@ void printFile(GtkAction *action, Samoyed::Window *window)
 
 void undo(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::File &file =
+            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+        if (file.undoable())
+            file.undo();
+    }
 }
 
 void redo(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::File &file =
+            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+        if (file.redoable())
+            file.redo();
+    }
 }
 
 void cut(GtkAction *action, Samoyed::Window *window)
@@ -152,6 +198,36 @@ void createEditor(GtkAction *action, Samoyed::Window *window)
         window->addEditorToEditorGroup(*editor, editorGroup,
                                        editorGroup.currentChildIndex());
         editor->setCurrent();
+    }
+}
+
+void moveEditorDown(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::Editor &editor =
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild());
+        Samoyed::Notebook *newEditorGroup =
+            window->splitCurrentEditorGroup(Samoyed::Window::SIDE_BOTTOM);
+        editorGroup.removeChild(editor);
+        window->addEditorToEditorGroup(editor, *newEditorGroup, 0);
+        editor.setCurrent();
+    }
+}
+
+void moveEditorRight(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::Editor &editor =
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild());
+        Samoyed::Notebook *newEditorGroup =
+            window->splitCurrentEditorGroup(Samoyed::Window::SIDE_RIGHT);
+        editorGroup.removeChild(editor);
+        window->addEditorToEditorGroup(editor, *newEditorGroup, 0);
+        editor.setCurrent();
     }
 }
 
@@ -294,6 +370,13 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Create a window"), G_CALLBACK(createWindow) },
     { "create-editor", NULL, N_("New _Editor"), NULL,
       N_("Create an editor for the current file"), G_CALLBACK(createEditor) },
+    { "move-editor-down", NULL, N_("Move Editor _Down"), NULL,
+      N_("Move the current editor to a new editor group below the current one"),
+      G_CALLBACK(moveEditorDown) },
+    { "move-editor-right", NULL, N_("Move Editor _Right"), NULL,
+      N_("Move the current editor to a new editor group to the right of the "
+         "current one"),
+      G_CALLBACK(moveEditorRight) },
     { "split-editor-vertically", NULL, N_("Split Editor _Vertically"), NULL,
       N_("Split the current editor vertically"),
       G_CALLBACK(splitEditorVertically) },
@@ -326,7 +409,64 @@ toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 namespace Samoyed
 {
 
-Actions::Actions(Window *window)
+gboolean Actions::updateSensitivity(gpointer actions)
+{
+    Actions *a = static_cast<Actions *>(actions);
+    Notebook &editorGroup = a->m_window->currentEditorGroup();
+    if (editorGroup.childCount() == 0 ||
+        &editorGroup.current() != &a->m_window->current())
+    {
+        // No editor exists or the current widget is not an editor.
+        gtk_action_set_sensitive(a->action(ACTION_SAVE_FILE), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_RELOAD_FILE), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_CLOSE_FILE), FALSE);
+
+        gtk_action_set_sensitive(a->action(ACTION_UNDO), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_REDO), FALSE);
+
+        gtk_action_set_sensitive(a->action(ACTION_CREATE_EDITOR), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_VERTICALLY),
+                                 FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
+                                 FALSE);
+    }
+    else
+    {
+        File &file = static_cast<Editor &>(editorGroup.current()).file();
+        if (file.edited() && !file.frozen() && !file.inEditGroup())
+            gtk_action_set_sensitive(a->action(ACTION_SAVE_FILE), TRUE);
+        else
+            gtk_action_set_sensitive(a->action(ACTION_SAVE_FILE), FALSE);
+        if (!file.frozen() && !file.inEditGroup())
+            gtk_action_set_sensitive(a->action(ACTION_RELOAD_FILE), TRUE);
+        else
+            gtk_action_set_sensitive(a->action(ACTION_RELOAD_FILE), FALSE);
+        gtk_action_set_sensitive(a->action(ACTION_CLOSE_FILE), TRUE);
+
+        if (file.undoable())
+            gtk_action_set_sensitive(a->action(ACTION_UNDO), TRUE);
+        else
+            gtk_action_set_sensitive(a->action(ACTION_UNDO), FALSE);
+        if (file.redoable())
+            gtk_action_set_sensitive(a->action(ACTION_REDO), TRUE);
+        else
+            gtk_action_set_sensitive(a->action(ACTION_REDO), FALSE);
+
+        gtk_action_set_sensitive(a->action(ACTION_CREATE_EDITOR), TRUE);
+        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN), TRUE);
+        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT), TRUE);
+        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_VERTICALLY),
+                                 TRUE);
+        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
+                                 TRUE);
+    }
+    return TRUE;
+}
+
+Actions::Actions(Window *window):
+    m_window(window)
 {
     m_actionGroup = gtk_action_group_new("actions");
     gtk_action_group_set_translation_domain(m_actionGroup, NULL);
@@ -347,19 +487,14 @@ Actions::Actions(Window *window)
         m_toggleActions[i] = GTK_TOGGLE_ACTION(
             gtk_action_group_get_action(m_actionGroup,
                                         toggleActionEntries[i].name));
+
+    m_updaterId = g_idle_add(updateSensitivity, this);
 }
 
 Actions::~Actions()
 {
+    g_source_remove(m_updaterId);
     g_object_unref(m_actionGroup);
-}
-
-void Actions::onProjectOpened()
-{
-}
-
-void Actions::onProjectClosed()
-{
 }
 
 void Actions::onToolbarVisibilityChanged(bool visibility)

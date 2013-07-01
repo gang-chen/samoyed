@@ -49,7 +49,6 @@
 namespace
 {
 
-const int THREAD_COUNT = 8;
 const int PLUGIN_CACHE_SIZE = 4;
 
 bool terminate = false;
@@ -68,21 +67,21 @@ Application *Application::s_instance = NULL;
 
 Application::Application():
     m_exitStatus(EXIT_SUCCESS),
+    m_mainThreadId(boost::this_thread::get_id()),
+    m_extensionPointManager(NULL),
+    m_pluginManager(NULL),
+    m_fileSourceManager(NULL),
+    m_projectConfigManager(NULL),
+    m_projectAstManager(NULL),
+    m_scheduler(NULL),
+    m_actionsExtensionPoint(NULL),
+    m_viewsExtensionPoint(NULL),
+    m_preferences(NULL),
+    m_histories(NULL),
     m_quitting(false),
     m_session(NULL),
     m_creatingSession(false),
     m_switchingSession(false),
-    m_preferences(NULL),
-    m_histories(NULL),
-    m_extensionPointManager(NULL),
-    m_actionsExtensionPoint(NULL),
-    m_viewsExtensionPoint(NULL),
-    m_pluginManager(NULL),
-    m_scheduler(NULL),
-    m_fileSourceManager(NULL),
-    m_projectConfigManager(NULL),
-    m_projectAstManager(NULL),
-    m_mainThreadId(boost::this_thread::get_id()),
     m_firstProject(NULL),
     m_lastProject(NULL),
     m_firstFile(NULL),
@@ -179,14 +178,6 @@ gboolean Application::startUp(gpointer app)
 
     Signal::registerCrashHandler(Session::onCrashed);
 
-    // Initialize the preferences with the default values.
-    a->m_preferences = new PropertyTree(PREFERENCES);
-    TextEditor::installPreferences();
-
-    // Initialize the histories with the default values.
-    a->m_histories = new PropertyTree(HISTORIES);
-    File::installHistories();
-
     // Initialize class data.
     TextFile::registerType();
     SourceFile::registerType();
@@ -199,17 +190,27 @@ gboolean Application::startUp(gpointer app)
     Window::registerDefaultSidePanes();
     SourceEditor::createSharedData();
 
-    // Create global objects.
+    // Create global managers.
     a->m_extensionPointManager = new ExtensionPointManager;
-    a->m_actionsExtensionPoint = new ActionsExtensionPoint;
-    a->m_viewsExtensionPoint = new ViewsExtensionPoint;
     a->m_pluginManager = new PluginManager(a->extensionPointManager(),
                                            pluginsDirName.c_str(),
                                            PLUGIN_CACHE_SIZE);
-    a->m_scheduler = new Scheduler(THREAD_COUNT);
     a->m_fileSourceManager = new FileSourceManager;
     a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
     a->m_projectAstManager = new ProjectAstManager;
+    a->m_scheduler = new Scheduler(getNumberOfProcessors());
+
+    // Create builtin extension points.
+    a->m_actionsExtensionPoint = new ActionsExtensionPoint;
+    a->m_viewsExtensionPoint = new ViewsExtensionPoint;
+
+    // Initialize the preferences with the default values.
+    a->m_preferences = new PropertyTree(PREFERENCES);
+    TextEditor::installPreferences();
+
+    // Initialize the histories with the default values.
+    a->m_histories = new PropertyTree(HISTORIES);
+    File::installHistories();
 
     if (a->startSession())
     {
@@ -287,13 +288,16 @@ void Application::shutDown()
     assert(!m_sessionName);
     assert(!m_newSessionName);
 
-    delete m_scheduler;
-    delete m_pluginManager;
-    delete m_actionsExtensionPoint;
-    delete m_viewsExtensionPoint;
-    delete m_extensionPointManager;
     delete m_histories;
     delete m_preferences;
+    delete m_actionsExtensionPoint;
+    delete m_viewsExtensionPoint;
+    delete m_scheduler;
+    m_projectAstManager->destroy();
+    m_projectConfigManager->destroy();
+    m_fileSourceManager->destroy();
+    delete m_pluginManager;
+    delete m_extensionPointManager;
     SourceEditor::destroySharedData();
 }
 

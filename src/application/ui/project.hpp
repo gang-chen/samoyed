@@ -82,7 +82,7 @@ protected:
     bool restore(XmlElement &xmlElement);
 
 private:
-    typedef std::multimap<ComparablePointer<const char *>, Editor *>
+    typedef std::multimap<ComparablePointer<const char>, Editor *>
         EditorTable;
 
     const std::string m_uri;

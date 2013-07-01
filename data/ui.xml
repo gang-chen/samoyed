@@ -53,6 +53,8 @@
     <menu name="view" action="view">
       <menuitem name="new-window" action="create-window"/>
       <menuitem name="new-editor" action="create-editor"/>
+      <menuitem name="move-editor-down" action="move-editor-down"/>
+      <menuitem name="move-editor-right" action="move-editor-right"/>
       <menuitem name="split-editor-vertically"
                 action="split-editor-vertically"/>
       <menuitem name="split-editor-horizontally"

@@ -19,6 +19,12 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include <stdarg.h>
 #include <stdio.h>
 #include <string>
+#ifdef OS_WIN32
+# define WIN32_LEAN_AND_MEAN
+# include <windows.h>
+#else
+# include <unistd.h>
+#endif
 #include <glib.h>
 #ifdef SMYD_UNIT_TEST
 # define _(T) T
@@ -31,6 +37,18 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 
 namespace Samoyed
 {
+
+int getNumberOfProcessors()
+{
+#ifdef OS_WIN32
+    SYSTEM_INFO info;
+    GetSystemInfo(&info);
+    return info.dwNumberOfProcessors
+#else
+    long nProcs = sysconf(_SC_NPROCESSORS_ONLN);
+    return (nProcs < 1L ? 1 : nProcs);
+#endif
+}
 
 bool isValidFileName(const char *fileName)
 {
@@ -128,6 +146,7 @@ int main(int argc, char *argv[])
 
     gtk_init(&argc, &argv);
 
+    printf("Number of processors: %d\n", Samoyed::getNumberOfProcessors());
     assert(Samoyed::isValidFileName("file-name_123.txt"));
     assert(!Samoyed::isValidFileName(" "));
     assert(!Samoyed::isValidFileName("*"));

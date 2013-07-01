@@ -164,6 +164,12 @@ public:
                              std::list<std::pair<File *, Editor *> > &opened);
 
     /**
+     * Close a file by closing all editors.
+     * @return False iff the user cancels closing the file.
+     */
+    bool close();
+
+    /**
      * This function can be called by the application instance only.
      */
     virtual ~File();

@@ -14,19 +14,19 @@
 namespace Samoyed
 {
 
-class Session;
-class PropertyTree;
 class ExtensionPointManager;
-class ActionsExtensionPoint;
-class ViewsExtensionPoint;
 class PluginManager;
-class Scheduler;
-class Project;
-class File;
-template<class> class Manager;
 class FileSourceManager;
 class ProjectConfiguration;
+template<class> class Manager;
 class ProjectAstManager;
+class Scheduler;
+class ActionsExtensionPoint;
+class ViewsExtensionPoint;
+class PropertyTree;
+class Session;
+class Project;
+class File;
 class Window;
 class SplashScreen;
 
@@ -81,18 +81,18 @@ public:
      */
     static Application &instance() { return *s_instance; }
 
-    Session *session() const { return m_session; }
-
-    PropertyTree &preferences() const { return *m_preferences; }
-
-    PropertyTree &histories() const { return *m_histories; }
+    /**
+     * @return True iff we are in the main thread.  The main thread is the
+     * thread where the application instance was created and started to run.
+     * The GTK+ main event loop is in the main thread.
+     */
+    bool inMainThread() const
+    { return boost::this_thread::get_id() == m_mainThreadId; }
 
     ExtensionPointManager &extensionPointManager() const
     { return *m_extensionPointManager; }
 
     PluginManager &pluginManager() const { return *m_pluginManager; }
-
-    Scheduler &scheduler() const { return *m_scheduler; }
 
     FileSourceManager &fileSourceManager() const
     { return *m_fileSourceManager; }
@@ -103,13 +103,13 @@ public:
     ProjectAstManager &projectAstManager() const
     { return *m_projectAstManager; }
 
-    /**
-     * @return True iff we are in the main thread.  The main thread is the
-     * thread where the application instance was created and started to run.
-     * The GTK+ main event loop is in the main thread.
-     */
-    bool inMainThread() const
-    { return boost::this_thread::get_id() == m_mainThreadId; }
+    Scheduler &scheduler() const { return *m_scheduler; }
+
+    PropertyTree &preferences() const { return *m_preferences; }
+
+    PropertyTree &histories() const { return *m_histories; }
+
+    Session *session() const { return m_session; }
 
     Project *findProject(const char *uri);
     const Project *findProject(const char *uri) const;
@@ -155,9 +155,9 @@ public:
     { return m_userDirName.c_str(); }
 
 private:
-    typedef std::map<ComparablePointer<const char *>, Project *> ProjectTable;
+    typedef std::map<ComparablePointer<const char>, Project *> ProjectTable;
 
-    typedef std::map<ComparablePointer<const char *>, File *> FileTable;
+    typedef std::map<ComparablePointer<const char>, File *> FileTable;
 
     static gboolean onSplashScreenDeleteEvent(GtkWidget *widget,
                                               GdkEvent *event,
@@ -184,32 +184,33 @@ private:
 
     int m_exitStatus;
 
-    bool m_quitting;
+    boost::thread::id m_mainThreadId;
 
+    // Global managers.
+    ExtensionPointManager *m_extensionPointManager;
+    PluginManager *m_pluginManager;
+    FileSourceManager *m_fileSourceManager;
+    Manager<ProjectConfiguration> *m_projectConfigManager;
+    ProjectAstManager *m_projectAstManager;
+    Scheduler *m_scheduler;
+
+    // Builtin extension points.
+    ActionsExtensionPoint *m_actionsExtensionPoint;
+    ViewsExtensionPoint *m_viewsExtensionPoint;
+
+    // Preferences and histories are session specific.  They are created before
+    // a session is started, and overwritten with session specific data when a
+    // session is restored.
+    PropertyTree *m_preferences;
+    PropertyTree *m_histories;
+
+    // Session related data.
+    bool m_quitting;
     Session *m_session;
     bool m_creatingSession;
     bool m_switchingSession;
 
-    PropertyTree *m_preferences;
-    PropertyTree *m_histories;
-
-    ExtensionPointManager *m_extensionPointManager;
-
-    ActionsExtensionPoint *m_actionsExtensionPoint;
-    ViewsExtensionPoint *m_viewsExtensionPoint;
-
-    PluginManager *m_pluginManager;
-
-    Scheduler *m_scheduler;
-
-    FileSourceManager *m_fileSourceManager;
-
-    Manager<ProjectConfiguration> *m_projectConfigManager;
-
-    ProjectAstManager *m_projectAstManager;
-
-    boost::thread::id m_mainThreadId;
-
+    // Global data.
     ProjectTable m_projectTable;
     Project *m_firstProject;
     Project *m_lastProject;

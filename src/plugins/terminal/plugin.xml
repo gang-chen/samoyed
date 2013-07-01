@@ -9,6 +9,7 @@
     <category>tool</category>
     <index>10</index>
     <view>
+      <id>terminal</id>
       <title>_Terminal</title>
     </view>
     <menu-item>

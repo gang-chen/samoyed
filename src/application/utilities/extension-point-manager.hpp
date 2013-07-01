@@ -32,7 +32,7 @@ public:
     ExtensionPoint *extensionPoint(const char *extensionPointId) const;
 
 private:
-    typedef std::map<ComparablePointer<const char *>, ExtensionPoint *>
+    typedef std::map<ComparablePointer<const char>, ExtensionPoint *>
         Registry;
 
     struct ExtensionInfo

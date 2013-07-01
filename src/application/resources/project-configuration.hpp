@@ -15,7 +15,7 @@ namespace Samoyed
 class ProjectConfiguration: public Managed<ProjectConfiguration>
 {
 public:
-    typedef ComparablePointer<const char *> Key;
+    typedef ComparablePointer<const char> Key;
     typedef CastableString KeyHolder;
     Key key() const { return m_uri.c_str(); }
 

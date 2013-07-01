@@ -30,7 +30,7 @@ class ProjectConfiguration;
 class ProjectAst: public Managed<ProjectAst>
 {
 public:
-    typedef ComparablePointer<const char *> Key;
+    typedef ComparablePointer<const char> Key;
     typedef CastableString KeyHolder;
     Key key() const { return m_uri.c_str(); }
 
