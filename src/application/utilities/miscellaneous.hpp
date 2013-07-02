@@ -115,6 +115,7 @@ template<class T> class ComparablePointer
 public:
     ComparablePointer(T *pointer): m_pointer(pointer) {}
     operator T *() const { return m_pointer; }
+    T &operator*() const { return *m_pointer; }
     T *operator->() const { return m_pointer; }
     bool operator<(const ComparablePointer cp) const
     { return *m_pointer < *cp.m_pointer; }
@@ -126,7 +127,8 @@ template<> class ComparablePointer<const char>
 {
 public:
     ComparablePointer(const char *pointer): m_pointer(pointer) {}
-    operator const char *() const { return m_pointer;}
+    operator const char *() const { return m_pointer; }
+    const char &operator*() const { return *m_pointer; }
     const char *operator->() const { return m_pointer; }
     bool operator<(const ComparablePointer cp) const
     { return strcmp(m_pointer, cp.m_pointer) < 0; }
