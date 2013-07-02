@@ -55,7 +55,7 @@ bool PropertyTree::set(const boost::spirit::hold_any &value,
                        std::list<std::string> &errors)
 {
     boost::spirit::hold_any save(m_value);
-    m_value.assign(value);
+    m_value = value;
 
     bool valid = true;
     for (PropertyTree *p = this; p && !p->m_correcting; p = p->m_parent)
@@ -67,7 +67,7 @@ bool PropertyTree::set(const boost::spirit::hold_any &value,
     if (!valid)
     {
         assert(!correct);
-        m_value.assign(save);
+        m_value = save;
         return false;
     }
     if (!m_correcting)
@@ -137,7 +137,7 @@ bool PropertyTree::set(const std::list<std::pair<const char *,
         }
         free(p);
         saved.push_back(std::make_pair(ch, ch->m_value));
-        ch->m_value.assign(it->second);
+        ch->m_value = it->second;
     }
 
     bool valid = true;
@@ -171,7 +171,7 @@ bool PropertyTree::set(const std::list<std::pair<const char *,
                 it = saved.begin();
              it != saved.end();
              ++it)
-            it->first->m_value.assign(it->second);
+            it->first->m_value = it->second;
         return false;
     }
     for (std::vector<std::pair<PropertyTree *,
@@ -210,7 +210,7 @@ bool PropertyTree::reset(const std::list<const char *> &paths,
         }
         free(p);
         saved.push_back(std::make_pair(ch, ch->m_value));
-        ch->m_value.assign(ch->m_defaultValue);
+        ch->m_value = ch->m_defaultValue;
     }
 
     bool valid = true;
@@ -244,7 +244,7 @@ bool PropertyTree::reset(const std::list<const char *> &paths,
                 it = saved.begin();
              it != saved.end();
              ++it)
-            it->first->m_value.assign(it->second);
+            it->first->m_value = it->second;
         return false;
     }
     for (std::vector<std::pair<PropertyTree *,
@@ -397,7 +397,7 @@ void PropertyTree::resetAll()
     // Do not need to validate the default values.
     for (PropertyTree *child = m_firstChild; child; child = child->m_next)
         child->resetAll();
-    m_value.assign(m_defaultValue);
+    m_value = m_defaultValue;
     m_changed(*this);
 }
 
