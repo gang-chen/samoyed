@@ -4,7 +4,7 @@
 #ifndef SMYD_PROPERTY_TREE_HPP
 #define SMYD_PROPERTY_TREE_HPP
 
-#include "../utilities/miscellaneous.hpp"
+#include "miscellaneous.hpp"
 #include "../../../libs/boost/spirit/home/support/detail/hold_any.hpp"
 #include <list>
 #include <map>
@@ -15,8 +15,6 @@
 
 namespace Samoyed
 {
-
-class Widget;
 
 class PropertyTree
 {
@@ -40,8 +38,6 @@ public:
      * @param prop The changed property node.
      */
     typedef boost::signals2::signal<void (const PropertyTree &prop)> Changed;
-
-    typedef boost::function<Widget *(PropertyTree &prop)> WidgetFactory;
 
     PropertyTree(const char *name);
     PropertyTree(const char *name, const boost::spirit::hold_any &defaultValue);
@@ -114,9 +110,6 @@ public:
 
     boost::signals2::connection addObserver(const Changed::slot_type &observer);
 
-    void setEditorFactory(const WidgetFactory &editorFactory)
-    { m_editorFactory = editorFactory; }
-
     void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> &errors);
     xmlNodePtr writeXmlElement() const;
 
@@ -134,8 +127,6 @@ private:
     Validator m_validator;
 
     Changed m_changed;
-
-    WidgetFactory m_editorFactory;
 
     bool m_correcting;
 
