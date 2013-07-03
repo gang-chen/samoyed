@@ -204,7 +204,7 @@ void createEditor(GtkAction *action, Samoyed::Window *window)
 void moveEditorDown(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
-    if (editorGroup.childCount() > 0)
+    if (editorGroup.childCount() > 1)
     {
         Samoyed::Editor &editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild());
@@ -219,7 +219,7 @@ void moveEditorDown(GtkAction *action, Samoyed::Window *window)
 void moveEditorRight(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
-    if (editorGroup.childCount() > 0)
+    if (editorGroup.childCount() > 1)
     {
         Samoyed::Editor &editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild());
@@ -455,8 +455,20 @@ gboolean Actions::updateSensitivity(gpointer actions)
             gtk_action_set_sensitive(a->action(ACTION_REDO), FALSE);
 
         gtk_action_set_sensitive(a->action(ACTION_CREATE_EDITOR), TRUE);
-        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN), TRUE);
-        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT), TRUE);
+        if (editorGroup.childCount() > 1)
+        {
+            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN),
+                                     TRUE);
+            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT),
+                                     TRUE);
+        }
+        else
+        {
+            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN),
+                                     FALSE);
+            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT),
+                                     FALSE);
+        }
         gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_VERTICALLY),
                                  TRUE);
         gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_HORIZONTALLY),

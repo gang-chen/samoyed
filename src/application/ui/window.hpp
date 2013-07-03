@@ -182,10 +182,11 @@ public:
      * @param id The identifier of the widget.
      * @param index The index of the widget among the children of the side pane.
      * @param factory The widget factory.
+     * @param menuTitle The title of the menu item.
      */
     void registerSidePaneChild(const char *paneId, const char *id, int index,
                                const WidgetFactory &factory,
-                               const char *title);
+                               const char *menuTitle);
 
     /**
      * Unregister a child of a side pane.  If the child is opened, close it

@@ -17,8 +17,7 @@ public:
 protected:
     virtual ~TerminalPlugin();
 
-    virtual Extension *createExtension(const char *extensionId,
-                                       ExtensionPoint &extensionPoint);
+    virtual Extension *createExtension(const char *extensionId);
 
     virtual bool completed() const { return true; }
 };

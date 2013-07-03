@@ -10,13 +10,13 @@ libui_la_SOURCES = \
     notebook.cpp \
     paned.cpp \
     project.cpp \
-    property-tree.cpp \
     session.cpp \
     source-editor.cpp \
     source-file.cpp \
     splash-screen.cpp \
     text-editor.cpp \
     text-file.cpp \
+    view.cpp \
     views-extension-point.cpp \
     widget.cpp \
     widget-container.cpp \
@@ -30,13 +30,13 @@ libui_la_SOURCES = \
     notebook.hpp \
     paned.hpp \
     project.hpp \
-    property-tree.hpp \
     session.hpp \
     source-editor.hpp \
     source-file.hpp \
     splash-screen.hpp \
     text-editor.hpp \
     text-file.hpp \
+    view.hpp \
     view-extension.hpp \
     views-extension-point.hpp \
     widget.hpp \

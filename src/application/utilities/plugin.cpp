@@ -86,8 +86,7 @@ bool Plugin::deactivate()
     return false;
 }
 
-Extension *Plugin::acquireExtension(const char *extensionId,
-                                    ExtensionPoint &extensionPoint)
+Extension *Plugin::acquireExtension(const char *extensionId)
 {
     ExtensionTable::const_iterator it = m_extensionTable.find(extensionId);
     if (it != m_extensionTable.end())
@@ -95,7 +94,7 @@ Extension *Plugin::acquireExtension(const char *extensionId,
         ++m_nActiveExtensions;
         return it->second;
     }
-    Extension *ext = createExtension(extensionId, extensionPoint);
+    Extension *ext = createExtension(extensionId);
     if (!ext)
         return NULL;
     m_extensionTable.insert(std::make_pair(ext->id(), ext));

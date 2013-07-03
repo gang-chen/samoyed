@@ -43,7 +43,7 @@ public:
     PropertyTree(const char *name, const boost::spirit::hold_any &defaultValue);
     ~PropertyTree();
 
-    template<typename T> PropertyTree(const char *name, T &defaultValue):
+    template<class T> PropertyTree(const char *name, const T &defaultValue):
         PropertyTree(name, boost::spirit::hold_any(defaultValue))
     {}
 
@@ -56,11 +56,11 @@ public:
     bool reset(bool correct, std::list<std::string> &errors)
     { return set(m_defaultValue, correct, errors); }
 
-    template<typename T> const T &get() const
+    template<class T> const T &get() const
     { return boost::spirit::any_cast<T>(get()); }
-    template<typename T> bool set(T &value,
-                                  bool correct,
-                                  std::list<std::string> &errors)
+    template<class T> bool set(const T &value,
+                               bool correct,
+                               std::list<std::string> &errors)
     { return set(boost::spirit::hold_any(value), correct, errors); }
 
     void addChild(PropertyTree &child);
@@ -73,12 +73,12 @@ public:
              std::list<std::string> &errors);
     bool reset(const char *path, bool correct, std::list<std::string> &errors);
 
-    template<typename T> const T &get(const char *path) const
+    template<class T> const T &get(const char *path) const
     { return boost::spirit::any_cast<T>(get(path)); }
-    template<typename T> bool set(const char *path,
-                                  const T &value,
-                                  bool correct,
-                                  std::list<std::string> &errors)
+    template<class T> bool set(const char *path,
+                               const T &value,
+                               bool correct,
+                               std::list<std::string> &errors)
     { return set(path, boost::spirit::hold_any(value), correct, errors); }
 
     bool set(const std::list<std::pair<const char *,
@@ -98,8 +98,8 @@ public:
 
     PropertyTree &addChild(const char *path)
     { return addChild(path, boost::spirit::hold_any()); }
-    template<typename T> PropertyTree &addChild(const char *path,
-                                                const T &defaultValue)
+    template<class T> PropertyTree &addChild(const char *path,
+                                             const T &defaultValue)
     { return addChild(path, boost::spirit::hold_any(defaultValue)); }
 
     PropertyTree *parent() { return m_parent; }
@@ -110,8 +110,9 @@ public:
 
     boost::signals2::connection addObserver(const Changed::slot_type &observer);
 
-    void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> &errors);
-    xmlNodePtr writeXmlElement() const;
+    void readXmlElement(xmlNodePtr xmlNode, bool skipNonLeafValues,
+                        std::list<std::string> &errors);
+    xmlNodePtr writeXmlElement(bool skipNonLeafValues) const;
 
 private:
     const std::string m_name;

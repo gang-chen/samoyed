@@ -7,6 +7,7 @@ libutilities_la_SOURCES = \
     miscellaneous.cpp \
     plugin.cpp \
     plugin-manager.cpp \
+    property-tree.cpp \
     revision.cpp \
     signal.cpp \
     text-buffer.cpp \
@@ -27,6 +28,7 @@ libutilities_la_SOURCES = \
     miscellaneous.hpp \
     plugin.hpp \
     plugin-manager.hpp \
+    property-tree.hpp \
     range.hpp \
     revision.hpp \
     scheduler.hpp \

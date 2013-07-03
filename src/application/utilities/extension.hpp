@@ -11,7 +11,6 @@ namespace Samoyed
 {
 
 class Plugin;
-class ExtensionPoint;
 
 /**
  * An extension is an interface provided by a plugin and called by an extension
@@ -24,15 +23,13 @@ class ExtensionPoint;
 class Extension: public boost::noncopyable
 {
 public:
-    Extension(const char *id, Plugin &plugin, ExtensionPoint &extensionPoint):
-        m_plugin(plugin), m_id(id), m_extensionPoint(extensionPoint)
+    Extension(const char *id, Plugin &plugin):
+        m_plugin(plugin), m_id(id)
     {}
 
     virtual ~Extension() {}
 
     const char *id() const { return m_id.c_str(); }
-
-    ExtensionPoint &extensionPoint() const { return m_extensionPoint; }
 
     void release();
 
@@ -41,8 +38,6 @@ protected:
 
 private:
     const std::string m_id;
-
-    ExtensionPoint &m_extensionPoint;
 };
 
 }

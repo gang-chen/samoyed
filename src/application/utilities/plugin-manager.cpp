@@ -7,7 +7,6 @@
 #include "plugin-manager.hpp"
 #include "plugin.hpp"
 #include "extension-point-manager.hpp"
-#include "extension-point.hpp"
 #include "miscellaneous.hpp"
 #include <string.h>
 #include <utility>
@@ -26,6 +25,7 @@
 #define MODULE "module"
 #define EXTENSION "extension"
 #define POINT "point"
+#define DETAIL "detail"
 
 namespace
 {
@@ -274,6 +274,9 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                         xmlFree(value);
                     }
                 }
+                else if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                                DETAIL) == 0)
+                    ext->xmlNode = grandChild;
             }
             if (ext->id.empty())
             {
@@ -318,9 +321,30 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                 gtk_widget_destroy(dialog);
                 delete ext;
             }
+            else if (!ext->xmlNode)
+            {
+                GtkWidget *dialog;
+                dialog = gtk_message_dialog_new(
+                    NULL,
+                    GTK_DIALOG_DESTROY_WITH_PARENT,
+                    GTK_MESSAGE_ERROR,
+                    GTK_BUTTONS_CLOSE,
+                    _("Samoyed found an error in plugin manifest file \"%s\"."),
+                    pluginManifestFileName);
+                Samoyed::gtkMessageDialogAddDetails(
+                    dialog,
+                    _("Line %d: Extension detail missing for extension \"%s\"; "
+                      "extension skipped.\n"),
+                    child->line,
+                    ext->id.c_str());
+                gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                                GTK_RESPONSE_CLOSE);
+                gtk_dialog_run(GTK_DIALOG(dialog));
+                gtk_widget_destroy(dialog);
+                delete ext;
+            }
             else
             {
-                ext->xmlNode = child;
                 ext->next = info->extensions;
                 info->extensions = ext;
             }
@@ -463,8 +487,7 @@ void PluginManager::disablePlugin(const char *pluginId)
         it->second->deactivate();
 }
 
-Extension *PluginManager::acquireExtension(const char *extensionId,
-                                           ExtensionPoint &extensionPoint)
+Extension *PluginManager::acquireExtension(const char *extensionId)
 {
     std::string pluginId(extensionId, strrchr(extensionId, '/') - extensionId);
 
@@ -522,7 +545,7 @@ Extension *PluginManager::acquireExtension(const char *extensionId,
     }
 
     // Acquire the extension from the plugin.
-    Extension *ext = plugin->acquireExtension(extensionId, extensionPoint);
+    Extension *ext = plugin->acquireExtension(extensionId);
     if (!ext && newPlugin)
     {
         plugin->addToCache(m_lruCachedPlugin, m_mruCachedPlugin);

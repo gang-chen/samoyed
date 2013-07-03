@@ -1,6 +1,12 @@
 // Property tree.
 // Copyright (C) 2013 Gang Chen.
 
+/*
+UNIT TEST BUILD
+g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0 libxml-2.0` -Werror -Wall -o property-tree
+*/
+
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -12,8 +18,12 @@
 #include <set>
 #include <vector>
 #include <sstream>
-#include <glib.h>
-#include <glib/gi18n-lib.h>
+#ifdef SMYD_PROPERTY_TREE_UNIT_TEST
+# include <assert.h>
+# include <iostream>
+# include <glib/gstdio.h>
+# include <libxml/parser.h>
+#endif
 
 namespace Samoyed
 {
@@ -320,6 +330,7 @@ PropertyTree::addObserver(const Changed::slot_type &observer)
 }
 
 void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
+                                  bool skipNonLeafValues,
                                   std::list<std::string> &errors)
 {
     char *value;
@@ -331,9 +342,11 @@ void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
                 reinterpret_cast<const char *>(child->name));
             if (it == m_children.end())
                 continue;
-            it->second->readXmlElement(child, errors);
+            it->second->readXmlElement(child, skipNonLeafValues, errors);
         }
-        else if (child->type == XML_TEXT_NODE && !m_value.empty())
+        else if (child->type == XML_TEXT_NODE &&
+                 !m_value.empty() &&
+                 (!m_firstChild || !skipNonLeafValues))
         {
             value = reinterpret_cast<char *>(xmlNodeGetContent(child));
             if (value)
@@ -375,13 +388,13 @@ void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
     m_changed(*this);
 }
 
-xmlNodePtr PropertyTree::writeXmlElement() const
+xmlNodePtr PropertyTree::writeXmlElement(bool skipNonLeafValues) const
 {
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(name()));
     for (PropertyTree *child = m_firstChild; child; child = child->m_next)
-        xmlAddChild(node, child->writeXmlElement());
-    if (!m_value.empty())
+        xmlAddChild(node, child->writeXmlElement(skipNonLeafValues));
+    if (!m_value.empty() && (!m_firstChild || !skipNonLeafValues))
     {
         std::ostringstream stream;
         stream << m_value;
@@ -402,3 +415,89 @@ void PropertyTree::resetAll()
 }
 
 }
+
+#ifdef SMYD_PROPERTY_TREE_UNIT_TEST
+
+bool validate(Samoyed::PropertyTree &prop,
+              bool correct,
+              std::list<std::string> &errors)
+{
+    if (prop.get().type() != typeid(int))
+    {
+        if (correct)
+            return prop.reset(false, errors);
+        return false;
+    }
+    if (prop.get<int>() > 1000)
+    {
+        if (correct)
+            return prop.set(1000, false, errors);
+        return false;
+    }
+    return true;
+}
+
+void onChanged(const Samoyed::PropertyTree &prop)
+{
+    std::cout << "Property " << prop.name() << " changed to " << prop.get() <<
+        "\n";
+}
+
+int main()
+{
+    std::list<std::string> errors;
+    Samoyed::PropertyTree *tree = new Samoyed::PropertyTree("l1");
+    tree->addChild("l2").addChild("l3.1", 100);
+    tree->child("l2").addChild("l3.2", 200);
+    tree->addChild("l2/l3.3", 300);
+    tree->addChild("l2/l3.s", std::string());
+
+    assert(tree->child("l2/l3.1").get<int>() == 100);
+    assert(tree->child("l2/l3.2").get<int>() == 200);
+    assert(tree->child("l2/l3.3").get<int>() == 300);
+    assert(tree->child("l2/l3.s").get<std::string>() == "");
+
+    tree->child("l2/l3.1").setValidator(validate);
+    tree->child("l2/l3.2").setValidator(validate);
+    tree->child("l2/l3.3").setValidator(validate);
+    tree->child("l2/l3.1").addObserver(onChanged);
+    tree->child("l2/l3.2").addObserver(onChanged);
+    tree->child("l2/l3.3").addObserver(onChanged);
+
+    tree->set("l2/l3.1", 200, false, errors);
+    tree->set("l2/l3.2", 2000, false, errors);
+    tree->set("l2/l3.3", 3000, true, errors);
+    tree->set("l2/l3.s", std::string("one two three"), false, errors);
+
+    assert(tree->child("l2/l3.1").get<int>() == 200);
+    assert(tree->child("l2/l3.2").get<int>() == 200);
+    assert(tree->child("l2/l3.3").get<int>() == 1000);
+    assert(tree->child("l2/l3.s").get<std::string>() == "one two three");
+
+    xmlNodePtr node = tree->writeXmlElement(true);
+    xmlDocPtr doc = xmlNewDoc(reinterpret_cast<const xmlChar *>("1.0"));
+    xmlDocSetRootElement(doc, node);
+    xmlSaveFormatFile("property-tree-test.xml", doc, 1);
+    xmlFreeDoc(doc);
+
+    tree->resetAll();
+    assert(tree->child("l2/l3.1").get<int>() == 100);
+    assert(tree->child("l2/l3.2").get<int>() == 200);
+    assert(tree->child("l2/l3.3").get<int>() == 300);
+    assert(tree->child("l2/l3.s").get<std::string>() == "");
+
+    doc = xmlParseFile("property-tree-test.xml");
+    node = xmlDocGetRootElement(doc);
+    tree->readXmlElement(node, true, errors);
+    xmlFreeDoc(doc);
+    g_unlink("property-tree-test.xml");
+
+    assert(tree->child("l2/l3.1").get<int>() == 200);
+    assert(tree->child("l2/l3.2").get<int>() == 200);
+    assert(tree->child("l2/l3.3").get<int>() == 1000);
+    assert(tree->child("l2/l3.s").get<std::string>() == "one two three");
+
+    delete tree;
+}
+
+#endif

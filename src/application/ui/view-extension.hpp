@@ -5,21 +5,20 @@
 #define SMYD_VIEW_EXTENSION_HPP
 
 #include "../utilities/extension.hpp"
-#include "widget.hpp"
 
 namespace Samoyed
 {
 
+class View;
+
 class ViewExtension: public Extension
 {
 public:
-    ViewExtension(const char *id,
-                  Plugin &plugin,
-                  ExtensionPoint &extensionPoint):
-        Extension(id, plugin, extensionPoint)
+    ViewExtension(const char *id, Plugin &plugin):
+        Extension(id, plugin)
     {}
 
-    virtual Widget *createView() = 0;
+    virtual View *createView() = 0;
 };
 
 }

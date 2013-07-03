@@ -8,11 +8,11 @@
 #include "project.hpp"
 #include "window.hpp"
 #include "widget-with-bars.hpp"
-#include "property-tree.hpp"
 #include "bars/file-recovery-bar.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/lock-file.hpp"
+#include "../utilities/property-tree.hpp"
 #include "../utilities/scheduler.hpp"
 #include <assert.h>
 #include <errno.h>
@@ -143,13 +143,13 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
                         PREFERENCES) == 0)
         {
             Samoyed::Application::instance().preferences().
-                readXmlElement(child, errors);
+                readXmlElement(child, true, errors);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         HISTORIES) == 0)
         {
             Samoyed::Application::instance().histories().
-                readXmlElement(child, errors);
+                readXmlElement(child, true, errors);
         }
     }
     if (session->m_windows.empty())
@@ -187,10 +187,10 @@ xmlNodePtr XmlElementSession::write() const
         xmlAddChild(windows, (*it)->write());
     xmlAddChild(node, windows);
     xmlNodePtr prefs =
-        Samoyed::Application::instance().preferences().writeXmlElement();
+        Samoyed::Application::instance().preferences().writeXmlElement(true);
     xmlAddChild(node, prefs);
     xmlNodePtr hists =
-        Samoyed::Application::instance().histories().writeXmlElement();
+        Samoyed::Application::instance().histories().writeXmlElement(true);
     xmlAddChild(node, hists);
     return node;
 }

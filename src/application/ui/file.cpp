@@ -8,12 +8,12 @@
 #include "editor.hpp"
 #include "window.hpp"
 #include "notebook.hpp"
-#include "property-tree.hpp"
 #include "../application.hpp"
 #include "../utilities/miscellaneous.hpp"
 #include "../utilities/file-loader.hpp"
 #include "../utilities/file-saver.hpp"
 #include "../utilities/scheduler.hpp"
+#include "../utilities/property-tree.hpp"
 #include <assert.h>
 #include <string.h>
 #include <utility>
@@ -235,10 +235,10 @@ void File::openByDialog(Project *project,
             NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 
-    std::string lastDir = Application::instance().histories().
-        get<std::string>(DIRECTORY_WHERE_FILE_OPENED);
-    gtk_file_chooser_set_current_folder_uri(GTK_FILE_CHOOSER(dialog),
-                                            lastDir.c_str());
+    gtk_file_chooser_set_current_folder_uri(
+        GTK_FILE_CHOOSER(dialog),
+        Application::instance().histories().
+        get<std::string>(DIRECTORY_WHERE_FILE_OPENED).c_str());
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *newEditorButton = gtk_check_button_new_with_mnemonic(
@@ -723,7 +723,7 @@ void File::redo()
     Edit *edit = m_redoHistory.top();
     m_redoHistory.pop();
     Edit *undo = edit->execute(*this);
-    m_redoHistory.push(undo);
+    m_undoHistory.push(undo);
     increaseEditCount();
 }
 

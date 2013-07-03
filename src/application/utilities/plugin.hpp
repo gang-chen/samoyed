@@ -15,7 +15,6 @@ namespace Samoyed
 
 class PluginManager;
 class Extension;
-class ExtensionPoint;
 
 /**
  * A plugin adds functionality to the host application or plugins.  A plugin
@@ -42,8 +41,7 @@ public:
      */
     bool deactivate();
 
-    Extension *acquireExtension(const char *extensionId,
-                                ExtensionPoint &extensionPoint);
+    Extension *acquireExtension(const char *extensionId);
 
     void releaseExtension(Extension &extension);
 
@@ -59,8 +57,7 @@ protected:
 
     virtual ~Plugin();
 
-    virtual Extension *createExtension(const char *extensionId,
-                                       ExtensionPoint &extensionPoint) = 0;
+    virtual Extension *createExtension(const char *extensionId) = 0;
 
     virtual bool completed() const = 0;
 

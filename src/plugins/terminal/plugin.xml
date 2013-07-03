@@ -6,14 +6,17 @@
   <extension>
     <id>view</id>
     <point>views</point>
-    <category>tool</category>
-    <index>10</index>
-    <view>
-      <id>terminal</id>
-      <title>_Terminal</title>
-    </view>
-    <menu-item>
-      <title>_Terminal</title>
-    </menu-item>
+    <detail>
+      <category>tool</category>
+      <index>10</index>
+      <open-by-default>0</open-by-default>
+      <view>
+        <id>terminal</id>
+        <title>_Terminal</title>
+      </view>
+      <menu-item>
+        <title>_Terminal</title>
+      </menu-item>
+    </detail>
   </extension>
 </plugin>

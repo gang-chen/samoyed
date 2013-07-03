@@ -16,7 +16,6 @@ namespace Samoyed
 class ExtensionPointManager;
 class Plugin;
 class Extension;
-class ExtensionPoint;
 
 class PluginManager: public boost::noncopyable
 {
@@ -30,6 +29,7 @@ public:
             std::string pointId;
             xmlNodePtr xmlNode;
             ExtensionInfo *next;
+            ExtensionInfo(): xmlNode(NULL) {}
         };
 
         bool unregister;
@@ -81,8 +81,7 @@ public:
      * Acquire an extension.  If the plugin that provides the extension is
      * inactive, activate it.
      */
-    Extension *acquireExtension(const char *extensionId,
-                                ExtensionPoint &extensionPoint);
+    Extension *acquireExtension(const char *extensionId);
 
     /**
      * Deactivate a plugin.  This function can be called by the plugin itself

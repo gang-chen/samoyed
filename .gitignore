@@ -92,6 +92,7 @@ src/application/utilities/buffer
 src/application/utilities/lock-file
 src/application/utilities/manager
 src/application/utilities/miscellaneous
+src/application/utilities/property-tree
 src/application/utilities/range
 src/application/utilities/revision
 src/application/utilities/signal

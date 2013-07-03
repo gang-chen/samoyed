@@ -4,15 +4,15 @@
 #ifndef SMYD_VIEW_HPP
 #define SMYD_VIEW_HPP
 
-#include "widget-container.hpp"
+#include "widget.hpp"
 
 namespace Samoyed
 {
 
-class View: public WidgetContainer
+class View: public Widget
 {
 public:
-    class XmlElement: public WidgetContainer::XmlElement
+    class XmlElement: public Widget::XmlElement
     {
     public:
         static void registerReader();

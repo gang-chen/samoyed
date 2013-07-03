@@ -54,15 +54,27 @@ bool TextFile::Insertion::merge(const File::EditPrimitive *edit)
     const char *cp = ins->m_text.c_str();
     int line = ins->m_line;
     int column = ins->m_column;
-    while (cp)
+    while (*cp)
     {
         if (*cp == '\n')
         {
+            ++cp;
             ++line;
             column = 0;
         }
-        cp += Utf8::length(cp);
-        ++column;
+        else if (*cp == '\r')
+        {
+            ++cp;
+            if (*cp == '\n')
+                ++cp;
+            ++line;
+            column = 0;
+        }
+        else
+        {
+            cp += Utf8::length(cp);
+            ++column;
+        }
     }
     if (m_line == line && m_column == column)
     {
@@ -248,14 +260,15 @@ TextFile::insertOnly(int line, int column, const char *text, int length)
     {
         if (*cp == '\n')
         {
-            cp = Utf8::begin(cp - 1);
-            if (*cp == '\r')
-                cp = Utf8::begin(cp - 1);
+            --cp;
+            if (cp >= text && *cp == '\r')
+                --cp;
             nLines++;
+            break;
         }
         if (*cp == '\r')
         {
-            cp = Utf8::begin(cp - 1);
+            --cp;
             nLines++;
             break;
         }
@@ -266,17 +279,18 @@ TextFile::insertOnly(int line, int column, const char *text, int length)
     {
         if (*cp == '\n')
         {
-            cp = Utf8::begin(cp - 1);
-            if (*cp == '\r')
-                cp = Utf8::begin(cp - 1);
+            --cp;
+            if (cp >= text && *cp == '\r')
+                --cp;
             nLines++;
         }
-        if (*cp == '\r')
+        else if (*cp == '\r')
         {
-            cp = Utf8::begin(cp - 1);
+            --cp;
             nLines++;
-            break;
         }
+        else
+            cp = Utf8::begin(cp - 1);
     }
     int newLine, newColumn;
     newLine = line + nLines;

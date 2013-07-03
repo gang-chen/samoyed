@@ -5,7 +5,6 @@
 # include <config.h>
 #endif
 #include "application.hpp"
-#include "ui/property-tree.hpp"
 #include "ui/session.hpp"
 #include "ui/project.hpp"
 #include "ui/file.hpp"
@@ -17,6 +16,7 @@
 #include "utilities/plugin-manager.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/signal.hpp"
+#include "utilities/property-tree.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
 #include "ui/text-file.hpp"
 #include "ui/source-file.hpp"

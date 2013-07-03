@@ -1030,7 +1030,7 @@ void Window::onSidePaneVisibilityChanged(GtkWidget *pane,
 void Window::registerSidePaneChild(const char *paneId,
                                    const char *id, int index,
                                    const WidgetFactory &factory,
-                                   const char *title)
+                                   const char *menuTitle)
 {
     const WidgetContainer *pane =
         static_cast<const WidgetContainer *>(findSidePane(paneId));
@@ -1047,7 +1047,7 @@ void Window::registerSidePaneChild(const char *paneId,
     actionName += '.';
     actionName += id;
 
-    std::string menuTooltip(title);
+    std::string menuTooltip(menuTitle);
     menuTooltip.erase(std::remove(menuTooltip.begin(), menuTooltip.end(), '_'),
                       menuTooltip.end());
     std::transform(menuTooltip.begin(), menuTooltip.end(), menuTooltip.begin(),
@@ -1055,7 +1055,7 @@ void Window::registerSidePaneChild(const char *paneId,
     menuTooltip.insert(0, _("Open or close "));
 
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
-                                                    title,
+                                                    menuTitle,
                                                     menuTooltip.c_str(),
                                                     NULL);
     gtk_toggle_action_set_active(action, pane->findChild(id) ? TRUE : FALSE);

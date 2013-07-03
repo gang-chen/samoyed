@@ -6,8 +6,8 @@
 #endif
 #include "text-editor.hpp"
 #include "text-file.hpp"
-#include "property-tree.hpp"
 #include "../utilities/miscellaneous.hpp"
+#include "../utilities/property-tree.hpp"
 #include "../application.hpp"
 #include <string.h>
 #include <list>
@@ -27,10 +27,12 @@
 #define CURSOR_LINE "cursor-line"
 #define CURSOR_COLUMN "cursor-column"
 #define FONT "font"
+#define TAB_WIDTH "tab-width"
 
 #define SCROLL_MARGIN 0.02
 
 #define DEFAULT_FONT "Monospace"
+#define DEFAULT_TAB_WIDTH 8
 
 namespace
 {
@@ -50,6 +52,21 @@ void setFont(GtkWidget *view, const char *font)
     PangoFontDescription *fontDesc = pango_font_description_from_string(font);
     gtk_widget_override_font(view, fontDesc);
     pango_font_description_free(fontDesc);
+}
+
+void setTabWidth(GtkWidget *view, int tabWidth)
+{
+    int realTabWidth;
+    std::string tabString(' ', tabWidth);
+    PangoLayout *layout = gtk_widget_create_pango_layout(view,
+                                                         tabString.c_str());
+    pango_layout_get_pixel_size(layout, &realTabWidth, NULL);
+    g_object_unref(layout);
+
+    PangoTabArray *tabArray = pango_tab_array_new(1, TRUE);
+    pango_tab_array_set_tab(tabArray, 0, PANGO_TAB_LEFT, realTabWidth);
+    gtk_text_view_set_tabs(GTK_TEXT_VIEW(view), tabArray);
+    pango_tab_array_free(tabArray);
 }
 
 }
@@ -263,9 +280,9 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     g_object_unref(buffer);
     gtk_container_add(GTK_CONTAINER(sw), view);
     setGtkWidget(sw);
-    std::string font = Application::instance().preferences().
-        get<std::string>(TEXT_EDITOR "/" FONT);
-    setFont(view, font.c_str());
+    const PropertyTree &prefs = Application::instance().preferences();
+    setFont(view, prefs.get<std::string>(TEXT_EDITOR "/" FONT).c_str());
+    setTabWidth(view, prefs.get<int>(TEXT_EDITOR "/" TAB_WIDTH));
     gtk_widget_show_all(sw);
     return true;
 }
@@ -530,6 +547,7 @@ void TextEditor::installPreferences()
     PropertyTree &prop = Application::instance().preferences().
         addChild(TEXT_EDITOR);
     prop.addChild(FONT, std::string(DEFAULT_FONT));
+    prop.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
 }
 
 }

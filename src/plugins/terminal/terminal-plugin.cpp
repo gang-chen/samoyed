@@ -18,8 +18,7 @@ TerminalPlugin::~TerminalPlugin()
 {
 }
 
-Extension *TerminalPlugin::createExtension(const char *extensionId,
-                                           ExtensionPoint &extensionPoint)
+Extension *TerminalPlugin::createExtension(const char *extensionId)
 {
     return NULL;
 }
