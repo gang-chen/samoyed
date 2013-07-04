@@ -28,7 +28,11 @@ public:
         std::string viewTitle;
         std::string menuTitle;
         bool openByDefault;
-        ExtensionInfo(const char *extensionId): id(extensionId) {}
+        ExtensionInfo(const char *extensionId):
+            id(extensionId),
+            viewIndex(10),
+            openByDefault(false)
+        {}
     };
 
     ViewsExtensionPoint();
