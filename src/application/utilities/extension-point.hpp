@@ -22,6 +22,8 @@ class ExtensionPoint: public boost::noncopyable
 public:
     ExtensionPoint(const char *id): m_id(id) {}
 
+    virtual ~ExtensionPoint() {}
+
     const char *id() const { return m_id.c_str(); }
 
     virtual bool registerExtension(const char *extensionId,
