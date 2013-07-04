@@ -13,9 +13,12 @@
 #include "../utilities/plugin-manager.hpp"
 #include <list>
 #include <string>
+#include <utility>
 #include <boost/ref.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <glib.h>
+#include <glib/gi18n-lib.h>
 #include <libxml/tree.h>
 
 #define VIEWS "views"
@@ -66,19 +69,25 @@ ViewsExtensionPoint::ViewsExtensionPoint():
 {
     Application::instance().extensionPointManager().
         registerExtensionPoint(*this);
+
+    m_createdConnection = Window::addCreatedCallback(boost::bind(
+        &ViewsExtensionPoint::registerAllExtensions, this, _1));
+    m_restoredConnection = Window::addRestoredCallback(boost::bind(
+        &ViewsExtensionPoint::registerAllExtensions, this, _1));
 }
 
 ViewsExtensionPoint::~ViewsExtensionPoint()
 {
-    for (ExtensionMap::iterator it = m_extensions.begin();
+    for (ExtensionTable::iterator it = m_extensions.begin();
          it != m_extensions.end();)
     {
-        ExtensionMap::iterator it2 = it;
+        ExtensionTable::iterator it2 = it;
         ++it;
-        ExtensionInfo *ext = it2->second;
-        m_extensions.erase(it2);
-        delete ext;
+        unregisterExtension(it2->first);
     }
+
+    m_createdConnection.disconnect();
+    m_restoredConnection.disconnect();
 
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);
@@ -86,7 +95,7 @@ ViewsExtensionPoint::~ViewsExtensionPoint()
 
 void ViewsExtensionPoint::registerAllExtensions(Window &window)
 {
-    for (ExtensionMap::const_iterator it = m_extensions.begin();
+    for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
         registerExtensionInternally(window, *it->second);
@@ -96,10 +105,9 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                                             xmlNodePtr xmlNode,
                                             std::list<std::string> &errors)
 {
-    char *value;
-
     // Parse the extension.
     ExtensionInfo *ext = new ExtensionInfo(extensionId);
+    char *value, *cp;
     for (xmlNodePtr child = xmlNode->children; child; child = child->next)
     {
         if (child->type != XML_ELEMENT_NODE)
@@ -211,19 +219,24 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 }
             }
         }
-    }
 
-    // Register the view to each window.
+        if (ext->menuTitle.empty())
+            ext->menuTitle = ext->viewTitle;
+        if (ext->paneId.empty() ||
+            ext->viewId.empty() ||
+            ext->viewTitle.empty())
+        {
+            delete ext;
+            return false;
+        }
+    }
+    m_extensions.insert(std::make_pair(ext->id.c_str(), ext));
+
+    // Register the view to each existing window.
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
         registerExtensionInternally(*window, *ext);
-
-    // Register the view for future windows.
-    Window::addCreatedCallback(boost::bind(
-        &ViewsExtensionPoint::registerAllExtensions, this, _1));
-    Window::addRestoredCallback(boost::bind(
-        &ViewsExtensionPoint::registerAllExtensions, this, _1));
 
     return true;
 }
