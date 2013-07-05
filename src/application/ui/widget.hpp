@@ -154,7 +154,7 @@ public:
     /**
      * Close this widget.
      */
-    virtual bool close() = 0;
+    virtual bool close();
 
     /**
      * Save the information on this widget in an XML element.

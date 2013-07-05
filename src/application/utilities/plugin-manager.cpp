@@ -30,7 +30,11 @@
 namespace
 {
 
-const int CACHE_SIZE = 8;
+gboolean destroyPlugin(gpointer plugin)
+{
+    static_cast<Samoyed::Plugin *>(plugin)->destroy();
+    return FALSE;
+}
 
 }
 
@@ -554,7 +558,8 @@ Extension *PluginManager::acquireExtension(const char *extensionId)
             Plugin *p = m_lruCachedPlugin;
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
-            p->destroy();
+            // Defer destroying the plugin.
+            g_idle_add(destroyPlugin, p);
             --m_nCachedPlugins;
         }
     }
@@ -568,7 +573,8 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
 
     // Cache the plugin only if it can be reused later.
     if (info->unregister || !info->enabled)
-        plugin.destroy();
+        // Defer destroying the plugin.
+        g_idle_add(destroyPlugin, &plugin);
     else
     {
         plugin.addToCache(m_lruCachedPlugin, m_mruCachedPlugin);
@@ -577,7 +583,8 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
             Plugin *p = m_lruCachedPlugin;
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
-            p->destroy();
+            // Defer destroying the plugin.
+            g_idle_add(destroyPlugin, p);
             --m_nCachedPlugins;
         }
     }

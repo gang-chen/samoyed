@@ -10,8 +10,8 @@
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
 #include "editor.hpp"
-#include "../application.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "application.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -238,7 +238,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     cp = g_strdup_printf(
                         _("Line %d: Invalid Boolean value \"%s\" for element "
                           "\"%s\". %s.\n"),
-                          child->line, value, IN_FULL_SCREEN, exp.what());
+                        child->line, value, IN_FULL_SCREEN, exp.what());
                     errors.push_back(cp);
                     g_free(cp);
                 }
@@ -961,7 +961,6 @@ void Window::createMenuItemForSidePane(Widget &pane)
                                         NULL,
                                         NULL);
     gtk_action_group_add_action(m_actions->actionGroup(), action2);
-
     g_object_unref(action2);
 
     gtk_ui_manager_add_ui(m_uiManager,
@@ -970,6 +969,25 @@ void Window::createMenuItemForSidePane(Widget &pane)
                           actionName2.c_str(),
                           actionName2.c_str(),
                           GTK_UI_MANAGER_MENU,
+                          FALSE);
+
+    std::string uiPath("/main-menu-bar/view/side-panes/");
+    uiPath += actionName2;
+    std::string placeHolder("placeholder1");
+    for (int i = 1; i < 10; ++i, ++*placeHolder.rbegin())
+        gtk_ui_manager_add_ui(m_uiManager,
+                              mergeId,
+                              uiPath.c_str(),
+                              placeHolder.c_str(),
+                              NULL,
+                              GTK_UI_MANAGER_PLACEHOLDER,
+                              FALSE);
+    gtk_ui_manager_add_ui(m_uiManager,
+                          mergeId,
+                          uiPath.c_str(),
+                          "placeholder-ext",
+                          NULL,
+                          GTK_UI_MANAGER_PLACEHOLDER,
                           FALSE);
 
     pane.addClosedCallback(boost::bind(&Window::onSidePaneClosed, this, _1));
@@ -1044,7 +1062,7 @@ void Window::registerSidePaneChild(const char *paneId,
 
     std::string actionName("open-close-");
     actionName += paneId;
-    actionName += '.';
+    actionName += '+';
     actionName += id;
 
     std::string menuTooltip(menuTitle);
@@ -1066,7 +1084,14 @@ void Window::registerSidePaneChild(const char *paneId,
 
     std::string uiPath("/main-menu-bar/view/side-panes/");
     uiPath += paneId;
-    uiPath += "-children";
+    uiPath += "-children/";
+    if (index > 9)
+        uiPath += "placeholder-ext";
+    else
+    {
+        uiPath += "placeholder1";
+        *uiPath.rbegin() += index - 1;
+    }
     guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
                           mergeId,
@@ -1075,7 +1100,6 @@ void Window::registerSidePaneChild(const char *paneId,
                           actionName.c_str(),
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
-
     data->action = action;
     data->uiMergeId = mergeId;
 
@@ -1146,8 +1170,8 @@ void Window::onSidePaneChildClosed(const Widget &paneChild, const Widget &pane)
 
 void Window::openCloseSidePaneChild(GtkToggleAction *action, Window *window)
 {
-    char *paneId = strdup(gtk_action_get_name(GTK_ACTION(action)) + 10);
-    char *childId = strchr(paneId, '.');
+    char *paneId = strdup(gtk_action_get_name(GTK_ACTION(action)) + 11);
+    char *childId = strchr(paneId, '+');
     assert(childId);
     *childId = '\0';
     ++childId;

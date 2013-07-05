@@ -57,15 +57,29 @@ PKG_CHECK_MODULES([GMODULE], [gmodule-2.0 >= 2.32.0])
 PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
 
-SAMOYED_LIBS="\$(top_builddir)/src/application/libsamoyed.la"
+SAMOYED_CPPFLAGS="-I\$(top_srcdir) -I\$(top_srcdir)/src/application $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS"
+AC_SUBST(SAMOYED_CPPFLAGS)
+
+SAMOYED_CXXFLAGS="-Werror -Wall"
+AC_SUBST(SAMOYED_CXXFLAGS)
+
+SAMOYED_LIBS="$BOOST_THREAD_LIB $BOOST_REGEX_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS"
 AC_SUBST(SAMOYED_LIBS)
 
-SAMOYED_PLUGIN_LDFLAGS="-module -avoid-version"
+SAMOYED_LDFLAGS="$BOOST_LDFLAGS"
+AC_SUBST(SAMOYED_LDFLAGS)
+
+SAMOYED_PLUGIN_LIBS="$SAMOYED_LIBS \$(top_builddir)/src/application/libsamoyed.la"
+AC_SUBST(SAMOYED_PLUGIN_LIBS)
+
+SAMOYED_PLUGIN_LDFLAGS="$SAMOYED_LDFLAGS -module -avoid-version"
 AC_SUBST(SAMOYED_PLUGIN_LDFLAGS)
 
 AC_CONFIG_FILES([
 Makefile
 data/Makefile
+data/plugins/Makefile
+data/plugins/terminal/Makefile
 po/Makefile.in
 src/Makefile
 src/application/Makefile

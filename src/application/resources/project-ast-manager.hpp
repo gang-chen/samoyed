@@ -4,7 +4,7 @@
 #ifndef SMYD_PROJECT_AST_MANAGER_HPP
 #define SMYD_PROJECT_AST_MANAGER_HPP
 
-#include "../utilities/manager.hpp"
+#include "utilities/manager.hpp"
 #include "project-ast.hpp"
 
 namespace Samoyed

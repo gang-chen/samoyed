@@ -6,9 +6,9 @@
 #endif
 #include "text-editor.hpp"
 #include "text-file.hpp"
-#include "../utilities/miscellaneous.hpp"
-#include "../utilities/property-tree.hpp"
-#include "../application.hpp"
+#include "utilities/miscellaneous.hpp"
+#include "utilities/property-tree.hpp"
+#include "application.hpp"
 #include <string.h>
 #include <list>
 #include <map>

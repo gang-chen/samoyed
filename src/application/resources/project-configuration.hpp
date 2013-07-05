@@ -4,9 +4,9 @@
 #ifndef SMYD_PROJECT_CONFIGURATION_HPP
 #define SMYD_PROJECT_CONFIGURATION_HPP
 
-#include "../utilities/managed.hpp"
-#include "../utilities/miscellaneous.hpp"
-#include "../utilities/manager.hpp"
+#include "utilities/managed.hpp"
+#include "utilities/miscellaneous.hpp"
+#include "utilities/manager.hpp"
 #include <string>
 
 namespace Samoyed

@@ -5,7 +5,7 @@
 #define SMYD_PROPERTY_TREE_HPP
 
 #include "miscellaneous.hpp"
-#include "../../../libs/boost/spirit/home/support/detail/hold_any.hpp"
+#include "libs/boost/spirit/home/support/detail/hold_any.hpp"
 #include <list>
 #include <map>
 #include <string>

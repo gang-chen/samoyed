@@ -4,8 +4,8 @@
 #ifndef SMYD_SESSION_HPP
 #define SMYD_SESSION_HPP
 
-#include "../utilities/lock-file.hpp"
-#include "../utilities/worker.hpp"
+#include "utilities/lock-file.hpp"
+#include "utilities/worker.hpp"
 #include <string>
 #include <list>
 #include <set>

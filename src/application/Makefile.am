@@ -7,17 +7,15 @@ libsamoyed_la_SOURCES = \
     application.hpp
 
 libsamoyed_la_CPPFLAGS = \
+    $(SAMOYED_CPPFLAGS) \
     -DSAMOYED_PKGDATADIR=\"$(pkgdatadir)\" \
     -DSAMOYED_PKGLIBDIR=\"$(pkglibdir)\" \
-    -DSAMOYED_LOCALEDIR=\"$(localedir)\" \
-    $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS) \
-    $(XML_CFLAGS)
+    -DSAMOYED_LOCALEDIR=\"$(localedir)\"
 
-libsamoyed_la_CXXFLAGS = -Werror -Wall
+libsamoyed_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)
 
 libsamoyed_la_LDFLAGS = \
-    $(BOOST_LDFLAGS) \
+    $(SAMOYED_LDFLAGS) \
     -avoid-version
 
 libsamoyed_la_LIBADD = \
@@ -26,8 +24,4 @@ libsamoyed_la_LIBADD = \
     ui/bars/libbars.la \
     ui/dialogs/libdialogs.la \
     utilities/libutilities.la \
-    $(BOOST_THREAD_LIB) \
-    $(BOOST_REGEX_LIB) \
-    $(GTK_LIBS) \
-    $(GMODULE_LIBS) \
-    $(XML_LIBS)
+    $(SAMOYED_LIBS)

@@ -7,7 +7,7 @@
 #include "editor.hpp"
 #include "file.hpp"
 #include "project.hpp"
-#include "../application.hpp"
+#include "application.hpp"
 #include <string.h>
 #include <list>
 #include <string>

@@ -47,7 +47,7 @@ public:
 
     void destroy();
 
-    bool cached() const { return m_nextCached; }
+    bool cached() const { return m_cached; }
 
     void addToCache(Plugin *&lru, Plugin *&mru);
     void removeFromCache(Plugin *&lru, Plugin *&mru);
@@ -77,6 +77,7 @@ private:
 
     int m_nActiveExtensions;
 
+    bool m_cached;
     Plugin *m_nextCached;
     Plugin *m_prevCached;
 };

@@ -39,10 +39,6 @@ libutilities_la_SOURCES = \
     utf8.hpp \
     worker.hpp
 
-libutilities_la_CPPFLAGS = \
-    $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS) \
-    $(GMODULE_CFLAGS) \
-    $(XML_CFLAGS)
+libutilities_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
-libutilities_la_CXXFLAGS = -Werror -Wall
+libutilities_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)

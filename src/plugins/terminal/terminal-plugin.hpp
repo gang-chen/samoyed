@@ -14,12 +14,18 @@ class TerminalPlugin: public Plugin
 public:
     TerminalPlugin(PluginManager &manager, const char *id, GModule *module);
 
+    void onViewCreated();
+    void onViewClosed();
+
 protected:
     virtual ~TerminalPlugin();
 
     virtual Extension *createExtension(const char *extensionId);
 
-    virtual bool completed() const { return true; }
+    virtual bool completed() const { return m_viewCount == 0; }
+
+private:
+    int m_viewCount;
 };
 
 }

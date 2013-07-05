@@ -7,11 +7,11 @@
 #include "text-file.hpp"
 #include "text-editor.hpp"
 #include "project.hpp"
-#include "../utilities/utf8.hpp"
-#include "../utilities/text-buffer.hpp"
-#include "../utilities/text-file-loader.hpp"
-#include "../utilities/text-file-saver.hpp"
-#include "../application.hpp"
+#include "utilities/utf8.hpp"
+#include "utilities/text-buffer.hpp"
+#include "utilities/text-file-loader.hpp"
+#include "utilities/text-file-saver.hpp"
+#include "application.hpp"
 #include <algorithm>
 #include <map>
 #include <boost/any.hpp>

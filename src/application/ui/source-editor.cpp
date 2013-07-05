@@ -6,7 +6,7 @@
 #endif
 #include "source-editor.hpp"
 #include "source-file.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <stdlib.h>
 #include <string.h>
 #include <list>

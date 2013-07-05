@@ -5,8 +5,8 @@
 # include <config.h>
 #endif
 #include "actions-extension-point.hpp"
-#include "../application.hpp"
-#include "../utilities/extension-point-manager.hpp"
+#include "application.hpp"
+#include "utilities/extension-point-manager.hpp"
 #include <list>
 #include <string>
 #include <libxml/tree.h>

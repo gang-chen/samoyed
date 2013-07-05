@@ -4,7 +4,7 @@
 #ifndef SMYD_FILE_SOURCE_MANAGER_HPP
 #define SMYD_FILE_SOURCE_MANAGER_HPP
 
-#include "../utilities/manager.hpp"
+#include "utilities/manager.hpp"
 #include "file-source.hpp"
 
 namespace Samoyed

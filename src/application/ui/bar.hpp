@@ -5,7 +5,7 @@
 #define SMYD_BAR_HPP
 
 #include "widget.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "utilities/miscellaneous.hpp"
 
 namespace Samoyed
 {

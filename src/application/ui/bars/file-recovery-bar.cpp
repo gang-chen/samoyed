@@ -5,7 +5,7 @@
 # include <config.h>
 #endif
 #include "file-recovery-bar.hpp"
-#include "../../utilities/miscellaneous.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <set>
 #include <string>
 #include <glib/gi18n-lib.h>

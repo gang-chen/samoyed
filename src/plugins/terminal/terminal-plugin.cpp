@@ -2,6 +2,7 @@
 // Copyright (C) 2013 Gang Chen.
 
 #include "terminal-plugin.hpp"
+#include "terminal-view-extension.hpp"
 #include <gmodule.h>
 
 namespace Samoyed
@@ -10,7 +11,8 @@ namespace Samoyed
 TerminalPlugin::TerminalPlugin(PluginManager &manager,
                                const char *id,
                                GModule *module):
-    Plugin(manager, id, module)
+    Plugin(manager, id, module),
+    m_viewCount(0)
 {
 }
 
@@ -20,7 +22,19 @@ TerminalPlugin::~TerminalPlugin()
 
 Extension *TerminalPlugin::createExtension(const char *extensionId)
 {
-    return NULL;
+    return new TerminalViewExtension(extensionId, *this);
+}
+
+void TerminalPlugin::onViewCreated()
+{
+    ++m_viewCount;
+}
+
+void TerminalPlugin::onViewClosed()
+{
+    --m_viewCount;
+    if (m_viewCount == 0)
+        onCompleted();
 }
 
 }

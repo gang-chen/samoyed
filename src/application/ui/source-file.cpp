@@ -7,10 +7,10 @@
 #include "source-file.hpp"
 #include "source-editor.hpp"
 #include "project.hpp"
-#include "../application.hpp"
-#include "../resources/file-source-manager.hpp"
-#include "../resources/file-source.hpp"
-#include "../utilities/text-file-loader.hpp"
+#include "application.hpp"
+#include "resources/file-source-manager.hpp"
+#include "resources/file-source.hpp"
+#include "utilities/text-file-loader.hpp"
 #include <utility>
 #include <list>
 #include <map>

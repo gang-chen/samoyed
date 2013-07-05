@@ -1,3 +1,5 @@
+SUBDIRS = plugins
+
 dist_pkgdata_DATA = \
     ui.xml \
     splash-screen.png

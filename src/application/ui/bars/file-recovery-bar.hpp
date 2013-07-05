@@ -4,7 +4,7 @@
 #ifndef SMYD_FILE_RECOVERY_BAR_HPP
 #define SMYD_FILE_RECOVERY_BAR_HPP
 
-#include "../bar.hpp"
+#include "ui/bar.hpp"
 #include <set>
 #include <string>
 #include <gtk/gtk.h>

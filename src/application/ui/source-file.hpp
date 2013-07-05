@@ -5,7 +5,7 @@
 #define SMYD_SOURCE_FILE_HPP
 
 #include "text-file.hpp"
-#include "../utilities/manager.hpp"
+#include "utilities/manager.hpp"
 #include <string>
 #include <map>
 #include <boost/any.hpp>

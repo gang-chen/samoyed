@@ -33,6 +33,7 @@ Plugin::Plugin(PluginManager &manager, const char *id, GModule *module):
     m_id(id),
     m_module(module),
     m_nActiveExtensions(0),
+    m_cached(false),
     m_nextCached(NULL),
     m_prevCached(NULL)
 {
@@ -133,6 +134,7 @@ void Plugin::destroy()
 
 void Plugin::addToCache(Plugin *&lru, Plugin *&mru)
 {
+    m_cached = true;
     if (mru)
         mru->m_nextCached = this;
     else
@@ -143,6 +145,7 @@ void Plugin::addToCache(Plugin *&lru, Plugin *&mru)
 
 void Plugin::removeFromCache(Plugin *&lru, Plugin *&mru)
 {
+    m_cached = false;
     if (m_nextCached)
         m_nextCached->m_prevCached = m_prevCached;
     else

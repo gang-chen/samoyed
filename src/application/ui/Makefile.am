@@ -44,9 +44,6 @@ libui_la_SOURCES = \
     widget-with-bars.hpp \
     window.hpp
 
-libui_la_CPPFLAGS = \
-    $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS) \
-    $(XML_CFLAGS)
+libui_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
-libui_la_CXXFLAGS = -Werror -Wall
+libui_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)

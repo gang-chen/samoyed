@@ -5,7 +5,7 @@
 #define SMYD_SCHEDULER_HPP
 
 #include "worker.hpp"
-#include "../../../libs/boost/threadpool.hpp"
+#include "libs/boost/threadpool.hpp"
 #include <stddef.h>
 #include <boost/ref.hpp>
 

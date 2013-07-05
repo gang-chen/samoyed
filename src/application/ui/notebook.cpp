@@ -5,7 +5,7 @@
 # include <config.h>
 #endif
 #include "notebook.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <assert.h>
 #include <string.h>
 #include <list>
@@ -309,15 +309,12 @@ bool Notebook::setup(const char *id, const char *groupName,
     m_createCloseButtons = createCloseButtons;
     m_canDragChildren = canDragChildren;
     m_useUnderline = useUnderline;
-    if (m_canDragChildren)
-    {
-        g_signal_connect(notebook, "page-reordered",
-                         G_CALLBACK(onPageReordered), this);
-        g_signal_connect(notebook, "page-added",
-                         G_CALLBACK(onPageAdded), this);
-        g_signal_connect(notebook, "page-removed",
-                         G_CALLBACK(onPageRemoved), this);
-    }
+    g_signal_connect(notebook, "page-reordered",
+                     G_CALLBACK(onPageReordered), this);
+    g_signal_connect(notebook, "page-added",
+                     G_CALLBACK(onPageAdded), this);
+    g_signal_connect(notebook, "page-removed",
+                     G_CALLBACK(onPageRemoved), this);
     gtk_widget_set_hexpand(notebook, TRUE);
     gtk_widget_set_vexpand(notebook, TRUE);
     setGtkWidget(notebook);
@@ -354,15 +351,12 @@ bool Notebook::restore(XmlElement &xmlElement)
     m_createCloseButtons = xmlElement.createCloseButtons();
     m_canDragChildren = xmlElement.canDragChildren();
     m_useUnderline = xmlElement.useUnderline();
-    if (m_canDragChildren)
-    {
-        g_signal_connect(notebook, "page-reordered",
-                         G_CALLBACK(onPageReordered), this);
-        g_signal_connect(notebook, "page-added",
-                         G_CALLBACK(onPageAdded), this);
-        g_signal_connect(notebook, "page-removed",
-                         G_CALLBACK(onPageRemoved), this);
-    }
+    g_signal_connect(notebook, "page-reordered",
+                     G_CALLBACK(onPageReordered), this);
+    g_signal_connect(notebook, "page-added",
+                     G_CALLBACK(onPageAdded), this);
+    g_signal_connect(notebook, "page-removed",
+                     G_CALLBACK(onPageRemoved), this);
 
     // Explicitly set it to be expandable.
     gtk_widget_set_hexpand(notebook, TRUE);

@@ -8,14 +8,13 @@ g++ manager.cpp -DSMYD_MANAGER_UNIT_TEST -lboost_thread -pthread\
 */
 
 #ifdef SMYD_MANAGER_UNIT_TEST
-
+#include <stdio.h>
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "manager.hpp"
 #include "managed.hpp"
 #include "miscellaneous.hpp"
-#include <stdio.h>
 #include <string>
 #include <boost/thread/thread.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
@@ -37,7 +36,7 @@ const char *persons[10] =
 class Person: public Samoyed::Managed<Person>
 {
 public:
-    typedef Samoyed::ComparablePointer<const char *> Key;
+    typedef Samoyed::ComparablePointer<const char> Key;
     typedef Samoyed::CastableString KeyHolder;
     Key key() const { return m_name.c_str(); }
     const char *name() const { return m_name.c_str(); }

@@ -6,13 +6,13 @@
 #endif
 #include "file-source.hpp"
 #include "project-ast-manager.hpp"
-#include "../application.hpp"
-#include "../ui/source-file.hpp"
-#include "../utilities/range.hpp"
-#include "../utilities/change-hint.hpp"
-#include "../utilities/text-buffer.hpp"
-#include "../utilities/text-file-loader.hpp"
-#include "../utilities/scheduler.hpp"
+#include "application.hpp"
+#include "ui/source-file.hpp"
+#include "utilities/range.hpp"
+#include "utilities/change-hint.hpp"
+#include "utilities/text-buffer.hpp"
+#include "utilities/text-file-loader.hpp"
+#include "utilities/scheduler.hpp"
 #include <assert.h>
 #include <string>
 #include <deque>

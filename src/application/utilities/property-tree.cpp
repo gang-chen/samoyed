@@ -418,6 +418,8 @@ void PropertyTree::resetAll()
 
 #ifdef SMYD_PROPERTY_TREE_UNIT_TEST
 
+int maxValue = 1000;
+
 bool validate(Samoyed::PropertyTree &prop,
               bool correct,
               std::list<std::string> &errors)
@@ -428,10 +430,10 @@ bool validate(Samoyed::PropertyTree &prop,
             return prop.reset(false, errors);
         return false;
     }
-    if (prop.get<int>() > 1000)
+    if (prop.get<int>() > maxValue)
     {
         if (correct)
-            return prop.set(1000, false, errors);
+            return prop.set(maxValue, false, errors);
         return false;
     }
     return true;
@@ -490,11 +492,25 @@ int main()
     node = xmlDocGetRootElement(doc);
     tree->readXmlElement(node, true, errors);
     xmlFreeDoc(doc);
-    g_unlink("property-tree-test.xml");
 
     assert(tree->child("l2/l3.1").get<int>() == 200);
     assert(tree->child("l2/l3.2").get<int>() == 200);
     assert(tree->child("l2/l3.3").get<int>() == 1000);
+    assert(tree->child("l2/l3.s").get<std::string>() == "one two three");
+
+    tree->resetAll();
+
+    maxValue = 500;
+
+    doc = xmlParseFile("property-tree-test.xml");
+    node = xmlDocGetRootElement(doc);
+    tree->readXmlElement(node, true, errors);
+    xmlFreeDoc(doc);
+    g_unlink("property-tree-test.xml");
+
+    assert(tree->child("l2/l3.1").get<int>() == 200);
+    assert(tree->child("l2/l3.2").get<int>() == 200);
+    assert(tree->child("l2/l3.3").get<int>() == 500);
     assert(tree->child("l2/l3.s").get<std::string>() == "one two three");
 
     delete tree;

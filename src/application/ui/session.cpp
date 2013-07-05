@@ -9,11 +9,11 @@
 #include "window.hpp"
 #include "widget-with-bars.hpp"
 #include "bars/file-recovery-bar.hpp"
-#include "../application.hpp"
-#include "../utilities/miscellaneous.hpp"
-#include "../utilities/lock-file.hpp"
-#include "../utilities/property-tree.hpp"
-#include "../utilities/scheduler.hpp"
+#include "application.hpp"
+#include "utilities/miscellaneous.hpp"
+#include "utilities/lock-file.hpp"
+#include "utilities/property-tree.hpp"
+#include "utilities/scheduler.hpp"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>

@@ -271,4 +271,13 @@ void Widget::destroy()
         delete this;
 }
 
+bool Widget::close()
+{
+    if (closing())
+        return true;
+    setClosing(true);
+    destroy();
+    return true;
+}
+
 }

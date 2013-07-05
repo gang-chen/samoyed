@@ -47,7 +47,8 @@ public:
         m_cacheSize(cacheSize),
         m_nCachedObjects(0),
         m_lruCachedObject(NULL),
-        m_mruCachedObject(NULL)
+        m_mruCachedObject(NULL),
+        m_destroy(false)
     {}
 
     /**

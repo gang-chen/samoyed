@@ -20,6 +20,7 @@
 #include "ui/dialogs/session-chooser-dialog.hpp"
 #include "ui/text-file.hpp"
 #include "ui/source-file.hpp"
+#include "ui/view.hpp"
 #include "ui/notebook.hpp"
 #include "ui/paned.hpp"
 #include "ui/widget-with-bars.hpp"
@@ -181,6 +182,7 @@ gboolean Application::startUp(gpointer app)
     // Initialize class data.
     TextFile::registerType();
     SourceFile::registerType();
+    View::XmlElement::registerReader();
     Notebook::XmlElement::registerReader();
     Paned::XmlElement::registerReader();
     WidgetWithBars::XmlElement::registerReader();

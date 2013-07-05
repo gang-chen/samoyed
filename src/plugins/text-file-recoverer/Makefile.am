@@ -1,22 +1,15 @@
 pluginlibdir = $(pkglibdir)/plugins
 
-pluginlib_LTLIBRARIES = libtext-file-recoverer.la
+pluginlib_LTLIBRARIES = libtextfilerecoverer.la
 
-libtext_file_recoverer_la_SOURCES = \
+libtextfilerecoverer_la_SOURCES = \
     text-file-recoverer-plugin.cpp \
     text-file-recoverer-plugin.hpp
 
-libtext_file_recoverer_la_CPPFLAGS = \
-    $(GTK_CFLAGS)
+libtextfilerecoverer_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
-libtext_file_recoverer_la_CXXFLAGS = -Werror -Wall
+libtextfilerecoverer_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)
 
-libtext_file_recoverer_la_LIBADD = \
-    $(GTK_LIBS) \
-    $(SAMOYED_LIBS)
+libtextfilerecoverer_la_LIBADD = $(SAMOYED_PLUGIN_LIBS)
 
-libtext_file_recoverer_la_LDFLAGS = $(SAMOYED_PLUGIN_LDFLAGS)
-
-text_file_recoverer_datadir = $(pkgdatadir)/plugins/text-file-recoverer
-
-tedata_DATA = plugin.xml
+libtextfilerecoverer_la_LDFLAGS = $(SAMOYED_PLUGIN_LDFLAGS)

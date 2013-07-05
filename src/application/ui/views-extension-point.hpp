@@ -4,11 +4,12 @@
 #ifndef SMYD_VIEWS_EXTENSION_POINT_HPP
 #define SMYD_VIEWS_EXTENSION_POINT_HPP
 
-#include "../utilities/extension-point.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "utilities/extension-point.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
 #include <string>
+#include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -47,11 +48,14 @@ public:
 
 private:
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
-        ExtensionMap;
+        ExtensionTable;
 
     void registerAllExtensions(Window &window);
 
-    ExtensionMap m_extensions;
+    ExtensionTable m_extensions;
+
+    boost::signals2::connection m_createdConnection;
+    boost::signals2::connection m_restoredConnection;
 };
 
 }

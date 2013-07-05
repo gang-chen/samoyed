@@ -12,8 +12,6 @@ libresources_la_SOURCES = \
     project-ast.hpp \
     project-configuration.hpp
 
-libresources_la_CPPFLAGS = \
-    $(BOOST_CPPFLAGS) \
-    $(GTK_CFLAGS)
+libresources_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
-libresources_la_CXXFLAGS = -Werror -Wall
+libresources_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)

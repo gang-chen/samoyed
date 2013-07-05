@@ -5,7 +5,7 @@
 #define SMYD_WINDOW_HPP
 
 #include "widget-container.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
 #include <set>

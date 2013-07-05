@@ -8,9 +8,9 @@
 #include "view-extension.hpp"
 #include "view.hpp"
 #include "window.hpp"
-#include "../application.hpp"
-#include "../utilities/extension-point-manager.hpp"
-#include "../utilities/plugin-manager.hpp"
+#include "application.hpp"
+#include "utilities/extension-point-manager.hpp"
+#include "utilities/plugin-manager.hpp"
 #include <list>
 #include <string>
 #include <utility>
@@ -38,10 +38,13 @@ namespace
 Samoyed::Widget *
 createView(const Samoyed::ViewsExtensionPoint::ExtensionInfo &extInfo)
 {
-    Samoyed::ViewExtension *ext = 
+    Samoyed::ViewExtension *ext =
         static_cast<Samoyed::ViewExtension *>(Samoyed::Application::instance().
                 pluginManager().acquireExtension(extInfo.id.c_str()));
-    Samoyed::Widget *widget = ext->createView();
+    if (!ext)
+        return NULL;
+    Samoyed::Widget *widget = ext->createView(extInfo.viewId.c_str(),
+                                              extInfo.viewTitle.c_str());
     ext->release();
     return widget;
 }
@@ -53,7 +56,7 @@ void registerExtensionInternally(
     window.registerSidePaneChild(ext.paneId.c_str(),
                                  ext.viewId.c_str(),
                                  ext.viewIndex,
-                                 boost::bind(&createView, boost::cref(ext)),
+                                 boost::bind(createView, boost::cref(ext)),
                                  ext.menuTitle.c_str());
     if (ext.openByDefault)
         window.openSidePaneChild(ext.paneId.c_str(), ext.viewId.c_str());
@@ -125,6 +128,11 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                     ext->paneId = Window::TOOLS_PANE_ID;
                 else
                 {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid view category \"%s\".\n"),
+                        child->line, value);
+                    errors.push_back(cp);
+                    g_free(cp);
                 }
                 xmlFree(value);
             }
@@ -142,6 +150,12 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
+                          "%s.\n"),
+                        child->line, value, INDEX, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
                 }
                 xmlFree(value);
             }
@@ -159,6 +173,12 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, OPEN_BY_DEFAULT, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
                 }
                 xmlFree(value);
             }
@@ -219,16 +239,19 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 }
             }
         }
+    }
 
-        if (ext->menuTitle.empty())
-            ext->menuTitle = ext->viewTitle;
-        if (ext->paneId.empty() ||
-            ext->viewId.empty() ||
-            ext->viewTitle.empty())
-        {
-            delete ext;
-            return false;
-        }
+    if (ext->menuTitle.empty())
+        ext->menuTitle = ext->viewTitle;
+    if (ext->paneId.empty() || ext->viewId.empty() || ext->viewTitle.empty())
+    {
+        cp = g_strdup_printf(
+            _("Line %d: Incomplete view extension specification.\n"),
+            xmlNode->line);
+        errors.push_back(cp);
+        g_free(cp);
+        delete ext;
+        return false;
     }
     m_extensions.insert(std::make_pair(ext->id.c_str(), ext));
 

@@ -4,7 +4,7 @@
 #ifndef SMYD_ACTIONS_EXTENSION_POINT_HPP
 #define SMYD_ACTIONS_EXTENSION_POINT_HPP
 
-#include "../utilities/extension-point.hpp"
+#include "utilities/extension-point.hpp"
 #include <list>
 #include <string>
 #include <libxml/tree.h>

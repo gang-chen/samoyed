@@ -6,7 +6,7 @@
 
 #include "widget.hpp"
 #include "file.hpp"
-#include "../utilities/miscellaneous.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
 #include <string>
