@@ -4,7 +4,7 @@
 #ifndef SMYD_TERMINAL_VIEW_HPP
 #define SMYD_TERMINAL_VIEW_HPP
 
-#include "../../application/ui/view.hpp"
+#include "ui/view.hpp"
 
 namespace Samoyed
 {
@@ -18,12 +18,19 @@ public:
     static TerminalView *restore(XmlElement &xmlElement,
                                  const char *extensionId);
 
+    virtual void grabFocus();
+
 protected:
-    TerminalView(const char *extensionId): View(extensionId) {}
+    TerminalView(const char *extensionId): View(extensionId), m_terminal(NULL)
+    {}
+
+    bool setupTerminal();
 
     bool setup(const char *id, const char *title);
 
     bool restore(XmlElement &xmlElement);
+
+    GtkWidget *m_terminal;
 };
 
 }

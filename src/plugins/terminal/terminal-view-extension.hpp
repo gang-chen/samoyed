@@ -4,7 +4,7 @@
 #ifndef SMYD_TERMINAL_VIEW_EXTENSION_HPP
 #define SMYD_TERMINAL_VIEW_EXTENSION_HPP
 
-#include "../../application/ui/view-extension.hpp"
+#include "ui/view-extension.hpp"
 
 namespace Samoyed
 {

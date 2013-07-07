@@ -1152,6 +1152,7 @@ Widget *Window::openSidePaneChild(const char *paneId, const char *id)
             if ((*it)->id == pane->child(index).id())
                 ++index;
         pane->addChild(*child, index);
+        child->setCurrent();
         child->addClosedCallback(boost::bind(&Window::onSidePaneChildClosed,
                                              this, _1, boost::cref(*pane)));
         gtk_toggle_action_set_active(data->action, TRUE);

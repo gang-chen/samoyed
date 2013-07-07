@@ -14,6 +14,7 @@
 #include <glib/gi18n-lib.h>
 #include <libxml/tree.h>
 
+#define WIDGET "widget"
 #define VIEW "view"
 #define EXTENSION_ID "extension-id"
 
@@ -30,12 +31,28 @@ bool View::XmlElement::readInternally(xmlNodePtr node,
                                       std::list<std::string> &errors)
 {
     char *value, *cp;
+    bool widgetSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (child->type != XML_ELEMENT_NODE)
             continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   EXTENSION_ID) == 0)
+                   WIDGET) == 0)
+        {
+            if (widgetSeen)
+            {
+                cp = g_strdup_printf(
+                    _("Line %d: More than one \"%s\" elements seen.\n"),
+                    child->line, WIDGET);
+                g_free(cp);
+                return false;
+            }
+            if (!Widget::XmlElement::readInternally(child, errors))
+                return false;
+            widgetSeen = true;
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        EXTENSION_ID) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
@@ -74,6 +91,7 @@ xmlNodePtr View::XmlElement::write() const
 {
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(VIEW));
+    xmlAddChild(node, Widget::XmlElement::write());
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(EXTENSION_ID),
                     reinterpret_cast<const xmlChar *>(extensionId()));

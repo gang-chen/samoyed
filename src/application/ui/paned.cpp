@@ -646,7 +646,10 @@ void Paned::setFocusChild(GtkWidget *container,
 {
     for (int i = 0; i < paned->childCount(); ++i)
         if (paned->m_children[i] && paned->m_children[i]->gtkWidget() == child)
+        {
             paned->setCurrentChildIndex(i);
+            break;
+        }
 }
 
 void Paned::setPositionInternally()

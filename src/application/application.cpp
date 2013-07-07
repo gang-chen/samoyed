@@ -168,8 +168,10 @@ gboolean Application::startUp(gpointer app)
 {
     Application *a = static_cast<Application *>(app);
 
-    std::string pluginsDirName(a->librariesDirectoryName());
-    pluginsDirName += G_DIR_SEPARATOR_S "plugins";
+    std::string pluginModsDirName(a->librariesDirectoryName());
+    pluginModsDirName += G_DIR_SEPARATOR_S "plugins";
+    std::string pluginMfsDirName(a->dataDirectoryName());
+    pluginMfsDirName += G_DIR_SEPARATOR_S "plugins";
 
     if (!a->makeUserDirectory())
         goto ERROR_OUT;
@@ -195,7 +197,7 @@ gboolean Application::startUp(gpointer app)
     // Create global managers.
     a->m_extensionPointManager = new ExtensionPointManager;
     a->m_pluginManager = new PluginManager(a->extensionPointManager(),
-                                           pluginsDirName.c_str(),
+                                           pluginModsDirName.c_str(),
                                            PLUGIN_CACHE_SIZE);
     a->m_fileSourceManager = new FileSourceManager;
     a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
@@ -214,12 +216,10 @@ gboolean Application::startUp(gpointer app)
     a->m_histories = new PropertyTree(HISTORIES);
     File::installHistories();
 
-    if (a->startSession())
-    {
-        std::string pluginsDirName(a->dataDirectoryName());
-        pluginsDirName += G_DIR_SEPARATOR_S "plugins";
-        a->m_pluginManager->scanPlugins(pluginsDirName.c_str());
-    }
+    // Register plugins.
+    a->m_pluginManager->scanPlugins(pluginMfsDirName.c_str());
+
+    a->startSession();
 
     // All the background initialization is done.  Close the splash screen.
     delete a->m_splashScreen;
