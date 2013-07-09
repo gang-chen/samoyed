@@ -29,7 +29,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
 #include <libxml/xmlerror.h>
@@ -143,13 +143,13 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
                         PREFERENCES) == 0)
         {
             Samoyed::Application::instance().preferences().
-                readXmlElement(child, true, errors);
+                readXmlElement(child, errors);
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         HISTORIES) == 0)
         {
             Samoyed::Application::instance().histories().
-                readXmlElement(child, true, errors);
+                readXmlElement(child, errors);
         }
     }
     if (session->m_windows.empty())
@@ -187,10 +187,10 @@ xmlNodePtr XmlElementSession::write() const
         xmlAddChild(windows, (*it)->write());
     xmlAddChild(node, windows);
     xmlNodePtr prefs =
-        Samoyed::Application::instance().preferences().writeXmlElement(true);
+        Samoyed::Application::instance().preferences().writeXmlElement();
     xmlAddChild(node, prefs);
     xmlNodePtr hists =
-        Samoyed::Application::instance().histories().writeXmlElement(true);
+        Samoyed::Application::instance().histories().writeXmlElement();
     xmlAddChild(node, hists);
     return node;
 }

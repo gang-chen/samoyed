@@ -26,7 +26,7 @@ g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
 # define _(T) T
 # include <glib/gstdio.h>
 #else
-# include <glib/gi18n-lib.h>
+# include <glib/gi18n.h>
 #endif
 #include <gio/gio.h>
 

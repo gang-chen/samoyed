@@ -11,7 +11,7 @@
 #include <string.h>
 #include <utility>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <gmodule.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>

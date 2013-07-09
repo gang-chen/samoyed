@@ -40,7 +40,7 @@
 #endif
 #include <boost/thread/thread.hpp>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
 

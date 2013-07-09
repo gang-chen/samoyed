@@ -29,7 +29,7 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #ifdef SMYD_UNIT_TEST
 # define _(T) T
 #else
-# include <glib/gi18n-lib.h>
+# include <glib/gi18n.h>
 #endif
 #include <glib/gstdio.h>
 #include <gio/gio.h>

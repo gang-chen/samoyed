@@ -14,7 +14,7 @@
 #include <string>
 #include <boost/any.hpp>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 

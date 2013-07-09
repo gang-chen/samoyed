@@ -23,7 +23,7 @@
 #include <boost/any.hpp>
 #include <boost/bind.hpp>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
 

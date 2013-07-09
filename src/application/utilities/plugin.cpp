@@ -10,7 +10,7 @@
 #include <utility>
 #include <map>
 #include <string>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <gmodule.h>
 
 #define CREATE_PLUGIN "createPlugin"

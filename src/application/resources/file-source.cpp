@@ -18,7 +18,7 @@
 #include <deque>
 #include <boost/bind.hpp>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 
 namespace Samoyed
 {

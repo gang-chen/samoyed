@@ -11,7 +11,7 @@
 #include "notebook.hpp"
 #include "application.hpp"
 #include <gtk/gtk.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 
 namespace
 {

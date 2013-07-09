@@ -24,7 +24,7 @@ g++ text-file-saver.cpp worker.cpp revision.cpp\
 # define _(T) T
 # include <glib/gstdio.h>
 #else
-# include <glib/gi18n-lib.h>
+# include <glib/gi18n.h>
 #endif
 #include <gio/gio.h>
 

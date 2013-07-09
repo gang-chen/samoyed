@@ -1,6 +1,9 @@
 // View extension: terminal.
 // Copyright (C) 2013 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "terminal-view-extension.hpp"
 #include "terminal-view.hpp"
 #include "terminal-plugin.hpp"

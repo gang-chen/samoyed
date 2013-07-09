@@ -330,7 +330,6 @@ PropertyTree::addObserver(const Changed::slot_type &observer)
 }
 
 void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
-                                  bool skipNonLeafValues,
                                   std::list<std::string> &errors)
 {
     char *value;
@@ -342,11 +341,9 @@ void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
                 reinterpret_cast<const char *>(child->name));
             if (it == m_children.end())
                 continue;
-            it->second->readXmlElement(child, skipNonLeafValues, errors);
+            it->second->readXmlElement(child, errors);
         }
-        else if (child->type == XML_TEXT_NODE &&
-                 !m_value.empty() &&
-                 (!m_firstChild || !skipNonLeafValues))
+        else if (child->type == XML_TEXT_NODE && !m_value.empty())
         {
             value = reinterpret_cast<char *>(xmlNodeGetContent(child));
             if (value)
@@ -388,13 +385,13 @@ void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
     m_changed(*this);
 }
 
-xmlNodePtr PropertyTree::writeXmlElement(bool skipNonLeafValues) const
+xmlNodePtr PropertyTree::writeXmlElement() const
 {
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(name()));
     for (PropertyTree *child = m_firstChild; child; child = child->m_next)
-        xmlAddChild(node, child->writeXmlElement(skipNonLeafValues));
-    if (!m_value.empty() && (!m_firstChild || !skipNonLeafValues))
+        xmlAddChild(node, child->writeXmlElement());
+    if (!m_value.empty())
     {
         std::ostringstream stream;
         stream << m_value;
@@ -490,7 +487,7 @@ int main()
 
     doc = xmlParseFile("property-tree-test.xml");
     node = xmlDocGetRootElement(doc);
-    tree->readXmlElement(node, true, errors);
+    tree->readXmlElement(node, errors);
     xmlFreeDoc(doc);
 
     assert(tree->child("l2/l3.1").get<int>() == 200);
@@ -504,7 +501,7 @@ int main()
 
     doc = xmlParseFile("property-tree-test.xml");
     node = xmlDocGetRootElement(doc);
-    tree->readXmlElement(node, true, errors);
+    tree->readXmlElement(node, errors);
     xmlFreeDoc(doc);
     g_unlink("property-tree-test.xml");
 

@@ -13,7 +13,7 @@
 #include <string>
 #include <utility>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <libxml/tree.h>
 
 #define PROJECT "project"

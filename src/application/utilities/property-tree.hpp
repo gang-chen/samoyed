@@ -110,9 +110,8 @@ public:
 
     boost::signals2::connection addObserver(const Changed::slot_type &observer);
 
-    void readXmlElement(xmlNodePtr xmlNode, bool skipNonLeafValues,
-                        std::list<std::string> &errors);
-    xmlNodePtr writeXmlElement(bool skipNonLeafValues) const;
+    void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> &errors);
+    xmlNodePtr writeXmlElement() const;
 
 private:
     const std::string m_name;

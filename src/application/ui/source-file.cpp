@@ -16,7 +16,7 @@
 #include <map>
 #include <string>
 #include <boost/any.hpp>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 
 #define ENCODING "encoding"
 

@@ -24,7 +24,7 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glib.h>
-#include <glib/gi18n-lib.h>
+#include <glib/gi18n.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
