@@ -76,6 +76,16 @@ public:
                                           const Change &change,
                                           bool loading)> Changed;
 
+    class OptionSetters
+    {
+    public:
+        virtual ~OptionSetters() {}
+        virtual GtkWidget *takeGtkWidget() = 0;
+        virtual void setOptions(std::map<std::string, boost::any> &options) = 0;
+    };
+
+    typedef boost::function<OptionSetters *()> OptionSettersFactory;
+
     class EditPrimitive;
 
     class Edit
@@ -137,7 +147,9 @@ public:
         std::list<Edit *> m_edits;
     };
 
-    static void registerType(const char *type, const Factory &factory);
+    static void registerType(const char *type,
+                             const Factory &factory,
+                             const OptionSettersFactory &optSettersFactory);
 
     static void installHistories();
 
@@ -297,8 +309,13 @@ protected:
     {
         std::string m_type;
         Factory m_factory;
-        TypeRecord(const char *type, const Factory &factory):
-            m_type(type), m_factory(factory)
+        OptionSettersFactory m_optSettersFactory;
+        TypeRecord(const char *type,
+                   const Factory &factory,
+                   const OptionSettersFactory &optSettersFactory):
+            m_type(type),
+            m_factory(factory),
+            m_optSettersFactory(optSettersFactory)
         {}
     };
 

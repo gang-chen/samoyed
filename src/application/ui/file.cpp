@@ -50,6 +50,33 @@ struct SavedParam
     Samoyed::FileSaver &m_saver;
 };
 
+struct FilterChangedParam
+{
+    std::map<GtkFileFilter *, const Samoyed::File::OptionSettersFactory *>
+        filter2Factory;
+    Samoyed::File::OptionSetters *optSetters;
+};
+
+void onFileChooserFilterChanged(GtkFileChooser *dialog,
+                                GParamSpec *spec,
+                                FilterChangedParam *param)
+{
+    if (param->optSetters)
+    {
+        delete param->optSetters;
+        param->optSetters = NULL;
+    }
+    GtkFileFilter *filter = gtk_file_chooser_get_filter(dialog);
+    const Samoyed::File::OptionSettersFactory *factory =
+        param->filter2Factory[filter];
+    if (*factory)
+    {
+        param->optSetters = (*factory)();
+        gtk_file_chooser_set_extra_widget(dialog,
+                                          param->optSetters->takeGtkWidget());
+    }
+}
+
 }
 
 namespace Samoyed
@@ -99,9 +126,11 @@ void File::installHistories()
 
 std::list<File::TypeRecord> File::s_typeRegistry;
 
-void File::registerType(const char *type, const Factory &factory)
+void File::registerType(const char *type,
+                        const Factory &factory,
+                        const OptionSettersFactory &optSettersFactory)
 {
-    s_typeRegistry.push_back(TypeRecord(type, factory));
+    s_typeRegistry.push_back(TypeRecord(type, factory, optSettersFactory));
 }
 
 const File::Factory *File::findFactory(const char *type)
@@ -223,8 +252,6 @@ File::open(const char *uri, Project *project,
 void File::openByDialog(Project *project,
                         std::list<std::pair<File *, Editor *> > &opened)
 {
-    std::map<std::string, boost::any> options;
-
     GtkWidget *dialog =
         gtk_file_chooser_dialog_new(
             _("Open file"),
@@ -240,66 +267,53 @@ void File::openByDialog(Project *project,
         Application::instance().histories().
         get<std::string>(DIRECTORY_WHERE_FILE_OPENED).c_str());
 
-    GtkWidget *grid = gtk_grid_new();
-    GtkWidget *newEditorButton = gtk_check_button_new_with_mnemonic(
-        _("Create a _new editor even if the file is already opened"));
-    gtk_grid_attach_next_to(GTK_GRID(grid), newEditorButton,
-                            NULL, GTK_POS_BOTTOM, 1, 1);
-    GtkWidget *newRightGroupButton = gtk_check_button_new_with_mnemonic(
-        _("Create a new editor group to the _right of the current one to hold "
-          "the new editor"));
-    gtk_grid_attach_next_to(GTK_GRID(grid), newRightGroupButton,
-                            NULL, GTK_POS_BOTTOM, 1, 1);
-    GtkWidget *newBelowGroupButton = gtk_check_button_new_with_mnemonic(
-        _("Create a new editor group _below the current one to hold the new "
-          "editor"));
-    gtk_grid_attach_next_to(GTK_GRID(grid), newBelowGroupButton,
-                            NULL, GTK_POS_BOTTOM, 1, 1);
-    gtk_widget_show_all(grid);
-    gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog), grid);
+    FilterChangedParam param;
+    for (std::list<File::TypeRecord>::const_iterator it =
+            s_typeRegistry.begin();
+         it != s_typeRegistry.end();
+         ++it)
+    {
+        GtkFileFilter *filter = gtk_file_filter_new();
+        char *name = g_content_type_get_description(it->m_type.c_str());
+        gtk_file_filter_set_name(filter, name);
+        g_free(name);
+        gtk_file_filter_add_mime_type(filter, it->m_type.c_str());
+        gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+        param.filter2Factory[filter] = &it->m_optSettersFactory;
+    }
+    param.optSetters = NULL;
 
-    Notebook *editorGroup = NULL;
+    g_signal_connect_after(dialog, "notify::filter",
+                           G_CALLBACK(onFileChooserFilterChanged),
+                           &param);
+
+    std::map<std::string, boost::any> options;
+    if (param.optSetters)
+    {
+        param.optSetters->setOptions(options);
+        delete param.optSetters;
+    }
+
+    Window &window = Application::instance().currentWindow();
+    Notebook &editorGroup = window.currentEditorGroup();
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
         GSList *uris, *uri;
-        if (!gtk_toggle_button_get_active(
-                GTK_TOGGLE_BUTTON(newRightGroupButton)) &&
-            !gtk_toggle_button_get_active(
-                GTK_TOGGLE_BUTTON(newBelowGroupButton)))
-            editorGroup = &Application::instance().currentWindow().
-                currentEditorGroup();
         uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
         uri = uris;
         while (uri)
         {
             std::pair<File *, Editor *> fileEditor =
                 open(static_cast<const char *>(uri->data), project, options,
-                     gtk_toggle_button_get_active(
-                         GTK_TOGGLE_BUTTON(newEditorButton)));
+                     true);
             if (fileEditor.first)
             {
                 opened.push_back(fileEditor);
-
                 if (!fileEditor.second->parent())
-                {
-                    if (!editorGroup)
-                    {
-                        if (gtk_toggle_button_get_active(
-                                GTK_TOGGLE_BUTTON(newRightGroupButton)))
-                            editorGroup =
-                                Application::instance().currentWindow().
-                                splitCurrentEditorGroup(Window::SIDE_RIGHT);
-                        else
-                            editorGroup =
-                                Application::instance().currentWindow().
-                                splitCurrentEditorGroup(Window::SIDE_BOTTOM);
-                    }
-                    Application::instance().currentWindow().
-                        addEditorToEditorGroup(
+                    window.addEditorToEditorGroup(
                             *fileEditor.second,
-                            *editorGroup,
-                            editorGroup->currentChildIndex() + 1);
-                }
+                            editorGroup,
+                            editorGroup.currentChildIndex() + 1);
             }
             uri = uri->next;
         }

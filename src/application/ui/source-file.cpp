@@ -64,7 +64,7 @@ void SourceFile::registerType()
     for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
     {
         char *type = g_content_type_from_mime_type(*mimeType);
-        File::registerType(type, create);
+        File::registerType(type, create, NULL);
         g_free(type);
     }
 }

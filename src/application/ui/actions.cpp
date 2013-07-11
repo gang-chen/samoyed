@@ -500,7 +500,10 @@ Actions::Actions(Window *window):
             gtk_action_group_get_action(m_actionGroup,
                                         toggleActionEntries[i].name));
 
-    m_updaterId = g_idle_add(updateSensitivity, this);
+    m_updaterId = g_idle_add_full(G_PRIORITY_LOW,
+                                  updateSensitivity,
+                                  this,
+                                  NULL);
 }
 
 Actions::~Actions()

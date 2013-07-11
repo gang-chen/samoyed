@@ -49,13 +49,12 @@ bool TerminalView::setupTerminal()
     char *argv[2];
     argv[0] = strdup(shell);
     argv[1] = NULL;
-    GPid pid;
     GError *error = NULL;
     if (!vte_terminal_fork_command_full(VTE_TERMINAL(m_terminal),
                                         VTE_PTY_DEFAULT,
                                         dir, argv, NULL,
                                         G_SPAWN_CHILD_INHERITS_STDIN,
-                                        NULL, NULL, &pid, &error))
+                                        NULL, NULL, NULL, &error))
     {
         free(argv[0]);
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -74,7 +73,6 @@ bool TerminalView::setupTerminal()
         return false;
     }
     free(argv[0]);
-
     g_signal_connect(m_terminal, "child-exited",
                      G_CALLBACK(closeTerminal), this);
 

@@ -139,7 +139,7 @@ bool TextFile::isSupportedType(const char *type)
 void TextFile::registerType()
 {
     char *type = g_content_type_from_mime_type("text/plain");
-    File::registerType(type, create);
+    File::registerType(type, create, NULL);
     g_free(type);
 }
 

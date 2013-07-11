@@ -501,7 +501,7 @@ int Application::run(int argc, char *argv[])
                      G_CALLBACK(onSplashScreenDeleteEvent),
                      this);
 
-    g_idle_add(checkTerminateRequest, this);
+    g_idle_add_full(G_PRIORITY_LOW, checkTerminateRequest, this, NULL);
     g_idle_add(startUp, this);
 
     // Enter the main event loop.
