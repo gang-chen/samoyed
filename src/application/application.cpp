@@ -52,6 +52,8 @@ namespace
 
 const int PLUGIN_CACHE_SIZE = 4;
 
+const unsigned int TERMINATION_CHECK_INTERVAL = 2000;
+
 bool terminate = false;
 
 void onTerminated(int signalNumber)
@@ -501,7 +503,7 @@ int Application::run(int argc, char *argv[])
                      G_CALLBACK(onSplashScreenDeleteEvent),
                      this);
 
-    g_idle_add_full(G_PRIORITY_LOW, checkTerminateRequest, this, NULL);
+    g_timeout_add(TERMINATION_CHECK_INTERVAL, checkTerminateRequest, this);
     g_idle_add(startUp, this);
 
     // Enter the main event loop.

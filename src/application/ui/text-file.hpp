@@ -150,6 +150,16 @@ public:
         int m_endColumn;
     };
 
+    class OptionSetters: public File::OptionSetters
+    {
+    public:
+        OptionSetters(): m_gtkWidget(NULL) {}
+        virtual GtkWidget *takeGtkWidget();
+        virtual void setOptions(std::map<std::string, boost::any> &options);
+    private:
+        GtkWidget *m_gtkWidget;
+    };
+
     static bool isSupportedType(const char *type);
 
     static void registerType();

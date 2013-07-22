@@ -35,6 +35,68 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include <gio/gio.h>
 #include <gtk/gtk.h>
 
+namespace
+{
+
+const char *textEncodings[] =
+{
+    NULL,
+
+    N_("Unicode (UTF-8)"),
+
+    N_("Western (ISO-8859-1)"),
+    N_("Central European (ISO-8859-2)"),
+    N_("South European (ISO-8859-3)"),
+    N_("Baltic (ISO-8859-4)"),
+    N_("Cyrillic (ISO-8859-5)"),
+    N_("Arabic (ISO-8859-6)"),
+    N_("Greek (ISO-8859-7)"),
+    N_("Hebrew Visual (ISO-8859-8)"),
+    N_("Turkish (ISO-8859-9)"),
+    N_("Nordic (ISO-8859-10)"),
+    N_("Baltic (ISO-8859-13)"),
+    N_("Celtic (ISO-8859-14)"),
+    N_("Western (ISO-8859-15)"),
+    N_("Romanian (ISO-8859-16)"),
+
+    N_("Unicode (UTF-7)"),
+    N_("Unicode (UTF-16)")
+    N_("Unicode (UTF-16BE)"),
+    N_("Unicode (UTF-18HE)"),
+    N_("Unicode (UTF-32)"),
+    N_("Unicode (UCS-2)"),
+    N_("Unicode (UCS-4)"),
+
+    N_("Cyrillic (ISO-IR-111)"),
+    N_("Cyrillic (KOI8-R)"),
+    N_("Cyrillic/Ukrainian (KOI8-U)"),
+
+    N_("Chinese Simplified (GB2312)"),
+    N_("Chinese Simplified (GBK)"),
+    N_("Chinese Simplified (GB18030)"),
+    N_("Chinese Simplified (ISO-2022-CN"),
+    N_("Chinese Traditional (BIG5)"),
+    N_("Chinese Traditional (BIG5-HKSCS)"),
+    N_("Chinese Traditional (EUC-TW)"),
+
+    N_("Japanese (EUC-JP)"),
+    N_("Japanese (ISO-2022-JP)"),
+    N_("Japanese (SHIFT_JIS)"),
+
+    N_("Korean (EUC-KR)"),
+    N_("Korean (JOHAB)"),
+    N_("Korean (ISO-2022-KR)"),
+
+    N_("Armenian (ARMSCII-8)"),
+    N_("Thai (TIS-620)"),
+    N_("Vietnamese (TCVN)"),
+    N_("Vietnamese (VISCII)"),
+
+    NULL
+};
+
+}
+
 namespace Samoyed
 {
 
@@ -134,6 +196,20 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
     gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
     g_free(text);
+}
+
+const char **getTextEncodings()
+{
+    if (!textEncodings[0])
+    {
+        const char *localeEncoding;
+        g_get_charset(&localeEncoding);
+        textEncodings[0] = g_strdup_printf(_("Current Locale (%s)"),
+                                           localeEncoding);
+        for (const char **encoding = textEncodings; *encoding; ++encoding)
+            *encoding = gettext(*encoding);
+    }
+    return textEncodings;
 }
 
 }

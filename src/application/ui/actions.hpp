@@ -81,6 +81,8 @@ public:
         N_TOGGLE_ACTIONS
     };
 
+    static void invalidateSensitivity();
+
     Actions(Window *window);
 
     ~Actions();
@@ -95,7 +97,9 @@ public:
     void onWindowFullScreenChanged(bool inFullScreen);
 
 private:
-    static gboolean updateSensitivity(gpointer actions);
+    static gboolean updateSensitivity(gpointer);
+
+    static bool s_sensitivityUpdaterAdded;
 
     Window *m_window;
 
@@ -103,8 +107,6 @@ private:
     GtkToggleAction *m_toggleActions[N_TOGGLE_ACTIONS];
 
     GtkActionGroup *m_actionGroup;
-
-    unsigned int m_updaterId;
 };
 
 }

@@ -6,6 +6,8 @@
 #endif
 #include "terminal-plugin.hpp"
 #include "terminal-view-extension.hpp"
+#include "ui/widget.hpp"
+#include <algorithm>
 #include <gmodule.h>
 
 namespace Samoyed
@@ -15,7 +17,6 @@ TerminalPlugin::TerminalPlugin(PluginManager &manager,
                                const char *id,
                                GModule *module):
     Plugin(manager, id, module),
-    m_viewCount(0)
 {
 }
 
@@ -28,16 +29,28 @@ Extension *TerminalPlugin::createExtension(const char *extensionId)
     return new TerminalViewExtension(extensionId, *this);
 }
 
-void TerminalPlugin::onViewCreated()
+void TerminalPlugin::onViewCreated(Widget &view)
 {
-    ++m_viewCount;
+    m_views.push_back(&view);
 }
 
-void TerminalPlugin::onViewClosed()
+void TerminalPlugin::onViewClosed(Widget &view)
 {
-    --m_viewCount;
-    if (m_viewCount == 0)
+    std::erase(std::remove(m_views.begin(), m_views.end(), &view),
+        m_views.end());
+    if (m_views.empty())
         onCompleted();
+}
+
+bool TerminalPlugin::completed() const
+{
+    return m_views.empty();
+}
+
+void TerminalPlugin::deactivate()
+{
+    while (!m_views.empty())
+        m_views.front()->close();
 }
 
 }

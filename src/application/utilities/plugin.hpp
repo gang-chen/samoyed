@@ -34,12 +34,7 @@ public:
 
     const char *id() const { return m_id.c_str(); }
 
-    /**
-     * Request the extension points to release the extensions and stop the
-     * running tasks so that the plugin can be deactivated.
-     * @return True iff the plugin is deactivated.
-     */
-    bool deactivate();
+    virtual void deactivate() = 0;
 
     Extension *acquireExtension(const char *extensionId);
 

@@ -11,6 +11,7 @@
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
+#include <string.h>
 #include <list>
 #include <string>
 #include <utility>
@@ -38,9 +39,9 @@ namespace
 Samoyed::Widget *
 createView(const Samoyed::ViewsExtensionPoint::ExtensionInfo &extInfo)
 {
-    Samoyed::ViewExtension *ext =
-        static_cast<Samoyed::ViewExtension *>(Samoyed::Application::instance().
-                pluginManager().acquireExtension(extInfo.id.c_str()));
+    Samoyed::ViewExtension *ext = static_cast<Samoyed::ViewExtension *>(
+        Samoyed::Application::instance().pluginManager().
+        acquireExtension(extInfo.id.c_str()));
     if (!ext)
         return NULL;
     Samoyed::Widget *widget = ext->createView(extInfo.viewId.c_str(),
@@ -73,9 +74,9 @@ ViewsExtensionPoint::ViewsExtensionPoint():
     Application::instance().extensionPointManager().
         registerExtensionPoint(*this);
 
-    m_createdConnection = Window::addCreatedCallback(boost::bind(
+    m_windowsCreatedConnection = Window::addCreatedCallback(boost::bind(
         &ViewsExtensionPoint::registerAllExtensions, this, _1));
-    m_restoredConnection = Window::addRestoredCallback(boost::bind(
+    m_windowsRestoredConnection = Window::addRestoredCallback(boost::bind(
         &ViewsExtensionPoint::registerAllExtensions, this, _1));
 }
 
@@ -89,8 +90,8 @@ ViewsExtensionPoint::~ViewsExtensionPoint()
         unregisterExtension(it2->first);
     }
 
-    m_createdConnection.disconnect();
-    m_restoredConnection.disconnect();
+    m_windowsCreatedConnection.disconnect();
+    m_windowsRestoredConnection.disconnect();
 
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);

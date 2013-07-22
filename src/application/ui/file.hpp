@@ -76,16 +76,6 @@ public:
                                           const Change &change,
                                           bool loading)> Changed;
 
-    class OptionSetters
-    {
-    public:
-        virtual ~OptionSetters() {}
-        virtual GtkWidget *takeGtkWidget() = 0;
-        virtual void setOptions(std::map<std::string, boost::any> &options) = 0;
-    };
-
-    typedef boost::function<OptionSetters *()> OptionSettersFactory;
-
     class EditPrimitive;
 
     class Edit
@@ -146,6 +136,16 @@ public:
     private:
         std::list<Edit *> m_edits;
     };
+
+    class OptionSetters
+    {
+    public:
+        virtual ~OptionSetters() {}
+        virtual GtkWidget *takeGtkWidget() = 0;
+        virtual void setOptions(std::map<std::string, boost::any> &options) = 0;
+    };
+
+    typedef boost::function<OptionSetters *()> OptionSettersFactory;
 
     static void registerType(const char *type,
                              const Factory &factory,

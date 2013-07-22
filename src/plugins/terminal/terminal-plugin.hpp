@@ -5,27 +5,32 @@
 #define SMYD_TERMINAL_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
+#include <list>
 
 namespace Samoyed
 {
+
+class Widget;
 
 class TerminalPlugin: public Plugin
 {
 public:
     TerminalPlugin(PluginManager &manager, const char *id, GModule *module);
 
-    void onViewCreated();
-    void onViewClosed();
+    virtual void deactivate();
+
+    void onViewCreated(Widget &view);
+    void onViewClosed(Widget &view);
 
 protected:
     virtual ~TerminalPlugin();
 
     virtual Extension *createExtension(const char *extensionId);
 
-    virtual bool completed() const { return m_viewCount == 0; }
+    virtual bool completed() const;
 
 private:
-    int m_viewCount;
+    std::list<Widget *> m_views;
 };
 
 }

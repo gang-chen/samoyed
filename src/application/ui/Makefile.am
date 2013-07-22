@@ -7,6 +7,8 @@ libui_la_SOURCES = \
     actions-extension-point.cpp \
     editor.cpp \
     file.cpp \
+    file-observer.cpp \
+    file-observers-extension-point.cpp \
     notebook.cpp \
     paned.cpp \
     project.cpp \
@@ -22,11 +24,15 @@ libui_la_SOURCES = \
     widget-container.cpp \
     widget-with-bars.cpp \
     window.cpp \
+    action-extension.hpp \
     actions.hpp \
     actions-extension-point.hpp \
     bar.hpp \
     editor.hpp \
     file.hpp \
+    file-observer.hpp \
+    file-observer-extension.hpp \
+    file-observers-extension-point.hpp \
     notebook.hpp \
     paned.hpp \
     project.hpp \

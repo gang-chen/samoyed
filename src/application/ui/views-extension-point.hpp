@@ -54,8 +54,8 @@ private:
 
     ExtensionTable m_extensions;
 
-    boost::signals2::connection m_createdConnection;
-    boost::signals2::connection m_restoredConnection;
+    boost::signals2::connection m_windowsCreatedConnection;
+    boost::signals2::connection m_windowsRestoredConnection;
 };
 
 }

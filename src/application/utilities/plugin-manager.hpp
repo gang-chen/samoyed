@@ -32,8 +32,6 @@ public:
             ExtensionInfo(): xmlNode(NULL) {}
         };
 
-        bool unregister;
-        bool enabled;
         std::string directoryName;
         std::string id;
         std::string name;
@@ -58,8 +56,7 @@ public:
     bool registerPlugin(const char *pluginManifestFileName);
 
     /**
-     * Unregister a plugin.  If the plugin is active, try to deactivate it.  The
-     * plugin will be actually unregistered after it is deactivated.
+     * Unregister a plugin.  If the plugin is active, first deactivate it.
      */
     void unregisterPlugin(const char *pluginId);
 
@@ -68,12 +65,12 @@ public:
     const Registry &pluginRegistry() const { return m_registry; }
 
     /**
-     * Enable a plugin and try to activate it.
+     * Enable a plugin and activate it if desired.
      */
     void enablePlugin(const char *pluginId);
 
     /**
-     * Disable a plugin.  If the plugin is active, try to deactivate it.
+     * Disable a plugin.  If the plugin is active, first deactivate it.
      */
     void disablePlugin(const char *pluginId);
 

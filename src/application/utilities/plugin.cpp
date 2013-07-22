@@ -48,8 +48,7 @@ Plugin *Plugin::activate(PluginManager &manager,
                          const char *moduleFileName,
                          std::string &error)
 {
-    GModule *module = g_module_open(moduleFileName,
-                                    static_cast<GModuleFlags>(0));
+    GModule *module = g_module_open(moduleFileName, G_MODULE_BIND_LOCAL);
     if (!module)
     {
         char *cp = g_strdup_printf(
@@ -80,11 +79,6 @@ Plugin *Plugin::activate(PluginManager &manager,
         return NULL;
     }
     return plugin;
-}
-
-bool Plugin::deactivate()
-{
-    return false;
 }
 
 Extension *Plugin::acquireExtension(const char *extensionId)

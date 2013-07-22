@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
@@ -226,12 +227,21 @@ public:
     void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                 int index);
 
+    void addAction(const char *actionName,
+                   const char *actionPath,
+                   const char *menuTitle,
+                   const char *menuTooltip,
+                   const boost::function<void (Window &window)> &activate);
+    void removeAction(const char *actionName);
+
     bool toolbarVisible() const;
     void setToolbarVisible(bool visible);
 
     bool inFullScreen() const { return m_inFullScreen; }
     void enterFullScreen();
     void leaveFullScreen();
+
+    Actions &actions() { return *m_actions; }
 
 protected:
     Window();
@@ -265,6 +275,13 @@ private:
         guint uiMergeId;
         std::set<ComparablePointer<SidePaneChildData> > children;
         std::map<ComparablePointer<const char>, SidePaneChildData *> table;
+    };
+
+    struct ActionData
+    {
+        GtkAction *action;
+        guint uiMergeId;
+        boost::function<void ()> activate;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -331,6 +348,8 @@ private:
     bool m_toolbarVisibleInFullScreen;
 
     std::map<ComparablePointer<const char>, SidePaneData *> m_sidePaneData;
+
+    std::map<std::string, ActionData *> m_actionData;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };

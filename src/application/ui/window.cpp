@@ -107,6 +107,11 @@ void addEditorRemovedCallbacks(Samoyed::Widget &widget)
         addChildRemovedCallback(onEditorRemoved);
 }
 
+void activateAction(GtkAction *action, boost::function<void ()> *activate)
+{
+    (*activate)();
+}
+
 }
 
 namespace Samoyed
@@ -1315,6 +1320,44 @@ gboolean Window::onKeyPressEvent(GtkWidget *widget,
     // code again but won't take any action.  This is a waste of time.  But I
     // don't know how to bypass the code.
     return handled;
+}
+
+void Window::addAction(const char *actionName,
+                       const char *actionPath,
+                       const char *menuTitle,
+                       const char *menuTooltip,
+                       const boost::function<void (Window &window)> &activate)
+{
+    ActionData *data = new ActionData;
+    data->activate = boost::bind(activate, boost::ref(*this));
+
+    GtkAction *action =
+        gtk_action_new(actionName, menuTitle, menuTooltip, NULL);
+    g_signal_connect(action, "activate",
+                     G_CALLBACK(activateAction), &data->activate);
+    gtk_action_group_add_action(m_actions->actionGroup(), action);
+    g_object_unref(action);
+
+    guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
+    gtk_ui_manager_add_ui(m_uiManager,
+                          mergeId,
+                          actionPath,
+                          actionName,
+                          actionName,
+                          GTK_UI_MANAGER_MENUITEM,
+                          FALSE);
+    data->action = action;
+    data->mergeId = mergeId;
+    m_actionData[actionName] = data;
+}
+
+void Window::removeAction(const char *actionName)
+{
+    ActionData *data = m_actionData[actionName];
+    gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeId);
+    gtk_action_group_remove_action(m_actions->actionGroup(), data->action);
+    m_actionData.erase(actionName);
+    delete data;
 }
 
 }

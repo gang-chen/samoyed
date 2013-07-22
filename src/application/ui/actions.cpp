@@ -409,72 +409,105 @@ toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 namespace Samoyed
 {
 
-gboolean Actions::updateSensitivity(gpointer actions)
+bool Actions::s_sensitivityUpdaterAdded = false;
+
+void Actions::invalidateSensitivity()
 {
-    Actions *a = static_cast<Actions *>(actions);
-    Notebook &editorGroup = a->m_window->currentEditorGroup();
-    if (editorGroup.childCount() == 0 ||
-        &editorGroup.current() != &a->m_window->current())
+    if (s_sensitivityUpdaterAdded)
+        return;
+    s_sensitivityUpdaterAdded = true;
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE, updateSensitivity, NULL, NULL);
+}
+
+gboolean Actions::updateSensitivity(gpointer)
+{
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
     {
-        // No editor exists or the current widget is not an editor.
-        gtk_action_set_sensitive(a->action(ACTION_SAVE_FILE), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_RELOAD_FILE), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_CLOSE_FILE), FALSE);
-
-        gtk_action_set_sensitive(a->action(ACTION_UNDO), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_REDO), FALSE);
-
-        gtk_action_set_sensitive(a->action(ACTION_CREATE_EDITOR), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_VERTICALLY),
-                                 FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
-                                 FALSE);
-    }
-    else
-    {
-        File &file = static_cast<Editor &>(editorGroup.current()).file();
-        if (file.edited() && !file.frozen() && !file.inEditGroup())
-            gtk_action_set_sensitive(a->action(ACTION_SAVE_FILE), TRUE);
-        else
-            gtk_action_set_sensitive(a->action(ACTION_SAVE_FILE), FALSE);
-        if (!file.frozen() && !file.inEditGroup())
-            gtk_action_set_sensitive(a->action(ACTION_RELOAD_FILE), TRUE);
-        else
-            gtk_action_set_sensitive(a->action(ACTION_RELOAD_FILE), FALSE);
-        gtk_action_set_sensitive(a->action(ACTION_CLOSE_FILE), TRUE);
-
-        if (file.undoable())
-            gtk_action_set_sensitive(a->action(ACTION_UNDO), TRUE);
-        else
-            gtk_action_set_sensitive(a->action(ACTION_UNDO), FALSE);
-        if (file.redoable())
-            gtk_action_set_sensitive(a->action(ACTION_REDO), TRUE);
-        else
-            gtk_action_set_sensitive(a->action(ACTION_REDO), FALSE);
-
-        gtk_action_set_sensitive(a->action(ACTION_CREATE_EDITOR), TRUE);
-        if (editorGroup.childCount() > 1)
+        Actions &actions = window->actions();
+        Notebook &editorGroup = window->currentEditorGroup();
+        if (editorGroup.childCount() == 0 ||
+            &editorGroup.current() != &window->current())
         {
-            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN),
-                                     TRUE);
-            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT),
-                                     TRUE);
+            // No editor exists or the current widget is not an editor.
+            gtk_action_set_sensitive(actions.action(ACTION_SAVE_FILE), FALSE);
+            gtk_action_set_sensitive(actions.action(ACTION_RELOAD_FILE), FALSE);
+            gtk_action_set_sensitive(actions.action(ACTION_CLOSE_FILE), FALSE);
+
+            gtk_action_set_sensitive(actions.action(ACTION_UNDO), FALSE);
+            gtk_action_set_sensitive(actions.action(ACTION_REDO), FALSE);
+
+            gtk_action_set_sensitive(actions.action(ACTION_CREATE_EDITOR),
+                                     FALSE);
+            gtk_action_set_sensitive(actions.action(ACTION_MOVE_EDITOR_DOWN),
+                                     FALSE);
+            gtk_action_set_sensitive(actions.action(ACTION_MOVE_EDITOR_RIGHT),
+                                     FALSE);
+            gtk_action_set_sensitive(
+                actions.action(ACTION_SPLIT_EDITOR_VERTICALLY),
+                FALSE);
+            gtk_action_set_sensitive(
+                actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
+                FALSE);
         }
         else
         {
-            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_DOWN),
-                                     FALSE);
-            gtk_action_set_sensitive(a->action(ACTION_MOVE_EDITOR_RIGHT),
-                                     FALSE);
+            File &file = static_cast<Editor &>(editorGroup.current()).file();
+            if (file.edited() && !file.frozen() && !file.inEditGroup())
+                gtk_action_set_sensitive(actions.action(ACTION_SAVE_FILE),
+                                         TRUE);
+            else
+                gtk_action_set_sensitive(actions.action(ACTION_SAVE_FILE),
+                                         FALSE);
+            if (!file.frozen() && !file.inEditGroup())
+                gtk_action_set_sensitive(actions.action(ACTION_RELOAD_FILE),
+                                         TRUE);
+            else
+                gtk_action_set_sensitive(actions.action(ACTION_RELOAD_FILE),
+                                         FALSE);
+            gtk_action_set_sensitive(actions.action(ACTION_CLOSE_FILE), TRUE);
+
+            if (file.undoable())
+                gtk_action_set_sensitive(actions.action(ACTION_UNDO), TRUE);
+            else
+                gtk_action_set_sensitive(actions.action(ACTION_UNDO), FALSE);
+            if (file.redoable())
+                gtk_action_set_sensitive(actions.action(ACTION_REDO), TRUE);
+            else
+                gtk_action_set_sensitive(actions.action(ACTION_REDO), FALSE);
+
+            gtk_action_set_sensitive(actions.action(ACTION_CREATE_EDITOR),
+                                     TRUE);
+            if (editorGroup.childCount() > 1)
+            {
+                gtk_action_set_sensitive(
+                    actions.action(ACTION_MOVE_EDITOR_DOWN),
+                    TRUE);
+                gtk_action_set_sensitive(
+                    actions.action(ACTION_MOVE_EDITOR_RIGHT),
+                    TRUE);
+            }
+            else
+            {
+                gtk_action_set_sensitive(
+                    actions.action(ACTION_MOVE_EDITOR_DOWN),
+                    FALSE);
+                gtk_action_set_sensitive(
+                    actions.action(ACTION_MOVE_EDITOR_RIGHT),
+                    FALSE);
+            }
+            gtk_action_set_sensitive(
+                actions.action(ACTION_SPLIT_EDITOR_VERTICALLY),
+                TRUE);
+            gtk_action_set_sensitive(
+                actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
+                TRUE);
         }
-        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_VERTICALLY),
-                                 TRUE);
-        gtk_action_set_sensitive(a->action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
-                                 TRUE);
     }
-    return TRUE;
+
+    s_sensitivityUpdaterAdded = false;
+    return FALSE;
 }
 
 Actions::Actions(Window *window):
@@ -499,16 +532,10 @@ Actions::Actions(Window *window):
         m_toggleActions[i] = GTK_TOGGLE_ACTION(
             gtk_action_group_get_action(m_actionGroup,
                                         toggleActionEntries[i].name));
-
-    m_updaterId = g_idle_add_full(G_PRIORITY_LOW,
-                                  updateSensitivity,
-                                  this,
-                                  NULL);
 }
 
 Actions::~Actions()
 {
-    g_source_remove(m_updaterId);
     g_object_unref(m_actionGroup);
 }
 

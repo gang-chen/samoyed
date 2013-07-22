@@ -190,8 +190,6 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     }
 
     PluginInfo *info = new PluginInfo;
-    info->unregister = false;
-    info->enabled = true;
     char *dirName = g_path_get_dirname(pluginManifestFileName);
     info->directoryName = dirName;
     g_free(dirName);
@@ -433,62 +431,36 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     return true;
 }
 
-void PluginManager::unregisterPluginInternally(PluginInfo &pluginInfo)
-{
-    m_registry.erase(pluginInfo.id.c_str());
-    delete &pluginInfo;
-}
-
 void PluginManager::unregisterPlugin(const char *pluginId)
 {
-    PluginInfo *info = m_registry.find(pluginId)->second;
-    if (info->unregister)
-        return;
-
-    // Mark the plugin as to be unregistered.
-    info->unregister = true;
-
-    // Unregister the extensions.
-    unregisterPluginExtensions(*info);
-
-    // If the plugin is active, try to deactivate it.  Otherwise, we can
-    // unregister the plugin.
+    // If the plugin is active, deactivate it.
     Table::const_iterator it = m_table.find(pluginId);
     if (it != m_table.end())
         it->second->deactivate();
-    else
-        unregisterPluginInternally(*info);
+
+    // Unregister the extensions.
+    PluginInfo *info = m_registry.find(pluginId)->second;
+    unregisterPluginExtensions(*info);
+
+    // Unregister the plugin.
+    m_registry.erase(pluginId);
+    delete info;
 }
 
 void PluginManager::enablePlugin(const char *pluginId)
 {
     PluginInfo *info = m_registry.find(pluginId)->second;
-    if (info->unregister || info->enabled)
-        return;
-
-    // Mark the plugin as enabled.
-    info->enabled = true;
-
-    // Register the extensions.
     registerPluginExtensions(*info);
 }
 
 void PluginManager::disablePlugin(const char *pluginId)
 {
-    PluginInfo *info = m_registry.find(pluginId)->second;
-    if (info->unregister || !info->enabled)
-        return;
-
-    // Mark the plugin as disabled.
-    info->enabled = false;
-
-    // Unregister the extensions.
-    unregisterPluginExtensions(*info);
-
-    // If the plugin is active, try to deactivate it.
     Table::const_iterator it = m_table.find(pluginId);
     if (it != m_table.end())
         it->second->deactivate();
+
+    PluginInfo *info = m_registry.find(pluginId)->second;
+    unregisterPluginExtensions(*info);
 }
 
 Extension *PluginManager::acquireExtension(const char *extensionId)
@@ -588,10 +560,6 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
             --m_nCachedPlugins;
         }
     }
-
-    // If requested, unregister the plugin after it is deactivated.
-    if (info->unregister)
-        unregisterPluginInternally(*info);
 }
 
 void PluginManager::scanPlugins(const char *pluginsDirName)

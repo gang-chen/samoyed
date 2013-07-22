@@ -27,7 +27,9 @@
 #include <gio/gio.h>
 #include <gtk/gtk.h>
 
-#define DIRECTORY_WHERE_FILE_OPENED "directory-where-file-opened"
+#define FILE_OPEN "file-open"
+#define DIRECTORY "directory"
+#define FILTER "filter"
 
 namespace
 {
@@ -120,8 +122,10 @@ void File::EditStack::clear()
 
 void File::installHistories()
 {
-    Application::instance().histories().addChild(DIRECTORY_WHERE_FILE_OPENED,
-                                                 std::string());
+    PropertyTree &prop = Application::instance().histories().
+        addChild(FILE_OPEN);
+    prop.addChild(DIRECTORY, std::string());
+    prop.addChild(FILTER, std::string());
 }
 
 std::list<File::TypeRecord> File::s_typeRegistry;
@@ -265,7 +269,11 @@ void File::openByDialog(Project *project,
     gtk_file_chooser_set_current_folder_uri(
         GTK_FILE_CHOOSER(dialog),
         Application::instance().histories().
-        get<std::string>(DIRECTORY_WHERE_FILE_OPENED).c_str());
+        get<std::string>(FILE_OPEN "/" DIRECTORY).c_str());
+
+    std::string lastFilterName = Application::instance().histories().
+        get(FILE_OPEN "/ " FILTER);
+    GtkFileFilter *lastFilter = NULL;
 
     FilterChangedParam param;
     for (std::list<File::TypeRecord>::const_iterator it =
@@ -275,6 +283,8 @@ void File::openByDialog(Project *project,
     {
         GtkFileFilter *filter = gtk_file_filter_new();
         char *name = g_content_type_get_description(it->m_type.c_str());
+        if (lastFilterName == name)
+            lastFilter = filter;
         gtk_file_filter_set_name(filter, name);
         g_free(name);
         gtk_file_filter_add_mime_type(filter, it->m_type.c_str());
@@ -287,12 +297,7 @@ void File::openByDialog(Project *project,
                            G_CALLBACK(onFileChooserFilterChanged),
                            &param);
 
-    std::map<std::string, boost::any> options;
-    if (param.optSetters)
-    {
-        param.optSetters->setOptions(options);
-        delete param.optSetters;
-    }
+    gtk_file_chooser_set_filter(GTK_FILE_FILTER(dialog), lastFilter);
 
     Window &window = Application::instance().currentWindow();
     Notebook &editorGroup = window.currentEditorGroup();
@@ -300,8 +305,15 @@ void File::openByDialog(Project *project,
     {
         GSList *uris, *uri;
         uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
-        uri = uris;
-        while (uri)
+
+        std::map<std::string, boost::any> options;
+        if (param.optSetters)
+        {
+            param.optSetters->setOptions(options);
+            delete param.optSetters;
+        }
+
+        for (uri = uris; uri; uri = uri->next);
         {
             std::pair<File *, Editor *> fileEditor =
                 open(static_cast<const char *>(uri->data), project, options,
@@ -315,7 +327,6 @@ void File::openByDialog(Project *project,
                             editorGroup,
                             editorGroup.currentChildIndex() + 1);
             }
-            uri = uri->next;
         }
         if (uris)
         {
@@ -327,7 +338,7 @@ void File::openByDialog(Project *project,
                 char *dirName = g_file_get_uri(d);
                 std::list<std::string> errors;
                 Application::instance().histories().
-                    set(DIRECTORY_WHERE_FILE_OPENED,
+                    set(FILE_OPEN "/" DIRECTORY,
                         std::string(dirName),
                         false,
                         errors);
@@ -337,6 +348,14 @@ void File::openByDialog(Project *project,
             g_object_unref(f);
         }
         g_slist_free_full(uris, g_free);
+
+        GtkFileFilter *filter =
+            gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
+        Application::instance().histories().
+            set(FILE_OPEN "/" FILTER,
+                std::string(gtk_file_filter_get_name(filter)),
+                false,
+                errors);
     }
     gtk_widget_destroy(dialog);
 }

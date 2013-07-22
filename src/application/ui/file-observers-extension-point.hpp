@@ -4,17 +4,29 @@
 #ifndef SMYD_FILE_OBSERVERS_EXTENSION_POINT_HPP
 #define SMYD_FILE_OBSERVERS_EXTENSION_POINT_HPP
 
+#include "utilities/extension-point.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <list>
+#include <map>
 #include <string>
+#include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
-#include "../utilities/extension-point.hpp"
 
 namespace Samoyed
 {
 
+class File;
+
 class FileObserversExtensionPoint: public ExtensionPoint
 {
 public:
+    struct ExtensionInfo
+    {
+        std::string id;
+        std::string type;
+        ExtensionInfo(const char *extensionId): id(extensionId) {}
+    };
+
     FileObserversExtensionPoint();
 
     virtual bool registerExtension(const char *extensionId,
@@ -23,7 +35,15 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    virtual void onExtensionEnabled(const char *extensionId);
+private:
+    typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
+        ExtensionTable;
+
+    void registerAllExtensionsOnFileOpened(File &file);
+
+    ExtensionTable m_extensions;
+
+    boost::signals2::connection m_filesOpenedConnection;
 };
 
 }

@@ -12,6 +12,7 @@
 #include "utilities/text-file-loader.hpp"
 #include "utilities/text-file-saver.hpp"
 #include "application.hpp"
+#include <string.h>
 #include <algorithm>
 #include <map>
 #include <boost/any.hpp>
@@ -24,6 +25,11 @@ namespace
 {
 
 const int TEXT_FILE_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
+
+Samoyed::File::OptionSetters *createOptionSetters()
+{
+    return new Samoyed::TextFile::OptionSetters;
+}
 
 }
 
@@ -117,6 +123,38 @@ bool TextFile::Removal::merge(const File::EditPrimitive *edit)
     return false;
 }
 
+GtkWidget *TextFile::OptionSetters::takeGtkWidget()
+{
+    if (!m_gtkWidget)
+    {
+        m_gtkWidget = gtk_combo_box_text_new();
+        for (const char **encoding = getTextEncodings(); *encoding; ++encoding)
+            gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(m_gtkWidget),
+                                      NULL,
+                                      *encoding);
+    }
+    return m_gtkWidget;
+}
+
+void
+TextFile::OptionSetters::setOptions(std::map<std::string, boost::any> &options)
+{
+    char *encoding =
+        gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(m_gtkWidget));
+    char *cp1, *cp2;
+    cp1 = strchr(encoding, '(');
+    if (cp1)
+    {
+        cp2 = strchr(cp1, ')');
+        if (cp2)
+        {
+            *cp2 = '\0';
+            options[ENCODING] = cp1;
+        }
+    }
+    g_free(encoding);
+}
+
 File *TextFile::create(const char *uri, Project *project,
                        const std::map<std::string, boost::any> &options)
 {
@@ -139,7 +177,7 @@ bool TextFile::isSupportedType(const char *type)
 void TextFile::registerType()
 {
     char *type = g_content_type_from_mime_type("text/plain");
-    File::registerType(type, create, NULL);
+    File::registerType(type, create, createOptionSetters);
     g_free(type);
 }
 

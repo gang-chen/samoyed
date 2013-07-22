@@ -167,6 +167,8 @@ bool removeFileOrDirectory(const char *name, GError **error);
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
 
+const char **getTextEncodings();
+
 }
 
 #endif
