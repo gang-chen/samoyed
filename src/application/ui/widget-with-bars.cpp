@@ -414,10 +414,16 @@ void WidgetWithBars::setFocusChild(GtkWidget *container,
                                    WidgetWithBars *widget)
 {
     if (widget->m_mainChild && widget->m_mainChild->gtkWidget() == child)
+    {
         widget->setCurrentChildIndex(0);
+        return;
+    }
     for (int i = 0; i < widget->barCount(); ++i)
         if (widget->m_bars[i] && widget->m_bars[i]->gtkWidget() == child)
+        {
             widget->setCurrentChildIndex(i + 1);
+            return;
+        }
 }
 
 }

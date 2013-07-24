@@ -21,4 +21,6 @@ public:
     virtual void activateAction(Window &window);
 };
 
+}
+
 #endif

@@ -1,15 +1,14 @@
-// Extension point: file observers.
+// Extension point: file recoverers.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_FILE_OBSERVERS_EXTENSION_POINT_HPP
-#define SMYD_FILE_OBSERVERS_EXTENSION_POINT_HPP
+#ifndef SMYD_FILE_RECOVERERS_EXTENSION_POINT_HPP
+#define SMYD_FILE_RECOVERERS_EXTENSION_POINT_HPP
 
 #include "utilities/extension-point.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
 #include <string>
-#include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -17,7 +16,7 @@ namespace Samoyed
 
 class File;
 
-class FileObserversExtensionPoint: public ExtensionPoint
+class FileRecoverersExtensionPoint: public ExtensionPoint
 {
 public:
     struct ExtensionInfo
@@ -27,9 +26,9 @@ public:
         ExtensionInfo(const char *extensionId): id(extensionId) {}
     };
 
-    FileObserversExtensionPoint();
+    FileRecoverersExtensionPoint();
 
-    virtual ~FileObserversExtensionPoint();
+    virtual ~FileRecoverersExtensionPoint();
 
     virtual bool registerExtension(const char *extensionId,
                                    xmlNodePtr xmlNode,
@@ -37,15 +36,13 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
+    bool recoverFile(File &file);
+
 private:
-    typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
+    typedef std::map<ComparablePoint<const char>, ExtensionInfo *>
         ExtensionTable;
 
-    void registerAllExtensionsOnFileOpened(File &file);
-
     ExtensionTable m_extensions;
-
-    boost::signals2::connection m_filesOpenedConnection;
 };
 
 }

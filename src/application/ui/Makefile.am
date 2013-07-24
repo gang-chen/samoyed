@@ -9,6 +9,7 @@ libui_la_SOURCES = \
     file.cpp \
     file-observer.cpp \
     file-observers-extension-point.cpp \
+    file-recoverers-extension-point.cpp \
     notebook.cpp \
     paned.cpp \
     project.cpp \
@@ -33,6 +34,8 @@ libui_la_SOURCES = \
     file-observer.hpp \
     file-observer-extension.hpp \
     file-observers-extension-point.hpp \
+    file-recoverer-extension.hpp \
+    file-recoverers-extension-point.hpp \
     notebook.hpp \
     paned.hpp \
     project.hpp \

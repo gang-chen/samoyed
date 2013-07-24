@@ -5,13 +5,19 @@
 # include <config.h>
 #endif
 #include "actions-extension-point.hpp"
+#include "action-extension.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
+#include <string.h>
 #include <list>
+#include <map>
 #include <string>
+#include <utility>
 #include <boost/ref.hpp>
 #include <boost/bind.hpp>
+#include <glib.h>
+#include <glib/gi18n.h>
 #include <libxml/tree.h>
 
 #define ACTIONS "actions"

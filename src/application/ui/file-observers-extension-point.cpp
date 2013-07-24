@@ -5,12 +5,19 @@
 # include <config.h>
 #endif
 #include "file-observers-extension-point.hpp"
+#include "file-observer-extension.hpp"
 #include "file.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
 #include <string.h>
+#include <list>
+#include <map>
+#include <string>
+#include <utility>
 #include <boost/bind.hpp>
+#include <glib.h>
+#include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <libxml/tree.h>
 
@@ -81,7 +88,7 @@ bool FileObserversExtensionPoint::registerExtension(const char *extensionId,
     for (xmlNodePtr child = xmlNode->children; child; child = child->next)
     {
         if (child->type != XML_ELEMENT_NODE)
-            contineu;
+            continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    TYPE) == 0)
         {
