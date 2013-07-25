@@ -14,7 +14,11 @@ class TextReplayFile
 public:
     static TextReplayFile *create(const char *fileName, const char *text);
 
+    TextReplayFile(): m_fd(-1) {}
+
     ~TextReplayFile();
+
+    bool close();
 
     bool insert(int line, int column, const char *text, int length);
 
