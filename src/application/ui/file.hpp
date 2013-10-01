@@ -72,7 +72,7 @@ public:
      * @param change The change that was made.
      * @param loading True iff the change was due to file loading.
      */
-    typedef boost::signals2::signal<void (const File &file,
+    typedef boost::signals2::signal<void (File &file,
                                           const Change &change,
                                           bool loading)> Changed;
 
@@ -198,8 +198,6 @@ public:
     bool closeEditor(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
-
-    const char *name() const { return m_name.c_str(); }
 
     const Revision &revision() const { return m_revision; }
 
@@ -371,8 +369,6 @@ private:
     static std::list<TypeRecord> s_typeRegistry;
 
     const std::string m_uri;
-
-    const std::string m_name;
 
     bool m_closing;
 

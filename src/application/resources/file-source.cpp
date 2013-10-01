@@ -95,10 +95,13 @@ void FileSource::Replacement::execute(FileSource &source)
     m_error = NULL;
 }
 
-FileSource::WriteExecutionWorker::WriteExecutionWorker(unsigned int priority,
+FileSource::WriteExecutionWorker::WriteExecutionWorker(Scheduler &scheduler,
+                                                       unsigned int priority,
                                                        const Callback &callback,
                                                        FileSource &source):
-    Worker(Application::instance().scheduler(), priority, callback),
+    Worker(scheduler,
+           priority,
+           callback),
     m_source(&source)
 {
     char *desc =
@@ -288,6 +291,7 @@ void FileSource::requestWrite(Write *write)
         if (!m_writeWorker)
         {
             m_writeWorker = new WriteExecutionWorker(
+                Application::instance().scheduler(),
                 Worker::PRIORITY_INTERACTIVE,
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);
@@ -312,6 +316,7 @@ void FileSource::onWriteWorkerDone(Worker &worker)
             // Some new write requests were queued.  Create a new background
             // worker to execute them.
             m_writeWorker = new WriteExecutionWorker(
+                Application::instance().scheduler(),
                 Worker::PRIORITY_INTERACTIVE,
                 boost::bind(&FileSource::onWriteWorkerDone, this, _1),
                 *this);

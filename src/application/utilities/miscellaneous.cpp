@@ -132,7 +132,11 @@ bool removeFileOrDirectory(const char *name, GError **error)
     {
         if (g_unlink(name))
         {
-            g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
+            if (error)
+                g_set_error_literal(error,
+                                    G_FILE_ERROR,
+                                    errno,
+                                    g_strerror(errno));
             return false;
         }
         return true;
@@ -159,7 +163,8 @@ bool removeFileOrDirectory(const char *name, GError **error)
     g_dir_close(dir);
     if (g_rmdir(name))
     {
-        g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
+        if (error)
+            g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
         return false;
     }
     return true;

@@ -81,14 +81,16 @@ void FileRecoverersExtensionPoint::unregisterExtension(const char *extensionId)
     delete ext;
 }
 
-bool FileRecoverersExtensionPoint::recoverFile(File &file)
+void FileRecoverersExtensionPoint::recoverFile(File &file)
 {
+    char *fileName = g_filename_from_uri(file.uri(), NULL, NULL);
+    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
     for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
     {
         ExtensionInfo *extInfo = *it;
-        if (g_content_type_is_a(file.type(), extInfo->type.c_str()))
+        if (g_content_type_is_a(type, extInfo->type.c_str()))
         {
             FileRecovererExtension *ext =
                 static_cast<FileRecovererExtension *>(
@@ -96,16 +98,14 @@ bool FileRecoverersExtensionPoint::recoverFile(File &file)
                     acquireExtension(extInfo->id.c_str()));
             if (ext)
             {
-                if (ext->recoverFile(file))
-                {
-                    ext->release();
-                    return true;
-                }
+                ext->recoverFile(file);
                 ext->release();
+                break;
             }
         }
     }
-    return false;
+    g_free(fileName);
+    g_free(type);
 }
 
 }

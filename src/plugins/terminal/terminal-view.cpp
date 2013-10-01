@@ -29,6 +29,9 @@ void closeTerminal(VteTerminal *term, Samoyed::TerminalView *termView)
 namespace Samoyed
 {
 
+namespace Terminal
+{
+
 bool TerminalView::setupTerminal()
 {
     m_terminal = vte_terminal_new();
@@ -136,6 +139,8 @@ TerminalView *TerminalView::restore(XmlElement &xmlElement,
 void TerminalView::grabFocus()
 {
     gtk_widget_grab_focus(m_terminal);
+}
+
 }
 
 }

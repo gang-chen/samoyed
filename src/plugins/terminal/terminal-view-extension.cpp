@@ -13,6 +13,9 @@
 namespace Samoyed
 {
 
+namespace Terminal
+{
+
 View *TerminalViewExtension::createView(const char *viewId,
                                         const char *viewTitle)
 {
@@ -32,6 +35,8 @@ View *TerminalViewExtension::restoreView(View::XmlElement &xmlElement)
     view->addClosedCallback(boost::bind(&TerminalPlugin::onViewClosed,
                                         boost::ref(plugin)));
     return view;
+}
+
 }
 
 }

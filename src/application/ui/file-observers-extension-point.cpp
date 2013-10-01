@@ -32,18 +32,23 @@ void registerExtensionInternally(
     Samoyed::FileObserversExtensionPoint::ExtensionInfo &extInfo,
     bool openFile)
 {
-    if (!g_content_type_is_a(file.type(), extInfo.type.c_str()))
-        return;
-    Samoyed::FileObserverExtension *ext =
-        static_cast<Samoyed::FileObserverExtension *>(
-            Samoyed::Application::instance().pluginManager().
-            acquireExtension(extInfo.id.c_str()));
-    if (!ext)
-        return;
-    FileObserver *ob = ext->activateObserver(file);
-    ext->release();
-    if (openFile)
-        ob->onFileOpened(file);
+    char *fileName = g_filename_from_uri(file.uri(), NULL, NULL);
+    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    if (g_content_type_is_a(type, extInfo.type.c_str()))
+    {
+        Samoyed::FileObserverExtension *ext =
+            static_cast<Samoyed::FileObserverExtension *>(
+                Samoyed::Application::instance().pluginManager().
+                acquireExtension(extInfo.id.c_str()));
+        if (!ext)
+            return;
+        FileObserver *ob = ext->activateObserver(file);
+        ext->release();
+        if (openFile)
+            ob->onFileOpened(file);
+    }
+    g_free(fileName);
+    g_free(type);
 }
 
 }

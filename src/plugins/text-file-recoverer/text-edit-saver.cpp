@@ -10,23 +10,40 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
-namespace
+namespace Samoyed
 {
 
-enum Operation
+namespace TextFileRecoverer
 {
-    INSERTION,
-    REMOVAL
-};
 
-const int BUFFER_SIZE = 10000;
-
-char buffer[BUFFER_SIZE];
+TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, File &file):
+    FileObserver(file),
+    m_initial(true),
+    m_recovering(false),
+    m_initialLength(0),
+    m_initialText(NULL),
+    m_edits(NULL)
+{
 
 }
 
-namespace Samoyed
+TextEditSaver::~TextEditSaver()
 {
+}
+
+void TextEditSaver::onCloseFile(File &file)
+{
+    // If the file was changed, remove the replay file.
+}
+
+void TextEditSaver::onFileSaved(File &file)
+{
+    // If the file was changed, remove the replay file.
+}
+
+void TextEditSaver::onFileChanged(File &file)
+{
+}
 
 TextReplayFile *TextReplayFile::create(const char *fileName,
                                        const char *text,

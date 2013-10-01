@@ -1,12 +1,15 @@
 // View: terminal.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TERMINAL_VIEW_HPP
-#define SMYD_TERMINAL_VIEW_HPP
+#ifndef SMYD_TERM_TERMINAL_VIEW_HPP
+#define SMYD_TERM_TERMINAL_VIEW_HPP
 
 #include "ui/view.hpp"
 
 namespace Samoyed
+{
+
+namespace Terminal
 {
 
 class TerminalView: public View
@@ -32,6 +35,8 @@ protected:
 
     GtkWidget *m_terminal;
 };
+
+}
 
 }
 

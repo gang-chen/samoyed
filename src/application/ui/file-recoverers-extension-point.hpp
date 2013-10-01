@@ -36,7 +36,7 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    bool recoverFile(File &file);
+    void recoverFile(File &file);
 
 private:
     typedef std::map<ComparablePoint<const char>, ExtensionInfo *>

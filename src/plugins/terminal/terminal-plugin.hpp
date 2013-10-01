@@ -1,8 +1,8 @@
 // Plugin: terminal.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TERMINAL_PLUGIN_HPP
-#define SMYD_TERMINAL_PLUGIN_HPP
+#ifndef SMYD_TERM_TERMINAL_PLUGIN_HPP
+#define SMYD_TERM_TERMINAL_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
 #include <list>
@@ -11,6 +11,9 @@ namespace Samoyed
 {
 
 class Widget;
+
+namespace Terminal
+{
 
 class TerminalPlugin: public Plugin
 {
@@ -32,6 +35,8 @@ protected:
 private:
     std::list<Widget *> m_views;
 };
+
+}
 
 }
 

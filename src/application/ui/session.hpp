@@ -129,7 +129,8 @@ private:
     class UnsavedFileListRequestWorker: public Worker
     {
     public:
-        UnsavedFileListRequestWorker(unsigned int priority,
+        UnsavedFileListRequestWorker(Scheduler &scheduler,
+                                     unsigned int priority,
                                      const Callback &callback,
                                      Session &session);
         virtual bool step();

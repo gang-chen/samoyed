@@ -195,6 +195,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     g_free(dirName);
     info->extensions = NULL;
     info->xmlDoc = doc;
+    info->cache = false;
 
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
@@ -433,13 +434,16 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
 
 void PluginManager::unregisterPlugin(const char *pluginId)
 {
+    // Do not cache the plugin.
+    PluginInfo *info = m_registry.find(pluginId)->second;
+    inf->cache = false;
+
     // If the plugin is active, deactivate it.
     Table::const_iterator it = m_table.find(pluginId);
     if (it != m_table.end())
         it->second->deactivate();
 
     // Unregister the extensions.
-    PluginInfo *info = m_registry.find(pluginId)->second;
     unregisterPluginExtensions(*info);
 
     // Unregister the plugin.
@@ -455,11 +459,13 @@ void PluginManager::enablePlugin(const char *pluginId)
 
 void PluginManager::disablePlugin(const char *pluginId)
 {
+    PluginInfo *info = m_registry.find(pluginId)->second;
+    info->cache = false;
+
     Table::const_iterator it = m_table.find(pluginId);
     if (it != m_table.end())
         it->second->deactivate();
 
-    PluginInfo *info = m_registry.find(pluginId)->second;
     unregisterPluginExtensions(*info);
 }
 
@@ -540,14 +546,10 @@ Extension *PluginManager::acquireExtension(const char *extensionId)
 
 void PluginManager::deactivatePlugin(Plugin &plugin)
 {
-    std::string pluginId(plugin.id());
-    PluginInfo *info = m_registry.find(pluginId.c_str())->second;
+    const PluginInfo *info = findPluginInfo(plugin.id());
 
     // Cache the plugin only if it can be reused later.
-    if (info->unregister || !info->enabled)
-        // Defer destroying the plugin.
-        g_idle_add(destroyPlugin, &plugin);
-    else
+    if (info && info->cache)
     {
         plugin.addToCache(m_lruCachedPlugin, m_mruCachedPlugin);
         if (++m_nCachedPlugins > m_cacheSize)
@@ -560,6 +562,9 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
             --m_nCachedPlugins;
         }
     }
+    else
+        // Defer destroying the plugin.
+        g_idle_add(destroyPlugin, &plugin);
 }
 
 void PluginManager::scanPlugins(const char *pluginsDirName)

@@ -442,10 +442,11 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
 }
 
 Session::UnsavedFileListRequestWorker::
-    UnsavedFileListRequestWorker(unsigned int priority,
+    UnsavedFileListRequestWorker(Scheduler &scheduler,
+                                 unsigned int priority,
                                  const Callback &callback,
                                  Session &session):
-    Worker(Application::instance().scheduler(),
+    Worker(scheduler,
            priority,
            callback),
     m_session(session)
@@ -501,6 +502,7 @@ gboolean Session::onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param)
         {
             session->m_unsavedFileListRequestWorker =
                 new UnsavedFileListRequestWorker(
+                    Application::instance().scheduler(),
                     Worker::PRIORITY_IDLE,
                     boost::bind(&Session::onUnsavedFileListRequestWorkerDone,
                                 session, _1),

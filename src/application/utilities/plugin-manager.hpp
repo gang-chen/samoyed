@@ -39,6 +39,7 @@ public:
         std::string module;
         ExtensionInfo *extensions;
         xmlDocPtr xmlDoc;
+        bool cache;
     };
 
     typedef std::map<ComparablePointer<const char>, PluginInfo *> Registry;

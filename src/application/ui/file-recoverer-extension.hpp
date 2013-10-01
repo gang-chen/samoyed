@@ -18,7 +18,7 @@ public:
         Extension(id, plugin)
     {}
 
-    virtual bool recoverFile(File &file);
+    virtual void recoverFile(File &file);
 };
 
 }

@@ -443,9 +443,9 @@ bool File::closeEditor(Editor &editor)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
-            _("File \"%s\" was edited but not saved. Save it before closing "
-              "it?"),
-            name());
+            _("File \"%s\" was edited but not saved. Save the file before "
+              "closing it?"),
+            uri());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
             GTK_STOCK_YES, GTK_RESPONSE_YES,
@@ -506,7 +506,6 @@ void File::removeEditor(Editor &editor)
 
 File::File(const char *uri):
     m_uri(uri),
-    m_name(basename(uri)),
     m_closing(false),
     m_reopening(false),
     m_loading(false),
@@ -596,7 +595,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to load file \"%s\"."),
-            file.name());
+            file.uri());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
@@ -640,7 +639,7 @@ gboolean File::onSavedInMainThread(gpointer param)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to save file \"%s\"."),
-            file.name());
+            file.uri());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
@@ -696,8 +695,8 @@ bool File::load(bool userRequest)
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
             _("File \"%s\" was edited. Your edits will be discarded if you "
-              "load it. Continue loading it?"),
-            name());
+              "load the file. Continue loading it?"),
+            uri());
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);

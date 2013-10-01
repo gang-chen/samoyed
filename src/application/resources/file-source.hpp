@@ -4,11 +4,11 @@
 #ifndef SMYD_FILE_SOURCE_HPP
 #define SMYD_FILE_SOURCE_HPP
 
-#include "../utilities/managed.hpp"
-#include "../utilities/miscellaneous.hpp"
-#include "../utilities/revision.hpp"
-#include "../utilities/worker.hpp"
-#include "../utilities/manager.hpp"
+#include "utilities/managed.hpp"
+#include "utilities/miscellaneous.hpp"
+#include "utilities/revision.hpp"
+#include "utilities/worker.hpp"
+#include "utilities/manager.hpp"
 #include <string>
 #include <deque>
 #include <boost/signals2/dummy_mutex.hpp>
@@ -222,7 +222,8 @@ private:
     class WriteExecutionWorker: public Worker
     {
     public:
-        WriteExecutionWorker(unsigned int priority,
+        WriteExecutionWorker(Scheduler &scheduler,
+                             unsigned int priority,
                              const Callback &callback,
                              FileSource &source);
         virtual bool step();

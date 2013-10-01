@@ -13,6 +13,9 @@
 namespace Samoyed
 {
 
+namespace Terminal
+{
+
 TerminalPlugin::TerminalPlugin(PluginManager &manager,
                                const char *id,
                                GModule *module):
@@ -51,6 +54,8 @@ void TerminalPlugin::deactivate()
 {
     while (!m_views.empty())
         m_views.front()->close();
+}
+
 }
 
 }
