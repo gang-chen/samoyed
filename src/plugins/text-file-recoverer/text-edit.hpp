@@ -15,73 +15,113 @@ struct TextEdit
     enum Type
     {
         TYPE_INSERTION,
-        TYPE_REMOVAL,
+        TYPE_INSERTION_1,
+        TYPE_INSERTION_2,
+        TYPE_INSERTION_3,
+        TYPE_INSERTION_4,
+        TYPE_INSERTION_5,
+        TYPE_INSERTION_6,
+        TYPE_INSERTION_7,
+        TYPE_INSERTION_8,
+        TYPE_INSERTION_9,
+        TYPE_INSERTION_10,
         TYPE_INSERTION_AT_CURSOR,
-        TYPE_INSERTION_ONE,
-        TYPE_INSERTION_ONE_AT_CURSOR,
-        TYPE_REMOVAL_AT_CURSOR,
-        TYPE_REMOVAL_ONE_BEFORE_CURSOR,
-        TYPE_REMOVAL_ONE_AFTER_CURSOR
+        TYPE_INSERTION_1_AT_CURSOR,
+        TYPE_INSERTION_2_AT_CURSOR,
+        TYPE_INSERTION_3_AT_CURSOR,
+        TYPE_INSERTION_4_AT_CURSOR,
+        TYPE_INSERTION_5_AT_CURSOR,
+        TYPE_INSERTION_6_AT_CURSOR,
+        TYPE_INSERTION_7_AT_CURSOR,
+        TYPE_INSERTION_8_AT_CURSOR,
+        TYPE_INSERTION_9_AT_CURSOR,
+        TYPE_INSERTION_10_AT_CURSOR,
+        TYPE_REMOVAL,
+        TYPE_REMOVAL_BEFORE_CURSOR,
+        TYPE_REMOVAL_1_BEFORE_CURSOR,
+        TYPE_REMOVAL_2_BEFORE_CURSOR,
+        TYPE_REMOVAL_3_BEFORE_CURSOR,
+        TYPE_REMOVAL_4_BEFORE_CURSOR,
+        TYPE_REMOVAL_5_BEFORE_CURSOR,
+        TYPE_REMOVAL_6_BEFORE_CURSOR,
+        TYPE_REMOVAL_7_BEFORE_CURSOR,
+        TYPE_REMOVAL_8_BEFORE_CURSOR,
+        TYPE_REMOVAL_9_BEFORE_CURSOR,
+        TYPE_REMOVAL_10_BEFORE_CURSOR,
+        TYPE_REMOVAL_AFTER_CURSOR,
+        TYPE_REMOVAL_1_AFTER_CURSOR,
+        TYPE_REMOVAL_2_AFTER_CURSOR,
+        TYPE_REMOVAL_3_AFTER_CURSOR,
+        TYPE_REMOVAL_4_AFTER_CURSOR,
+        TYPE_REMOVAL_5_AFTER_CURSOR,
+        TYPE_REMOVAL_6_AFTER_CURSOR,
+        TYPE_REMOVAL_7_AFTER_CURSOR,
+        TYPE_REMOVAL_8_AFTER_CURSOR,
+        TYPE_REMOVAL_9_AFTER_CURSOR,
+        TYPE_REMOVAL_10_AFTER_CURSOR
     };
     char type;
-    TextEdit *next;
-    TextEdit(t): type(t), next(NULL) {}
+    TextEdit(char t): type(t) {}
 };
 
 struct TextInsertion: public TextEdit
 {
     int line;
     int column;
-    const char *text;
     int length;
+    char text[1];
     TextInsertion(): TextEdit(TYPE_INSERTION) {}
 };
 
-struct TextRemoval: public TextEdit
+struct TextInsertionX: public TextEdit
 {
-    int beginLine;
-    int beginColumn;
-    int endLine;
-    int endColumn;
-    TextRemoval(): TextEdit(TYPE_REMOVAL) {}
+    int line;
+    int column;
+    char text[1];
+    TextInsertionX(char t): TextEdit(t) {}
 };
 
 struct TextInsertionAtCursor: public TextEdit
 {
-    const char *text;
     int length;
+    char text[1];
     TextInsertionAtCursor(): TextEdit(TYPE_INSERTION_AT_CURSOR) {}
 };
 
-struct TextInsertionOne: public TextEdit
+struct TextInsertionXAtCursor: public TextEdit
 {
-    int beginLine;
-    int beginColumn;
-    const char *text;
-    TextInsertionOne(): TextEdit(TYPE_INSERTION_ONE) {}
+    char text[1];
+    TextInsertionXAtCursor(char t): TextEdit(t) {}
 };
 
-struct TextInsertionOneAtCursor: public TextEdit
+struct TextRemoval: public TextEdit
 {
-    const char *text;
-    TextInsertionOneAtCursor(): TextEdit(TYPE_INSERTION_ONE_AT_CURSOR) {}
+    int line;
+    int column;
+    int length;
+    TextRemoval(): TextEdit(TYPE_REMOVAL) {}
 };
 
-struct TextRemovalAtCursor: public TextEdit
+struct TextRemovalBeforeCursor: public TextEdit
 {
-    int endLine;
-    int endColumn;
-    TextRemovalAtCursor(): TextEdit(TYPE_REMOVAL_AT_CURSOR) {}
+    int length;
+    TextRemovalBeforeCursor(): TextEdit(TYPE_REMOVAL_BEFORE_CURSOR) {}
 };
 
-struct TextRemovalOneBeforeCursor: public TextEdit
+struct TextRemovalXBeforeCursor: public TextEdit
 {
-    TextRemovalOneBeforeCursor(): TextEdit(TYPE_REMOVAL_ONE_BEFORE_CURSOR) {}
+    TextRemovalXBeforeCursor(char t): TextEdit(t) {}
 };
 
-struct TextRemovalOneAfterCursor: public TextEdit
+struct TextRemovalAfterCursor: public TextEdit
 {
-    TextRemovalOneAfterCursor(): TextEdit(TYPE_REMOVAL_ONE_AFTER_CURSOR) {}
+    int length;
+    TextRemovalAfterCursor(): TextEdit(TYPE_REMOVAL_AFTER_CURSOR) {}
+};
+
+struct TextRemovalXAfterCursor: public TextEdit
+{
+    TextRemovalOneAfterCursor(char t): TextEdit(t) {}
 };
 
 }

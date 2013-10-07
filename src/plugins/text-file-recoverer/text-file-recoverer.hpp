@@ -16,7 +16,6 @@ class TextFile;
 namespace TextFileRecoverer
 {
 
-class TextEdit;
 class TextFileRecovererPlugin;
 
 class TextFileRecoverer
@@ -42,10 +41,7 @@ private:
         virtual bool step();
 
         TextFileRecover &m_recoverer;
-        char *m_buffer;
-        int m_initialLength;
-        const char *m_initialText;
-        TextEdit *m_edits;
+        char *m_editStream;
         std::string m_error;
     };
 

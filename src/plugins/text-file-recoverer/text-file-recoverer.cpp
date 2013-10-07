@@ -23,7 +23,7 @@
 namespace
 {
 
-const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txtr.";
+const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txt.rep.";
 
 }
 
@@ -42,22 +42,13 @@ TextFileRecoverer::TextReplayFileReader::TextReplayFileReader(
            priority,
            callback),
     m_recoverer(recoverer),
-    m_buffer(NULL),
-    m_initialLength(0),
-    m_initialText(NULL),
-    m_edits(NULL)
+    m_editStream(NULL)
 {
 }
 
 TextFileRecoverer::TextReplayFileReader::~TextReplayFileReader()
 {
-    g_free(m_buffer);
-    for (TextEdit *e = m_edits; e;)
-    {
-        TextEdit *t = e;
-        e = e->next;
-        delete t;
-    }
+    g_free(m_editStream);
 }
 
 bool TextFileRecoverer::TextReplayFileReader::step()
