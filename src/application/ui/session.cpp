@@ -441,11 +441,11 @@ void Session::UnsavedFileListWrite::execute(const Session &session) const
     }
 }
 
-Session::UnsavedFileListRequestWorker::
-    UnsavedFileListRequestWorker(Scheduler &scheduler,
-                                 unsigned int priority,
-                                 const Callback &callback,
-                                 Session &session):
+Session::UnsavedFileListRequestExecutor::
+    UnsavedFileListRequestExecutor(Scheduler &scheduler,
+                                   unsigned int priority,
+                                   const Callback &callback,
+                                   Session &session):
     Worker(scheduler,
            priority,
            callback),
@@ -453,7 +453,7 @@ Session::UnsavedFileListRequestWorker::
 {
 }
 
-bool Session::UnsavedFileListRequestWorker::step()
+bool Session::UnsavedFileListRequestExecutor::step()
 {
     m_session.executeQueuedUnsavedFileListRequests();
     return true;
@@ -491,38 +491,39 @@ gboolean Session::onUnsavedFileListRead(gpointer param)
     return FALSE;
 }
 
-gboolean Session::onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param)
+gboolean
+Session::onUnsavedFileListRequestExecutorDoneInMainThread(gpointer param)
 {
     Session *session = static_cast<Session *>(param);
-    delete session->m_unsavedFileListRequestWorker;
+    delete session->m_unsavedFileListRequestExecutor;
     {
         boost::mutex::scoped_lock
             lock(session->m_unsavedFileListRequestQueueMutex);
         if (!session->m_unsavedFileListRequestQueue.empty())
         {
-            session->m_unsavedFileListRequestWorker =
-                new UnsavedFileListRequestWorker(
+            session->m_unsavedFileListRequestExecutor =
+                new UnsavedFileListRequestExecutor(
                     Application::instance().scheduler(),
                     Worker::PRIORITY_IDLE,
-                    boost::bind(&Session::onUnsavedFileListRequestWorkerDone,
+                    boost::bind(&Session::onUnsavedFileListRequestExecutorDone,
                                 session, _1),
                     *session);
             Application::instance().scheduler().
-                schedule(*session->m_unsavedFileListRequestWorker);
+                schedule(*session->m_unsavedFileListRequestExecutor);
         }
         else
-            session->m_unsavedFileListRequestWorker = NULL;
+            session->m_unsavedFileListRequestExecutor = NULL;
     }
-    if (!session->m_unsavedFileListRequestWorker && session->m_destroy)
+    if (!session->m_unsavedFileListRequestExecutor && session->m_destroy)
         delete session;
     return FALSE;
 }
 
-void Session::onUnsavedFileListRequestWorkerDone(Worker &worker)
+void Session::onUnsavedFileListRequestExecutorDone(Worker &worker)
 {
-    assert(&worker == m_unsavedFileListRequestWorker);
+    assert(&worker == m_unsavedFileListRequestExecutor);
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onUnsavedFileListRequestWorkerDoneInMainThread,
+                    onUnsavedFileListRequestExecutorDoneInMainThread,
                     this,
                     NULL);
 }
@@ -534,15 +535,15 @@ void Session::queueUnsavedFileListRequest(UnsavedFileListRequest *request)
         m_unsavedFileListRequestQueue.push_back(request);
     }
 
-    if (!m_unsavedFileListRequestWorker)
+    if (!m_unsavedFileListRequestExecutor)
     {
-        m_unsavedFileListRequestWorker = new UnsavedFileListRequestWorker(
+        m_unsavedFileListRequestExecutor = new UnsavedFileListRequestExecutor(
             Worker::PRIORITY_IDLE,
-            boost::bind(&Session::onUnsavedFileListRequestWorkerDone,
+            boost::bind(&Session::onUnsavedFileListRequestExecutorDone,
                         this, _1),
             *this);
         Application::instance().scheduler().
-            schedule(*m_unsavedFileListRequestWorker);
+            schedule(*m_unsavedFileListRequestExecutor);
     }
 }
 
@@ -865,7 +866,7 @@ Session::Session(const char *name, const char *lockFileName):
     m_destroy(false),
     m_name(name),
     m_lockFile(lockFileName),
-    m_unsavedFileListRequestWorker(NULL)
+    m_unsavedFileListRequestExecutor(NULL)
 {
 }
 
@@ -877,7 +878,7 @@ Session::~Session()
 void Session::destroy()
 {
     m_destroy = true;
-    if (!m_unsavedFileListRequestWorker)
+    if (!m_unsavedFileListRequestExecutor)
         delete this;
 }
 

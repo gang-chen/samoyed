@@ -126,13 +126,13 @@ private:
         std::list<std::string> m_unsavedFileUris;
     };
 
-    class UnsavedFileListRequestWorker: public Worker
+    class UnsavedFileListRequestExecutor: public Worker
     {
     public:
-        UnsavedFileListRequestWorker(Scheduler &scheduler,
-                                     unsigned int priority,
-                                     const Callback &callback,
-                                     Session &session);
+        UnsavedFileListRequestExecutor(Scheduler &scheduler,
+                                       unsigned int priority,
+                                       const Callback &callback,
+                                       Session &session);
         virtual bool step();
 
     private:
@@ -144,7 +144,7 @@ private:
     static gboolean onUnsavedFileListRead(gpointer param);
 
     static gboolean
-        onUnsavedFileListRequestWorkerDoneInMainThread(gpointer param);
+        onUnsavedFileListRequestExecutorDoneInMainThread(gpointer param);
 
     Session(const char *name, const char *lockFileName);
     ~Session();
@@ -154,7 +154,7 @@ private:
 
     void queueUnsavedFileListRequest(UnsavedFileListRequest *request);
     void executeQueuedUnsavedFileListRequests();
-    void onUnsavedFileListRequestWorkerDone(Worker &worker);
+    void onUnsavedFileListRequestExecutorDone(Worker &worker);
 
     static bool s_crashHandlerRegistered;
 
@@ -169,7 +169,7 @@ private:
     std::deque<UnsavedFileListRequest *> m_unsavedFileListRequestQueue;
     mutable boost::mutex m_unsavedFileListRequestQueueMutex;
 
-    UnsavedFileListRequestWorker *m_unsavedFileListRequestWorker;
+    UnsavedFileListRequestExecutor *m_unsavedFileListRequestExecutor;
 };
 
 }

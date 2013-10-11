@@ -219,13 +219,13 @@ private:
     /**
      * Background worker that executes queued write requests.
      */
-    class WriteExecutionWorker: public Worker
+    class WriteExecutor: public Worker
     {
     public:
-        WriteExecutionWorker(Scheduler &scheduler,
-                             unsigned int priority,
-                             const Callback &callback,
-                             FileSource &source);
+        WriteExecutor(Scheduler &scheduler,
+                      unsigned int priority,
+                      const Callback &callback,
+                      FileSource &source);
         virtual bool step();
 
     private:
@@ -251,7 +251,7 @@ private:
 
     void requestWrite(Write *write);
 
-    void onWriteWorkerDone(Worker &worker);
+    void onWriteExecutorDone(Worker &worker);
 
     void setBuffer(TextBuffer *buffer);
 
@@ -277,9 +277,9 @@ private:
 
     mutable boost::mutex m_writeExecutorMutex;
 
-    WriteExecutionWorker *m_writeWorker;
+    WriteExecutor *m_writeExecutor;
 
-    mutable boost::mutex m_writeWorkerMutex;
+    mutable boost::mutex m_writeExecutorMutex;
 
     const SourceFile *m_file;
 

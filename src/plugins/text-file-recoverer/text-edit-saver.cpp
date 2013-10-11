@@ -1,4 +1,4 @@
-// Text replay file.
+// Text edit saver.
 // Copyright (C) 2013 Gang Chen.
 
 #include "text-replay-file.hpp"
@@ -20,9 +20,7 @@ TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, File &file):
     FileObserver(file),
     m_initial(true),
     m_recovering(false),
-    m_initialLength(0),
-    m_initialText(NULL),
-    m_edits(NULL)
+    m_operationExecutor(NULL)
 {
 
 }
@@ -36,6 +34,10 @@ void TextEditSaver::onCloseFile(File &file)
     // If the file was changed, remove the replay file.
 }
 
+void TextEditSaver::onFileLoaded(File &file)
+{
+}
+
 void TextEditSaver::onFileSaved(File &file)
 {
     // If the file was changed, remove the replay file.
@@ -43,6 +45,8 @@ void TextEditSaver::onFileSaved(File &file)
 
 void TextEditSaver::onFileChanged(File &file)
 {
+    // If we are recovering the file, do nothing.
+    // If this is the first change, create the replay file.  Otherwise, append an edit to the replay file.
 }
 
 TextReplayFile *TextReplayFile::create(const char *fileName,

@@ -95,10 +95,10 @@ void FileSource::Replacement::execute(FileSource &source)
     m_error = NULL;
 }
 
-FileSource::WriteExecutionWorker::WriteExecutionWorker(Scheduler &scheduler,
-                                                       unsigned int priority,
-                                                       const Callback &callback,
-                                                       FileSource &source):
+FileSource::WriteExecutor::WriteExecutor(Scheduler &scheduler,
+                                         unsigned int priority,
+                                         const Callback &callback,
+                                         FileSource &source):
     Worker(scheduler,
            priority,
            callback),
@@ -111,7 +111,7 @@ FileSource::WriteExecutionWorker::WriteExecutionWorker(Scheduler &scheduler,
     g_free(desc);
 }
 
-bool FileSource::WriteExecutionWorker::step()
+bool FileSource::WriteExecutor::step()
 {
     m_source->executeQueuedWrites();
     return true;
@@ -126,7 +126,7 @@ FileSource::FileSource(const Key &key,
     m_encoding(m_key.substr(m_key.rfind('?') + 1)),
     m_error(NULL),
     m_buffer(NULL),
-    m_writeWorker(NULL),
+    m_writeExecutor(NULL),
     m_file(NULL)
 {
 }
@@ -134,7 +134,7 @@ FileSource::FileSource(const Key &key,
 FileSource::~FileSource()
 {
     assert(m_writeQueue.empty());
-    assert(!m_writeWorker);
+    assert(!m_writeExecutor);
     assert(!m_file);
     delete m_buffer;
     if (m_error)
@@ -287,15 +287,15 @@ void FileSource::requestWrite(Write *write)
     {
         // If we are in the main thread, use a background worker to execute the
         // queued write requests.
-        boost::mutex::scoped_lock workerLock(m_writeWorkerMutex);
-        if (!m_writeWorker)
+        boost::mutex::scoped_lock workerLock(m_writeExecutorMutex);
+        if (!m_writeExecutor)
         {
-            m_writeWorker = new WriteExecutionWorker(
+            m_writeExecutor = new WriteExecutor(
                 Application::instance().scheduler(),
                 Worker::PRIORITY_INTERACTIVE,
-                boost::bind(&FileSource::onWriteWorkerDone, this, _1),
+                boost::bind(&FileSource::onWriteExecutorDone, this, _1),
                 *this);
-            Application::instance().scheduler().schedule(*m_writeWorker);
+            Application::instance().scheduler().schedule(*m_writeExecutor);
         }
     }
     else
@@ -305,25 +305,25 @@ void FileSource::requestWrite(Write *write)
     }
 }
 
-void FileSource::onWriteWorkerDone(Worker &worker)
+void FileSource::onWriteExecutorDone(Worker &worker)
 {
     {
-        boost::mutex::scoped_lock workerLock(m_writeWorkerMutex);
-        assert(&worker == m_writeWorker);
+        boost::mutex::scoped_lock executorLock(m_writeExecutorMutex);
+        assert(&worker == m_writeExecutor);
         boost::mutex::scoped_lock queueLock(m_writeQueueMutex);
         if (!m_writeQueue.empty())
         {
             // Some new write requests were queued.  Create a new background
             // worker to execute them.
-            m_writeWorker = new WriteExecutionWorker(
+            m_writeExecutor = new WriteExecutor(
                 Application::instance().scheduler(),
                 Worker::PRIORITY_INTERACTIVE,
-                boost::bind(&FileSource::onWriteWorkerDone, this, _1),
+                boost::bind(&FileSource::onWriteExecutorDone, this, _1),
                 *this);
-            Application::instance().scheduler().schedule(*m_writeWorker);
+            Application::instance().scheduler().schedule(*m_writeExecutor);
         }
         else
-            m_writeWorker = NULL;
+            m_writeExecutor = NULL;
     }
     delete &worker;
 }

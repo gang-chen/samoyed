@@ -1,8 +1,8 @@
 // Text file recoverer.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TEXT_FILE_RECOVERER_HPP
-#define SMYD_TEXT_FILE_RECOVERER_HPP
+#ifndef SMYD_TXTR_TEXT_FILE_RECOVERER_HPP
+#define SMYD_TXTR_TEXT_FILE_RECOVERER_HPP
 
 #include "utilities/worker.hpp"
 #include <boost/signals2/signal.hpp>

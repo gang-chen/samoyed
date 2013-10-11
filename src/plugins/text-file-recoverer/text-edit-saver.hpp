@@ -6,6 +6,8 @@
 
 #include "ui/file-observer.hpp"
 #include "utilities/worker.hpp"
+#include <deque>
+#include <boost/thread/mutex.hpp>
 
 namespace Samoyed
 {
@@ -32,12 +34,54 @@ public:
     void onFileRecoveringEnded(File &file);
 
 private:
+    class ReplayFileOperation
+    {
+    public:
+        virtual bool execute() = 0;
+    };
+
+    class ReplayFileCreation: public ReplayFileOperation
+    {
+    public:
+        virtual bool execute();
+    private:
+        const char *m_initialText;
+    };
+
+    class ReplayFileRemoval: public ReplayFileOperation
+    {
+    public:
+        virtual bool execute();
+    };
+
+    class ReplayFileAppend: public ReplayFileOperation
+    {
+    public:
+        virtual bool execute();
+    private:
+        TextEdit *m_edit;
+    };
+
+    class ReplayFileOperationExecutor: public Worker
+    {
+    public:
+        ReplayFileOperationExecutor(Scheduler &scheduler,
+                                    unsigned int priority,
+                                    const Callback &callback,
+                                    );
+        virtual bool step();
+    private:
+        m_;
+    };
+
     bool m_initial;
     bool m_recovering;
-    int m_initialLength;
-    char *m_initialText;
-    TextEdit *m_edits;
 
+    std::deque<ReplayFileOperation *> m_operationQueue;
+    mutable boost::mutex m_operationQueueMutex;
+
+    ReplayFileOperationExecutor *m_operationExecutor;
+    mutable boost::mutex m_operationExecutorMutex;
 };
 
 }

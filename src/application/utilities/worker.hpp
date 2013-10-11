@@ -16,7 +16,7 @@ class Scheduler;
 
 /**
  * A worker carries out a specific task in a background thread.  A worker can
- * be cancelled, blocked, updated or preempted.  Workers are cooperative to
+ * be canceled, blocked, updated or preempted.  Workers are cooperative to
  * implement the cancellation, blocking, updating and preemption.
  */
 class Worker: public boost::noncopyable
@@ -68,9 +68,9 @@ public:
         STATE_FINISHED,
 
         /**
-         * Cancelled; scheduled.
+         * Canceled; scheduled.
          */
-        STATE_CANCELLED
+        STATE_CANCELED
     };
 
     typedef boost::function<void (Worker &)> Callback;
@@ -81,7 +81,7 @@ public:
      * Construct a worker.  It is assumed that the worker will be submitted to
      * the task scheduler.
      * @param callback The callback called when the worker is finished or
-     * cancelled.  The callback is called without locking the mutex, allowing
+     * canceled.  The callback is called without locking the mutex, allowing
      * the callback to destroy this worker.
      */
     Worker(Scheduler &scheduler,
@@ -115,13 +115,13 @@ public:
     void operator()();
 
     /**
-     * Run until finished.  The worker cannot be cancelled, blocked, updated or
+     * Run until finished.  The worker cannot be canceled, blocked, updated or
      * preempted.
      */
     void runAll();
 
     /**
-     * Request to cancel the worker.  The worker will be cancelled immediately
+     * Request to cancel the worker.  The worker will be canceled immediately
      * if it was blocked.
      */
     void cancel();
@@ -144,7 +144,7 @@ protected:
      * can be handled by this worker arrives, we can reuse this worker by
      * updating it with the new task instead of creating a new task for it.  We
      * can save the cost of creating a worker, and reduce the cost of completing
-     * the two tasks if the two tasks overlap.  A finished or cancelled worker
+     * the two tasks if the two tasks overlap.  A finished or canceled worker
      * can't be updated since it may be destroyed by the finishing or
      * cancellation callback.  This function is called by the derived class,
      * which should provide public functions that receive the information on
@@ -245,7 +245,7 @@ private:
     bool m_blocked;
 
     /**
-     * The callback called when the worker is finished or cancelled.
+     * The callback called when the worker is finished or canceled.
      */
     Callback m_callback;
 

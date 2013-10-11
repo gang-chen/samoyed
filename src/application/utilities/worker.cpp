@@ -41,16 +41,16 @@ Worker::ExecutionWrapper::~ExecutionWrapper()
 void Worker::operator()()
 {
     {
-        // Before entering the execution, check to see if we are cancelled or
+        // Before entering the execution, check to see if we are canceled or
         // blocked.
         boost::mutex::scoped_lock lock(m_mutex);
         assert(m_state == STATE_READY);
         if (m_cancel)
         {
-            m_state = STATE_CANCELLED;
+            m_state = STATE_CANCELED;
             m_cancel = false;
             m_block = false;
-            goto CANCELLED;
+            goto CANCELED;
         }
         if (m_block)
         {
@@ -94,7 +94,7 @@ void Worker::operator()()
                 boost::mutex::scoped_lock lock(m_mutex);
                 assert(m_state == STATE_RUNNING);
                 // Note that we should check to see if we are updated, done,
-                // cancelled, blocked or preempted, strictly in that order.
+                // canceled, blocked or preempted, strictly in that order.
                 if (m_update)
                 {
                     m_update = false;
@@ -109,11 +109,11 @@ void Worker::operator()()
                 }
                 if (m_cancel)
                 {
-                    m_state = STATE_CANCELLED;
+                    m_state = STATE_CANCELED;
                     m_cancel = false;
                     m_block = false;
                     cancelInternally();
-                    goto CANCELLED;
+                    goto CANCELED;
                 }
                 if (m_block)
                 {
@@ -141,7 +141,7 @@ void Worker::operator()()
     }
 
 FINISHED:
-CANCELLED:
+CANCELED:
     // Call the callback out of the lock.
     if (!m_callback.empty())
         m_callback(*this);
@@ -168,11 +168,11 @@ void Worker::cancel()
             m_cancel = true;
             return;
         }
-        // If the worker has already been finished or cancelled, do nothing.
+        // If the worker has already been finished or canceled, do nothing.
         if (m_state != STATE_BLOCKED)
             return;
         // Cancel the worker immediately if it was blocked.
-        m_state = STATE_CANCELLED;
+        m_state = STATE_CANCELED;
     }
     // Call the callback out of the lock.
     if (!m_callback.empty())
@@ -201,7 +201,7 @@ void Worker::unblock()
         m_state = STATE_READY;
         m_scheduler.schedule(*this);
     }
-    // If the worker was finished or cancelled, do nothing.
+    // If the worker was finished or canceled, do nothing.
 }
 
 }
@@ -356,8 +356,8 @@ private:
         }
         else
         {
-            assert(state == Samoyed::Worker::STATE_CANCELLED);
-            printf("%s: Cancelled\n", m_alarm->description());
+            assert(state == Samoyed::Worker::STATE_CANCELED);
+            printf("%s: Canceled\n", m_alarm->description());
         }
         m_alarm = NULL;
         delete &worker;

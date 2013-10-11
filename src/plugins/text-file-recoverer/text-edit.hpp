@@ -4,6 +4,8 @@
 #ifndef SMYD_TXTR_TEXT_EDIT_HPP
 #define SMYD_TXTR_TEXT_EDIT_HPP
 
+#include <string>
+
 namespace Samoyed
 {
 
@@ -68,30 +70,14 @@ struct TextInsertion: public TextEdit
 {
     int line;
     int column;
-    int length;
-    char text[1];
+    std::string text;
     TextInsertion(): TextEdit(TYPE_INSERTION) {}
-};
-
-struct TextInsertionX: public TextEdit
-{
-    int line;
-    int column;
-    char text[1];
-    TextInsertionX(char t): TextEdit(t) {}
 };
 
 struct TextInsertionAtCursor: public TextEdit
 {
-    int length;
-    char text[1];
+    std::string text;
     TextInsertionAtCursor(): TextEdit(TYPE_INSERTION_AT_CURSOR) {}
-};
-
-struct TextInsertionXAtCursor: public TextEdit
-{
-    char text[1];
-    TextInsertionXAtCursor(char t): TextEdit(t) {}
 };
 
 struct TextRemoval: public TextEdit
@@ -108,20 +94,10 @@ struct TextRemovalBeforeCursor: public TextEdit
     TextRemovalBeforeCursor(): TextEdit(TYPE_REMOVAL_BEFORE_CURSOR) {}
 };
 
-struct TextRemovalXBeforeCursor: public TextEdit
-{
-    TextRemovalXBeforeCursor(char t): TextEdit(t) {}
-};
-
 struct TextRemovalAfterCursor: public TextEdit
 {
     int length;
     TextRemovalAfterCursor(): TextEdit(TYPE_REMOVAL_AFTER_CURSOR) {}
-};
-
-struct TextRemovalXAfterCursor: public TextEdit
-{
-    TextRemovalOneAfterCursor(char t): TextEdit(t) {}
 };
 
 }
