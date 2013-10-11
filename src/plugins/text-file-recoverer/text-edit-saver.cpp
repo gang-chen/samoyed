@@ -20,9 +20,12 @@ TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, File &file):
     FileObserver(file),
     m_initial(true),
     m_recovering(false),
+    m_replayFileCreated(false),
+    m_cursorLine(0),
+    m_cursorColumn(0),
     m_operationExecutor(NULL)
 {
-
+    m_initialText = text(0, 0, -1, -1);
 }
 
 TextEditSaver::~TextEditSaver()
@@ -31,7 +34,7 @@ TextEditSaver::~TextEditSaver()
 
 void TextEditSaver::onCloseFile(File &file)
 {
-    // If the file was changed, remove the replay file.
+    // If the replay file was created, remove it.
 }
 
 void TextEditSaver::onFileLoaded(File &file)
@@ -40,7 +43,7 @@ void TextEditSaver::onFileLoaded(File &file)
 
 void TextEditSaver::onFileSaved(File &file)
 {
-    // If the file was changed, remove the replay file.
+    // If the replay file was created, remove it.
 }
 
 void TextEditSaver::onFileChanged(File &file)

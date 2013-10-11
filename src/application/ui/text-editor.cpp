@@ -19,6 +19,8 @@
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
+#include <gtksourceview/gtksourcebuffer.h>
+#include <gtksourceview/gtksourceview.h>
 #include <libxml/tree.h>
 
 #define EDITOR "editor"
@@ -270,12 +272,12 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
 {
     if (!Editor::setup())
         return false;
-    GtkTextBuffer *buffer = gtk_text_buffer_new(tagTable);
-    GtkWidget *view = gtk_text_view_new_with_buffer(buffer);
+    GtkSourceBuffer *buffer = gtk_source_buffer_new(tagTable);
+    GtkWidget *view = gtk_source_view_new_with_buffer(buffer);
     GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
-    g_signal_connect(buffer, "insert-text",
+    g_signal_connect(GTK_TEXT_BUFFER(buffer), "insert-text",
                      G_CALLBACK(insert), this);
-    g_signal_connect(buffer, "delete-range",
+    g_signal_connect(GTK_TEXT_BUFFER(buffer), "delete-range",
                      G_CALLBACK(remove), this);
     g_object_unref(buffer);
     gtk_container_add(GTK_CONTAINER(sw), view);

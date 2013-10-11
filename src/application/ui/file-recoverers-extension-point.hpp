@@ -14,8 +14,6 @@
 namespace Samoyed
 {
 
-class File;
-
 class FileRecoverersExtensionPoint: public ExtensionPoint
 {
 public:
@@ -36,7 +34,7 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    void recoverFile(File &file);
+    void recoverFile(const char *fileUri);
 
 private:
     typedef std::map<ComparablePoint<const char>, ExtensionInfo *>

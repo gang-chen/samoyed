@@ -45,7 +45,7 @@ private:
     public:
         virtual bool execute();
     private:
-        const char *m_initialText;
+        char *m_initialText;
     };
 
     class ReplayFileRemoval: public ReplayFileOperation
@@ -54,7 +54,7 @@ private:
         virtual bool execute();
     };
 
-    class ReplayFileAppend: public ReplayFileOperation
+    class ReplayFileAppending: public ReplayFileOperation
     {
     public:
         virtual bool execute();
@@ -74,8 +74,12 @@ private:
         m_;
     };
 
-    bool m_initial;
     bool m_recovering;
+    bool m_replayFileCreated;
+
+    int m_cursorLine;
+    int m_cursorColumn;
+    char *m_initialText;
 
     std::deque<ReplayFileOperation *> m_operationQueue;
     mutable boost::mutex m_operationQueueMutex;
