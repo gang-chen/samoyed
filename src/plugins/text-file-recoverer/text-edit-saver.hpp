@@ -71,8 +71,10 @@ private:
                                     );
         virtual bool step();
     private:
-        m_;
+        TextEditSaver &m_saver;
     };
+
+    void executeQueuedRelayFileOperations();
 
     bool m_recovering;
     bool m_replayFileCreated;
