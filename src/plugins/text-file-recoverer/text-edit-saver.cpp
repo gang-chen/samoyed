@@ -16,6 +16,18 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
+TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
+        Scheduler &scheduler,
+        unsigned int priority,
+        const Callback &callback,
+        TextEditSaver &saver):
+    Worker(scheduler, priority, callback),
+    m_saver(saver)
+{
+    char *desc =
+        g_strdup_printf("Executing queued operations on text edit replay file \"%s\"",);
+}
+
 TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, File &file):
     FileObserver(file),
     m_initial(true),
