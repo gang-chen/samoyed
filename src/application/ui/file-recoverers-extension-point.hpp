@@ -37,7 +37,7 @@ public:
     void recoverFile(const char *fileUri);
 
 private:
-    typedef std::map<ComparablePoint<const char>, ExtensionInfo *>
+    typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
         ExtensionTable;
 
     ExtensionTable m_extensions;

@@ -1,4 +1,4 @@
-// FIle observer.
+// File observer.
 // Copyright (C) 2013 Gang Chen.
 
 #ifndef SMYD_FILE_OBSERVER_HPP
@@ -19,16 +19,14 @@ public:
     void activate();
     void deactivate();
 
-    virtual void onFileOpend(File &file) {}
-    virtual void onCloseFile(File &file) {}
-    virtual void onFileLoaded(File &file) {}
-    virtual void onFileSaved(File &file) {}
-    virtual void onFileChanged(File &file,
-                               const File::Change &change,
-                               bool loading) {}
+    virtual void onFileOpened() {}
+    virtual void onCloseFile() {}
+    virtual void onFileLoaded() {}
+    virtual void onFileSaved() {}
+    virtual void onFileChanged(const File::Change &change, bool loading) {}
 
 private:
-    void onCloseFileInternally(File &file);
+    void onCloseFileInternally();
 
     File &m_file;
     boost::signals2::connection m_closeConnection;

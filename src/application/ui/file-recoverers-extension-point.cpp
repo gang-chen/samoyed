@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "file-recoverers-extension-point.hpp"
+#include "file-recoverer-extension.hpp"
 #include "file.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
@@ -89,7 +90,7 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri)
          it != m_extensions.end();
          ++it)
     {
-        ExtensionInfo *extInfo = *it;
+        ExtensionInfo *extInfo = it->second;
         if (g_content_type_is_a(type, extInfo->type.c_str()))
         {
             FileRecovererExtension *ext =

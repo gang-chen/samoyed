@@ -6,6 +6,7 @@
 #endif
 #include "file-observers-extension-point.hpp"
 #include "file-observer-extension.hpp"
+#include "file-observer.hpp"
 #include "file.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
@@ -42,10 +43,10 @@ void registerExtensionInternally(
                 acquireExtension(extInfo.id.c_str()));
         if (!ext)
             return;
-        FileObserver *ob = ext->activateObserver(file);
+        Samoyed::FileObserver *ob = ext->activateObserver(file);
         ext->release();
         if (openFile)
-            ob->onFileOpened(file);
+            ob->onFileOpened();
     }
     g_free(fileName);
     g_free(type);

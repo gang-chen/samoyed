@@ -272,7 +272,7 @@ void File::openByDialog(Project *project,
         get<std::string>(FILE_OPEN "/" DIRECTORY).c_str());
 
     std::string lastFilterName = Application::instance().histories().
-        get(FILE_OPEN "/ " FILTER);
+        get<std::string>(FILE_OPEN "/ " FILTER);
     GtkFileFilter *lastFilter = NULL;
 
     FilterChangedParam param;
@@ -297,7 +297,7 @@ void File::openByDialog(Project *project,
                            G_CALLBACK(onFileChooserFilterChanged),
                            &param);
 
-    gtk_file_chooser_set_filter(GTK_FILE_FILTER(dialog), lastFilter);
+    gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), lastFilter);
 
     Window &window = Application::instance().currentWindow();
     Notebook &editorGroup = window.currentEditorGroup();
@@ -351,6 +351,7 @@ void File::openByDialog(Project *project,
 
         GtkFileFilter *filter =
             gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
+        std::list<std::string> errors;
         Application::instance().histories().
             set(FILE_OPEN "/" FILTER,
                 std::string(gtk_file_filter_get_name(filter)),

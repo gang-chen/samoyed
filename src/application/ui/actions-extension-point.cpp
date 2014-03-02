@@ -6,6 +6,7 @@
 #endif
 #include "actions-extension-point.hpp"
 #include "action-extension.hpp"
+#include "window.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
@@ -31,13 +32,13 @@ namespace
 
 void
 activateAction(const Samoyed::ActionsExtensionPoint::ExtensionInfo &extInfo,
-               Window &window)
+               Samoyed::Window &window)
 {
     Samoyed::ActionExtension *ext = static_cast<Samoyed::ActionExtension *>(
         Samoyed::Application::instance().pluginManager().
         acquireExtension(extInfo.id.c_str()));
     if (!ext)
-        return NULL;
+        return;
     ext->activateAction(window);
     ext->release();
 }
@@ -107,7 +108,7 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                ext->action_name = value;
+                ext->actionName = value;
                 xmlFree(value);
             }
         }
@@ -175,7 +176,7 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
 void ActionsExtensionPoint::unregisterExtension(const char *extensionId)
 {
     ExtensionInfo *ext = m_extensions[extensionId];
-    for (Window *window = Application::instance().window();
+    for (Window *window = Application::instance().windows();
          window;
          window = window->next())
         window->removeAction(ext->actionName.c_str());

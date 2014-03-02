@@ -275,8 +275,6 @@ private:
 
     mutable boost::mutex m_writeQueueMutex;
 
-    mutable boost::mutex m_writeExecutorMutex;
-
     WriteExecutor *m_writeExecutor;
 
     mutable boost::mutex m_writeExecutorMutex;
