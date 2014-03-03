@@ -11,11 +11,10 @@
 #include "resources/file-source-manager.hpp"
 #include "resources/file-source.hpp"
 #include "utilities/text-file-loader.hpp"
+#include "utilities/property-tree.hpp"
 #include <utility>
 #include <list>
-#include <map>
 #include <string>
-#include <boost/any.hpp>
 #include <glib/gi18n.h>
 
 #define ENCODING "encoding"
@@ -31,19 +30,14 @@ const char *mimeTypes[] =
 namespace Samoyed
 {
 
-File *SourceFile::create(const char *uri, Project *project,
-                         const std::map<std::string, boost::any> &options)
+SourceFile::SourceFile(const char *uri, const PropertyTree &options):
+    TextFile(uri, options.getChild(TEXT_FILE_OPTIONS))
 {
-    std::string encoding("UTF-8");
-    std::map<std::string, boost::any>::const_iterator it =
-        options.find(ENCODING);
-    if (it != options.end())
-        encoding = boost::any_cast<std::string>(it->second);
-    else
-    {
-    }
+}
 
-    return new SourceFile(uri, encoding.c_str());
+File *SourceFile::create(const char *uri, const PropertyTree &options)
+{
+    return new SourceFile(uri, options);
 }
 
 bool SourceFile::isSupportedType(const char *type)

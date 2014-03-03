@@ -5,10 +5,9 @@
 #define SMYD_SOURCE_EDITOR_HPP
 
 #include "text-editor.hpp"
+#include "utilities/property-tree.hpp"
 #include <list>
-#include <map>
 #include <string>
-#include <boost/any.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -33,11 +32,11 @@ public:
         virtual Widget *restoreWidget();
 
     protected:
-        XmlElement() {}
+        XmlElement(const PropertyTree &defaultFileOptions):
+            TextEditor::XmlElement(defaultFileOptions)
+        {}
 
         bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
-
-        Editor *restoreEditor(std::map<std::string, boost::any> &options);
     };
 
     /**

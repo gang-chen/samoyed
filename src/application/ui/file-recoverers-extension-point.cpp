@@ -86,6 +86,7 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri)
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
     char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    File *file;
     for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
@@ -99,6 +100,7 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri)
                     acquireExtension(extInfo->id.c_str()));
             if (ext)
             {
+                file = File::open(fileUri, NULL, options, false);
                 ext->recoverFile(file);
                 ext->release();
                 break;

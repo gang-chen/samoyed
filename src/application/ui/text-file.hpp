@@ -5,8 +5,7 @@
 #define SMYD_TEXT_FILE_HPP
 
 #include "file.hpp"
-#include <map>
-#include <boost/any.hpp>
+#include "utilities/property-tree.hpp"
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -155,7 +154,7 @@ public:
     public:
         OptionSetters(): m_gtkWidget(NULL) {}
         virtual GtkWidget *takeGtkWidget();
-        virtual void setOptions(std::map<std::string, boost::any> &options);
+        virtual void setOptions(PropertyTree &options);
     private:
         GtkWidget *m_gtkWidget;
     };
@@ -164,7 +163,11 @@ public:
 
     static void registerType();
 
+    static const PropertyTree &defaultOptions();
+
     const char *encoding() const { return m_encoding.c_str(); }
+
+    virtual PropertyTree options() const;
 
     int characterCount() const;
 
@@ -215,10 +218,7 @@ public:
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
 protected:
-    TextFile(const char *uri, const char *encoding):
-        File(uri),
-        m_encoding(encoding)
-    {}
+    TextFile(const char *uri, const PropertyTree &options);
 
     virtual Editor *createEditorInternally(Project *project);
 
@@ -231,14 +231,15 @@ protected:
     virtual void onLoaded(FileLoader &loader);
 
 private:
-    static File *create(const char *uri, Project *project,
-                        const std::map<std::string, boost::any> &options);
+    static File *create(const char *uri, const PropertyTree &options);
 
     Removal *insertOnly(int line, int column,
                         const char *text, int length);
 
     Insertion *removeOnly(int beginLine, int beginColumn,
                           int endLine, int endColumn);
+
+    PropertyTree s_defaultOptions;
 
     std::string m_encoding;
 };

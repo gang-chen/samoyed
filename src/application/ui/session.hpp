@@ -8,10 +8,11 @@
 #include "utilities/worker.hpp"
 #include <string>
 #include <list>
-#include <set>
+#include <map>
 #include <deque>
 #include <boost/utility.hpp>
 #include <boost/thread/mutex.hpp>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -40,8 +41,8 @@ namespace Samoyed
  * The session directory: ~USER/sessions/SESSION.
  * The session file: ~USER/sessions/SESSION/session.xml.
  * The session lock file: ~USER/sessions/SESSION.lock.
- * The unsaved file URIs in a session are stored in
- * ~USER/sessions/SESSION/unsaved-files.
+ * The unsaved file in a session are stored in
+ * ~USER/sessions/SESSION/unsaved-files.xml.
  */
 class Session: public boost::noncopyable
 {
@@ -92,11 +93,11 @@ public:
      */
     void destroy();
 
-    const std::set<std::string> &unsavedFileUris() const
-    { return m_unsavedFileUris; }
+    const std::map<std::string, xmlNodePtr> &unsavedFiles() const
+    { return m_unsavedFiles; }
 
-    void addUnsavedFileUri(const char *uri);
-    void removeUnsavedFileUri(const char *uri);
+    void addUnsavedFile(const char *uri, xmlNodePtr options);
+    void removeUnsavedFile(const char *uri, xmlNodePtr options);
 
 private:
     class UnsavedFileListRequest
@@ -118,7 +119,8 @@ private:
     class UnsavedFileListWrite: public UnsavedFileListRequest
     {
     public:
-        UnsavedFileListWrite(std::set<std::string> &unsavedFileUris):
+        UnsavedFileListWrite(std::map<std::string,
+                                      xmlNodePtr> &unsavedFileUris):
             m_unsavedFileUris(unsavedFileUris.begin(), unsavedFileUris.end())
         {}
         virtual void execute(const Session &session) const;
@@ -164,7 +166,7 @@ private:
 
     LockFile m_lockFile;
 
-    std::set<std::string> m_unsavedFileUris;
+    std::map<std::string, xmlNodePtr> m_unsavedFiles;
 
     std::deque<UnsavedFileListRequest *> m_unsavedFileListRequestQueue;
     mutable boost::mutex m_unsavedFileListRequestQueueMutex;

@@ -11,9 +11,7 @@
 #include "application.hpp"
 #include <string.h>
 #include <list>
-#include <map>
 #include <string>
-#include <boost/any.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -25,7 +23,6 @@
 
 #define EDITOR "editor"
 #define TEXT_EDITOR "text-editor"
-#define ENCODING "encoding"
 #define CURSOR_LINE "cursor-line"
 #define CURSOR_COLUMN "cursor-column"
 #define FONT "font"
@@ -104,17 +101,6 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
             if (!Editor::XmlElement::readInternally(child, errors))
                 return false;
             editorSeen = true;
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        ENCODING) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeGetContent(child->children));
-            if (value)
-            {
-                m_encoding = value;
-                xmlFree(value);
-            }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CURSOR_LINE) == 0)
@@ -203,7 +189,7 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
 TextEditor::XmlElement *
 TextEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> &errors)
 {
-    XmlElement *element = new XmlElement;
+    XmlElement *element = new XmlElement(TextFile::defaultOptions());
     if (!element->readInternally(node, errors))
     {
         delete element;
@@ -218,9 +204,6 @@ xmlNodePtr TextEditor::XmlElement::write() const
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(TEXT_EDITOR));
     xmlAddChild(node, Editor::XmlElement::write());
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(ENCODING),
-                    reinterpret_cast<const xmlChar *>(encoding()));
     str = boost::lexical_cast<std::string>(m_cursorLine);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(CURSOR_LINE),
@@ -235,21 +218,12 @@ xmlNodePtr TextEditor::XmlElement::write() const
 TextEditor::XmlElement::XmlElement(const TextEditor &editor):
     Editor::XmlElement(editor)
 {
-    m_encoding = static_cast<const TextFile &>(editor.file()).encoding();
     editor.getCursor(m_cursorLine, m_cursorColumn);
-}
-
-Editor *TextEditor::XmlElement::restoreEditor(
-    std::map<std::string, boost::any> &options)
-{
-    options.insert(std::make_pair(ENCODING, std::string(encoding())));
-    return Editor::XmlElement::restoreEditor(options);
 }
 
 Widget *TextEditor::XmlElement::restoreWidget()
 {
-    std::map<std::string, boost::any> options;
-    Editor *editor = restoreEditor(options);
+    Editor *editor = createEditor();
     if (!editor)
         return NULL;
     if (!static_cast<TextEditor *>(editor)->restore(*this, NULL))

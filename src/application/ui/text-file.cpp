@@ -11,14 +11,14 @@
 #include "utilities/text-buffer.hpp"
 #include "utilities/text-file-loader.hpp"
 #include "utilities/text-file-saver.hpp"
+#include "utilities/property-tree.hpp"
 #include "application.hpp"
 #include <string.h>
 #include <algorithm>
-#include <map>
-#include <boost/any.hpp>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 
+#define TEXT_FILE_OPTIONS "text-file-options"
 #define ENCODING "encoding"
 
 namespace
@@ -136,8 +136,7 @@ GtkWidget *TextFile::OptionSetters::takeGtkWidget()
     return m_gtkWidget;
 }
 
-void
-TextFile::OptionSetters::setOptions(std::map<std::string, boost::any> &options)
+void TextFile::OptionSetters::setOptions(PropertyTree &options)
 {
     char *encoding =
         gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(m_gtkWidget));
@@ -149,21 +148,33 @@ TextFile::OptionSetters::setOptions(std::map<std::string, boost::any> &options)
         if (cp2)
         {
             *cp2 = '\0';
-            options[ENCODING] = cp1;
+            options.set(ENCODING, std::string(cp1));
         }
     }
     g_free(encoding);
 }
 
-File *TextFile::create(const char *uri, Project *project,
-                       const std::map<std::string, boost::any> &options)
+PropertyTree TextFile::s_defaultOptions(TEXT_FILE_OPTIONS);
+
+const PropertyTree &TextFile::defaultOptions()
 {
-    std::string encoding("UTF-8");
-    std::map<std::string, boost::any>::const_iterator it =
-        options.find(ENCODING);
-    if (it != options.end())
-        encoding = boost::any_cast<std::string>(it->second);
-    return new TextFile(uri, encoding.c_str());
+    if (s_defaultOptions.empty())
+    {
+        s_defaultOptions.addChild(File::defaultOptions());
+        s_defaultOptions.add(ENCODING, "UTF-8");
+    }
+    return s_defaultOptions;
+}
+
+TextFile::TextFile(const char *uri, const PropertyTree &options):
+    File(uri, options.getChild(FILE_OPTIONS)),
+    m_encoding(options.get<std::string>(ENCODING))
+{
+}
+
+File *TextFile::create(const char *uri, const PropertyTree &options)
+{
+    return new TextFile(uri, options);
 }
 
 bool TextFile::isSupportedType(const char *type)
@@ -179,6 +190,13 @@ void TextFile::registerType()
     char *type = g_content_type_from_mime_type("text/plain");
     File::registerType(type, create, createOptionSetters);
     g_free(type);
+}
+
+PropertyTree options() const
+{
+    PropertyTree options(defaultOptions());
+    options.set(ENCODING, encoding());
+    return options;
 }
 
 int TextFile::characterCount() const

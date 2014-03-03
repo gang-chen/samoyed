@@ -6,9 +6,7 @@
 
 #include "editor.hpp"
 #include <list>
-#include <map>
 #include <string>
-#include <boost/any.hpp>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 
@@ -32,23 +30,19 @@ public:
         XmlElement(const TextEditor &editor);
         virtual Widget *restoreWidget();
 
-        const char *encoding() const { return m_encoding.c_str(); }
         int cursorLine() const { return m_cursorLine; }
         int cursorColumn() const { return m_cursorColumn; }
 
     protected:
-        XmlElement():
-            m_encoding("UTF-8"),
+        XmlElement(const PropertyTree &defaultFileOptions):
+            Editor::XmlElement(defaultFileOptions),
             m_cursorLine(0),
             m_cursorColumn(0)
         {}
 
         bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
-        Editor *restoreEditor(std::map<std::string, boost::any> &options);
-
     private:
-        std::string m_encoding;
         int m_cursorLine;
         int m_cursorColumn;
     };

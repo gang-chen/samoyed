@@ -6,9 +6,8 @@
 
 #include "text-file.hpp"
 #include "utilities/manager.hpp"
+#include "utilities/property-tree.hpp"
 #include <string>
-#include <map>
-#include <boost/any.hpp>
 
 namespace Samoyed
 {
@@ -33,7 +32,7 @@ public:
     static void registerType();
 
 protected:
-    SourceFile(const char *uri, const char *encoding);
+    SourceFile(const char *uri, const PropertyTree &options);
 
     ~SourceFile();
 
@@ -50,8 +49,7 @@ protected:
                            int endLine, int endColumn);
 
 private:
-    static File *create(const char *uri, Project *project,
-                        const std::map<std::string, boost::any> &options);
+    static File *create(const char *uri, const PropertyTree &options);
 
     ReferencePointer<FileSource> m_source;
 };

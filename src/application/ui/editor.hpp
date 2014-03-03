@@ -7,10 +7,9 @@
 #include "widget.hpp"
 #include "file.hpp"
 #include "utilities/miscellaneous.hpp"
+#include "utilities/property-tree.hpp"
 #include <list>
-#include <map>
 #include <string>
-#include <boost/any.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -35,20 +34,24 @@ public:
         virtual xmlNodePtr write() const;
         XmlElement(const Editor &editor);
 
-        const char *uri() const { return m_uri.c_str(); }
+        const char *fileUri() const { return m_fileUri.c_str(); }
         const char *projectUri() const
         { return m_projectUri.empty() ? NULL : m_projectUri.c_str(); }
+        const PropertyTree &fileOptions() const { return m_fileOptions; }
 
     protected:
-        XmlElement() {}
+        XmlElement(const PropertyTree &defaultFileOptions):
+            m_fileOptions(defaultFileOptions)
+        {}
 
         bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
 
-        Editor *restoreEditor(std::map<std::string, boost::any> &options);
+        Editor *createEditor();
 
     private:
-        std::string m_uri;
+        std::string m_fileUri;
         std::string m_projectUri;
+        PropertyTree m_fileOptions;
     };
 
     /**

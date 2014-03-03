@@ -10,9 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <list>
-#include <map>
 #include <string>
-#include <boost/any.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -108,7 +106,7 @@ bool SourceEditor::XmlElement::readInternally(xmlNodePtr node,
 SourceEditor::XmlElement *
 SourceEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> &errors)
 {
-    XmlElement *element = new XmlElement;
+    XmlElement *element = new XmlElement(SourceFile::defaultOptions());
     if (!element->readInternally(node, errors))
     {
         delete element;
@@ -131,16 +129,9 @@ SourceEditor::XmlElement::XmlElement(const SourceEditor &editor):
 {
 }
 
-Editor *SourceEditor::XmlElement::restoreEditor(
-    std::map<std::string, boost::any> &options)
-{
-    return TextEditor::XmlElement::restoreEditor(options);
-}
-
 Widget *SourceEditor::XmlElement::restoreWidget()
 {
-    std::map<std::string, boost::any> options;
-    Editor *editor = restoreEditor(options);
+    Editor *editor = createEditor();
     if (!editor)
         return NULL;
     if (!static_cast<SourceEditor *>(editor)->restore(*this))

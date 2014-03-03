@@ -60,6 +60,36 @@ PropertyTree::~PropertyTree()
     }
 }
 
+PropertyTree::PropertyTree(const PropertyTree &prop):
+    m_name(prop.m_name),
+    m_defaultValue(prop.m_defaultValue),
+    m_value(m_value),
+    m_firstChild(NULL),
+    m_lastChild(NULL),
+    m_parent(NULL),
+    m_correcting(false)
+{
+    for (PropertyTree *child = prop.m_firstChild; child; child = child->m_next)
+        addChild(new PropertyTree(*child));
+}
+
+bool PropertyTree::operator==(const PropertyTree &rhs) const
+{
+    if (m_name != rhs.m_name ||
+        m_defaultValue != rhs.m_defaultValue ||
+        m_value != rhs.m_value)
+        return false;
+    PropertyTree *c1, *c2;
+    for (c1 = m_firstChild, *c2 = rhs.m_firstChild;
+         c1 && c2;
+         c1 = c1->m_next, c2 = c2->m_next)
+        if (*c1 != *c2)
+            return false;
+    if (c1 || c2)
+        return false;
+    return true;
+}
+
 bool PropertyTree::set(const boost::spirit::hold_any &value,
                        bool correct,
                        std::list<std::string> &errors)

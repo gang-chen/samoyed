@@ -47,7 +47,14 @@ public:
         PropertyTree(name, boost::spirit::hold_any(defaultValue))
     {}
 
+    PropertyTree(const PropertyTree &prop);
+
+    bool operator==(const PropertyTree &rhs) const;
+    bool operator!=(const PropertyTree &rhs) const { return !(*this == rhs); }
+
     const char *name() const { return m_name.c_str(); }
+
+    bool empty() const { return m_value.empty() && !m_firstChild; }
 
     const boost::spirit::hold_any &get() const { return m_value; }
     bool set(const boost::spirit::hold_any &value,

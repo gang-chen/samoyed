@@ -20,13 +20,13 @@
 #include <list>
 #include <string>
 #include <map>
-#include <boost/any.hpp>
 #include <boost/bind.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
 
+#define FILE_OPTIONS "file-options"
 #define FILE_OPEN "file-open"
 #define DIRECTORY "directory"
 #define FILTER "filter"
@@ -84,6 +84,10 @@ void onFileChooserFilterChanged(GtkFileChooser *dialog,
 namespace Samoyed
 {
 
+std::list<File::TypeRecord> File::s_typeRegistry;
+
+PropertyTree File::s_defaultOptions(FILE_OPTIONS);
+
 File::Opened File::s_opened;
 
 File::Edit *File::EditStack::execute(File &file) const
@@ -127,8 +131,6 @@ void File::installHistories()
     prop.addChild(DIRECTORY, std::string());
     prop.addChild(FILTER, std::string());
 }
-
-std::list<File::TypeRecord> File::s_typeRegistry;
 
 void File::registerType(const char *type,
                         const Factory &factory,
@@ -175,7 +177,7 @@ const File::Factory *File::findFactory(const char *type)
 
 std::pair<File *, Editor *>
 File::open(const char *uri, Project *project,
-           const std::map<std::string, boost::any> &options,
+           const PropertyTree &options,
            bool newEditor)
 {
     File *file;
@@ -183,6 +185,26 @@ File::open(const char *uri, Project *project,
     file = Application::instance().findFile(uri);
     if (file)
     {
+        if (options != file.options())
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to open file \"%s\"."),
+                uri);
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("File \"%s\" has already been opened with different options. "
+                  "Samoyed cannot open the same file with different options."),
+                uri, error->message);
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return std::pair<File *, Editor *>(NULL, NULL);
+        }
         if (newEditor)
             editor = file->createEditor(project);
         else
@@ -236,7 +258,7 @@ File::open(const char *uri, Project *project,
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(type);
-    file = (*factory)(uri, project, options);
+    file = (*factory)(uri, options);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
     editor = file->createEditorInternally(project);
@@ -306,7 +328,7 @@ void File::openByDialog(Project *project,
         GSList *uris, *uri;
         uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
 
-        std::map<std::string, boost::any> options;
+        Property options(defaultOptions);
         if (param.optSetters)
         {
             param.optSetters->setOptions(options);
@@ -505,7 +527,7 @@ void File::removeEditor(Editor &editor)
     editor.removeFromListInFile(m_firstEditor, m_lastEditor);
 }
 
-File::File(const char *uri):
+File::File(const char *uri, const PropertyTree &options):
     m_uri(uri),
     m_closing(false),
     m_reopening(false),

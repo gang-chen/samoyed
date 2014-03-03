@@ -7,14 +7,13 @@
 #include "utilities/miscellaneous.hpp"
 #include "utilities/revision.hpp"
 #include "utilities/worker.hpp"
+#include "utilities/property-tree.hpp"
 #include <utility>
 #include <list>
 #include <string>
-#include <map>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
-#include <boost/any.hpp>
 #include <glib.h>
 
 namespace Samoyed
@@ -50,8 +49,7 @@ public:
     typedef boost::signals2::signal<void (File &file)> Saved;
 
     typedef
-    boost::function<File *(const char *uri, Project *project,
-                           const std::map<std::string, boost::any> &options)>
+    boost::function<File *(const char *uri, const PropertyTree &options)>
     	Factory;
 
     /**
@@ -142,7 +140,7 @@ public:
     public:
         virtual ~OptionSetters() {}
         virtual GtkWidget *takeGtkWidget() = 0;
-        virtual void setOptions(std::map<std::string, boost::any> &options) = 0;
+        virtual void setOptions(PropertyTree &options) = 0;
     };
 
     typedef boost::function<OptionSetters *()> OptionSettersFactory;
@@ -152,6 +150,8 @@ public:
                              const OptionSettersFactory &optSettersFactory);
 
     static void installHistories();
+
+    static const PropertyTree &defaultOptions() { return s_defaultOptions; }
 
     /**
      * Open a file in an editor.
@@ -164,7 +164,7 @@ public:
      */
     static std::pair<File *, Editor *>
     open(const char *uri, Project *project,
-         const std::map<std::string, boost::any> &options,
+         const PropertyTree &options,
          bool newEditor);
 
     /**
@@ -198,6 +198,9 @@ public:
     bool closeEditor(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
+
+    virtual PropertyTree options() const
+    { return PropertyTree(defaultOptions()); }
 
     const Revision &revision() const { return m_revision; }
 
@@ -317,7 +320,7 @@ protected:
         {}
     };
 
-    File(const char *uri);
+    File(const char *uri, const PropertyTree &options);
 
     /**
      * This function is called by a derived class to notify all editors and
@@ -367,6 +370,8 @@ private:
     void onSavedWrapper(Worker &worker);
 
     static std::list<TypeRecord> s_typeRegistry;
+
+    static PropertyTree s_defaultOptions;
 
     const std::string m_uri;
 

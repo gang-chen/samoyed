@@ -18,8 +18,9 @@
 
 #define WIDGET "widget"
 #define EDITOR "editor"
-#define URI "uri"
+#define FILE_URI "file-uri"
 #define PROJECT_URI "project-uri"
+#define FILE_OPTIONS "file-options"
 
 #define EDITOR_ID "editor"
 
@@ -38,7 +39,7 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
 {
     char *value, *cp;
     bool widgetSeen = false;
-    bool uriSeen = false;
+    bool fileUriSeen = false;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (child->type != XML_ELEMENT_NODE)
@@ -60,15 +61,15 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
             widgetSeen = true;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        URI) == 0)
+                        FILE_URI) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                m_uri = value;
+                m_fileUri = value;
                 xmlFree(value);
-                uriSeen = true;
+                fileUriSeen = true;
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -82,6 +83,9 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
                 xmlFree(value);
             }
         }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        FILE_OPTIONS) == 0)
+            m_fileOptions.readXmlElement(child);
     }
 
     if (!widgetSeen)
@@ -93,11 +97,11 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
         g_free(cp);
         return false;
     }
-    if (!uriSeen)
+    if (!fileUriSeen)
     {
         cp = g_strdup_printf(
             _("Line %d: \"%s\" element missing.\n"),
-            node->line, URI);
+            node->line, FILE_URI);
         errors.push_back(cp);
         g_free(cp);
         return false;
@@ -111,19 +115,21 @@ xmlNodePtr Editor::XmlElement::write() const
                                  reinterpret_cast<const xmlChar *>(EDITOR));
     xmlAddChild(node, Widget::XmlElement::write());
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(URI),
-                    reinterpret_cast<const xmlChar *>(uri()));
+                    reinterpret_cast<const xmlChar *>(FILE_URI),
+                    reinterpret_cast<const xmlChar *>(fileUri()));
     if (projectUri())
         xmlNewTextChild(node, NULL,
                         reinterpret_cast<const xmlChar *>(PROJECT_URI),
                         reinterpret_cast<const xmlChar *>(projectUri()));
+    xmlAddChild(node, m_fileOptions.writeXmlElement());
     return node;
 }
 
 Editor::XmlElement::XmlElement(const Editor &editor):
-    Widget::XmlElement(editor)
+    Widget::XmlElement(editor),
+    m_fileUri(editor.file().uri()),
+    m_fileOptions(editor.file().options())
 {
-    m_uri = editor.file().uri();
     if (editor.project())
         m_projectUri = editor.project()->uri();
 
@@ -133,8 +139,7 @@ Editor::XmlElement::XmlElement(const Editor &editor):
         setTitle(title.c_str() + 2);
 }
 
-Editor *Editor::XmlElement::restoreEditor(
-    std::map<std::string, boost::any> &options)
+Editor *Editor::XmlElement::createEditor()
 {
     Project *project = NULL;
     if (projectUri())
@@ -143,7 +148,7 @@ Editor *Editor::XmlElement::restoreEditor(
         if (!project)
             m_projectUri.clear();
     }
-    Editor *editor = File::open(uri(), project, options, true).second;
+    Editor *editor = File::open(fileUri(), project, options(), true).second;
     return editor;
 }
 
