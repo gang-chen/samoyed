@@ -196,9 +196,9 @@ File::open(const char *uri, Project *project,
                 uri);
             gtkMessageDialogAddDetails(
                 dialog,
-                _("File \"%s\" has already been opened with different options. "
-                  "Samoyed cannot open the same file with different options."),
-                uri, error->message);
+                _("File \"%s\" has already been opened %s. Samoyed cannot open "
+                  "it %s."),
+                uri, );
             gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                             GTK_RESPONSE_CLOSE);
             gtk_dialog_run(GTK_DIALOG(dialog));

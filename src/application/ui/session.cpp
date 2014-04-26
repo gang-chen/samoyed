@@ -30,7 +30,6 @@
 #include <unistd.h>
 #include <glib.h>
 #include <glib/gi18n.h>
-#include <glib/gstdio.h>
 #include <gtk/gtk.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
@@ -598,8 +597,8 @@ bool Session::makeSessionsDirectory()
                   "sessions. Quit."));
             gtkMessageDialogAddDetails(
                 dialog,
-                _("Samoyed failed to create the sessions directory, \"%s\". "
-                  "%s. Samoyed cannot run without the directory."),
+                _("Samoyed failed to create the sessions directory \"%s\". %s. "
+                  "Samoyed cannot run without the directory."),
                 sessionsDirName.c_str(), g_strerror(errno));
             gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                             GTK_RESPONSE_CLOSE);
