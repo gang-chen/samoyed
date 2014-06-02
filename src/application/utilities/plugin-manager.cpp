@@ -27,19 +27,18 @@
 #define POINT "point"
 #define DETAIL "detail"
 
-namespace
-{
-
-gboolean destroyPlugin(gpointer plugin)
-{
-    static_cast<Samoyed::Plugin *>(plugin)->destroy();
-    return FALSE;
-}
-
-}
-
 namespace Samoyed
 {
+
+gboolean PluginManager::destroyPlugin(gpointer param)
+{
+    std::pair<PluginManager *, Plugin *> *p =
+        static_cast<std::pair<PluginManager *, Plugin *> *>(param);
+    p->first->m_table.erase(p->second->id());
+    p->second->destroy();
+    delete p;
+    return FALSE;
+}
 
 PluginManager::PluginManager(ExtensionPointManager &extensionPointMgr,
                              const char *modulesDirName,
@@ -436,7 +435,7 @@ void PluginManager::unregisterPlugin(const char *pluginId)
 {
     // Do not cache the plugin.
     PluginInfo *info = m_registry.find(pluginId)->second;
-    inf->cache = false;
+    info->cache = false;
 
     // If the plugin is active, deactivate it.
     Table::const_iterator it = m_table.find(pluginId);
@@ -472,10 +471,7 @@ void PluginManager::disablePlugin(const char *pluginId)
 Extension *PluginManager::acquireExtension(const char *extensionId)
 {
     std::string pluginId(extensionId, strrchr(extensionId, '/') - extensionId);
-
     PluginInfo *info = m_registry.find(pluginId.c_str())->second;
-    if (info->unregister || !info->enabled)
-        return NULL;
 
     // Retrieve the plugin if it is active, fetch the plugin from the cache if
     // it is cached or create it.
@@ -537,7 +533,8 @@ Extension *PluginManager::acquireExtension(const char *extensionId)
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
             // Defer destroying the plugin.
-            g_idle_add(destroyPlugin, p);
+            g_idle_add(destroyPlugin,
+                       new std::pair<PluginManager *, Plugin *>(this, p));
             --m_nCachedPlugins;
         }
     }
@@ -558,13 +555,15 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
             // Defer destroying the plugin.
-            g_idle_add(destroyPlugin, p);
+            g_idle_add(destroyPlugin,
+                       new std::pair<PluginManager *, Plugin *>(this, p));
             --m_nCachedPlugins;
         }
     }
     else
         // Defer destroying the plugin.
-        g_idle_add(destroyPlugin, &plugin);
+        g_idle_add(destroyPlugin,
+                   new std::pair<PluginManager *, Plugin *>(this, &plugin));
 }
 
 void PluginManager::scanPlugins(const char *pluginsDirName)

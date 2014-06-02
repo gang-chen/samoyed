@@ -17,7 +17,8 @@
 #include <string>
 #include <glib/gi18n.h>
 
-#define ENCODING "encoding"
+#define TEXT_FILE_OPTIONS "text-file-options"
+#define SOURCE_FILE_OPTIONS "source-file-options"
 
 namespace
 {
@@ -30,9 +31,53 @@ const char *mimeTypes[] =
 namespace Samoyed
 {
 
-SourceFile::SourceFile(const char *uri, const PropertyTree &options):
-    TextFile(uri, options.getChild(TEXT_FILE_OPTIONS))
+PropertyTree *SourceFile::OptionsSetter::options() const
 {
+    PropertyTree *options = new PropertyTree(SOURCE_FILE_OPTIONS);
+    options->addChild(*TextFile::OptionsSetter::options());
+    return options;
+}
+
+File::OptionsSetter *SourceFile::createOptionsSetter()
+{
+    return new SourceFile::OptionsSetter;
+}
+
+PropertyTree SourceFile::s_defaultOptions(SOURCE_FILE_OPTIONS);
+
+const PropertyTree &SourceFile::defaultOptions()
+{
+    if (s_defaultOptions.empty())
+        s_defaultOptions.
+            addChild(*(new PropertyTree(TextFile::defaultOptions())));
+    return s_defaultOptions;
+}
+
+bool SourceFile::optionsEqual(const PropertyTree &options1,
+                              const PropertyTree &options2)
+{
+    return TextFile::optionsEqual(options1.child(TEXT_FILE_OPTIONS),
+                                  options2.child(TEXT_FILE_OPTIONS));
+}
+
+void SourceFile::describeOptions(const PropertyTree &options,
+                                 std::string &desc)
+{
+    TextFile::describeOptions(options.child(TEXT_FILE_OPTIONS), desc);
+}
+
+// It is possible that options for text files are given.
+SourceFile::SourceFile(const char *uri, const PropertyTree &options):
+    TextFile(uri,
+             strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
+             options.child(TEXT_FILE_OPTIONS) : options)
+{
+    std::string uriEncoding;
+    uriEncoding += uri;
+    uriEncoding += '?';
+    uriEncoding += encoding();
+    m_source = Application::instance().fileSourceManager().
+        reference(uriEncoding.c_str());
 }
 
 File *SourceFile::create(const char *uri, const PropertyTree &options)
@@ -58,25 +103,26 @@ void SourceFile::registerType()
     for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
     {
         char *type = g_content_type_from_mime_type(*mimeType);
-        File::registerType(type, create, NULL);
+        File::registerType(type,
+                           create,
+                           createOptionsSetter,
+                           defaultOptions,
+                           optionsEqual,
+                           describeOptions);
         g_free(type);
     }
-}
-
-SourceFile::SourceFile(const char *uri, const char *encoding):
-    TextFile(uri, encoding)
-{
-    std::string uriEncoding;
-    uriEncoding += uri;
-    uriEncoding += '?';
-    uriEncoding += encoding;
-    m_source = Application::instance().fileSourceManager().
-        reference(uriEncoding.c_str());
 }
 
 SourceFile::~SourceFile()
 {
     m_source->onFileClose(*this);
+}
+
+PropertyTree *SourceFile::options() const
+{
+    PropertyTree *options = new PropertyTree(SOURCE_FILE_OPTIONS);
+    options->addChild(*TextFile::options());
+    return options;
 }
 
 Editor *SourceFile::createEditorInternally(Project *project)

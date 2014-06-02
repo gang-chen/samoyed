@@ -19,7 +19,7 @@
 namespace
 {
 
-void closeTerminal(VteTerminal *term, Samoyed::TerminalView *termView)
+void closeTerminal(VteTerminal *term, Samoyed::Terminal::TerminalView *termView)
 {
     termView->close();
 }

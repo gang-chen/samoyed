@@ -27,9 +27,27 @@ class FileSource;
 class SourceFile: public TextFile
 {
 public:
+    class OptionsSetter: public TextFile::OptionsSetter
+    {
+    public:
+        virtual PropertyTree *options() const;
+    };
+
     static bool isSupportedType(const char *type);
 
     static void registerType();
+
+    static File::OptionsSetter *createOptionsSetter();
+
+    static const PropertyTree &defaultOptions();
+
+    static bool optionsEqual(const PropertyTree &options1,
+                             const PropertyTree &options2);
+
+    static void describeOptions(const PropertyTree &options,
+                                std::string &desc);
+
+    virtual PropertyTree *options() const;
 
 protected:
     SourceFile(const char *uri, const PropertyTree &options);
@@ -50,6 +68,8 @@ protected:
 
 private:
     static File *create(const char *uri, const PropertyTree &options);
+
+    static PropertyTree s_defaultOptions;
 
     ReferencePointer<FileSource> m_source;
 };

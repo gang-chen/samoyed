@@ -21,9 +21,9 @@ View *TerminalViewExtension::createView(const char *viewId,
 {
     TerminalView *view = TerminalView::create(viewId, viewTitle, id());
     TerminalPlugin &plugin = static_cast<TerminalPlugin &>(m_plugin);
-    plugin.onViewCreated(view);
+    plugin.onViewCreated(*view);
     view->addClosedCallback(boost::bind(&TerminalPlugin::onViewClosed,
-                                        boost::ref(plugin)));
+                                        boost::ref(plugin), _1));
     return view;
 }
 
@@ -31,9 +31,9 @@ View *TerminalViewExtension::restoreView(View::XmlElement &xmlElement)
 {
     TerminalView *view = TerminalView::restore(xmlElement, id());
     TerminalPlugin &plugin = static_cast<TerminalPlugin &>(m_plugin);
-    plugin.onViewCreated(view);
+    plugin.onViewCreated(*view);
     view->addClosedCallback(boost::bind(&TerminalPlugin::onViewClosed,
-                                        boost::ref(plugin)));
+                                        boost::ref(plugin), _1));
     return view;
 }
 

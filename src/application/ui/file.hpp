@@ -135,30 +135,61 @@ public:
         std::list<Edit *> m_edits;
     };
 
-    class OptionSetters
+    class OptionsSetter
     {
     public:
-        virtual ~OptionSetters() {}
-        virtual GtkWidget *takeGtkWidget() = 0;
-        virtual void setOptions(PropertyTree &options) = 0;
+        virtual ~OptionsSetter() {}
+        virtual GtkWidget *gtkWidget() { return NULL; }
+        /**
+         * @return The options, which must be deleted by the caller.
+         */
+        virtual PropertyTree *options() const;
     };
 
-    typedef boost::function<OptionSetters *()> OptionSettersFactory;
-
-    static void registerType(const char *type,
-                             const Factory &factory,
-                             const OptionSettersFactory &optSettersFactory);
+    typedef boost::function<OptionsSetter *()> OptionsSetterFactory;
+    typedef boost::function<const PropertyTree &()> OptionsGetter;
+    typedef boost::function<bool (const PropertyTree &, const PropertyTree &)>
+        OptionsEqual;
+    typedef boost::function<void (const PropertyTree &, std::string &)>
+        OptionsDescriber;
 
     static void installHistories();
 
+    static File::OptionsSetter *createOptionsSetter();
+
+    /**
+     * Get the default options for general files.  These default options are a
+     * part of the default options for derived types of files.
+     */
     static const PropertyTree &defaultOptions() { return s_defaultOptions; }
+
+    static bool optionsEqual(const PropertyTree &options1,
+                             const PropertyTree &options2)
+    { return true; }
+
+    /**
+     * Describe the options in text.
+     * @param options The options.
+     * @param desc The text description of the options.
+     */
+    static void describeOptions(const PropertyTree &options,
+                                std::string &desc)
+    {}
+
+    /**
+     * Get the default options for a specific type of files.  These default
+     * options can be used as the definitions of the options for this type of
+     * files.
+     * @return The default options, or NULL if the type is unsupported.
+     */
+    static const PropertyTree *defaultOptionsForType(const char *type);
 
     /**
      * Open a file in an editor.
      * @param uri The URI of the new file.
      * @param project The project context, or NULL if none.
-     * @param options Additional file-type-specific options specifying the
-     * behavior.
+     * @param options Additional file-type-specific options specifying how to
+     * open the file.
      * @param newEditor True to create a new editor even if the file is already
      * opened.
      */
@@ -169,7 +200,7 @@ public:
 
     /**
      * Open a dialog to let the user choose the file to open and set additional
-     * optins, and open the chosen file if any.
+     * options, and open the chosen file if any.
      * @param project The project context, or NULL if none.
      */
     static void openByDialog(Project *project,
@@ -199,8 +230,11 @@ public:
 
     const char *uri() const { return m_uri.c_str(); }
 
-    virtual PropertyTree options() const
-    { return PropertyTree(defaultOptions()); }
+    /**
+     * @return The options, which must be deleted by the caller.
+     */
+    virtual PropertyTree *options() const
+    { return new PropertyTree(defaultOptions()); }
 
     const Revision &revision() const { return m_revision; }
 
@@ -310,15 +344,31 @@ protected:
     {
         std::string m_type;
         Factory m_factory;
-        OptionSettersFactory m_optSettersFactory;
+        OptionsSetterFactory m_optSetterFactory;
+        OptionsGetter m_defOptGetter;
+        OptionsEqual m_optEqual;
+        OptionsDescriber m_optDescriber;
         TypeRecord(const char *type,
                    const Factory &factory,
-                   const OptionSettersFactory &optSettersFactory):
+                   const OptionsSetterFactory &optSetterFactory,
+                   const OptionsGetter &defOptGetter,
+                   const OptionsEqual &optEqual,
+                   const OptionsDescriber &optDescriber):
             m_type(type),
             m_factory(factory),
-            m_optSettersFactory(optSettersFactory)
+            m_optSetterFactory(optSetterFactory),
+            m_defOptGetter(defOptGetter),
+            m_optEqual(optEqual),
+            m_optDescriber(optDescriber)
         {}
     };
+
+    static void registerType(const char *type,
+                             const Factory &factory,
+                             const OptionsSetterFactory &optSetterFactory,
+                             const OptionsGetter &defOptGetter,
+                             const OptionsEqual &optEqual,
+                             const OptionsDescriber &optDescriber);
 
     File(const char *uri, const PropertyTree &options);
 
@@ -347,7 +397,7 @@ protected:
     virtual void onSaved(FileSaver &saver) {}
 
 private:
-    static const Factory *findFactory(const char *type);
+    static const TypeRecord *findTypeRecord(const char *type);
 
     void continueClosing();
 

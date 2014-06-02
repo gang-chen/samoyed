@@ -39,8 +39,24 @@ public:
      */
     typedef boost::signals2::signal<void (const PropertyTree &prop)> Changed;
 
-    PropertyTree(const char *name);
-    PropertyTree(const char *name, const boost::spirit::hold_any &defaultValue);
+    PropertyTree(const char *name):
+        m_name(name),
+        m_firstChild(NULL),
+        m_lastChild(NULL),
+        m_parent(NULL),
+        m_correcting(false)
+    {}
+
+    PropertyTree(const char *name, const boost::spirit::hold_any &defaultValue):
+        m_name(name),
+        m_defaultValue(defaultValue),
+        m_value(defaultValue),
+        m_firstChild(NULL),
+        m_lastChild(NULL),
+        m_parent(NULL),
+        m_correcting(false)
+    {}
+
     ~PropertyTree();
 
     template<class T> PropertyTree(const char *name, const T &defaultValue):
@@ -48,9 +64,6 @@ public:
     {}
 
     PropertyTree(const PropertyTree &prop);
-
-    bool operator==(const PropertyTree &rhs) const;
-    bool operator!=(const PropertyTree &rhs) const { return !(*this == rhs); }
 
     const char *name() const { return m_name.c_str(); }
 

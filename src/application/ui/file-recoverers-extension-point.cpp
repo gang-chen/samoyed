@@ -82,7 +82,8 @@ void FileRecoverersExtensionPoint::unregisterExtension(const char *extensionId)
     delete ext;
 }
 
-void FileRecoverersExtensionPoint::recoverFile(const char *fileUri)
+void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
+                                               const PropertyTree &fileOptions)
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
     char *type = g_content_type_guess(fileName, NULL, 0, NULL);
@@ -100,8 +101,9 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri)
                     acquireExtension(extInfo->id.c_str()));
             if (ext)
             {
-                file = File::open(fileUri, NULL, options, false);
-                ext->recoverFile(file);
+                file = File::open(fileUri, NULL, fileOptions, false).first;
+                if (file)
+                    ext->recoverFile(*file);
                 ext->release();
                 break;
             }

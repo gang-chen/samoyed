@@ -5,8 +5,9 @@
 # include <config.h>
 #endif
 #include "file-recovery-bar.hpp"
+#include "utilities/property-tree.hpp"
 #include "utilities/miscellaneous.hpp"
-#include <set>
+#include <map>
 #include <string>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -16,25 +17,40 @@ namespace Samoyed
 
 const char *FileRecoveryBar::ID = "file-recovery-bar";
 
+FileRecoveryBar::FileRecoveryBar(
+    const std::map<std::string, PropertyTree *> &files):
+    m_files(files),
+    m_store(NULL)
+{
+    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+         it != m_files.end();
+         ++it)
+        it->second = new PropertyTree(*it->second);
+}
+
 FileRecoveryBar::~FileRecoveryBar()
 {
     if (m_store)
         g_object_unref(m_store);
+    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+         it != m_files.end();
+         ++it)
+        delete it->second;
 }
 
-bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
+bool FileRecoveryBar::setup()
 {
     if (!Bar::setup(ID))
         return false;
     m_store = gtk_list_store_new(1, G_TYPE_STRING);
     GtkTreeIter it;
-    for (std::set<std::string>::const_iterator i = fileUris.begin();
-         i != fileUris.end();
+    for (std::map<std::string, PropertyTree *>::iterator i = m_files.begin();
+         i != m_files.end();
          ++i)
     {
         gtk_list_store_append(m_store, &it);
         gtk_list_store_set(m_store, &it,
-                           0, i->c_str(),
+                           0, i->first.c_str(),
                            -1);
     }
     GtkCellRenderer *renderer;
@@ -102,10 +118,11 @@ bool FileRecoveryBar::setup(const std::set<std::string> &fileUris)
     return true;
 }
 
-FileRecoveryBar *FileRecoveryBar::create(const std::set<std::string> &fileUris)
+FileRecoveryBar *
+FileRecoveryBar::create(const std::map<std::string, PropertyTree *> &files)
 {
-    FileRecoveryBar *bar = new FileRecoveryBar;
-    if (!bar->setup(fileUris))
+    FileRecoveryBar *bar = new FileRecoveryBar(files);
+    if (!bar->setup())
     {
         delete bar;
         return NULL;
@@ -124,15 +141,25 @@ Widget::XmlElement *FileRecoveryBar::save() const
     return NULL;
 }
 
-void FileRecoveryBar::setFileUris(const std::set<std::string> &fileUris)
+void
+FileRecoveryBar::setFiles(const std::map<std::string, PropertyTree *> &files)
 {
+    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+         it != m_files.end();
+         ++it)
+        delete it->second;
+    m_files = files;
+    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+         it != m_files.end();
+         ++it)
+        it->second = new PropertyTree(*it->second);
     GtkTreeIter it;
     gtk_list_store_clear(m_store);
-    for (std::set<std::string>::const_iterator i = fileUris.begin();
-         i != fileUris.end();
+    for (std::map<std::string, PropertyTree *>::iterator i = m_files.begin();
+         i != m_files.end();
          ++i)
         gtk_list_store_insert_with_values(m_store, &it,
-                                          0, i->c_str(),
+                                          0, i->first.c_str(),
                                           -1);
 }
 

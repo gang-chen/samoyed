@@ -60,7 +60,7 @@ const char *textEncodings[] =
     N_("Romanian (ISO-8859-16)"),
 
     N_("Unicode (UTF-7)"),
-    N_("Unicode (UTF-16)")
+    N_("Unicode (UTF-16)"),
     N_("Unicode (UTF-16BE)"),
     N_("Unicode (UTF-18HE)"),
     N_("Unicode (UTF-32)"),

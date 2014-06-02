@@ -54,29 +54,24 @@ struct SavedParam
 
 struct FilterChangedParam
 {
-    std::map<GtkFileFilter *, const Samoyed::File::OptionSettersFactory *>
+    std::map<GtkFileFilter *, const Samoyed::File::OptionsSetterFactory *>
         filter2Factory;
-    Samoyed::File::OptionSetters *optSetters;
+    Samoyed::File::OptionsSetter *optSetter;
+    FilterChangedParam(): optSetter(NULL) {}
 };
 
 void onFileChooserFilterChanged(GtkFileChooser *dialog,
                                 GParamSpec *spec,
                                 FilterChangedParam *param)
 {
-    if (param->optSetters)
-    {
-        delete param->optSetters;
-        param->optSetters = NULL;
-    }
+    if (param->optSetter)
+        delete param->optSetter;
     GtkFileFilter *filter = gtk_file_chooser_get_filter(dialog);
-    const Samoyed::File::OptionSettersFactory *factory =
+    const Samoyed::File::OptionsSetterFactory *factory =
         param->filter2Factory[filter];
-    if (*factory)
-    {
-        param->optSetters = (*factory)();
-        gtk_file_chooser_set_extra_widget(dialog,
-                                          param->optSetters->takeGtkWidget());
-    }
+    param->optSetter = (*factory)();
+    gtk_file_chooser_set_extra_widget(dialog,
+                                      param->optSetter->gtkWidget());
 }
 
 }
@@ -124,6 +119,16 @@ void File::EditStack::clear()
         delete (*it);
 }
 
+PropertyTree *File::OptionsSetter::options() const
+{
+    return new PropertyTree(File::defaultOptions());
+}
+
+File::OptionsSetter *File::createOptionsSetter()
+{
+    return new OptionsSetter;
+}
+
 void File::installHistories()
 {
     PropertyTree &prop = Application::instance().histories().
@@ -134,12 +139,20 @@ void File::installHistories()
 
 void File::registerType(const char *type,
                         const Factory &factory,
-                        const OptionSettersFactory &optSettersFactory)
+                        const OptionsSetterFactory &optSetterFactory,
+                        const OptionsGetter &defOptGetter,
+                        const OptionsEqual &optEqual,
+                        const OptionsDescriber &optDescriber)
 {
-    s_typeRegistry.push_back(TypeRecord(type, factory, optSettersFactory));
+    s_typeRegistry.push_back(TypeRecord(type,
+                                        factory,
+                                        optSetterFactory,
+                                        defOptGetter,
+                                        optEqual,
+                                        optDescriber));
 }
 
-const File::Factory *File::findFactory(const char *type)
+const File::TypeRecord *File::findTypeRecord(const char *type)
 {
     // First find the exact match.
     for (std::list<TypeRecord>::const_iterator it = s_typeRegistry.begin();
@@ -147,7 +160,7 @@ const File::Factory *File::findFactory(const char *type)
          ++it)
     {
         if (g_content_type_equals(it->m_type.c_str(), type))
-            return &it->m_factory;
+            return &(*it);
     }
 
     // Then collect all base types.
@@ -172,7 +185,15 @@ const File::Factory *File::findFactory(const char *type)
         if (g_content_type_is_a((*it2)->m_type.c_str(), (*it)->m_type.c_str()))
             it = it2;
     }
-    return &(*it)->m_factory;
+    return &(**it);
+}
+
+const PropertyTree *File::defaultOptionsForType(const char *type)
+{
+    const TypeRecord *rec = findTypeRecord(type);
+    if (rec)
+        return &rec->m_defOptGetter();
+    return NULL;
 }
 
 std::pair<File *, Editor *>
@@ -182,35 +203,6 @@ File::open(const char *uri, Project *project,
 {
     File *file;
     Editor *editor;
-    file = Application::instance().findFile(uri);
-    if (file)
-    {
-        if (options != file.options())
-        {
-            GtkWidget *dialog = gtk_message_dialog_new(
-                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
-                GTK_DIALOG_DESTROY_WITH_PARENT,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("Samoyed failed to open file \"%s\"."),
-                uri);
-            gtkMessageDialogAddDetails(
-                dialog,
-                _("File \"%s\" has already been opened %s. Samoyed cannot open "
-                  "it %s."),
-                uri, );
-            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                            GTK_RESPONSE_CLOSE);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-            return std::pair<File *, Editor *>(NULL, NULL);
-        }
-        if (newEditor)
-            editor = file->createEditor(project);
-        else
-            editor = file->editors();
-        return std::make_pair(file, editor);
-    }
 
     GError *error = NULL;
     char *fileName = g_filename_from_uri(uri, NULL, &error);
@@ -236,8 +228,8 @@ File::open(const char *uri, Project *project,
     }
     char *type = g_content_type_guess(fileName, NULL, 0, NULL);
     g_free(fileName);
-    const Factory *factory = findFactory(type);
-    if (!factory)
+    const TypeRecord *rec = findTypeRecord(type);
+    if (!rec)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -258,7 +250,43 @@ File::open(const char *uri, Project *project,
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(type);
-    file = (*factory)(uri, options);
+
+    file = Application::instance().findFile(uri);
+    if (file)
+    {
+        PropertyTree *existOpt = file->options();
+        if (rec->m_optEqual(options, *existOpt))
+        {
+            std::string optDesc, existOptDesc;
+            rec->m_optDescriber(options, optDesc);
+            rec->m_optDescriber(*existOpt, existOptDesc);
+            delete existOpt;
+            GtkWidget *dialog = gtk_message_dialog_new(
+                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to open file \"%s\"."),
+                uri);
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("File \"%s\" has already been opened %s. Samoyed cannot open "
+                  "it %s."),
+                uri, existOptDesc.c_str(), optDesc.c_str());
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            return std::pair<File *, Editor *>(NULL, NULL);
+        }
+        if (newEditor)
+            editor = file->createEditor(project);
+        else
+            editor = file->editors();
+        return std::make_pair(file, editor);
+    }
+
+    file = rec->m_factory(uri, options);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
     editor = file->createEditorInternally(project);
@@ -291,10 +319,10 @@ void File::openByDialog(Project *project,
     gtk_file_chooser_set_current_folder_uri(
         GTK_FILE_CHOOSER(dialog),
         Application::instance().histories().
-        get<std::string>(FILE_OPEN "/" DIRECTORY).c_str());
+            get<std::string>(FILE_OPEN "/" DIRECTORY).c_str());
 
     std::string lastFilterName = Application::instance().histories().
-        get<std::string>(FILE_OPEN "/ " FILTER);
+        get<std::string>(FILE_OPEN "/" FILTER);
     GtkFileFilter *lastFilter = NULL;
 
     FilterChangedParam param;
@@ -305,15 +333,14 @@ void File::openByDialog(Project *project,
     {
         GtkFileFilter *filter = gtk_file_filter_new();
         char *name = g_content_type_get_description(it->m_type.c_str());
-        if (lastFilterName == name)
+        if (!lastFilter || lastFilterName == name)
             lastFilter = filter;
         gtk_file_filter_set_name(filter, name);
         g_free(name);
         gtk_file_filter_add_mime_type(filter, it->m_type.c_str());
         gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-        param.filter2Factory[filter] = &it->m_optSettersFactory;
+        param.filter2Factory[filter] = &it->m_optSetterFactory;
     }
-    param.optSetters = NULL;
 
     g_signal_connect_after(dialog, "notify::filter",
                            G_CALLBACK(onFileChooserFilterChanged),
@@ -328,17 +355,13 @@ void File::openByDialog(Project *project,
         GSList *uris, *uri;
         uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
 
-        Property options(defaultOptions);
-        if (param.optSetters)
-        {
-            param.optSetters->setOptions(options);
-            delete param.optSetters;
-        }
+        PropertyTree *options = param.optSetter->options();
+        delete param.optSetter;
 
-        for (uri = uris; uri; uri = uri->next);
+        for (uri = uris; uri; uri = uri->next)
         {
             std::pair<File *, Editor *> fileEditor =
-                open(static_cast<const char *>(uri->data), project, options,
+                open(static_cast<const char *>(uri->data), project, *options,
                      true);
             if (fileEditor.first)
             {
@@ -350,6 +373,7 @@ void File::openByDialog(Project *project,
                             editorGroup.currentChildIndex() + 1);
             }
         }
+        delete options;
         if (uris)
         {
             GFile *f = g_file_new_for_uri(

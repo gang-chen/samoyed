@@ -19,7 +19,6 @@ g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST\
 #include <vector>
 #include <sstream>
 #ifdef SMYD_PROPERTY_TREE_UNIT_TEST
-# include <assert.h>
 # include <iostream>
 # include <glib/gstdio.h>
 # include <libxml/parser.h>
@@ -27,27 +26,6 @@ g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST\
 
 namespace Samoyed
 {
-
-PropertyTree::PropertyTree(const char *name):
-    m_name(name),
-    m_firstChild(NULL),
-    m_lastChild(NULL),
-    m_parent(NULL),
-    m_correcting(false)
-{
-}
-
-PropertyTree::PropertyTree(const char *name,
-                           const boost::spirit::hold_any &defaultValue):
-    m_name(name),
-    m_defaultValue(defaultValue),
-    m_value(defaultValue),
-    m_firstChild(NULL),
-    m_lastChild(NULL),
-    m_parent(NULL),
-    m_correcting(false)
-{
-}
 
 PropertyTree::~PropertyTree()
 {
@@ -63,31 +41,14 @@ PropertyTree::~PropertyTree()
 PropertyTree::PropertyTree(const PropertyTree &prop):
     m_name(prop.m_name),
     m_defaultValue(prop.m_defaultValue),
-    m_value(m_value),
+    m_value(prop.m_value),
     m_firstChild(NULL),
     m_lastChild(NULL),
     m_parent(NULL),
     m_correcting(false)
 {
     for (PropertyTree *child = prop.m_firstChild; child; child = child->m_next)
-        addChild(new PropertyTree(*child));
-}
-
-bool PropertyTree::operator==(const PropertyTree &rhs) const
-{
-    if (m_name != rhs.m_name ||
-        m_defaultValue != rhs.m_defaultValue ||
-        m_value != rhs.m_value)
-        return false;
-    PropertyTree *c1, *c2;
-    for (c1 = m_firstChild, *c2 = rhs.m_firstChild;
-         c1 && c2;
-         c1 = c1->m_next, c2 = c2->m_next)
-        if (*c1 != *c2)
-            return false;
-    if (c1 || c2)
-        return false;
-    return true;
+        addChild(*(new PropertyTree(*child)));
 }
 
 bool PropertyTree::set(const boost::spirit::hold_any &value,
@@ -445,7 +406,7 @@ void PropertyTree::resetAll()
 
 #ifdef SMYD_PROPERTY_TREE_UNIT_TEST
 
-int maxValue = 1000;
+int maxValue;
 
 bool validate(Samoyed::PropertyTree &prop,
               bool correct,
@@ -485,6 +446,8 @@ int main()
     assert(tree->child("l2/l3.2").get<int>() == 200);
     assert(tree->child("l2/l3.3").get<int>() == 300);
     assert(tree->child("l2/l3.s").get<std::string>() == "");
+
+    maxValue = 1000;
 
     tree->child("l2/l3.1").setValidator(validate);
     tree->child("l2/l3.2").setValidator(validate);

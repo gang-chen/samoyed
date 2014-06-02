@@ -149,25 +149,35 @@ public:
         int m_endColumn;
     };
 
-    class OptionSetters: public File::OptionSetters
+    class OptionsSetter: public File::OptionsSetter
     {
     public:
-        OptionSetters(): m_gtkWidget(NULL) {}
-        virtual GtkWidget *takeGtkWidget();
-        virtual void setOptions(PropertyTree &options);
+        OptionsSetter();
+        virtual GtkWidget *gtkWidget() { return m_gtkWidget; }
+        virtual PropertyTree *options() const;
     private:
         GtkWidget *m_gtkWidget;
     };
+
+    static void installHistories();
 
     static bool isSupportedType(const char *type);
 
     static void registerType();
 
+    static File::OptionsSetter *createOptionsSetter();
+
     static const PropertyTree &defaultOptions();
 
-    const char *encoding() const { return m_encoding.c_str(); }
+    static bool optionsEqual(const PropertyTree &options1,
+                             const PropertyTree &options2);
 
-    virtual PropertyTree options() const;
+    static void describeOptions(const PropertyTree &options,
+                                std::string &desc);
+
+    virtual PropertyTree *options() const;
+
+    const char *encoding() const { return m_encoding.c_str(); }
 
     int characterCount() const;
 
@@ -239,7 +249,7 @@ private:
     Insertion *removeOnly(int beginLine, int beginColumn,
                           int endLine, int endColumn);
 
-    PropertyTree s_defaultOptions;
+    static PropertyTree s_defaultOptions;
 
     std::string m_encoding;
 };

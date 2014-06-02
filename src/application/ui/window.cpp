@@ -1338,16 +1338,16 @@ void Window::addAction(const char *actionName,
     gtk_action_group_add_action(m_actions->actionGroup(), action);
     g_object_unref(action);
 
-    guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
+    guint uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
-                          mergeId,
+                          uiMergeId,
                           actionPath,
                           actionName,
                           actionName,
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     data->action = action;
-    data->mergeId = mergeId;
+    data->uiMergeId = uiMergeId;
     m_actionData[actionName] = data;
 }
 

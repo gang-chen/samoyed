@@ -13,4 +13,4 @@ if OS_WIN32
 endif
 
 samoyed_LDADD = \
-    $(SAMOYED_LIBS)
+    $(SAMOYED_LIBSAMOYED)

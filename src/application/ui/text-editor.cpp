@@ -161,12 +161,12 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
     }
 
     // Verify that the file is a text file.
-    char *fileName = g_filename_from_uri(uri(), NULL, NULL);
+    char *fileName = g_filename_from_uri(fileUri(), NULL, NULL);
     if (!fileName)
     {
         cp = g_strdup_printf(
             _("Line %d: Invalid URI \"%s\".\n"),
-            node->line, uri());
+            node->line, fileUri());
         errors.push_back(cp);
         g_free(cp);
     }
@@ -178,7 +178,7 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
     {
         cp = g_strdup_printf(
             _("Line %d: File \"%s\" is not a text file.\n"),
-            node->line, uri());
+            node->line, fileUri());
         errors.push_back(cp);
         g_free(cp);
         return false;

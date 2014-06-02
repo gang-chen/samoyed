@@ -17,6 +17,8 @@
 namespace Samoyed
 {
 
+class PropertyTree;
+
 /**
  * A session can be saved and restored so that the user can quit the application
  * and start the application to continue her work later.  The state of the
@@ -93,48 +95,44 @@ public:
      */
     void destroy();
 
-    const std::map<std::string, xmlNodePtr> &unsavedFiles() const
+    const std::map<std::string, PropertyTree *> &unsavedFiles() const
     { return m_unsavedFiles; }
 
-    void addUnsavedFile(const char *uri, xmlNodePtr options);
-    void removeUnsavedFile(const char *uri, xmlNodePtr options);
+    void addUnsavedFile(const char *uri, PropertyTree *options);
+    void removeUnsavedFile(const char *uri);
 
 private:
-    class UnsavedFileListRequest
+    class UnsavedFilesRequest
     {
     public:
-        virtual ~UnsavedFileListRequest() {}
-        virtual void execute(const Session &session) const = 0;
+        virtual ~UnsavedFilesRequest() {}
+        virtual void execute(Session &session) = 0;
     };
 
-    class UnsavedFileListRead: public UnsavedFileListRequest
+    class UnsavedFilesRead: public UnsavedFilesRequest
     {
     public:
-        UnsavedFileListRead(Session &session): m_session(session) {}
-        virtual void execute(const Session &session) const;
+        virtual void execute(Session &session);
+    };
+
+    class UnsavedFilesWrite: public UnsavedFilesRequest
+    {
+    public:
+        UnsavedFilesWrite(const std::map<std::string,
+                                         PropertyTree *> &unsavedFiles);
+        virtual ~UnsavedFilesWrite();
+        virtual void execute(Session &session);
     private:
-        Session &m_session;
+        std::map<std::string, PropertyTree *> m_unsavedFiles;
     };
 
-    class UnsavedFileListWrite: public UnsavedFileListRequest
+    class UnsavedFilesRequestExecutor: public Worker
     {
     public:
-        UnsavedFileListWrite(std::map<std::string,
-                                      xmlNodePtr> &unsavedFileUris):
-            m_unsavedFileUris(unsavedFileUris.begin(), unsavedFileUris.end())
-        {}
-        virtual void execute(const Session &session) const;
-    private:
-        std::list<std::string> m_unsavedFileUris;
-    };
-
-    class UnsavedFileListRequestExecutor: public Worker
-    {
-    public:
-        UnsavedFileListRequestExecutor(Scheduler &scheduler,
-                                       unsigned int priority,
-                                       const Callback &callback,
-                                       Session &session);
+        UnsavedFilesRequestExecutor(Scheduler &scheduler,
+                                    unsigned int priority,
+                                    const Callback &callback,
+                                    Session &session);
         virtual bool step();
 
     private:
@@ -143,10 +141,10 @@ private:
 
     static bool writeLastSessionName(const char *name);
 
-    static gboolean onUnsavedFileListRead(gpointer param);
+    static gboolean onUnsavedFilesRead(gpointer param);
 
     static gboolean
-        onUnsavedFileListRequestExecutorDoneInMainThread(gpointer param);
+        onUnsavedFilesRequestExecutorDoneInMainThread(gpointer param);
 
     Session(const char *name, const char *lockFileName);
     ~Session();
@@ -154,9 +152,9 @@ private:
     bool lock();
     void unlock();
 
-    void queueUnsavedFileListRequest(UnsavedFileListRequest *request);
-    void executeQueuedUnsavedFileListRequests();
-    void onUnsavedFileListRequestExecutorDone(Worker &worker);
+    void queueUnsavedFilesRequest(UnsavedFilesRequest *request);
+    void executeQueuedUnsavedFilesRequests();
+    void onUnsavedFilesRequestExecutorDone(Worker &worker);
 
     static bool s_crashHandlerRegistered;
 
@@ -166,12 +164,12 @@ private:
 
     LockFile m_lockFile;
 
-    std::map<std::string, xmlNodePtr> m_unsavedFiles;
+    std::map<std::string, PropertyTree *> m_unsavedFiles;
 
-    std::deque<UnsavedFileListRequest *> m_unsavedFileListRequestQueue;
-    mutable boost::mutex m_unsavedFileListRequestQueueMutex;
+    std::deque<UnsavedFilesRequest *> m_unsavedFilesRequestQueue;
+    mutable boost::mutex m_unsavedFilesRequestQueueMutex;
 
-    UnsavedFileListRequestExecutor *m_unsavedFileListRequestExecutor;
+    UnsavedFilesRequestExecutor *m_unsavedFilesRequestExecutor;
 };
 
 }

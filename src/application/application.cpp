@@ -217,6 +217,7 @@ gboolean Application::startUp(gpointer app)
     // Initialize the histories with the default values.
     a->m_histories = new PropertyTree(HISTORIES);
     File::installHistories();
+    TextFile::installHistories();
 
     // Register plugins.
     a->m_pluginManager->scanPlugins(pluginMfsDirName.c_str());

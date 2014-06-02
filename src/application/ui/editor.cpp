@@ -10,6 +10,7 @@
 #include "application.hpp"
 #include <string.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <glib.h>
@@ -84,8 +85,8 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        FILE_OPTIONS) == 0)
-            m_fileOptions.readXmlElement(child);
+                        m_fileOptions.name()) == 0)
+            m_fileOptions.readXmlElement(child, errors);
     }
 
     if (!widgetSeen)
@@ -128,7 +129,7 @@ xmlNodePtr Editor::XmlElement::write() const
 Editor::XmlElement::XmlElement(const Editor &editor):
     Widget::XmlElement(editor),
     m_fileUri(editor.file().uri()),
-    m_fileOptions(editor.file().options())
+    m_fileOptions(*std::auto_ptr<PropertyTree>(editor.file().options()))
 {
     if (editor.project())
         m_projectUri = editor.project()->uri();
@@ -148,7 +149,7 @@ Editor *Editor::XmlElement::createEditor()
         if (!project)
             m_projectUri.clear();
     }
-    Editor *editor = File::open(fileUri(), project, options(), true).second;
+    Editor *editor = File::open(fileUri(), project, fileOptions(), true).second;
     return editor;
 }
 

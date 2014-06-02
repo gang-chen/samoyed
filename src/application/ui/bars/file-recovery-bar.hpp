@@ -5,25 +5,28 @@
 #define SMYD_FILE_RECOVERY_BAR_HPP
 
 #include "ui/bar.hpp"
-#include <set>
+#include <map>
 #include <string>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
+class PropertyTree;
+
 class FileRecoveryBar: public Bar
 {
 public:
     static const char *ID;
 
-    static FileRecoveryBar *create(const std::set<std::string> &fileUris);
+    static FileRecoveryBar *
+        create(const std::map<std::string, PropertyTree *> &files);
 
     virtual bool close();
 
     virtual Widget::XmlElement *save() const;
 
-    void setFileUris(const std::set<std::string> &fileUris);
+    void setFiles(const std::map<std::string, PropertyTree *> &files);
 
     virtual Orientation orientation() const { return ORIENTATION_HORIZONTAL; }
 
@@ -33,12 +36,13 @@ private:
     static void onDiscard(GtkButton *button, FileRecoveryBar *bar);
     static void onClose(GtkButton *button, FileRecoveryBar *bar);
 
-    FileRecoveryBar(): m_store(NULL)
-    {}
+    FileRecoveryBar(const std::map<std::string, PropertyTree *> &files);
 
     virtual ~FileRecoveryBar();
 
-    bool setup(const std::set<std::string> &fileUris);
+    bool setup();
+
+    std::map<std::string, PropertyTree *> m_files;
 
     GtkListStore *m_store;
 };

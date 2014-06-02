@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
+#include <glib.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -95,6 +96,8 @@ public:
 
 private:
     typedef std::map<ComparablePointer<const char>, Plugin *> Table;
+
+    static gboolean destroyPlugin(gpointer param);
 
     void registerPluginExtensions(PluginInfo &pluginInfo);
     void unregisterPluginExtensions(PluginInfo &pluginInfo);
