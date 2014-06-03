@@ -13,6 +13,7 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include "miscellaneous.hpp"
 #ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # include <assert.h>
+# include <set>
 #endif
 #include <errno.h>
 #include <ctype.h>
@@ -28,6 +29,8 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include <glib.h>
 #ifdef SMYD_UNIT_TEST
 # define _(T) T
+# define N_(T) T
+# define gettext(T) T
 #else
 # include <glib/gi18n.h>
 #endif
@@ -223,6 +226,17 @@ const char **getTextEncodings()
 
 int main(int argc, char *argv[])
 {
+    std::set<Samoyed::ComparablePointer<const char> > set;
+    const char *cp1 = "string";
+    const char cp2[] = {'s', 't', 'r', 'i', 'n', 'g', '\0'};
+    bool inserted;
+    inserted = set.insert(cp1).second;
+    assert(inserted);
+    assert(set.size() == 1);
+    inserted = set.insert(cp2).second;
+    assert(!inserted);
+    assert(set.size() == 1);
+
     char *readme;
 
     gtk_init(&argc, &argv);

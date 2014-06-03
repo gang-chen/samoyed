@@ -156,14 +156,14 @@ PropertyTree *TextFile::OptionsSetter::options() const
         cp2 = strchr(cp1, ')');
         if (cp2)
         {
-            *cp2 = '\0';
             std::list<std::string> errors;
-            options->set(ENCODING, std::string(cp1), false, errors);
             Application::instance().histories().
                 set(FILE_OPEN "/" TEXT_ENCODING,
                     std::string(encoding),
                     false,
                     errors);
+            *cp2 = '\0';
+            options->set(ENCODING, std::string(cp1), false, errors);
         }
     }
     g_free(encoding);
