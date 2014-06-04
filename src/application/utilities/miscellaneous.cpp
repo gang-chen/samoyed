@@ -226,16 +226,47 @@ const char **getTextEncodings()
 
 int main(int argc, char *argv[])
 {
-    std::set<Samoyed::ComparablePointer<const char> > set;
-    const char *cp1 = "string";
-    const char cp2[] = {'s', 't', 'r', 'i', 'n', 'g', '\0'};
     bool inserted;
-    inserted = set.insert(cp1).second;
+
+    std::set<Samoyed::ComparablePointer<int> > intSet;
+    int *ip1 = new int(1);
+    int *ip2 = new int(2);
+    int *ip3 = new int(1);
+    inserted = intSet.insert(ip1).second;
     assert(inserted);
-    assert(set.size() == 1);
-    inserted = set.insert(cp2).second;
+    assert(intSet.size() == 1);
+    inserted = intSet.insert(ip2).second;
+    assert(inserted);
+    assert(intSet.size() == 2);
+    inserted = intSet.insert(ip3).second;
     assert(!inserted);
-    assert(set.size() == 1);
+    assert(intSet.size() == 2);
+    assert(*intSet.begin() == ip1);
+    assert(*(++intSet.begin()) == ip2);
+    intSet.clear();
+    delete ip1;
+    delete ip2;
+    delete ip3;
+
+    std::set<Samoyed::ComparablePointer<const char> > strSet;
+    char *cp1 = strdup("1");
+    char *cp2 = strdup("2");
+    char *cp3 = strdup("1");
+    inserted = strSet.insert(cp1).second;
+    assert(inserted);
+    assert(strSet.size() == 1);
+    inserted = strSet.insert(cp2).second;
+    assert(inserted);
+    assert(strSet.size() == 2);
+    inserted = strSet.insert(cp3).second;
+    assert(!inserted);
+    assert(strSet.size() == 2);
+    assert(*strSet.begin() == cp1);
+    assert(*(++strSet.begin()) == cp2);
+    strSet.clear();
+    free(cp1);
+    free(cp2);
+    free(cp3);
 
     char *readme;
 
@@ -259,7 +290,7 @@ int main(int argc, char *argv[])
     g_file_get_contents("../../../README", &readme, NULL, NULL);
     Samoyed::gtkMessageDialogAddDetails(
         dialog,
-        "Hello!\n\nHere are the contents of the README file.\n\n%s",
+        "Hello!\n\nThe contents of the README file:\n\n%s",
         readme ? readme : "Unavailable!");
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_CLOSE);
     gtk_dialog_run(GTK_DIALOG(dialog));
