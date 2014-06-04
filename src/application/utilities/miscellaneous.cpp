@@ -43,7 +43,7 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 namespace
 {
 
-const char *textEncodings[] =
+const char *charEncodings[] =
 {
     NULL,
 
@@ -105,7 +105,7 @@ const char *textEncodings[] =
 namespace Samoyed
 {
 
-int getNumberOfProcessors()
+int numberOfProcessors()
 {
 #ifdef OS_WIN32
     SYSTEM_INFO info;
@@ -175,6 +175,20 @@ bool removeFileOrDirectory(const char *name, GError **error)
     return true;
 }
 
+const char **characterEncodings()
+{
+    if (!charEncodings[0])
+    {
+        const char *localeEncoding;
+        g_get_charset(&localeEncoding);
+        charEncodings[0] = g_strdup_printf(_("Current Locale (%s)"),
+                                           localeEncoding);
+        for (const char **encoding = charEncodings; *encoding; ++encoding)
+            *encoding = gettext(*encoding);
+    }
+    return charEncodings;
+}
+
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 {
     GtkWidget *label, *sw, *expander, *box;
@@ -206,20 +220,6 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
     gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
     g_free(text);
-}
-
-const char **getTextEncodings()
-{
-    if (!textEncodings[0])
-    {
-        const char *localeEncoding;
-        g_get_charset(&localeEncoding);
-        textEncodings[0] = g_strdup_printf(_("Current Locale (%s)"),
-                                           localeEncoding);
-        for (const char **encoding = textEncodings; *encoding; ++encoding)
-            *encoding = gettext(*encoding);
-    }
-    return textEncodings;
 }
 
 }
@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
 
     gtk_init(&argc, &argv);
 
-    printf("Number of processors: %d\n", Samoyed::getNumberOfProcessors());
+    printf("Number of processors: %d\n", Samoyed::numberOfProcessors());
     assert(Samoyed::isValidFileName("file-name_123.txt"));
     assert(!Samoyed::isValidFileName(" "));
     assert(!Samoyed::isValidFileName("*"));
