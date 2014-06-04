@@ -165,9 +165,9 @@ bool isValidFileName(const char *fileName);
 
 bool removeFileOrDirectory(const char *name, GError **error);
 
-void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
-
 const char **characterEncodings();
+
+void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
 
 }
 
