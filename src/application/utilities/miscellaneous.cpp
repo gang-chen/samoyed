@@ -13,6 +13,8 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include "miscellaneous.hpp"
 #ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # include <assert.h>
+# include <stdlib.h>
+# include <string.h>
 # include <set>
 #endif
 #include <errno.h>
@@ -242,7 +244,7 @@ int main(int argc, char *argv[])
     assert(!inserted);
     assert(intSet.size() == 2);
     assert(*intSet.begin() == ip1);
-    assert(*(++intSet.begin()) == ip2);
+    assert(*intSet.rbegin() == ip2);
     intSet.clear();
     delete ip1;
     delete ip2;
@@ -262,7 +264,7 @@ int main(int argc, char *argv[])
     assert(!inserted);
     assert(strSet.size() == 2);
     assert(*strSet.begin() == cp1);
-    assert(*(++strSet.begin()) == cp2);
+    assert(*strSet.rbegin() == cp2);
     strSet.clear();
     free(cp1);
     free(cp2);
