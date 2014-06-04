@@ -24,7 +24,7 @@
 #define TEXT_FILE_OPTIONS "text-file-options"
 #define ENCODING "encoding"
 #define FILE_OPEN "file-open"
-#define TEXT_ENCODING "text-encoding"
+#define TEXT_FILE "text-file"
 #define DEFAULT_ENCODING "UTF-8"
 
 namespace
@@ -128,9 +128,11 @@ TextFile::OptionsSetter::OptionsSetter()
 {
     m_gtkWidget = gtk_combo_box_text_new();
     const char *lastEncoding = Application::instance().histories().
-        get<std::string>(FILE_OPEN "/" TEXT_ENCODING).c_str();
+        get<std::string>(FILE_OPEN "/" TEXT_FILE "/" ENCODING).c_str();
     int lastEncIndex = 0, i = 0;
-    for (const char **encoding = getTextEncodings(); *encoding; ++encoding, ++i)
+    for (const char **encoding = characterEncodings();
+         *encoding;
+         ++encoding, ++i)
     {
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(m_gtkWidget),
                                   NULL,
@@ -158,7 +160,7 @@ PropertyTree *TextFile::OptionsSetter::options() const
         {
             std::list<std::string> errors;
             Application::instance().histories().
-                set(FILE_OPEN "/" TEXT_ENCODING,
+                set(FILE_OPEN "/" TEXT_FILE "/" ENCODING,
                     std::string(encoding),
                     false,
                     errors);
@@ -215,8 +217,9 @@ void TextFile::describeOptions(const PropertyTree &options,
 
 void TextFile::installHistories()
 {
-    Application::instance().histories().child(FILE_OPEN).
-        addChild(TEXT_ENCODING, std::string(DEFAULT_ENCODING));
+    PropertyTree &prop = Application::instance().histories().child(FILE_OPEN).
+        addChild(TEXT_FILE);
+    prop.addChild(ENCODING, std::string(DEFAULT_ENCODING));
 }
 
 TextFile::TextFile(const char *uri, const PropertyTree &options):
