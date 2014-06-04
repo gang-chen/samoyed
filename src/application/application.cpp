@@ -204,7 +204,7 @@ gboolean Application::startUp(gpointer app)
     a->m_fileSourceManager = new FileSourceManager;
     a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
     a->m_projectAstManager = new ProjectAstManager;
-    a->m_scheduler = new Scheduler(getNumberOfProcessors());
+    a->m_scheduler = new Scheduler(numberOfProcessors());
 
     // Create builtin extension points.
     a->m_actionsExtensionPoint = new ActionsExtensionPoint;
