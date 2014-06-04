@@ -159,7 +159,7 @@ public:
     virtual Orientation orientation() const = 0;
 };
 
-int getNumberOfProcessors();
+int numberOfProcessors();
 
 bool isValidFileName(const char *fileName);
 
@@ -167,7 +167,7 @@ bool removeFileOrDirectory(const char *name, GError **error);
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
 
-const char **getTextEncodings();
+const char **characterEncodings();
 
 }
 
