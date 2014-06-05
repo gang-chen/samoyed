@@ -126,7 +126,9 @@ bool TextFile::Removal::merge(const File::EditPrimitive *edit)
 
 TextFile::OptionsSetter::OptionsSetter()
 {
-    m_gtkWidget = gtk_combo_box_text_new();
+    GtkWidget *label = gtk_label_new_with_mnemonic(_("Character _encoding:"));
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    GtkWidget *combo = gtk_combo_box_text_new();
     const char *lastEncoding = Application::instance().histories().
         get<std::string>(FILE_OPEN "/" TEXT_FILE "/" ENCODING).c_str();
     int lastEncIndex = 0, i = 0;
@@ -134,13 +136,23 @@ TextFile::OptionsSetter::OptionsSetter()
          *encoding;
          ++encoding, ++i)
     {
-        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(m_gtkWidget),
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo),
                                   NULL,
                                   *encoding);
         if (strcmp(*encoding, lastEncoding) == 0)
             lastEncIndex = i;
     }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(m_gtkWidget), lastEncIndex);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), lastEncIndex);
+    m_gtkWidget = gtk_grid_new();
+    gtk_grid_attach_next_to(GTK_GRID(m_gtkWidget),
+                            label, NULL,
+                            GTK_POS_RIGHT, 1, 1);
+    gtk_grid_attach_next_to(GTK_GRID(m_gtkWidget),
+                            combo, label,
+                            GTK_POS_RIGHT, 1, 1);
+    gtk_grid_set_column_spacing(GTK_GRID(m_gtkWidget), LABEL_SPACING);
+    gtk_container_set_border_width(GTK_CONTAINER(m_gtkWidget),
+                                   CONTAINER_BORDER_WIDTH);
 }
 
 PropertyTree *TextFile::OptionsSetter::options() const
@@ -148,8 +160,9 @@ PropertyTree *TextFile::OptionsSetter::options() const
     PropertyTree *options = new PropertyTree(TEXT_FILE_OPTIONS);
     options->addChild(*File::OptionsSetter::options());
     options->addChild(ENCODING, std::string(DEFAULT_ENCODING));
+    GtkWidget *combo = gtk_grid_get_child_at(GTK_GRID(m_gtkWidget), 1, 0);
     char *encoding =
-        gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(m_gtkWidget));
+        gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo));
     char *cp1, *cp2;
     cp1 = strchr(encoding, '(');
     if (cp1)
