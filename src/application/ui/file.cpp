@@ -255,7 +255,7 @@ File::open(const char *uri, Project *project,
     if (file)
     {
         PropertyTree *existOpt = file->options();
-        if (rec->m_optEqual(options, *existOpt))
+        if (!rec->m_optEqual(options, *existOpt))
         {
             std::string optDesc, existOptDesc;
             rec->m_optDescriber(options, optDesc);

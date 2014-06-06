@@ -151,8 +151,7 @@ TextFile::OptionsSetter::OptionsSetter()
                             combo, label,
                             GTK_POS_RIGHT, 1, 1);
     gtk_grid_set_column_spacing(GTK_GRID(m_gtkWidget), LABEL_SPACING);
-    gtk_container_set_border_width(GTK_CONTAINER(m_gtkWidget),
-                                   CONTAINER_BORDER_WIDTH);
+    gtk_widget_show_all(m_gtkWidget);
 }
 
 PropertyTree *TextFile::OptionsSetter::options() const
