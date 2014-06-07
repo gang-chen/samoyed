@@ -17,7 +17,7 @@ class TextEdit
 public:
     virtual void write(char *&byteCode, int &length) const = 0;
 
-    static bool replay(TextFile &file, const char *&byteCode);
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
 };
 
 class TextInsertion: public TextEdit
@@ -29,7 +29,7 @@ public:
 
     virtual void write(char *&byteCode, int &length) const = 0;
 
-    static bool replay(TextFile &file, const char *&byteCode);
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
 
 private:
     int m_line;
@@ -44,7 +44,7 @@ public:
 
     virtual void write(char *&byteCode, int &length) const = 0;
 
-    static bool replay(TextFile &file, const char *&byteCode);
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
 
 private:
     std::string text;
@@ -59,7 +59,7 @@ public:
 
     virtual void write(char *&byteCode, int &length) const = 0;
 
-    static bool replay(TextFile &file, const char *&byteCode);
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
 
 private:
     int m_line;
@@ -74,7 +74,7 @@ public:
 
     virtual void write(char *&byteCode, int &length) const = 0;
 
-    static bool replay(TextFile &file, const char *&byteCode);
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
 
 private:
     int m_length;
@@ -87,7 +87,7 @@ public:
 
     virtual void write(char *&byteCode, int &length) const = 0;
 
-    static bool replay(TextFile &file, const char *&byteCode);
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
 
 private:
     int m_length;

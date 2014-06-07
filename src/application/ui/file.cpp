@@ -311,8 +311,8 @@ void File::openByDialog(Project *project,
             _("Open file"),
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_FILE_CHOOSER_ACTION_OPEN,
-            GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-            GTK_STOCK_OPEN, GTK_RESPONSE_OK,
+            "_Cancel", GTK_RESPONSE_CANCEL,
+            "_Open", GTK_RESPONSE_OK,
             NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 
@@ -495,9 +495,9 @@ bool File::closeEditor(Editor &editor)
             uri());
         gtk_dialog_add_buttons(
             GTK_DIALOG(dialog),
-            GTK_STOCK_YES, GTK_RESPONSE_YES,
-            GTK_STOCK_NO, GTK_RESPONSE_NO,
-            GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+            "_Yes", GTK_RESPONSE_YES,
+            "_No", GTK_RESPONSE_NO,
+            "_Cancel", GTK_RESPONSE_CANCEL,
             NULL);
         gtk_widget_set_tooltip_text(
             gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),

@@ -443,8 +443,8 @@ void Notebook::addChild(Widget &child, int index)
     GtkWidget *tabLabel;
     if (m_createCloseButtons)
     {
-        GtkWidget *closeImage = gtk_image_new_from_stock(GTK_STOCK_CLOSE,
-                                                         GTK_ICON_SIZE_MENU);
+        GtkWidget *closeImage =
+            gtk_image_new_from_icon_name("window-close", GTK_ICON_SIZE_MENU);
         GtkWidget *closeButton = gtk_button_new();
         gtk_button_set_image(GTK_BUTTON(closeButton), closeImage);
         gtk_button_set_relief(GTK_BUTTON(closeButton), GTK_RELIEF_NONE);
