@@ -53,17 +53,24 @@ const PropertyTree &SourceFile::defaultOptions()
     return s_defaultOptions;
 }
 
+// It is possible that options for text files are given.
 bool SourceFile::optionsEqual(const PropertyTree &options1,
                               const PropertyTree &options2)
 {
-    return TextFile::optionsEqual(options1.child(TEXT_FILE_OPTIONS),
-                                  options2.child(TEXT_FILE_OPTIONS));
+    return TextFile::optionsEqual(
+            strcmp(options1.name(), SOURCE_FILE_OPTIONS) == 0 ?
+            options1.child(TEXT_FILE_OPTIONS) : options1,
+            strcmp(options2.name(), SOURCE_FILE_OPTIONS) == 0 ?
+            options2.child(TEXT_FILE_OPTIONS) : options2);
 }
 
+// It is possible that options for text files are given.
 void SourceFile::describeOptions(const PropertyTree &options,
                                  std::string &desc)
 {
-    TextFile::describeOptions(options.child(TEXT_FILE_OPTIONS), desc);
+    TextFile::describeOptions(strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
+                              options.child(TEXT_FILE_OPTIONS) : options,
+                              desc);
 }
 
 // It is possible that options for text files are given.

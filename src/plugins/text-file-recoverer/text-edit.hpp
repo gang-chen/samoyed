@@ -12,92 +12,85 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
-struct TextEdit
+class TextEdit
 {
-    enum Type
-    {
-        TYPE_INSERTION,
-        TYPE_INSERTION_1,
-        TYPE_INSERTION_2,
-        TYPE_INSERTION_3,
-        TYPE_INSERTION_4,
-        TYPE_INSERTION_5,
-        TYPE_INSERTION_6,
-        TYPE_INSERTION_7,
-        TYPE_INSERTION_8,
-        TYPE_INSERTION_9,
-        TYPE_INSERTION_10,
-        TYPE_INSERTION_AT_CURSOR,
-        TYPE_INSERTION_1_AT_CURSOR,
-        TYPE_INSERTION_2_AT_CURSOR,
-        TYPE_INSERTION_3_AT_CURSOR,
-        TYPE_INSERTION_4_AT_CURSOR,
-        TYPE_INSERTION_5_AT_CURSOR,
-        TYPE_INSERTION_6_AT_CURSOR,
-        TYPE_INSERTION_7_AT_CURSOR,
-        TYPE_INSERTION_8_AT_CURSOR,
-        TYPE_INSERTION_9_AT_CURSOR,
-        TYPE_INSERTION_10_AT_CURSOR,
-        TYPE_REMOVAL,
-        TYPE_REMOVAL_BEFORE_CURSOR,
-        TYPE_REMOVAL_1_BEFORE_CURSOR,
-        TYPE_REMOVAL_2_BEFORE_CURSOR,
-        TYPE_REMOVAL_3_BEFORE_CURSOR,
-        TYPE_REMOVAL_4_BEFORE_CURSOR,
-        TYPE_REMOVAL_5_BEFORE_CURSOR,
-        TYPE_REMOVAL_6_BEFORE_CURSOR,
-        TYPE_REMOVAL_7_BEFORE_CURSOR,
-        TYPE_REMOVAL_8_BEFORE_CURSOR,
-        TYPE_REMOVAL_9_BEFORE_CURSOR,
-        TYPE_REMOVAL_10_BEFORE_CURSOR,
-        TYPE_REMOVAL_AFTER_CURSOR,
-        TYPE_REMOVAL_1_AFTER_CURSOR,
-        TYPE_REMOVAL_2_AFTER_CURSOR,
-        TYPE_REMOVAL_3_AFTER_CURSOR,
-        TYPE_REMOVAL_4_AFTER_CURSOR,
-        TYPE_REMOVAL_5_AFTER_CURSOR,
-        TYPE_REMOVAL_6_AFTER_CURSOR,
-        TYPE_REMOVAL_7_AFTER_CURSOR,
-        TYPE_REMOVAL_8_AFTER_CURSOR,
-        TYPE_REMOVAL_9_AFTER_CURSOR,
-        TYPE_REMOVAL_10_AFTER_CURSOR
-    };
-    char type;
-    TextEdit(char t): type(t) {}
+public:
+    virtual void write(char *&byteCode, int &length) const = 0;
+
+    static bool replay(TextFile &file, const char *&byteCode);
 };
 
-struct TextInsertion: public TextEdit
+class TextInsertion: public TextEdit
 {
-    int line;
-    int column;
-    std::string text;
-    TextInsertion(): TextEdit(TYPE_INSERTION) {}
+public:
+    TextInsertion(int line, int column, const char *text):
+        m_line(line), m_column(column), m_text(text)
+    {}
+
+    virtual void write(char *&byteCode, int &length) const = 0;
+
+    static bool replay(TextFile &file, const char *&byteCode);
+
+private:
+    int m_line;
+    int m_column;
+    std::string m_text;
 };
 
 struct TextInsertionAtCursor: public TextEdit
 {
+public:
+    TextInsertionAtCursor(const char *text): m_text(text) {}
+
+    virtual void write(char *&byteCode, int &length) const = 0;
+
+    static bool replay(TextFile &file, const char *&byteCode);
+
+private:
     std::string text;
-    TextInsertionAtCursor(): TextEdit(TYPE_INSERTION_AT_CURSOR) {}
 };
 
 struct TextRemoval: public TextEdit
 {
-    int line;
-    int column;
-    int length;
-    TextRemoval(): TextEdit(TYPE_REMOVAL) {}
+public:
+    TextRemoval(int line, int column, int length):
+        m_line(line), m_column(column), m_length(length)
+    {}
+
+    virtual void write(char *&byteCode, int &length) const = 0;
+
+    static bool replay(TextFile &file, const char *&byteCode);
+
+private:
+    int m_line;
+    int m_column;
+    int m_length;
 };
 
 struct TextRemovalBeforeCursor: public TextEdit
 {
-    int length;
-    TextRemovalBeforeCursor(): TextEdit(TYPE_REMOVAL_BEFORE_CURSOR) {}
+public:
+    TextRemovalBeforeCursor(int length): m_length(length) {}
+
+    virtual void write(char *&byteCode, int &length) const = 0;
+
+    static bool replay(TextFile &file, const char *&byteCode);
+
+private:
+    int m_length;
 };
 
 struct TextRemovalAfterCursor: public TextEdit
 {
-    int length;
-    TextRemovalAfterCursor(): TextEdit(TYPE_REMOVAL_AFTER_CURSOR) {}
+public:
+    TextRemovalAfterCursor(int length): m_length(length) {}
+
+    virtual void write(char *&byteCode, int &length) const = 0;
+
+    static bool replay(TextFile &file, const char *&byteCode);
+
+private:
+    int m_length;
 };
 
 }

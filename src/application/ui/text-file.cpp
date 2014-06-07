@@ -204,27 +204,42 @@ const PropertyTree &TextFile::defaultOptions()
 bool TextFile::optionsEqual(const PropertyTree &options1,
                             const PropertyTree &options2)
 {
-    return (options1.get<std::string>(ENCODING) ==
-            options2.get<std::string>(ENCODING) &&
-            File::optionsEqual(options1.child(FILE_OPTIONS),
-                               options2.child(FILE_OPTIONS)));
+    if (strcmp(options1.name(), TEXT_FILE_OPTIONS) == 0)
+    {
+        if (strcmp(options2.name(), TEXT_FILE_OPTIONS) == 0)
+            return (options1.get<std::string>(ENCODING) ==
+                    options2.get<std::string>(ENCODING) &&
+                    File::optionsEqual(options1.child(FILE_OPTIONS),
+                                       options2.child(FILE_OPTIONS)));
+        return (options1.get<std::string>(ENCODING) == DEFAULT_ENCODING &&
+                File::optionsEqual(options1.child(FILE_OPTIONS), options2));
+    }
+    if (strcmp(options2.name(), TEXT_FILE_OPTIONS) == 0)
+        return (options2.get<std::string>(ENCODING) == DEFAULT_ENCODING &&
+                File::optionsEqual(options1, options2.child(FILE_OPTIONS)));
+    return File::optionsEqual(options1, options2);
 }
 
 void TextFile::describeOptions(const PropertyTree &options,
                                std::string &desc)
 {
-    std::string encoding = options.get<std::string>(ENCODING);
-    desc += "in encoding \"";
-    desc += encoding;
-    desc += "\"";
-
-    std::string fileDesc;
-    File::describeOptions(options.child(FILE_OPTIONS), fileDesc);
-    if (!fileDesc.empty())
+    if (strcmp(options.name(), TEXT_FILE_OPTIONS) == 0)
     {
-        desc += ", ";
-        desc += fileDesc;
+        std::string encoding = options.get<std::string>(ENCODING);
+        desc += "in encoding \"";
+        desc += encoding;
+        desc += "\"";
+
+        std::string fileDesc;
+        File::describeOptions(options.child(FILE_OPTIONS), fileDesc);
+        if (!fileDesc.empty())
+        {
+            desc += ", ";
+            desc += fileDesc;
+        }
     }
+    else
+        File::describeOptions(options, desc);
 }
 
 void TextFile::installHistories()
