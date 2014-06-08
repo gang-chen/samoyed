@@ -203,9 +203,9 @@ public:
 
     /**
      * @param line The line number of the insertion position, starting from 0;
-     * or -1 to insert at the cursor.
+     * or -1 to append.
      * @param column The column number of the insertion position, the
-     * character index, starting from 0; or -1 to insert at the cursor.
+     * character index, starting from 0; or -1 to append.
      * @param text The text to be inserted.
      * @param length The number of the bytes to be inserted, or -1 to insert the
      * text until '\0'.

@@ -441,15 +441,13 @@ void TextEditor::onFileChanged(const File::Change &change)
     else if (tc.m_type == TextFile::Change::TYPE_INSERTION)
     {
         const TextFile::Change::Value::Insertion &ins = tc.m_value.insertion;
+        GtkTextIter iter;
         if (ins.line == -1 && ins.column == -1)
-            gtk_text_buffer_insert_at_cursor(buffer, ins.text, ins.length);
+            gtk_text_buffer_get_end_iter(buffer, &iter);
         else
-        {
-            GtkTextIter iter;
             gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                                     ins.line, ins.column);
-            gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
-        }
+        gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
     }
     else
     {

@@ -384,13 +384,16 @@ bool TextFile::remove(int beginLine, int beginColumn,
         return false;
 
     // Order the two positions.
-    if (beginLine > endLine)
+    if (!(endLine == -1 && endColumn == -1))
     {
-        std::swap(beginLine, endLine);
-        std::swap(beginColumn, endColumn);
+        if (beginLine > endLine)
+        {
+            std::swap(beginLine, endLine);
+            std::swap(beginColumn, endColumn);
+        }
+        else if (beginLine == endLine && beginColumn > endColumn)
+            std::swap(beginColumn, endColumn);
     }
-    else if (beginLine == endLine && beginColumn > endColumn)
-        std::swap(beginColumn, endColumn);
 
     Insertion *undo = removeOnly(beginLine, beginColumn,
                                  endLine, endColumn);

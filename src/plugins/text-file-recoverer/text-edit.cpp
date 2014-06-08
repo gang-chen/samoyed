@@ -2,6 +2,7 @@
 // Copyright (C) 2014 Gang Chen.
 
 #include "text-edit.hpp"
+#include "ui/text-file.hpp"
 
 namespace
 {
@@ -9,61 +10,26 @@ namespace
 enum Operator
 {
     OP_INSERTION,
-    OP_INSERTION_1,
-    OP_INSERTION_2,
-    OP_INSERTION_3,
-    OP_INSERTION_4,
-    OP_INSERTION_5,
-    OP_INSERTION_6,
-    OP_INSERTION_7,
-    OP_INSERTION_8,
-    OP_INSERTION_9,
-    OP_INSERTION_10,
-    OP_INSERTION_AT_CURSOR,
-    OP_INSERTION_1_AT_CURSOR,
-    OP_INSERTION_2_AT_CURSOR,
-    OP_INSERTION_3_AT_CURSOR,
-    OP_INSERTION_4_AT_CURSOR,
-    OP_INSERTION_5_AT_CURSOR,
-    OP_INSERTION_6_AT_CURSOR,
-    OP_INSERTION_7_AT_CURSOR,
-    OP_INSERTION_8_AT_CURSOR,
-    OP_INSERTION_9_AT_CURSOR,
-    OP_INSERTION_10_AT_CURSOR,
-    OP_REMOVAL,
-    OP_REMOVAL_1,
-    OP_REMOVAL_2,
-    OP_REMOVAL_3,
-    OP_REMOVAL_4,
-    OP_REMOVAL_5,
-    OP_REMOVAL_6,
-    OP_REMOVAL_7,
-    OP_REMOVAL_8,
-    OP_REMOVAL_9,
-    OP_REMOVAL_10,
-    OP_REMOVAL_BEFORE_CURSOR,
-    OP_REMOVAL_1_BEFORE_CURSOR,
-    OP_REMOVAL_2_BEFORE_CURSOR,
-    OP_REMOVAL_3_BEFORE_CURSOR,
-    OP_REMOVAL_4_BEFORE_CURSOR,
-    OP_REMOVAL_5_BEFORE_CURSOR,
-    OP_REMOVAL_6_BEFORE_CURSOR,
-    OP_REMOVAL_7_BEFORE_CURSOR,
-    OP_REMOVAL_8_BEFORE_CURSOR,
-    OP_REMOVAL_9_BEFORE_CURSOR,
-    OP_REMOVAL_10_BEFORE_CURSOR,
-    OP_REMOVAL_AFTER_CURSOR,
-    OP_REMOVAL_1_AFTER_CURSOR,
-    OP_REMOVAL_2_AFTER_CURSOR,
-    OP_REMOVAL_3_AFTER_CURSOR,
-    OP_REMOVAL_4_AFTER_CURSOR,
-    OP_REMOVAL_5_AFTER_CURSOR,
-    OP_REMOVAL_6_AFTER_CURSOR,
-    OP_REMOVAL_7_AFTER_CURSOR,
-    OP_REMOVAL_8_AFTER_CURSOR,
-    OP_REMOVAL_9_AFTER_CURSOR,
-    OP_REMOVAL_10_AFTER_CURSOR
+    OP_REMOVAL
 };
+
+const int TEXT_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
+
+writeInteger(int i)
+{
+}
+
+bool readInteger(int &i, const char *&byteCode, int &length)
+{
+    gint32 i32;
+    if (length < sizeof(gint32))
+        return false;
+    memcpy(&i32, byteCode, sizeof(gint32));
+    byteCode += sizeof(gint32);
+    length -= sizeof(gint32);
+    i = GINT32_FROM_LE(i32);
+    return true;
+}
 
 }
 
@@ -73,56 +39,97 @@ namespace Samoyed
 namespace TextFileRecover
 {
 
+bool TextInsertion::merge(const TextInsertion *ins)
+{
+    if (m_line == ins->m_line && m_column == ins->m_column)
+    {
+        m_text.insert(0, ins->m_text);
+        return true;
+    }
+    if (m_text.length() >
+        static_cast<const std::string::size_type>(
+            TEXT_INSERTION_MERGE_LENGTH_THRESHOLD))
+        return false;
+    const char *cp = m_text.c_str();
+    int line = m_line;
+    int column = m_column;
+    while (*cp)
+    {
+        if (*cp == '\n')
+        {
+            ++cp;
+            ++line;
+            column = 0;
+        }
+        else if (*cp == '\r')
+        {
+            ++cp;
+            if (*cp == '\n')
+                ++cp;
+            ++line;
+            column = 0;
+        }
+        else
+        {
+            cp += Utf8::length(cp);
+            ++column;
+        }
+    }
+    if (line == ins->m_line && column == ins->m_column)
+    {
+        m_text.append(ins->m_text);
+        return true;
+    }
+    return false;
+}
+
+bool TextRemoval::merge(const TextRemoval *rem)
+{
+    if (m_beginLine == rem->m_beginLine && m_beginColumn == rem->m_beginColumn)
+    {
+    }
+}
+
 bool TextEdit::replay(TextFile &file, const char *&byteCode, int &length)
 {
-    if (*byteCode >= OP_INSERTION && *byteCode <= OP_INSERTION_10)
+    if (*byteCode == OP_INSERTION)
         return TextInsertion::replay(file, byteCode, length);
-    if (*byteCode >= OP_INSERTION_AT_CURSOR &&
-        *byteCode <= OP_INSERTION_10_AT_CURSOR)
-        return TextInsertionAtCursor::replay(file, byteCode, length);
-    if (*byteCode >= OP_REMOVAL && *byteCode <= OP_REMOVAL_10)
+    if (*byteCode == OP_REMOVAL)
         return TextRemoval::replay(file, byteCode, length);
-    if (*byteCode >= OP_REMOVAL_BEFORE_CURSOR &&
-        *byteCode <= OP_REMOVAL_10_BEFORE_CURSOR)
-        return TextRemovalBeforeCursor::replay(file, byteCode, length);
-    if (*byteCode >= OP_REMOVAL_AFTER_CURSOR &&
-        *byteCode <= OP_REMOVAL_10_AFTER_CURSOR)
-        return TextRemovalAfterCursor::replay(file, byteCode, length);
     return false;
 }
 
 bool TextInsertion::replay(TextFile &file, const char *&byteCode, int &length)
 {
-    gint32 len, ln, col;
-    if (*byteCode == OP_INSERTION)
-    {
-        if (length < sizeof(gint32))
-            return false;
-        memcpy(&len, byteCode, sizeof(gint32));
-        byteCode += sizeof(gint32);
-        length -= sizeof(gint32);
-        len = GINT32_FROM_LE(len);
-    }
-    else
-        len = *byteCode - OP_INSERTION;
-    if (length < sizeof(gint32))
+    int line, column, len;
+    if (!readInteger(line, byteCode, length))
         return false;
-    memcpy(&ln, byteCode, sizeof(gint32));
-    byteCode += sizeof(gint32);
-    length -= sizeof(gint32);
-    ln = GINT32_FROM_LE(ln);
-    if (length < sizeof(gint32))
+    if (!readIntegar(column, byteCode, length))
         return false;
-    memcpy(&col, byteCode, sizeof(gint32));
-    byteCode += sizeof(gint32);
-    length -= sizeof(gint32);
-    col = GINT32_FROM_LE(col);
+    if (!readInteger(len, byteCode, length))
+        return false;
     if (length < len)
         return false;
-    if (!file.insert(ln, col, byteCode, len))
+    if (!file.insert(line, column, byteCode, len))
         return false;
     byteCode += len;
     length -= len;
+    return true;
+}
+
+bool TextRemoval::replay(TextFile &file, const char *&byteCode, int &length)
+{
+    int beginLine, beginColumn, endLine, endColumn;
+    if (!readInteger(beginLine, byteCode, length))
+        return false;
+    if (!readInteger(beginColumn, byteCode, length))
+        return false;
+    if (!readInteger(endLine, byteCode, length))
+        return false;
+    if (!readInteger(endColumn, byteCode, length))
+        return false;
+    if (!file.remove(beginLine, beginColumn, endLine, endColumn))
+        return false;
     return true;
 }
 
