@@ -28,7 +28,7 @@ void TextBuffer::setLineColumn(int line, int column)
 
 void TextBuffer::transformByteOffsetToLineColumn(int byteOffset,
                                                  int &line,
-                                                 int &column)
+                                                 int &column) const
 {
     ConstIterator it(*this, byteOffset, -1, -1);
     int charOffset = it.index2();
@@ -39,7 +39,7 @@ void TextBuffer::transformByteOffsetToLineColumn(int byteOffset,
 
 void TextBuffer::transformLineColumnToByteOffset(int line,
                                                  int column,
-                                                 int &byteOffset)
+                                                 int &byteOffset) const
 {
     ConstIterator it(*this, -1, -1, line);
     it.move2(column);
@@ -48,7 +48,7 @@ void TextBuffer::transformLineColumnToByteOffset(int line,
 
 void TextBuffer::transformCharOffsetToLineColumn(int charOffset,
                                                  int &line,
-                                                 int &column)
+                                                 int &column) const
 {
     ConstIterator it(*this, -1, charOffset, -1);
     line = it.index3();
@@ -58,7 +58,7 @@ void TextBuffer::transformCharOffsetToLineColumn(int charOffset,
 
 void TextBuffer::transformLineColumnToCharOffset(int line,
                                                  int column,
-                                                 int &charOffset)
+                                                 int &charOffset) const
 {
     ConstIterator it(*this, -1, -1, line);
     charOffset = it.index2() + column;

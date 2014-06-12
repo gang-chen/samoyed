@@ -347,16 +347,38 @@ void TextFile::onLoaded(FileLoader &loader)
     TextFileLoader &ld = static_cast<TextFileLoader &>(loader);
 
     // Copy the contents in the loader's buffer to the editors.
+    int line, column, newLine, newColumn;
+    if (characterCount() > 0)
+    {
+        static_cast<const TextEditor *>(editors())->endCursor(line, column);
+        onChanged(Change(0, 0, line, column), true);
+    }
     const TextBuffer *buffer = ld.buffer();
     TextBuffer::ConstIterator it(*buffer, 0, -1, -1);
-    onChanged(Change(0, 0, -1, -1), true);
+    bool moved;
+    line = 0;
+    column = 0;
     do
     {
         const char *begin, *end;
-        if (it.getAtomsBulk(begin, end))
-            onChanged(Change(-1, -1, begin, end - begin, -1, -1), true);
+        bool got = it.getAtomsBulk(begin, end);
+        moved = it.goToNextBulk();
+        if (got)
+        {
+            if (moved)
+                getIteratorLineColumn(it, newLine, newColumn);
+            else
+                buffer->transformByteOffsetToLineColumn(buffer->length(),
+                                                        newLine, newColumn);
+            onChanged(Change(line, column,
+                             begin, end - begin,
+                             newLine, newColumn),
+                      true);
+            line = newLine;
+            column = newColumn;
+        }
     }
-    while (it.goToNextBulk());
+    while (moved);
 
     // Notify editors.
     for (TextEditor *editor = static_cast<TextEditor *>(editors());
@@ -367,6 +389,8 @@ void TextFile::onLoaded(FileLoader &loader)
 
 bool TextFile::insert(int line, int column, const char *text, int length)
 {
+    if (line == -1 && column == -1)
+        static_cast<TextEditor *>(editors())->endCursor(line, column);
     if (!static_cast<TextEditor *>(editors())->isValidCursor(line, column))
         return false;
     Removal *undo = insertOnly(line, column, text, length);
@@ -377,6 +401,8 @@ bool TextFile::insert(int line, int column, const char *text, int length)
 bool TextFile::remove(int beginLine, int beginColumn,
                       int endLine, int endColumn)
 {
+    if (endLine == -1 && endColumn == -1)
+        static_cast<TextEditor *>(editors())->endCursor(endLine, endColumn);
     if (!static_cast<TextEditor *>(editors())->isValidCursor(beginLine,
                                                              beginColumn) ||
         !static_cast<TextEditor *>(editors())->isValidCursor(endLine,
@@ -384,16 +410,13 @@ bool TextFile::remove(int beginLine, int beginColumn,
         return false;
 
     // Order the two positions.
-    if (!(endLine == -1 && endColumn == -1))
+    if (beginLine > endLine)
     {
-        if (beginLine > endLine)
-        {
-            std::swap(beginLine, endLine);
-            std::swap(beginColumn, endColumn);
-        }
-        else if (beginLine == endLine && beginColumn > endColumn)
-            std::swap(beginColumn, endColumn);
+        std::swap(beginLine, endLine);
+        std::swap(beginColumn, endColumn);
     }
+    else if (beginLine == endLine && beginColumn > endColumn)
+        std::swap(beginColumn, endColumn);
 
     Insertion *undo = removeOnly(beginLine, beginColumn,
                                  endLine, endColumn);

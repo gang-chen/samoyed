@@ -23,10 +23,6 @@ TerminalPlugin::TerminalPlugin(PluginManager &manager,
 {
 }
 
-TerminalPlugin::~TerminalPlugin()
-{
-}
-
 Extension *TerminalPlugin::createExtension(const char *extensionId)
 {
     return new TerminalViewExtension(extensionId, *this);

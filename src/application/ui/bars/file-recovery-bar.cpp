@@ -5,12 +5,18 @@
 # include <config.h>
 #endif
 #include "file-recovery-bar.hpp"
+#include "ui/file-recoverers-extension-point.hpp"
+#include "ui/session.hpp"
+#include "utilities/extension-point-manager.hpp"
 #include "utilities/property-tree.hpp"
 #include "utilities/miscellaneous.hpp"
+#include "application.hpp"
 #include <map>
 #include <string>
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
+
+#define FILE_RECOVERERS "file-recoverers"
 
 namespace Samoyed
 {
@@ -55,23 +61,26 @@ bool FileRecoveryBar::setup()
     }
     GtkCellRenderer *renderer;
     GtkTreeViewColumn *column;
-    GtkWidget *list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
-    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(list), FALSE);
+    m_list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(m_list), FALSE);
     renderer = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(_("URIs"),
                                                       renderer,
                                                       "text", 0,
                                                       NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(list), column);
-    gtk_widget_set_hexpand(list, TRUE);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
+    GtkTreeSelection *select =
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(m_list));
+    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+    gtk_widget_set_hexpand(m_list, TRUE);
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *label = gtk_label_new_with_mnemonic(
         _("_Files that were edited but not saved in the last session:"));
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    gtk_label_set_mnemonic_widget(GTK_LABEL(label), list);
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_list);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), list, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), m_list, 0, 1, 1, 1);
     gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
 
     GtkWidget *button;
@@ -84,13 +93,6 @@ bool FileRecoveryBar::setup()
         button, _("Open the file and replay the saved edits"));
     gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
     g_signal_connect(button, "clicked", G_CALLBACK(onRecover), this);
-    button = gtk_button_new_with_mnemonic(_("_Show differences"));
-    gtk_widget_set_tooltip_text(
-        button,
-        _("Show the differences between the saved content and the edited "
-          "content"));
-    gtk_box_pack_start(GTK_BOX(box), button, FALSE, TRUE, 0);
-    g_signal_connect(button, "clicked", G_CALLBACK(onShowDifferences), this);
     button = gtk_button_new_with_mnemonic(_("_Discard"));
     gtk_widget_set_tooltip_text(
         button,
@@ -109,7 +111,7 @@ bool FileRecoveryBar::setup()
     int total_h, label_h;
     gtk_widget_get_preferred_height(box, &total_h, NULL);
     gtk_widget_get_preferred_height(label, &label_h, NULL);
-    gtk_widget_set_size_request(list, -1,
+    gtk_widget_set_size_request(m_list, -1,
                                 total_h - label_h - CONTAINER_SPACING);
 
     setGtkWidget(grid);
@@ -165,14 +167,42 @@ FileRecoveryBar::setFiles(const std::map<std::string, PropertyTree *> &files)
 
 void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
 {
-}
-
-void FileRecoveryBar::onShowDifferences(GtkButton *button, FileRecoveryBar *bar)
-{
+    GtkTreeSelection *select =
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(bar->m_list));
+    GtkTreeIter iter;
+    GtkTreeModel *model;
+    if (gtk_tree_selection_get_selected(select, &model, &iter))
+    {
+        char *uri;
+        gtk_tree_model_get(model, &iter, 0, &uri, -1);
+        const PropertyTree *options = bar->m_files[uri];
+        static_cast<FileRecoverersExtensionPoint *>(Application::instance().
+            extensionPointManager().extensionPoint(FILE_RECOVERERS))->
+            recoverFile(uri, *options);
+        Application::instance().session()->removeUnsavedFile(uri);
+        gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+        delete options;
+        bar->m_files.erase(uri);
+        g_free(uri);
+    }
 }
 
 void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
 {
+    GtkTreeSelection *select =
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(bar->m_list));
+    GtkTreeIter iter;
+    GtkTreeModel *model;
+    if (gtk_tree_selection_get_selected(select, &model, &iter))
+    {
+        char *uri;
+        gtk_tree_model_get(model, &iter, 0, &uri, -1);
+        Application::instance().session()->removeUnsavedFile(uri);
+        gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+        delete bar->m_files[uri];
+        bar->m_files.erase(uri);
+        g_free(uri);
+    }
 }
 
 void FileRecoveryBar::onClose(GtkButton *button, FileRecoveryBar *bar)

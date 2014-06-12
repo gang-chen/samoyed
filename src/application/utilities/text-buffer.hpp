@@ -56,20 +56,38 @@ public:
 
     void transformByteOffsetToLineColumn(int byteOffset,
                                          int &line,
-                                         int &column);
+                                         int &column) const;
 
     void transformLineColumnToByteOffset(int line,
                                          int column,
-                                         int &byteOffset);
+                                         int &byteOffset) const;
 
     void transformCharOffsetToLineColumn(int charOffset,
                                          int &line,
-                                         int &column);
+                                         int &column) const;
 
     void transformLineColumnToCharOffset(int line,
                                          int column,
-                                         int &charOffset);
+                                         int &charOffset) const;
 };
+
+template<class Iterator> void getIteratorLineColumn(const Iterator &it,
+                                                    int &line,
+                                                    int &column)
+{
+    Iterator it2(it);
+    line = it2.index3();
+    it2.set3(line);
+    column = it.index2() - it2.index2();
+}
+
+template<class Iterator> void setIteratorLineColumn(Iterator &it,
+                                                    int line,
+                                                    int column)
+{
+    it.set3(line);
+    it.move2(column);
+}
 
 }
 

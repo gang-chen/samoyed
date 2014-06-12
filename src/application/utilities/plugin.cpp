@@ -39,10 +39,6 @@ Plugin::Plugin(PluginManager &manager, const char *id, GModule *module):
 {
 }
 
-Plugin::~Plugin()
-{
-}
-
 Plugin *Plugin::activate(PluginManager &manager,
                          const char *id,
                          const char *moduleFileName,

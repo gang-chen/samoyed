@@ -331,6 +331,16 @@ int TextEditor::maxColumnInLine(int line) const
     return gtk_text_iter_get_line_offset(&iter);
 }
 
+void TextEditor::endCursor(int &line, int &column) const
+{
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
+    GtkTextIter iter;
+    gtk_text_buffer_get_end_iter(buffer, &iter);
+    line = gtk_text_iter_get_line(&iter);
+    column = gtk_text_iter_get_line_offset(&iter);
+}
+
 bool TextEditor::isValidCursor(int line, int column) const
 {
     if (line >= lineCount())
@@ -442,11 +452,8 @@ void TextEditor::onFileChanged(const File::Change &change)
     {
         const TextFile::Change::Value::Insertion &ins = tc.m_value.insertion;
         GtkTextIter iter;
-        if (ins.line == -1 && ins.column == -1)
-            gtk_text_buffer_get_end_iter(buffer, &iter);
-        else
-            gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
-                                                    ins.line, ins.column);
+        gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
+                                                ins.line, ins.column);
         gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
     }
     else
@@ -455,11 +462,8 @@ void TextEditor::onFileChanged(const File::Change &change)
         GtkTextIter begin, end;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
                                                 rem.beginLine, rem.beginColumn);
-        if (rem.endLine == -1 && rem.endColumn == -1)
-            gtk_text_buffer_get_end_iter(buffer, &end);
-        else
-            gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
-                                                    rem.endLine, rem.endColumn);
+        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
+                                                rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
     }
     m_bypassEdits = false;

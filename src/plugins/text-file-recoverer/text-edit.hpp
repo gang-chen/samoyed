@@ -4,7 +4,9 @@
 #ifndef SMYD_TXTR_TEXT_EDIT_HPP
 #define SMYD_TXTR_TEXT_EDIT_HPP
 
+#include <stdio.h>
 #include <string>
+#include <glib.h>
 
 namespace Samoyed
 {
@@ -20,12 +22,31 @@ class TextRemoval;
 class TextEdit
 {
 public:
+    virtual ~TextEdit() {}
+
     virtual bool merge(const TextInsertion *ins) { return false; }
     virtual bool merge(const TextRemoval *rem) { return false; }
 
-    virtual void write(char *&byteCode, int &length) const = 0;
+    virtual bool write(FILE *file) const = 0;
 
     static bool replay(TextFile &file, const char *&byteCode, int &length);
+};
+
+class TextInit: public TextEdit
+{
+public:
+    TextInit(char *text, int length): m_text(text), m_length(length)
+    {}
+
+    virtual ~TextInit() { g_free(m_text); }
+
+    virtual bool write(FILE *file) const;
+
+    static bool replay(TextFile &file, const char *&byteCode, int &length);
+
+private:
+    char *m_text;
+    int m_length;
 };
 
 class TextInsertion: public TextEdit
@@ -35,7 +56,7 @@ public:
         m_line(line), m_column(column), m_text(text)
     {}
 
-    virtual void write(char *&byteCode, int &length) const = 0;
+    virtual bool write(FILE *file) const;
 
     static bool replay(TextFile &file, const char *&byteCode, int &length);
 
@@ -58,7 +79,7 @@ public:
         m_endColumn(endColumn)
     {}
 
-    virtual void write(char *&byteCode, int &length) const = 0;
+    virtual bool write(FILE *file) const;
 
     static bool replay(TextFile &file, const char *&byteCode, int &length);
 

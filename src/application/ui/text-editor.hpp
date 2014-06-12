@@ -69,6 +69,8 @@ public:
 
     int maxColumnInLine(int line) const;
 
+    void endCursor(int &line, int &column) const;
+
     bool isValidCursor(int line, int column) const;
 
     char *text(int beginLine, int beginColumn,

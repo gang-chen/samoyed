@@ -32,7 +32,6 @@ public:
 
 private:
     static void onRecover(GtkButton *button, FileRecoveryBar *bar);
-    static void onShowDifferences(GtkButton *button, FileRecoveryBar *bar);
     static void onDiscard(GtkButton *button, FileRecoveryBar *bar);
     static void onClose(GtkButton *button, FileRecoveryBar *bar);
 
@@ -45,6 +44,7 @@ private:
     std::map<std::string, PropertyTree *> m_files;
 
     GtkListStore *m_store;
+    GtkWidget *m_list;
 };
 
 }

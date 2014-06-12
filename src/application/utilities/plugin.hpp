@@ -50,7 +50,7 @@ public:
 protected:
     Plugin(PluginManager &manager, const char *id, GModule *module);
 
-    virtual ~Plugin();
+    virtual ~Plugin() {}
 
     virtual Extension *createExtension(const char *extensionId) = 0;
 

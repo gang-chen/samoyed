@@ -19,12 +19,14 @@ public:
                             const char *id,
                             GModule *module);
 
-    virtual void deactivate();
+    virtual void deactivate()
+    {}
 
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
-    virtual bool completed() const;
+    virtual bool completed() const
+    { return false; }
 };
 
 }
