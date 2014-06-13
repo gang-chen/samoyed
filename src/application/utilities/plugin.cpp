@@ -103,7 +103,7 @@ void Plugin::releaseExtension(Extension &extension)
 void Plugin::onCompleted()
 {
     if (m_nActiveExtensions == 0)
-        m_manager.deactivatePlugin(*this);
+        m_manager.destroyPlugin(*this);
 }
 
 void Plugin::destroy()

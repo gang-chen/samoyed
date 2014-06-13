@@ -83,10 +83,10 @@ public:
     Extension *acquireExtension(const char *extensionId);
 
     /**
-     * Deactivate a plugin.  This function can be called by the plugin itself
+     * Destroy a plugin.  This function can be called by the plugin itself
      * only, when none of its extension is used and its tasks are completed.
      */
-    void deactivatePlugin(Plugin &plugin);
+    void destroyPlugin(Plugin &plugin);
 
     /**
      * Scan plugin manifest files in sub-directories of a directory and register
@@ -97,7 +97,7 @@ public:
 private:
     typedef std::map<ComparablePointer<const char>, Plugin *> Table;
 
-    static gboolean destroyPlugin(gpointer param);
+    static gboolean destroyPluginDeferred(gpointer param);
 
     void registerPluginExtensions(PluginInfo &pluginInfo);
     void unregisterPluginExtensions(PluginInfo &pluginInfo);

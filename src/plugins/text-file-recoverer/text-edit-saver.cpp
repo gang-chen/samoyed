@@ -1,14 +1,17 @@
 // Text edit saver.
 // Copyright (C) 2013 Gang Chen.
 
-#include "text-replay-file.hpp"
-#include "utilities/text-buffer.hpp"
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include "text-edit-saver.hpp"
+#include "text-file-recoverer-plugin.hpp"
 #include <glib.h>
 #include <glib/gstdio.h>
+
+namespace
+{
+
+const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txt.rep.";
+
+}
 
 namespace Samoyed
 {
@@ -25,28 +28,34 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
     m_saver(saver)
 {
     char *desc =
-        g_strdup_printf("Executing queued operations on text edit replay file \"%s\"",);
+        g_strdup_printf("Saving text edits performed on file \"%s\"",
+                        saver.m_file.uri());
+    setDescription(desc);
+    g_free(desc);
 }
 
-TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, File &file):
+TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file):
     FileObserver(file),
-    m_initial(true),
-    m_recovering(false),
-    m_replayFileCreated(false),
-    m_cursorLine(0),
-    m_cursorColumn(0),
+    m_plugin(plugin),
+    m_destroy(false),
+    m_stream(NULL),
     m_operationExecutor(NULL)
 {
-    m_initialText = text(0, 0, -1, -1);
+    plugin.onTextEditSaverCreated(*this);
 }
 
 TextEditSaver::~TextEditSaver()
 {
+    plugin.onTextEditSaverDestroyed(*this);
+}
+
+void TextEditSaver::deactivate()
+{
+
 }
 
 void TextEditSaver::onCloseFile(File &file)
 {
-    // If the replay file was created, remove it.
 }
 
 void TextEditSaver::onFileLoaded(File &file)
@@ -58,7 +67,9 @@ void TextEditSaver::onFileSaved(File &file)
     // If the replay file was created, remove it.
 }
 
-void TextEditSaver::onFileChanged(File &file)
+void TextEditSaver::onFileChanged(File &file,
+                                  const File::Change &change,
+                                  bool loading)
 {
     // If we are recovering the file, do nothing.
     // If this is the first change, create the replay file.  Otherwise, append an edit to the replay file.

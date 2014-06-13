@@ -30,7 +30,7 @@
 namespace Samoyed
 {
 
-gboolean PluginManager::destroyPlugin(gpointer param)
+gboolean PluginManager::destroyPluginDeferred(gpointer param)
 {
     std::pair<PluginManager *, Plugin *> *p =
         static_cast<std::pair<PluginManager *, Plugin *> *>(param);
@@ -533,7 +533,7 @@ Extension *PluginManager::acquireExtension(const char *extensionId)
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
             // Defer destroying the plugin.
-            g_idle_add(destroyPlugin,
+            g_idle_add(destroyPluginDeferred,
                        new std::pair<PluginManager *, Plugin *>(this, p));
             --m_nCachedPlugins;
         }
@@ -541,7 +541,7 @@ Extension *PluginManager::acquireExtension(const char *extensionId)
     return ext;
 }
 
-void PluginManager::deactivatePlugin(Plugin &plugin)
+void PluginManager::destroyPlugin(Plugin &plugin)
 {
     const PluginInfo *info = findPluginInfo(plugin.id());
 
@@ -555,14 +555,14 @@ void PluginManager::deactivatePlugin(Plugin &plugin)
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
             // Defer destroying the plugin.
-            g_idle_add(destroyPlugin,
+            g_idle_add(destroyPluginDeferred,
                        new std::pair<PluginManager *, Plugin *>(this, p));
             --m_nCachedPlugins;
         }
     }
     else
         // Defer destroying the plugin.
-        g_idle_add(destroyPlugin,
+        g_idle_add(destroyPluginDeferred,
                    new std::pair<PluginManager *, Plugin *>(this, &plugin));
 }
 

@@ -532,6 +532,7 @@ Session::UnsavedFilesRequestExecutor::
            callback),
     m_session(session)
 {
+    setDescription("Reading/writing unsaved file list");
 }
 
 bool Session::UnsavedFilesRequestExecutor::step()

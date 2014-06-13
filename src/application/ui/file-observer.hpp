@@ -15,9 +15,10 @@ class FileObserver: public boost::noncopyable
 {
 public:
     FileObserver(File &file): m_file(file) {}
+    virtual ~FileObserver() {}
 
     void activate();
-    void deactivate();
+    virtual void deactivate();
 
     virtual void onFileOpened() {}
     virtual void onCloseFile() {}
@@ -25,10 +26,12 @@ public:
     virtual void onFileSaved() {}
     virtual void onFileChanged(const File::Change &change, bool loading) {}
 
+protected:
+    File &m_file;
+
 private:
     void onCloseFileInternally();
 
-    File &m_file;
     boost::signals2::connection m_closeConnection;
     boost::signals2::connection m_loadedConnection;
     boost::signals2::connection m_savedConnection;

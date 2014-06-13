@@ -6,11 +6,14 @@
 
 #include "ui/file-observer.hpp"
 #include "utilities/worker.hpp"
+#include <stdio.h>
 #include <deque>
 #include <boost/thread/mutex.hpp>
 
 namespace Samoyed
 {
+
+class TextFile;
 
 namespace TextFileRecoverer
 {
@@ -21,7 +24,9 @@ class TextFileRecovererPlugin;
 class TextEditSaver: public FileObserver
 {
 public:
-    TextEditSaver(TextFileRecovererPlugin &plugin, File &file);
+    TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file);
+
+    void deactivate();
 
     virtual void onCloseFile(File &file);
     virtual void onFileLoaded(File &file);
@@ -30,35 +35,30 @@ public:
                                const File::Change &change,
                                bool loading);
 
-    void onFileRecoveringBegun(File &file);
-    void onFileRecoveringEnded(File &file);
-
 private:
     class ReplayFileOperation
     {
     public:
-        virtual bool execute() = 0;
+        virtual ~ReplayFileOperation() {}
+        virtual bool execute(TextEditSaver &saver) = 0;
     };
 
     class ReplayFileCreation: public ReplayFileOperation
     {
     public:
-        virtual bool execute();
-    private:
-        char *m_initialText;
+        virtual bool execute(TextEditSaver &saver);
     };
 
     class ReplayFileRemoval: public ReplayFileOperation
     {
     public:
-        virtual bool execute();
+        virtual bool execute(TextEditSaver &saver);
     };
 
     class ReplayFileAppending: public ReplayFileOperation
     {
     public:
-        virtual bool execute();
-    private:
+        virtual bool execute(TextEditSaver &saver);
         TextEdit *m_edit;
     };
 
@@ -68,26 +68,24 @@ private:
         ReplayFileOperationExecutor(Scheduler &scheduler,
                                     unsigned int priority,
                                     const Callback &callback,
-                                    );
+                                    TextEditSaver &saver);
         virtual bool step();
     private:
         TextEditSaver &m_saver;
     };
 
+    void queueReplayFileOperation(ReplayFileOperation *op);
     void executeQueuedRelayFileOperations();
+    void onReplayFileOperationExecutorDone(Worker &worker);
 
-    bool m_recovering;
-    bool m_replayFileCreated;
-
-    int m_cursorLine;
-    int m_cursorColumn;
-    char *m_initialText;
+    TextFileRecovererPlugin &m_plugin;
+    bool m_destroy;
+    FILE *m_stream;
 
     std::deque<ReplayFileOperation *> m_operationQueue;
     mutable boost::mutex m_operationQueueMutex;
 
     ReplayFileOperationExecutor *m_operationExecutor;
-    mutable boost::mutex m_operationExecutorMutex;
 };
 
 }
