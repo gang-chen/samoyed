@@ -7,6 +7,7 @@
 #include "text-file-recoverer-plugin.hpp"
 #include "text-file-recoverer-extension.hpp"
 #include "text-file-observer-extension.hpp"
+#include <string.h>
 
 namespace Samoyed
 {
