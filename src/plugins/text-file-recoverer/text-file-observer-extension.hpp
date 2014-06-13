@@ -1,7 +1,10 @@
+// File observer extension: text file observer for saving text edits.
+// Copyright (C) 2014 Gang Chen.
+
 #ifndef SMYD_TXTR_TEXT_FILE_OBSERVER_EXTENSION_HPP
 #define SMYD_TXTR_TEXT_FILE_OBSERVER_EXTENSION_HPP
 
-#include "file-observer-extension.hpp"
+#include "ui/file-observer-extension.hpp"
 
 namespace Samoyed
 {

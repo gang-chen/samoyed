@@ -1,6 +1,9 @@
-// Text file recoverer.
+// File recoverer extension: text file recoverer.
 // Copyright (C) 2013 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "text-file-recoverer.hpp"
 #include "text-file-recoverer-plugin.hpp"
 #include "utilities/worker.hpp"
@@ -33,7 +36,7 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
-TextFileRecoverer::TextReplayFileReader::TextReplayFileReader(
+TextFileRecoverer::ReplayFileReader::ReplayFileReader(
     Scheduler &scheduler,
     unsigned int priority,
     const Callback &callback,
@@ -42,33 +45,34 @@ TextFileRecoverer::TextReplayFileReader::TextReplayFileReader(
            priority,
            callback),
     m_recoverer(recoverer),
-    m_editStream(NULL)
+    m_byteCode(NULL),
+    m_byteCodeLength(0)
 {
 }
 
-TextFileRecoverer::TextReplayFileReader::~TextReplayFileReader()
+TextFileRecoverer::ReplayFileReader::~ReplayFileReader()
 {
-    g_free(m_editStream);
+    g_free(m_byteCode);
 }
 
-bool TextFileRecoverer::TextReplayFileReader::step()
+bool TextFileRecoverer::ReplayFileReader::step()
 {
-    char *cp;
-    gsize length;
-    GError *error = NULL;
-    gint32 i32;
-    TextEdit **edit;
-
-    cp = g_filename_from_uri(m_recoverer.m_file.uri(), NULL, NULL);
-    cp = strcat(TEXT_REPLAY_FILE_PREFIX cp);
-    g_file_get_contents(cp, &m_buffer, &length, &error);
+    char *cp = g_filename_from_uri(m_recoverer.m_file->uri(), NULL, NULL);
+    std::string fileName(TEXT_REPLAY_FILE_PREFIX);
+    fileName += cp;
     g_free(cp);
+
+    GError *error = NULL;
+    g_file_get_contents(fileName.c_str(),
+                        &m_byteCode,
+                        &m_byteCodeLength,
+                        &error);
 
     if (error)
     {
         cp = g_strdup_printf(
             _("Samoyed failed to read text edit replay file \"%s\". %s."),
-            m_recoverer.m_file.uri(), error->message);
+            m_recoverer.m_file->uri(), error->message);
         m_error = cp;
         g_free(cp);
         g_error_free(error);

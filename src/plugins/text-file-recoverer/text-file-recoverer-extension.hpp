@@ -11,7 +11,6 @@
 namespace Samoyed
 {
 
-class File;
 class TextFile;
 
 namespace TextFileRecoverer
@@ -19,30 +18,33 @@ namespace TextFileRecoverer
 
 class TextFileRecovererPlugin;
 
-class TextFileRecoverer
+class TextFileRecovererExtension: public FileRecovererExtension
 {
 public:
-    TextFileRecoverer(TextFileRecovererPlugin &plugin, TextFile &file);
+    TextFileRecovererExtension(const char *id, Plugin &plugin):
+        FileRecovererExtension(id, plugin)
+    {}
 
-    void recover();
+    virtual void recoverFile(File &file);
 
     void destroy();
 
 private:
-    class TextReplayFileReader: public Worker
+    class ReplayFileReader: public Worker
     {
     public:
-        TextReplayFileReader(Scheduler &scheduler,
-                             unsigned int priority,
-                             const Callback &callback,
-                             TextFileRecoverer &recoverer);
+        ReplayFileReader(Scheduler &scheduler,
+                         unsigned int priority,
+                         const Callback &callback,
+                         TextFileRecoverer &recoverer);
 
-        virtual ~TextReplayFileReader();
+        virtual ~ReplayFileReader();
 
         virtual bool step();
 
         TextFileRecover &m_recoverer;
-        char *m_editStream;
+        char *m_byteCode;
+        int m_byteCodeLength;
         std::string m_error;
     };
 
@@ -54,15 +56,13 @@ private:
 
     void onFileClosed(File &file);
 
-    static gboolean onTextReplayFileReadInMainThread(gpointer recoverer);
+    static gboolean onReplayFileReadInMainThread(gpointer recoverer);
 
-    void onTextReplayFileRead(Worker &worker);
+    void onReplayFileRead(Worker &worker);
 
-    TextFileRecovererPlugin &m_plugin;
+    TextFile *m_file;
 
-    TextFile &m_file;
-
-    TextReplayFileReader *m_reader;
+    ReplayFileReader *m_reader;
     bool m_read;
 
     bool m_destroy;
