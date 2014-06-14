@@ -2,7 +2,10 @@
 // Copyright (C) 2013 Gang Chen.
 
 #include "text-edit-saver.hpp"
+#include "text-edit.hpp"
 #include "text-file-recoverer-plugin.hpp"
+#include <stdio.h>
+#include <string>
 #include <glib.h>
 #include <glib/gstdio.h>
 
@@ -19,6 +22,38 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
+bool TextEditSaver::ReplayFileCreation::execute(TextEditSaver &saver)
+{
+    if (saver.m_replayFile)
+        fclose(saver.m_replayFile);
+    saver.m_replayFile = g_fopen(saver.m_replayFileName.c_str(), "w");
+    return saver.m_replayFile;
+}
+
+bool TextEditSaver::ReplayFileRemoval::execute(TextEditSaver &saver)
+{
+    if (saver.m_replayFile)
+        fclose(saver.m_replayFile);
+    saver.m_replayFile = NULL;
+    return !g_unlink(saver.m_replayFileName.c_str());
+}
+
+bool TextEditSaver::ReplayFileAppending::execute(TextEditSaver &saver)
+{
+    assert(saver.m_replayFile);
+    return m_edit->write(saver.m_replayFile);
+}
+
+bool TextEditSaver::ReplayFileAppending::merge(const TextInsertion *ins)
+{
+    return m_edit->merge(ins);
+}
+
+bool TextEditSaver::ReplayFileAppending::merge(const TextRemoval *rem)
+{
+    return m_edit->merge(rem);
+}
+
 TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
         Scheduler &scheduler,
         unsigned int priority,
@@ -28,8 +63,8 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
     m_saver(saver)
 {
     char *desc =
-        g_strdup_printf("Saving text edits performed on file \"%s\"",
-                        saver.m_file.uri());
+        g_strdup_printf("Saving text edits to file \"%s\"",
+                        saver.m_replayFileName.c_str());
     setDescription(desc);
     g_free(desc);
 }
@@ -38,9 +73,13 @@ TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file):
     FileObserver(file),
     m_plugin(plugin),
     m_destroy(false),
-    m_stream(NULL),
+    m_replayFile(NULL),
+    m_replayFileName(TEXT_REPLAY_FILE_PREFIX)
     m_operationExecutor(NULL)
 {
+    char *cp = g_filename_from_uri(file.uri(), NULL, NULL);
+    m_replayFileName += cp;
+    g_free(cp);
     plugin.onTextEditSaverCreated(*this);
 }
 
@@ -51,7 +90,53 @@ TextEditSaver::~TextEditSaver()
 
 void TextEditSaver::deactivate()
 {
+    if (saver->m_operationExecutor)
+        m_destroy = true;
+    else
+        delete this;
+}
 
+gboolean
+TextEditSaver::onReplayFileOperationExecutorDoneInMainThread(gpointer param)
+{
+    TextEditSaver *saver = static_cast<TextEditSaver *>(param);
+    delete saver->m_operationExecutor;
+    if (saver->m_replayFile)
+        fflush(saver->m_replayFile);
+    {
+        boost::mutex::scoped_lock lock(saver->m_operationQueueMutex);
+        if (!saver->m_operationQueue.empty())
+        {
+            saver->m_operationExecutor =
+                new ReplayFileOperationExecutor(
+                    Application::instance().scheduler(),
+                    Worker::PRIORITY_IDLE,
+                    boost::bind(
+                        &TextEditSaver::onReplayFileOperationExecutorDone,
+                        saver, _1),
+                    *saver);
+            Application::instance().scheduler().
+                schedule(*saver->m_operationExecutor);
+        }
+        else
+            saver->m_operationExecutor = NULL;
+    }
+    if (!saver->m_operationExecutor && saver->m_destroy)
+        delete saver;
+    return FALSE;
+}
+
+void TextEditSaver::onReplayFileOperationExecutorDone(Worker &worker)
+{
+    assert(&worker == m_operationExecutor);
+    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                    onReplayFileOperationExecutorDoneInMainThread,
+                    this,
+                    NULL);
+}
+
+void TextEditSaver::queueReplayFileOperation(ReplayFileOperation *op)
+{
 }
 
 void TextEditSaver::onCloseFile(File &file)

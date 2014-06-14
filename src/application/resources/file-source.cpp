@@ -258,7 +258,6 @@ void FileSource::queueWrite(Write *write)
 
 void FileSource::executeQueuedWrites()
 {
-    boost::mutex::scoped_lock exeLock(m_writeExecutorMutex);
     for (;;)
     {
         std::deque<Write *> writes;
