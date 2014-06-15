@@ -1206,8 +1206,13 @@ bool Session::save()
 
 void Session::addUnsavedFile(const char *uri, PropertyTree *options)
 {
-    if (!m_unsavedFiles.insert(std::make_pair(uri, options)).second)
-        return;
+    std::pair<std::map<std::string, PropertyTree *>::iterator, bool> p =
+        m_unsavedFiles.insert(std::make_pair(uri, options));
+    if (!p.second)
+    {
+        delete p.first->second;
+        p.first->second = options;
+    }
     queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
 }
 

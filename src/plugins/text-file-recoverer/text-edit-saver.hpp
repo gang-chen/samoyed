@@ -33,7 +33,6 @@ public:
     virtual void deactivate();
 
     virtual void onCloseFile(File &file);
-    virtual void onFileLoaded(File &file);
     virtual void onFileSaved(File &file);
     virtual void onFileChanged(File &file,
                                const File::Change &change,
@@ -43,44 +42,32 @@ private:
     class ReplayFileOperation
     {
     public:
-        enum Type
-        {
-            TYPE_CREATION,
-            TYPE_REMOVAL,
-            TYPE_APPENDING
-        };
-        ReplayFileOperation(Type type): m_type(type) {}
         virtual ~ReplayFileOperation() {}
         virtual bool execute(TextEditSaver &saver) = 0;
-        Type m_type;
+        virtual bool merge(const TextInsertion *ins) { return false; }
+        virtual bool merge(const TextRemoval *rem) { return false; }
     };
 
     class ReplayFileCreation: public ReplayFileOperation
     {
     public:
-        ReplayFileCreation(): ReplayFileOperation(TYPE_CREATION) {}
         virtual bool execute(TextEditSaver &saver);
     };
 
     class ReplayFileRemoval: public ReplayFileOperation
     {
     public:
-        ReplayFileRemoval(): ReplayFileOperation(TYPE_REMOVAL) {}
         virtual bool execute(TextEditSaver &saver);
     };
 
     class ReplayFileAppending: public ReplayFileOperation
     {
     public:
-        ReplayFileAppending(TypeEdit *edit):
-            ReplayFileOperation(TYPE_APPENDING),
-            m_edit(edit)
-        {}
-        virtual ~ReplayFileAppending()
-        { delete m_edit; }
+        ReplayFileAppending(TypeEdit *edit): m_edit(edit) {}
+        virtual ~ReplayFileAppending() { delete m_edit; }
         virtual bool execute(TextEditSaver &saver);
-        bool merge(const TextInsertion *ins);
-        bool merge(const TextRemoval *rem);
+        virtual bool merge(const TextInsertion *ins);
+        virtual bool merge(const TextRemoval *rem);
         TextEdit *m_edit;
     };
 
@@ -100,11 +87,14 @@ private:
         onReplayFileOperationExecutorDoneInMainThread(gpointer param);
     void onReplayFileOperationExecutorDone(Worker &worker);
     void queueReplayFileOperation(ReplayFileOperation *op);
+    void queueReplayFileAppending(TextInsertion *ins);
+    void queueReplayFileAppending(TextRemoval *rem);
     void executeQueuedRelayFileOperations();
 
     TextFileRecovererPlugin &m_plugin;
     bool m_destroy;
     FILE *m_replayFile;
+    bool m_replayFileCreated;
     std::string m_replayFileName;
 
     std::deque<ReplayFileOperation *> m_operationQueue;

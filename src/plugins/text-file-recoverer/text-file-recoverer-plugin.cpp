@@ -20,7 +20,8 @@ namespace TextFileRecoverer
 TextFileRecovererPlugin::TextFileRecovererPlugin(PluginManager& manager,
                                                  const char *id,
                                                  GModule *module):
-    Plugin(manager, id, module)
+    Plugin(manager, id, module),
+    m_recoveringFileCount(0)
 {
 }
 
@@ -42,13 +43,25 @@ void TextFileRecovererPlugin::onTextEditSaverDestroyed(TextEditSaver &saver)
 {
     m_savers.erase(std::remove(m_savers.begin(), m_savers.end(), &saver),
                    m_savers.end());
-    if (m_savers.empty())
+    if (completed())
+        onCompleted();
+}
+
+void TextFileRecovererPlugin::onTextFileRecoveringBegun()
+{
+    m_recoveringFileCount++;
+}
+
+void TextFileRecovererPlugin::onTextFileRecoveringEnded()
+{
+    m_recoveringFileCount--;
+    if (completed())
         onCompleted();
 }
 
 bool TextFileRecovererPlugin::completed() const
 {
-    return m_savers.empty();
+    return m_savers.empty() && m_recoveringFileCount == 0;
 }
 
 void TextFileRecovererPlugin::deactivate()

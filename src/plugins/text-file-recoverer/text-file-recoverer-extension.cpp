@@ -4,9 +4,9 @@
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "text-file-recoverer.hpp"
+#include "text-file-recoverer-extension.hpp"
 #include "text-file-recoverer-plugin.hpp"
-#include "utilities/worker.hpp"
+#include "utilities/scheduler.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "ui/text-file.hpp"
 #include "ui/window.hpp"
@@ -36,7 +36,7 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
-TextFileRecoverer::ReplayFileReader::ReplayFileReader(
+TextFileRecovererExtension::ReplayFileReader::ReplayFileReader(
     Scheduler &scheduler,
     unsigned int priority,
     const Callback &callback,
@@ -50,14 +50,16 @@ TextFileRecoverer::ReplayFileReader::ReplayFileReader(
 {
 }
 
-TextFileRecoverer::ReplayFileReader::~ReplayFileReader()
+TextFileRecovererExtension::ReplayFileReader::~ReplayFileReader()
 {
     g_free(m_byteCode);
 }
 
-bool TextFileRecoverer::ReplayFileReader::step()
+bool TextFileRecovererExtension::ReplayFileReader::step()
 {
-    char *cp = g_filename_from_uri(m_recoverer.m_file->uri(), NULL, NULL);
+    char *cp;
+
+    cp = g_filename_from_uri(m_recoverer.m_file->uri(), NULL, NULL);
     std::string fileName(TEXT_REPLAY_FILE_PREFIX);
     fileName += cp;
     g_free(cp);
@@ -67,7 +69,6 @@ bool TextFileRecoverer::ReplayFileReader::step()
                         &m_byteCode,
                         &m_byteCodeLength,
                         &error);
-
     if (error)
     {
         cp = g_strdup_printf(
@@ -78,144 +79,7 @@ bool TextFileRecoverer::ReplayFileReader::step()
         g_error_free(error);
         return true;
     }
-
-    cp = m_buffer;
-
-    if (length < sizeof(i32))
-    {
-        cp = g_strdup_printf(
-            _("The data stored in text edit replay file \"%s\" is incomplete."),
-            m_recoverer.m_file.uri());
-        m_error = cp;
-        g_free(cp);
-        return true;
-    }
-    memcpy(&i32, cp, sizeof(i32));
-    m_initialLength = GINT32_FROM_LE(i32);
-    cp += sizeof(i32);
-    length -= sizeof(i32);
-    if (length < m_initialLength)
-    {
-        cp = g_strdup_printf(
-            _("The data stored in text edit replay file \"%s\" is incomplete "
-              "or corrupted."),
-            m_recoverer.m_file.uri());
-        m_error = cp;
-        g_free(cp);
-        return true;
-    }
-    m_initialText = cp;
-    cp += m_initialLength;
-    length -= m_initialLength;
-
-    edit = &m_edits;
-    while (length > 0)
-    {
-        if (*cp == TextEdit::TYPE_INSERTION)
-        {
-            cp++;
-            length--;
-            ins = new TextInsertion;
-
-            if (length < sizeof(i32) * 3)
-            {
-                delete ins;
-                cp = g_strdup_printf(
-                    _("The data stored in text edit replay file \"%s\" is "
-                      "incomplete or corrupted."),
-                    m_recoverer.m_file.uri());
-                m_error = cp;
-                g_free(cp);
-                return true;
-            }
-            memcpy(&i32, cp, sizeof(i32));
-            ins->line = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32);
-            memcpy(&i32, cp, sizeof(i32));
-            ins->column = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32);
-            memcpy(&i32, cp, sizeof(i32));
-            ins->length = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32);
-            if (length < ins->length)
-            {
-                delete ins;
-                cp = g_strdup_printf(
-                    _("The data stored in text edit replay file \"%s\" is "
-                      "incomplete or corrupted."),
-                    m_recoverer.m_file.uri());
-                m_error = cp;
-                g_free(cp);
-                return true;
-            }
-            ins->text = cp;
-            cp += ins->length;
-            length -= ins->length;
-
-            *edit = ins;
-            edit = &ins->next;
-        }
-        else
-        {
-            cp++;
-            length--;
-            TextRemoval *rem = new TextRemoval;
-
-            if (length < sizeof(i32) * 4)
-            {
-                delete rem;
-                cp = g_strdup_printf(
-                    _("The data stored in text edit replay file \"%s\" is "
-                      "incomplete or corrupted."),
-                    m_recoverer.m_file.uri());
-                m_error = cp;
-                g_free(cp);
-                return true;
-            }
-            memcpy(&i32, cp, sizeof(i32));
-            rem->beginLine = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32);
-            memcpy(&i32, cp, sizeof(i32));
-            rem->beginColumn = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32):
-            memcpy(&i32, cp, sizeof(i32));
-            rem->endLine = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32);
-            memcpy(&i32, cp, sizeof(i32));
-            rem->endColumn = GINT32_FROM_LE(i32);
-            cp += sizeof(i32);
-            length -= sizeof(i32);
-            *edit = rem;
-            edit = &rem->next;
-        }
-        else
-        {
-            cp = g_strdup_printf(
-                _("The data stored in text edit replay file \"%s\" is "
-                  "corrupted."),
-                m_recoverer.m_file.uri());
-            m_error = cp;
-            g_free(cp);
-            return true;
-        }
-    }
     return true;
-}
-
-TextFileRecoverer::TextFileRecoverer(TextFileRecovererPlugin &plugin,
-                                     TextFile &file):
-    m_plugin(plugin),
-    m_file(file),
-    m_reader(NULL),
-    m_read(false),
-    m_destroy(false)
-{
 }
 
 TextFileRecoverer::~TextFileRecoverer()
@@ -223,8 +87,9 @@ TextFileRecoverer::~TextFileRecoverer()
     assert(m_destroy);
 }
 
-void TextFileRecoverer::recover()
+void TextFileRecoverer::recoverFile(File &file)
 {
+    m_file = static_cast<TextFile *>(&file);
     m_closeFileConnection = file.addCloseCallback(boost::bind(
         &TextFileRecoverer::onCloseFile, this, _1));
     if (file.loading())

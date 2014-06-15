@@ -27,12 +27,17 @@ public:
     void onTextEditSaverCreated(TextEditSaver &saver);
     void onTextEditSaverDestroyed(TextEditSaver &saver);
 
+    void onTextFileRecoveringBegun();
+    void onTextFileRecoveringEnded();
+
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
     virtual bool completed() const;
     
     std::list<TextEditSaver *> m_savers;
+
+    int m_recoveringFileCount;
 };
 
 }

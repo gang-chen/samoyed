@@ -5,6 +5,7 @@
 #define SMYD_TXTR_TEXT_EDIT_HPP
 
 #include <stdio.h>
+#include <string.h>
 #include <string>
 #include <glib.h>
 
@@ -36,7 +37,10 @@ class TextInit: public TextEdit
 {
 public:
     TextInit(char *text, int length): m_text(text), m_length(length)
-    {}
+    {
+        if (m_length == -1)
+            m_length = strlen(m_text);
+    }
 
     virtual ~TextInit() { g_free(m_text); }
 

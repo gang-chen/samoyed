@@ -37,7 +37,7 @@ void TerminalPlugin::onViewClosed(Widget &view)
 {
     m_views.erase(std::remove(m_views.begin(), m_views.end(), &view),
                   m_views.end());
-    if (m_views.empty())
+    if (completed())
         onCompleted();
 }
 

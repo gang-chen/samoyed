@@ -4,6 +4,11 @@
 #include "text-edit-saver.hpp"
 #include "text-edit.hpp"
 #include "text-file-recoverer-plugin.hpp"
+#include "application.hpp"
+#include "utilities/scheduler.hpp"
+#include "ui/text-file.hpp"
+#include "ui/session.hpp"
+#include <assert.h>
 #include <stdio.h>
 #include <string>
 #include <glib.h>
@@ -69,28 +74,44 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
     g_free(desc);
 }
 
+bool TextEditSaver::ReplayFileOperationExecutor::step()
+{
+    m_saver.executeQueuedRelayFileOperations();
+    return true;
+}
+
 TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file):
     FileObserver(file),
     m_plugin(plugin),
     m_destroy(false),
     m_replayFile(NULL),
-    m_replayFileName(TEXT_REPLAY_FILE_PREFIX)
+    m_replayFileCreated(false),
+    m_replayFileName(TEXT_REPLAY_FILE_PREFIX),
     m_operationExecutor(NULL)
 {
-    char *cp = g_filename_from_uri(file.uri(), NULL, NULL);
+    char *cp = g_filename_from_uri(m_file.uri(), NULL, NULL);
     m_replayFileName += cp;
     g_free(cp);
-    plugin.onTextEditSaverCreated(*this);
+    m_plugin.onTextEditSaverCreated(*this);
 }
 
 TextEditSaver::~TextEditSaver()
 {
-    plugin.onTextEditSaverDestroyed(*this);
+    assert(!m_replayFile);
+    assert(!m_replayFileCreated);
+    m_plugin.onTextEditSaverDestroyed(*this);
 }
 
 void TextEditSaver::deactivate()
 {
-    if (saver->m_operationExecutor)
+    FileObserver::deactivate();
+    if (m_replayFileCreated)
+    {
+        queueReplayFileOperation(new ReplayFileRemoval);
+        m_replayFileCreated = false;
+        Application::instance().session()->removeUnsavedFile(m_file.uri());
+    }
+    if (m_operationExecutor)
         m_destroy = true;
     else
         delete this;
@@ -101,8 +122,6 @@ TextEditSaver::onReplayFileOperationExecutorDoneInMainThread(gpointer param)
 {
     TextEditSaver *saver = static_cast<TextEditSaver *>(param);
     delete saver->m_operationExecutor;
-    if (saver->m_replayFile)
-        fflush(saver->m_replayFile);
     {
         boost::mutex::scoped_lock lock(saver->m_operationQueueMutex);
         if (!saver->m_operationQueue.empty())
@@ -137,246 +156,156 @@ void TextEditSaver::onReplayFileOperationExecutorDone(Worker &worker)
 
 void TextEditSaver::queueReplayFileOperation(ReplayFileOperation *op)
 {
+    {
+        boost::mutex::scoped_lock lock(m_operationQueueMutex);
+        m_operationQueue.push_back(op);
+    }
+    
+    if (!m_operationExecutor)
+    {
+        m_operationExecutor = new ReplayFileOperationExecutor(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            boost::bind(&TextEditSaver::onReplayFileOperationExecutorDone,
+                        this, _1),
+            *this);
+        Application::instance().scheduler().
+            schedule(*m_operationExecutor);
+    }
+}
+
+void TextEditSaver::queueReplayFileAppending(TextInsertion *ins)
+{
+    {
+        boost::mutex::scoped_lock lock(m_operationQueueMutex);
+        if (m_operationQueue.empty())
+            m_operationQueue.push_back(new ReplayFileAppending(ins));
+        else
+        {
+            if (m_operationQueue.back()->merge(ins))
+                delete ins;
+            else
+                m_operationQueue.push_back(new ReplayFileAppending(ins));
+        }
+    }
+    
+    if (!m_operationExecutor)
+    {
+        m_operationExecutor = new ReplayFileOperationExecutor(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            boost::bind(&TextEditSaver::onReplayFileOperationExecutorDone,
+                        this, _1),
+            *this);
+        Application::instance().scheduler().
+            schedule(*m_operationExecutor);
+    }
+}
+
+void TextEditSaver::queueReplayFileAppending(TextRemoval *rem)
+{
+    {
+        boost::mutex::scoped_lock lock(m_operationQueueMutex);
+        if (m_operationQueue.empty())
+            m_operationQueue.push_back(new ReplayFileAppending(rem));
+        else
+        {
+            if (m_operationQueue.back()->merge(rem))
+                delete rem;
+            else
+                m_operationQueue.push_back(new ReplayFileAppending(rem));
+        }
+    }
+    
+    if (!m_operationExecutor)
+    {
+        m_operationExecutor = new ReplayFileOperationExecutor(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            boost::bind(&TextEditSaver::onReplayFileOperationExecutorDone,
+                        this, _1),
+            *this);
+        Application::instance().scheduler().
+            schedule(*m_operationExecutor);
+    }
+}
+
+void TextEditSaver::executeQueuedRelayFileOperations()
+{
+    for (;;)
+    {
+        std::deque<ReplayFileOperation *> ops;
+        {
+            boost::mutex::scoped_lock queueLock(m_operationQueueMutex);
+            if (m_operationQueue.empty())
+                return;
+            ops.swap(m_operationQueue);
+        }
+        do
+        {
+            ReplayFileOperation *op = ops.front();
+            ops.pop_front();
+            op->execute(*this);
+            delete op;
+        }
+        while (!ops.empty());
+    }
+    if (m_replayFile)
+        fflush(m_replayFile);
 }
 
 void TextEditSaver::onCloseFile(File &file)
 {
-}
-
-void TextEditSaver::onFileLoaded(File &file)
-{
+    if (m_replayFileCreated)
+    {
+        queueReplayFileOperation(new ReplayFileRemoval);
+        m_replayFileCreated = false;
+        Application::instance().session()->removeUnsavedFile(file.uri());
+    }
 }
 
 void TextEditSaver::onFileSaved(File &file)
 {
-    // If the replay file was created, remove it.
+    if (m_replayFileCreated)
+    {
+        queueReplayFileOperation(new ReplayFileRemoval);
+        m_replayFileCreated = false;
+        Application::instance().session()->removeUnsavedFile(file.uri());
+    }
 }
 
 void TextEditSaver::onFileChanged(File &file,
                                   const File::Change &change,
                                   bool loading)
 {
-    // If we are recovering the file, do nothing.
-    // If this is the first change, create the replay file.  Otherwise, append an edit to the replay file.
-}
-
-TextReplayFile *TextReplayFile::create(const char *fileName,
-                                       const char *text,
-                                       int length)
-{
-    // Create the replay file containing the initial text.
-    TextReplayFile *file = new TextReplayFile;
-    file->m_fd = g_open(fileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (file->m_fd == -1)
+    if (loading)
+        return;
+    TextFile &tf = static_cast<TextFile &>(file);
+    if (!m_replayFileCreated)
     {
-        delete file;
-        return NULL;
+        queueReplayFileOperation(new ReplayFileCreation);
+        queueReplayFileOperation(
+            new ReplayFileAppending(
+                new TextInit(tf.text(0, 0, -1, -1), -1)));
+        m_replayFileCreated = true;
+        Application::instance().session()->addUnsavedFile(
+            file.uri(),
+            file.options());
     }
-    gint32 t = length;
-    t = GINT32_TO_LE(t);
-    if (write(file->m_fd, &l, sizeof(t)) == -1)
-    {
-        delete file;
-        return NULL;
-    }
-    if (write(file->m_fd, text, length) == -1)
-    {
-        delete file;
-        return NULL;
-    }
-    return file;
-}
-
-TextReplayFile::~TextReplayFile()
-{
-    close();
-}
-
-bool TextReplayFile::close()
-{
-    if (m_fd == -1)
-        return true;
-    return ::close(m_fd) == 0;
-}
-
-bool TextReplayFile::insert(int line, int column, const char *text, int length)
-{
-    if (m_fd == -1)
-        return false;
-    char op = INSERTION;
-    if (write(m_fd, &op, sizeof(op)) == -1)
-    {
-        close();
-        return false;
-    }
-    gint32 t;
-    t = line;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-    t = column;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-    t = length;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-    if (write(m_fd, text, length) == -1)
-    {
-        close();
-        return false;
-    }
-    return true;
-}
-
-bool TextReplayFile::remove(int beginLine, int beginColumn,
-                            int endLine, int endColumn)
-{
-    if (m_fd == -1)
-        return false;
-    char op = REMOVAL;
-    if (write(m_fd, &op, sizeof(op)) == -1)
-    {
-        close();
-        return false;
-    }
-    gint32 t;
-    t = beginLine;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-    t = beginColumn;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-    t = endLine;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-    t = endColumn;
-    t = GINT32_TO_LE(t);
-    if (write(m_fd, &t, sizeof(t)) == -1)
-    {
-        close();
-        return false;
-    }
-}
-
-bool TextReplayFile::replay(const char *fileName, TextBuffer &buffer);
-{
-    int fd = -1, rd;
-    gint32 t;
-    char *p = NULL;
-    char op;
-    int line, column, endLine, endColumn, endByteOffset;
-
-    fd = g_open(fileName, O_RDONLY, 0);
-    if (fd == -1)
-        goto ERROR_OUT;
-
-    if (read(fd, &t, sizeof(t)) != sizeof(t))
-        goto ERROR_OUT;
-    t = GINT32_FROM_LE(t);
-
-    if (t > BUFFER_SIZE)
-        p = malloc(t);
+    const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);
+    if (tc.m_type == TextFile::Change::TYPE_INSERTION)
+        queueReplayFileAppending(
+            new TextInsertion(tc.m_value.insertion.line,
+                              tc.m_value.insertion.column,
+                              tc.m_value.insertion.text));
     else
-        p = buffer;
-    if (read(fd, p, t) != t)
-        goto ERROR_OUT;
-    buffer.insert(p, t, -1, -1);
-    if (p != buffer)
-        free(p);
-    p = NULL;
+        queueReplayFileAppending(
+            new TextRemoval(tc.m_value.removal.beginLine,
+                            tc.m_value.removal.beginColumn,
+                            tc.m_value.removal.endLine,
+                            tc.m_value.removal.endColumn));
+}
 
-    for (;;)
-    {
-        rd = read(fd, &op, sizeof(op));
-        if (rd == -1 || (rd != 0 && rd != sizeof(op)))
-            goto ERROR_OUT;
-        if (rd == 0)
-            break;
-
-        if (op == INSERTION)
-        {
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            line = GINT32_FROM_LE(t);
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            column = GINT32_FROM_LE(t);
-
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            t = GINT32_FROM_LE(t);
-            if (t > BUFFER_SIZE)
-                p = malloc(t);
-            else
-                p = buffer;
-            if (read(fd, p, t) != t)
-                goto ERROR_OUT;
-
-            buffer.setLineColumn(line, column);
-            buffer.insert(p, t, -1, -1);
-
-            if (p != buffer)
-                free(p);
-            p = NULL;
-        }
-        else if (op == REMOVAL)
-        {
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            line = GINT32_FROM_LE(t);
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            column = GINT32_FROM_LE(t);
-
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            endLine = GINT32_FROM_LE(t);
-            if (read(fd, &t, sizeof(t)) != sizeof(t))
-                goto ERROR_OUT;
-            endColumn = GINT32_FROM_LE(t);
-
-            buffer.setLineColumn(line, column);
-            buffer.transformLineColumnToByteOffset(endLine,
-                                                   endColumn,
-                                                   endByteOffset);
-            buffer.remove(endByteOffset - buffer.cursor(), -1, -1);
-        }
-        else
-            goto ERROR_OUT;
-    }
-
-    ::close(fd);
-    return true;
-
-ERROR_OUT:
-    if (fd != -1)
-        ::close(fd);
-    if (p != buffer)
-        free(p);
-    return false;
 }
 
 }

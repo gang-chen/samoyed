@@ -113,8 +113,7 @@ FileSource::WriteExecutor::WriteExecutor(Scheduler &scheduler,
 
 bool FileSource::WriteExecutor::step()
 {
-    m_source->executeQueuedWrites();
-    return true;
+    return m_source->executeOneQueuedWrite();
 }
 
 FileSource::FileSource(const Key &key,
@@ -256,26 +255,20 @@ void FileSource::queueWrite(Write *write)
     m_writeQueue.push_back(write);
 }
 
-void FileSource::executeQueuedWrites()
+bool FileSource::executeOneQueuedWrite()
 {
-    for (;;)
+    bool done;
+    Write *write;
     {
-        std::deque<Write *> writes;
-        {
-            boost::mutex::scoped_lock queueLock(m_writeQueueMutex);
-            if (m_writeQueue.empty())
-                return;
-            writes.swap(m_writeQueue);
-        }
-        do
-        {
-            Write *write = writes.front();
-            writes.pop_front();
-            write->execute(*this);
-            delete write;
-        }
-        while (!writes.empty());
+        boost::mutex::scoped_lock queueLock(m_writeQueueMutex);
+        assert(!m_writeQueue.empty());
+        write = m_writeQueue.front();
+        m_writeQueue.pop_front();
+        done = m_writeQueue.empty();
     }
+    write->execute(*this);
+    delete write;
+    return done;
 }
 
 void FileSource::requestWrite(Write *write)
