@@ -596,6 +596,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
         assert(!file.m_loader);
         file.m_reopening = false;
         file.m_loading = false;
+        file.m_loader = NULL;
         file.unfreezeInternally();
         delete &loader;
         delete p;
@@ -608,6 +609,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
     {
         assert(!file.m_loader);
         file.m_loading = false;
+        file.m_loader = NULL;
         file.unfreezeInternally();
         delete &loader;
         delete p;
@@ -619,6 +621,13 @@ gboolean File::onLoadedInMainThread(gpointer param)
     file.m_loading = false;
     file.m_loader = NULL;
     file.unfreezeInternally();
+
+    if (loader.state() != Worker::STATE_FINISHED)
+    {
+        delete &loader;
+        delete p;
+        return FALSE;
+    }
 
     // Overwrite the contents with the loaded contents.
     file.m_revision = loader.revision();
@@ -666,6 +675,13 @@ gboolean File::onSavedInMainThread(gpointer param)
     file.m_saving = false;
     file.m_reopening = false;
     file.unfreezeInternally();
+
+    if (saver.state() != Worker::STATE_FINISHED)
+    {
+        delete &saver;
+        delete p;
+        return FALSE;
+    }
 
     // If any error was encountered, report it.
     if (saver.error())

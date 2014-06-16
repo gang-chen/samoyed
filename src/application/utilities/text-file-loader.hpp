@@ -46,11 +46,11 @@ private:
 
     TextBuffer *m_buffer;
 
-    GFile *file;
-    GFileInputStream *fileStream;
-    GCharsetConverter *encodingConverter;
-    GInputStream *converterStream;
-    GInputStream *stream;
+    GFile *m_file;
+    GFileInputStream *m_fileStream;
+    GCharsetConverter *m_encodingConverter;
+    GInputStream *m_converterStream;
+    GInputStream *m_stream;
     char *m_readBuffer;
     char *m_readPointer;
 };

@@ -21,10 +21,7 @@ class TextFileRecovererPlugin;
 class TextFileRecovererExtension: public FileRecovererExtension
 {
 public:
-    TextFileRecovererExtension(const char *id, Plugin &plugin):
-        FileRecovererExtension(id, plugin),
-        m_destroy(false)
-    {}
+    TextFileRecovererExtension(const char *id, Plugin &plugin);
 
     virtual void recoverFile(File &file);
 

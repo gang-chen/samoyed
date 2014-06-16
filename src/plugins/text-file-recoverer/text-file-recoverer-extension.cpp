@@ -6,18 +6,11 @@
 #endif
 #include "text-file-recoverer-extension.hpp"
 #include "text-file-recoverer-plugin.hpp"
+#include "application.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "ui/text-file.hpp"
 #include "ui/window.hpp"
-#include "application.hpp"
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
@@ -57,9 +50,7 @@ TextFileRecovererExtension::ReplayFileReader::~ReplayFileReader()
 
 bool TextFileRecovererExtension::ReplayFileReader::step()
 {
-    char *cp;
-
-    cp = g_filename_from_uri(m_recoverer.m_file->uri(), NULL, NULL);
+    char *cp = g_filename_from_uri(m_recoverer.m_file->uri(), NULL, NULL);
     std::string fileName(TEXT_REPLAY_FILE_PREFIX);
     fileName += cp;
     g_free(cp);
@@ -71,30 +62,31 @@ bool TextFileRecovererExtension::ReplayFileReader::step()
                         &error);
     if (error)
     {
-        cp = g_strdup_printf(
-            _("Samoyed failed to read text edit replay file \"%s\". %s."),
-            m_recoverer.m_file->uri(), error->message);
-        m_error = cp;
-        g_free(cp);
+        m_error = error->message;
         g_error_free(error);
         return true;
     }
     return true;
 }
 
-TextFileRecoverer::~TextFileRecoverer()
+TextFileRecovererExtension::TextFileRecovererExtension(const char *id,
+                                                       Plugin &plugin):
+    FileRecovererExtension(id, plugin),
+    m_file(NULL),
+    m_reader(NULL),
+    m_destroy(false)
 {
-    assert(m_destroy);
 }
 
-void TextFileRecoverer::recoverFile(File &file)
+void TextFileRecovererExtension::recoverFile(File &file)
 {
     m_file = static_cast<TextFile *>(&file);
-    m_closeFileConnection = file.addCloseCallback(boost::bind(
-        &TextFileRecoverer::onCloseFile, this, _1));
+    file();
     if (file.loading())
         m_fileLoadedConnection = file.addLoadedCallback(boost::bind(
             &TextFileRecoverer::onFileLoaded, this, _1));
+    static_cast<TextFileRecovererPlugin &>(m_plugin).
+        onTextFileRecoveringBegun();
     m_reader = new TextReplayFileReader(
         Application::instance().scheduler(),
         Worker::PRIORITY_INTERACTIVE,
@@ -102,39 +94,14 @@ void TextFileRecoverer::recoverFile(File &file)
     Application::instance().scheduler().schedule(*m_reader);
 }
 
-void TextFileRecoverer::destroy()
+void TextFileRecovererExtension::destroy()
 {
-    m_closeFileConnection.disconnect();
     m_fileLoadedConnection.disconnect();
     m_destroy = true;
-    if (m_reader)
+    if (m_reader && !m_read)
         m_reader->cancel();
     else
-        m_plugin.destroyRecoverer(*this);
-}
-
-void TextFileRecoverer::onCloseFile()
-{
-    destroy();
-}
-
-void TextFileRecoverer::replayEdits()
-{
-    for (TextEdit *edit = m_reader->m_edits; edit; edit = edit->next)
-    {
-        if (edit->type == TextEdit::TYPE_INSERTION)
-        {
-            TextInsertion *ins = static_cast<TextInsertion *>(edit);
-            m_file.insert(ins->m_line, ins->m_column,
-                          ins->m_text, ins->m_length);
-        }
-        else if (edit->type == TextEdit::TYPE_REMOVAL)
-        {
-            TextRemoval *rem = static_cast<TextRemoval *>(edit);
-            m_file.remove(rem->m_beginLine, rem->m_beginColumn,
-                          rem->m_endLine, rem->m_endColumn);
-        }
-    }
+        delete this;
 }
 
 void TextFileRecoverer::recoverFromReplayFile()
@@ -180,6 +147,9 @@ void TextFileRecoverer::recoverFromReplayFile()
     delete m_reader;
     m_reader = NULL;
 
+    static_cast<TextFileRecovererPlugin &>(m_plugin).
+        onTextFileRecoveringEnded();
+
     // Automatically destroy the recoverer when done.
     destroy();
 }
@@ -201,14 +171,13 @@ gboolean TextFileRecoverer::recoverOnFileLoaded(gpointer recoverer)
 
 void TextFileRecoverer::onFileLoaded()
 {
+    m_fileLoaded = true;
     if (m_read)
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                        recoverOnFileLoaded,
-                        this,
-                        NULL);
+        recoverFromReplayFile();
 }
 
-gboolean TextFileRecoverer::onTextReplayFileReadInMainThread(gpointer recoverer)
+gboolean
+TextFileRecovererExtension::onTextReplayFileReadInMainThread(gpointer recoverer)
 {
     TextFileRecoverer *rec = static_cast<TextFileRecoverer *>(recoverer);
 
@@ -216,10 +185,11 @@ gboolean TextFileRecoverer::onTextReplayFileReadInMainThread(gpointer recoverer)
     {
         delete rec->m_reader;
         rec->m_reader = NULL;
-        m_plugin.destroyRecoverer(*rec);
+        delete rec;
+        static_cast<TextFileRecovererPlugin &>(m_plugin).
+            onTextFileRecoveringEnded();
     }
-
-    if (!rec->m_reader->m_error.empty())
+    else if (!rec->m_reader->m_error.empty())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow().gtkWidget(),
@@ -238,15 +208,19 @@ gboolean TextFileRecoverer::onTextReplayFileReadInMainThread(gpointer recoverer)
         delete rec->m_reader;
         rec->m_reader = NULL;
         destroy();
+        static_cast<TextFileRecovererPlugin &>(m_plugin).
+            onTextFileRecoveringEnded();
     }
-
-    rec->m_read = true;
-    if (rec->m_file.loaded())
-        rec->recoverFromReplayFile();
+    else
+    {
+        rec->m_read = true;
+        if (rec->m_fileLoaded)
+            rec->recoverFromReplayFile();
+    }
     return FALSE;
 }
 
-void TextFileRecoverer::onTextReplayFileRead(Worker &worker)
+void TextFileRecovererExtension::onTextReplayFileRead(Worker &worker)
 {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                     onTextReplayFileReadInMainThread,

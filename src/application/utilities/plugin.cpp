@@ -97,7 +97,7 @@ void Plugin::releaseExtension(Extension &extension)
 {
     --m_nActiveExtensions;
     if (m_nActiveExtensions == 0 && completed())
-        m_manager.deactivatePlugin(*this);
+        m_manager.destroyPlugin(*this);
 }
 
 void Plugin::onCompleted()

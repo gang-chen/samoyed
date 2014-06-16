@@ -5,7 +5,9 @@
 # include <config.h>
 #endif
 #include "text-edit.hpp"
+#include "application.hpp"
 #include "ui/text-file.hpp"
+#include "ui/window.hpp"
 
 namespace
 {

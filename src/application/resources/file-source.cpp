@@ -293,7 +293,8 @@ void FileSource::requestWrite(Write *write)
     else
     {
         // Execute the queued write requests in this background thread.
-        executeQueuedWrites();
+        while (!executeOneQueuedWrite())
+            ;
     }
 }
 

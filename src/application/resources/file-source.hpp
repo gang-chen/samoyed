@@ -247,7 +247,7 @@ private:
 
     void queueWrite(Write *write);
 
-    bool executeOneQueuedWrites();
+    bool executeOneQueuedWrite();
 
     void requestWrite(Write *write);
 
