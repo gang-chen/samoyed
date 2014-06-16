@@ -89,7 +89,7 @@ private:
     void queueReplayFileOperation(ReplayFileOperation *op);
     void queueReplayFileAppending(TextInsertion *ins);
     void queueReplayFileAppending(TextRemoval *rem);
-    void executeQueuedRelayFileOperations();
+    bool executeOneQueuedRelayFileOperation();
 
     TextFileRecovererPlugin &m_plugin;
     bool m_destroy;
