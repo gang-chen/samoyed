@@ -76,8 +76,7 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
 
 bool TextEditSaver::ReplayFileOperationExecutor::step()
 {
-    m_saver.executeQueuedRelayFileOperations();
-    return true;
+    return m_saver.executeQueuedRelayFileOperations();
 }
 
 TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file):
@@ -111,9 +110,8 @@ void TextEditSaver::deactivate()
         m_replayFileCreated = false;
         Application::instance().session()->removeUnsavedFile(m_file.uri());
     }
-    if (m_operationExecutor)
-        m_destroy = true;
-    else
+    m_destroy = true;
+    if (!m_operationExecutor)
         delete this;
 }
 
@@ -160,7 +158,7 @@ void TextEditSaver::queueReplayFileOperation(ReplayFileOperation *op)
         boost::mutex::scoped_lock lock(m_operationQueueMutex);
         m_operationQueue.push_back(op);
     }
-    
+
     if (!m_operationExecutor)
     {
         m_operationExecutor = new ReplayFileOperationExecutor(
@@ -230,28 +228,22 @@ void TextEditSaver::queueReplayFileAppending(TextRemoval *rem)
     }
 }
 
-void TextEditSaver::executeQueuedRelayFileOperations()
+bool TextEditSaver::executeOneQueuedRelayFileOperation()
 {
-    for (;;)
+    bool done;
+    ReplayFileOperation *op;
     {
-        std::deque<ReplayFileOperation *> ops;
-        {
-            boost::mutex::scoped_lock queueLock(m_operationQueueMutex);
-            if (m_operationQueue.empty())
-                return;
-            ops.swap(m_operationQueue);
-        }
-        do
-        {
-            ReplayFileOperation *op = ops.front();
-            ops.pop_front();
-            op->execute(*this);
-            delete op;
-        }
-        while (!ops.empty());
+        boost::mutex::scoped_lock queueLock(m_operationQueueMutex);
+        assert(!m_operationQueue.empty());
+        op = m_operationQueue.front();
+        m_operationQueue.pop_front();
+        done = m_operationQueue.empty();
     }
-    if (m_replayFile)
+    op->execute(*this);
+    delete op;
+    if (done && m_replayFile)
         fflush(m_replayFile);
+    return done;
 }
 
 void TextEditSaver::onCloseFile(File &file)
