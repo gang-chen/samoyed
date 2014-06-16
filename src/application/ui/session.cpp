@@ -963,7 +963,9 @@ Session::~Session()
 void Session::destroy()
 {
     m_destroy = true;
-    if (!m_unsavedFilesRequestExecutor)
+    if (m_unsavedFilesRequestExecutor)
+        m_unsavedFilesRequestExecutor->cancel();
+    else
         delete this;
 }
 
