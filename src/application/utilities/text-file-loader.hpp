@@ -6,6 +6,7 @@
 
 #include "file-loader.hpp"
 #include <string>
+#include <gio/gio.h>
 
 namespace Samoyed
 {
@@ -42,6 +43,14 @@ private:
     std::string m_encoding;
 
     TextBuffer *m_buffer;
+
+    GFile *file;
+    GFileInputStream *fileStream;
+    GCharsetConverter *encodingConverter;
+    GInputStream *converterStream;
+    GInputStream *stream;
+    char *m_readBuffer;
+    char *m_readPointer;
 };
 
 }
