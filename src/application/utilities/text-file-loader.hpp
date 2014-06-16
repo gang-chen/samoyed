@@ -40,6 +40,8 @@ public:
     virtual bool step();
 
 private:
+    void cleanUp();
+
     std::string m_encoding;
 
     TextBuffer *m_buffer;
