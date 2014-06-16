@@ -51,7 +51,13 @@ TextFileLoader::TextFileLoader(Scheduler &scheduler,
                                const char *encoding):
     FileLoader(scheduler, priority, callback, uri),
     m_encoding(encoding),
-    m_buffer(NULL)
+    m_buffer(NULL),
+    m_file(NULL),
+    m_fileStream(NULL),
+    m_encodingConverter(NULL),
+    m_converterStream(NULL),
+    m_stream(NULL),
+    m_readBuffer(NULL)
 {
     char *desc =
         g_strdup_printf(_("Loading text file \"%s\" in encoding \"%s\""),
@@ -67,98 +73,107 @@ TextFileLoader::~TextFileLoader()
 
 bool TextFileLoader::step()
 {
-    GFile *file = NULL;
-    GFileInputStream *fileStream = NULL;
-    GCharsetConverter *encodingConverter = NULL;
-    GInputStream *converterStream = NULL;
-    GInputStream *stream = NULL;
-    char buffer[BUFFER_SIZE];
-    char *cp;
-
-    m_buffer = new TextBuffer;
-
-    // Open the file.
-    file = g_file_new_for_uri(uri());
-    fileStream = g_file_read(file, NULL, &m_error);
-    if (m_error)
-        goto CLEAN_UP;
-
-    // Open the encoding converter and setup the input stream.
-    if (m_encoding == "UTF-8")
-        stream = G_INPUT_STREAM(fileStream);
-    else
+    if (!m_buffer)
     {
-        encodingConverter =
-            g_charset_converter_new("UTF-8", m_encoding.c_str(), &m_error);
-        if (m_error)
-            goto CLEAN_UP;
-        converterStream =
-            g_converter_input_stream_new(G_INPUT_STREAM(fileStream),
-                                         G_CONVERTER(encodingConverter));
-        stream = converterStream;
-    }
+        m_buffer = new TextBuffer;
 
-    // Get the revision.
-    m_revision.synchronize(file, &m_error);
-    if (m_error)
-        goto CLEAN_UP;
+        // Open the file.
+        m_file = g_file_new_for_uri(uri());
+        m_fileStream = g_file_read(m_file, NULL, &m_error);
+        if (m_error)
+        {
+            cleanUp();
+            return true;
+        }
+
+        // Open the encoding converter and setup the input stream.
+        if (m_encoding == "UTF-8")
+            m_stream = G_INPUT_STREAM(m_fileStream);
+        else
+        {
+            m_encodingConverter =
+                g_charset_converter_new("UTF-8", m_encoding.c_str(), &m_error);
+            if (m_error)
+            {
+                cleanUp();
+                return true;
+            }
+            m_converterStream =
+                g_converter_input_stream_new(G_INPUT_STREAM(m_fileStream),
+                                             G_CONVERTER(m_encodingConverter));
+            m_stream = m_converterStream;
+        }
+
+        // Get the revision.
+        m_revision.synchronize(m_file, &m_error);
+        if (m_error)
+        {
+            cleanUp();
+            return true;
+        }
+
+        m_readBuffer = new char[BUFFER_SIZE];
+        m_readPointer = m_readBuffer;
+    }
 
     // Read, convert and insert.
-    cp = buffer;
-    for (;;)
+    int size = g_input_stream_read(m_stream,
+                                   m_readPointer,
+                                   m_readBuffer + BUFFER_SIZE - m_readPointer,
+                                   NULL,
+                                   &m_error);
+    if (m_error)
     {
-        int size = g_input_stream_read(stream,
-                                       cp,
-                                       buffer + BUFFER_SIZE - cp,
-                                       NULL,
-                                       &m_error);
-        if (m_error)
-            goto CLEAN_UP;
-        if (size == 0)
-        {
-            if (cp != buffer)
-            {
-                m_error = g_error_new(G_IO_ERROR,
-                                      G_IO_ERROR_PARTIAL_INPUT,
-                                      _("Incomplete UTF-8 encoded characters "
-                                        "in file \"%s\""),
-                                      uri());
-                goto CLEAN_UP;
-            }
-            break;
-        }
-        size += cp - buffer;
-        const char *valid;
-        // Make sure the input UTF-8 encoded characters are valid and complete.
-        if (!Utf8::validate(buffer, size, valid))
+        cleanUp();
+        return true;
+    }
+    if (size == 0)
+    {
+        if (m_readPointer != m_readBuffer)
         {
             m_error = g_error_new(G_IO_ERROR,
-                                  G_IO_ERROR_INVALID_DATA,
-                                  _("Invalid UTF-8 encoded characters in file "
-                                    "\"%s\""),
+                                  G_IO_ERROR_PARTIAL_INPUT,
+                                  _("Incomplete UTF-8 encoded characters "
+                                    "in file \"%s\""),
                                   uri());
-            goto CLEAN_UP;
+            cleanUp();
+            return true;
         }
-        m_buffer->insert(buffer, valid - buffer, -1, -1);
-        size -= valid - buffer;
-        memmove(buffer, valid, size);
-        cp = buffer + size;
+        g_input_stream_close(m_stream, NULL, &m_error);
+        cleanUp();
+        return true;
     }
+    size += m_readPointer - m_readBuffer;
+    const char *valid;
+    // Make sure the input UTF-8 encoded characters are valid and complete.
+    if (!Utf8::validate(m_readBuffer, size, valid))
+    {
+        m_error = g_error_new(G_IO_ERROR,
+                              G_IO_ERROR_INVALID_DATA,
+                              _("Invalid UTF-8 encoded characters in file "
+                                "\"%s\""),
+                              uri());
+        cleanUp();
+        return true;
+    }
+    m_buffer->insert(m_readBuffer, valid - m_readBuffer, -1, -1);
+    size -= valid - m_readBuffer;
+    memmove(m_readBuffer, valid, size);
+    m_readPointer = m_readBuffer + size;
+    return false;
+}
 
-    g_input_stream_close(stream, NULL, &m_error);
-    if (m_error)
-        goto CLEAN_UP;
-
-CLEAN_UP:
-    if (converterStream)
-        g_object_unref(converterStream);
-    if (encodingConverter)
-        g_object_unref(encodingConverter);
-    if (fileStream)
-        g_object_unref(fileStream);
-    if (file)
-        g_object_unref(file);
-    return true;
+void TextFileLoader::cleanUp()
+{
+    if (m_converterStream)
+        g_object_unref(m_converterStream);
+    if (m_encodingConverter)
+        g_object_unref(m_encodingConverter);
+    if (m_fileStream)
+        g_object_unref(m_fileStream);
+    if (m_file)
+        g_object_unref(m_file);
+    delete[] m_readBuffer;
 }
 
 }
