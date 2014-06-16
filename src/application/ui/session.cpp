@@ -537,8 +537,7 @@ Session::UnsavedFilesRequestExecutor::
 
 bool Session::UnsavedFilesRequestExecutor::step()
 {
-    m_session.executeQueuedUnsavedFilesRequests();
-    return true;
+    return m_session.executeOneQueuedUnsavedFilesRequest();
 }
 
 gboolean Session::onUnsavedFilesRead(gpointer param)
@@ -634,27 +633,21 @@ void Session::queueUnsavedFilesRequest(UnsavedFilesRequest *request)
     }
 }
 
-void Session::executeQueuedUnsavedFilesRequests()
+bool Session::executeOneQueuedUnsavedFilesRequest()
 {
-    for (;;)
+    bool done;
+    UnsavedFilesRequest *request;
     {
-        std::deque<UnsavedFilesRequest *> requests;
-        {
-            boost::mutex::scoped_lock
-                queueLock(m_unsavedFilesRequestQueueMutex);
-            if (m_unsavedFilesRequestQueue.empty())
-                return;
-            requests.swap(m_unsavedFilesRequestQueue);
-        }
-        do
-        {
-            UnsavedFilesRequest *request = requests.front();
-            requests.pop_front();
-            request->execute(*this);
-            delete request;
-        }
-        while (!requests.empty());
+        boost::mutex::scoped_lock
+            queueLock(m_unsavedFilesRequestQueueMutex);
+        assert(!m_unsavedFilesRequestQueue.empty());
+        request = m_unsavedFilesRequestQueue.front();
+        m_unsavedFilesRequestQueue.pop_front();
+        done = m_unsavedFilesRequestQueue.empty();
     }
+    request->execute(*this);
+    delete request;
+    return done;
 }
 
 // Don't report any error.
