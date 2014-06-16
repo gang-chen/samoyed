@@ -153,7 +153,7 @@ private:
     void unlock();
 
     void queueUnsavedFilesRequest(UnsavedFilesRequest *request);
-    void executeQueuedUnsavedFilesRequests();
+    bool executeOneQueuedUnsavedFilesRequest();
     void onUnsavedFilesRequestExecutorDone(Worker &worker);
 
     static bool s_crashHandlerRegistered;
