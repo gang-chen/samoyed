@@ -16,11 +16,11 @@ void FileObserver::activate()
     m_closeConnection = m_file.addCloseCallback(boost::bind(
         &FileObserver::onCloseFileInternally, this));
     m_loadedConnection = m_file.addLoadedCallback(boost::bind(
-        &FileObserver::onFileLoaded, this));
+        &FileObserver::onFileLoadedInternally, this));
     m_savedConnection = m_file.addSavedCallback(boost::bind(
-        &FileObserver::onFileSaved, this));
+        &FileObserver::onFileSavedInternally, this));
     m_changedConnection = m_file.addChangedCallback(boost::bind(
-        &FileObserver::onFileChanged, this, _2, _3));
+        &FileObserver::onFileChangedInternally, this, _2, _3));
 }
 
 void FileObserver::deactivate()
@@ -35,6 +35,22 @@ void FileObserver::onCloseFileInternally()
 {
     onCloseFile();
     deactivate();
+}
+
+void FileObserver::onFileLoadedInternally()
+{
+    onFileLoaded();
+}
+
+void FileObserver::onFileSavedInternally()
+{
+    onFileSaved();
+}
+
+void FileObserver::onFileChangedInternally(const File::Change &change,
+                                           bool loading)
+{
+    onFileChanged(change, loading);
 }
 
 }

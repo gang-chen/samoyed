@@ -5,7 +5,7 @@
 #define SMYD_TERM_TERMINAL_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
-#include <list>
+#include <set>
 
 namespace Samoyed
 {
@@ -31,7 +31,7 @@ protected:
     virtual bool completed() const;
 
 private:
-    std::list<Widget *> m_views;
+    std::set<Widget *> m_views;
 };
 
 }

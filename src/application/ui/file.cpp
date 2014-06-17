@@ -465,6 +465,22 @@ bool File::closeEditor(Editor &editor)
     assert(&editor == m_firstEditor);
     assert(&editor == m_lastEditor);
 
+    if (!closeable())
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_INFO,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed cannot close file \"%s\" because %s."),
+            uri(), m_reserved.begin()->c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return false;
+    }
+
     // Need to close this file.
     m_reopening = false;
     if (m_loading)
@@ -535,6 +551,21 @@ bool File::close()
 {
     if (m_closing)
         return true;
+    if (!closeable())
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_INFO,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed cannot close file \"%s\" because %s."),
+            uri(), m_reserved.begin()->c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return false;
+    }
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
         if (!editor->close())
             return false;

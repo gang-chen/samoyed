@@ -21,7 +21,7 @@
 #include <libxml/tree.h>
 
 #define FILE_RECOVERERS "file-recoverers"
-#define TYPE "type"
+#define MIME_TYPE "mime-type"
 
 namespace Samoyed
 {
@@ -50,7 +50,7 @@ bool FileRecoverersExtensionPoint::registerExtension(const char *extensionId,
         if (child->type != XML_ELEMENT_NODE)
             continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
-                   TYPE) == 0)
+                   MIME_TYPE) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));

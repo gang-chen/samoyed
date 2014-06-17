@@ -60,6 +60,8 @@ public:
         m_line(line), m_column(column), m_text(text)
     {}
 
+    virtual bool merge(const TextInsertion *ins);
+
     virtual bool write(FILE *file) const;
 
     static bool replay(TextFile &file, const char *&byteCode, int &length);
@@ -82,6 +84,8 @@ public:
         m_endLine(endLine),
         m_endColumn(endColumn)
     {}
+
+    virtual bool merge(const TextRemoval *rem);
 
     virtual bool write(FILE *file) const;
 

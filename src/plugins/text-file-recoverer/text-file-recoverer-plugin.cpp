@@ -5,11 +5,20 @@
 # include <config.h>
 #endif
 #include "text-file-recoverer-plugin.hpp"
-#include "text-file-recoverer-extension.hpp"
 #include "text-file-observer-extension.hpp"
+#include "text-file-recoverer-extension.hpp"
 #include "text-edit-saver.hpp"
+#include "text-file-recoverer.hpp"
 #include <string.h>
-#include <list>
+#include <glib.h>
+#include <gmodule.h>
+
+namespace
+{
+
+const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txt.rep.";
+
+}
 
 namespace Samoyed
 {
@@ -17,11 +26,24 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
+char *TextFileRecovererPlugin::getTextReplayFileName(const char *uri)
+{
+    char *path = g_filename_from_uri(uri, NULL, NULL);
+    char *base = g_path_get_basename(path);
+    char *dir = g_path_get_dirname(path);
+    char *newBase = g_strconcat(TEXT_REPLAY_FILE_PREFIX, base, NULL);
+    char *replayFileName = g_build_filename(dir, newBase, NULL);
+    g_free(path);
+    g_free(base);
+    g_free(dir);
+    g_free(newBase);
+    return replayFileName;
+}
+
 TextFileRecovererPlugin::TextFileRecovererPlugin(PluginManager& manager,
                                                  const char *id,
                                                  GModule *module):
-    Plugin(manager, id, module),
-    m_recoveringFileCount(0)
+    Plugin(manager, id, module)
 {
 }
 
@@ -29,45 +51,46 @@ Extension *TextFileRecovererPlugin::createExtension(const char *extensionId)
 {
     if (strcmp(extensionId, "text-file-recoverer/file-recoverer") == 0)
         return new TextFileRecovererExtension(extensionId, *this);
-    if (strcmp(extensionId, "text-file-recoverer/file-observer" == 0)
+    if (strcmp(extensionId, "text-file-recoverer/file-observer") == 0)
         return new TextFileObserverExtension(extensionId, *this);
     return NULL;
 }
 
 void TextFileRecovererPlugin::onTextEditSaverCreated(TextEditSaver &saver)
 {
-    m_savers.push_back(&saver);
+    m_savers.insert(&saver);
 }
 
 void TextFileRecovererPlugin::onTextEditSaverDestroyed(TextEditSaver &saver)
 {
-    m_savers.erase(std::remove(m_savers.begin(), m_savers.end(), &saver),
-                   m_savers.end());
+    m_savers.erase(&saver);
     if (completed())
         onCompleted();
 }
 
-void TextFileRecovererPlugin::onTextFileRecoveringBegun()
+void TextFileRecovererPlugin::onTextFileRecoveringBegun(TextFileRecoverer &rec)
 {
-    m_recoveringFileCount++;
+    m_recoverers.insert(&rec);
 }
 
-void TextFileRecovererPlugin::onTextFileRecoveringEnded()
+void TextFileRecovererPlugin::onTextFileRecoveringEnded(TextFileRecoverer &rec)
 {
-    m_recoveringFileCount--;
+    m_recoverers.erase(&rec);
     if (completed())
         onCompleted();
 }
 
 bool TextFileRecovererPlugin::completed() const
 {
-    return m_savers.empty() && m_recoveringFileCount == 0;
+    return m_savers.empty() && m_recoverers.empty();
 }
 
 void TextFileRecovererPlugin::deactivate()
 {
     while (!m_savers.empty())
-        m_savers.front()->deactivate();
+        (*m_savers.begin())->deactivate();
+    while (!m_recoverers.empty())
+        (*m_recoverers.begin())->deactivate();
 }
 
 }
@@ -77,14 +100,15 @@ void TextFileRecovererPlugin::deactivate()
 extern "C"
 {
 
-Samoyed::Plugin *createPluggin(Samoyed::PluginManager &manager,
-                               const char *id,
-                               GModlue *model)
+Samoyed::Plugin *createPlugin(Samoyed::PluginManager &manager,
+                              const char *id,
+                              GModule *module,
+                              std::string &error)
 {
     return
         new Samoyed::TextFileRecoverer::TextFileRecovererPlugin(manager,
                                                                 id,
-                                                                model);
+                                                                module);
 }
 
 }

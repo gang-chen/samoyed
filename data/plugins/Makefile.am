@@ -1,2 +1,3 @@
 SUBDIRS = \
-    terminal
+    terminal \
+    text-file-recoverer

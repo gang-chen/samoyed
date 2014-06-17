@@ -7,7 +7,6 @@
 #include "terminal-plugin.hpp"
 #include "terminal-view-extension.hpp"
 #include "ui/widget.hpp"
-#include <algorithm>
 #include <gmodule.h>
 
 namespace Samoyed
@@ -30,13 +29,12 @@ Extension *TerminalPlugin::createExtension(const char *extensionId)
 
 void TerminalPlugin::onViewCreated(Widget &view)
 {
-    m_views.push_back(&view);
+    m_views.insert(&view);
 }
 
 void TerminalPlugin::onViewClosed(Widget &view)
 {
-    m_views.erase(std::remove(m_views.begin(), m_views.end(), &view),
-                  m_views.end());
+    m_views.erase(&view);
     if (completed())
         onCompleted();
 }
@@ -49,7 +47,7 @@ bool TerminalPlugin::completed() const
 void TerminalPlugin::deactivate()
 {
     while (!m_views.empty())
-        m_views.front()->close();
+        (*m_views.begin())->close();
 }
 
 }

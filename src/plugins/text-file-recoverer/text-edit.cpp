@@ -6,8 +6,12 @@
 #endif
 #include "text-edit.hpp"
 #include "application.hpp"
+#include "utilities/utf8.hpp"
 #include "ui/text-file.hpp"
 #include "ui/window.hpp"
+#include <stddef.h>
+#include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
 namespace
 {
@@ -31,7 +35,7 @@ bool writeInteger(int i, FILE *file)
 bool readInteger(int &i, const char *&byteCode, int &length)
 {
     gint32 i32;
-    if (length < sizeof(gint32))
+    if (static_cast<size_t>(length) < sizeof(gint32))
         return false;
     memcpy(&i32, byteCode, sizeof(gint32));
     byteCode += sizeof(gint32);
@@ -45,7 +49,7 @@ bool readInteger(int &i, const char *&byteCode, int &length)
 namespace Samoyed
 {
 
-namespace TextFileRecover
+namespace TextFileRecoverer
 {
 
 bool TextInsertion::merge(const TextInsertion *ins)
@@ -97,7 +101,7 @@ bool TextRemoval::merge(const TextRemoval *rem)
     if (m_beginLine == rem->m_beginLine && m_beginColumn == rem->m_beginColumn)
     {
         if (rem->m_beginLine == rem->m_endLine)
-            m_endColumn += rem->m_endColum - rem->m_beginColumn;
+            m_endColumn += rem->m_endColumn - rem->m_beginColumn;
         else
         {
             m_endLine += rem->m_endLine - rem->m_beginLine;
@@ -132,7 +136,7 @@ bool TextInsertion::write(FILE *file) const
         return false;
     if (!writeInteger(m_column, file))
         return false;
-    if (!writeInteger(m_length, file))
+    if (!writeInteger(m_text.length(), file))
         return false;
     return fwrite(m_text.c_str(), sizeof(char), m_text.length(), file) ==
         sizeof(char) * m_text.length();
@@ -177,7 +181,7 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
     if (*(text + len) != '\0' || memcmp(text, byteCode, len) != 0)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().currentWindow().gtkWidget(),
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
@@ -211,7 +215,7 @@ bool TextInsertion::replay(TextFile &file, const char *&byteCode, int &length)
     length--;
     if (!readInteger(line, byteCode, length))
         return false;
-    if (!readIntegar(column, byteCode, length))
+    if (!readInteger(column, byteCode, length))
         return false;
     if (!readInteger(len, byteCode, length))
         return false;

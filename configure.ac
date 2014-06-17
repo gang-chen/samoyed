@@ -84,6 +84,7 @@ Makefile
 data/Makefile
 data/plugins/Makefile
 data/plugins/terminal/Makefile
+data/plugins/text-file-recoverer/Makefile
 po/Makefile.in
 src/Makefile
 src/application/Makefile
@@ -95,5 +96,6 @@ src/application/utilities/Makefile
 src/launcher/Makefile
 src/plugins/Makefile
 src/plugins/terminal/Makefile
+src/plugins/text-file-recoverer/Makefile
 ])
 AC_OUTPUT

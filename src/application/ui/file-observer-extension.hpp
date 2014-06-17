@@ -19,7 +19,7 @@ public:
         Extension(id, plugin)
     {}
 
-    virtual FileObserver *activateObserver(File &file);
+    virtual FileObserver *activateObserver(File &file) = 0;
 };
 
 }

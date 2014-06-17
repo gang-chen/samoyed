@@ -27,15 +27,14 @@ class TextFileRecovererPlugin;
 class TextEditSaver: public FileObserver
 {
 public:
-    TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file);
+    TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin);
     virtual ~TextEditSaver();
 
     virtual void deactivate();
 
-    virtual void onCloseFile(File &file);
-    virtual void onFileSaved(File &file);
-    virtual void onFileChanged(File &file,
-                               const File::Change &change,
+    virtual void onCloseFile();
+    virtual void onFileSaved();
+    virtual void onFileChanged(const File::Change &change,
                                bool loading);
 
 private:
@@ -63,8 +62,8 @@ private:
     class ReplayFileAppending: public ReplayFileOperation
     {
     public:
-        ReplayFileAppending(TypeEdit *edit): m_edit(edit) {}
-        virtual ~ReplayFileAppending() { delete m_edit; }
+        ReplayFileAppending(TextEdit *edit): m_edit(edit) {}
+        virtual ~ReplayFileAppending();
         virtual bool execute(TextEditSaver &saver);
         virtual bool merge(const TextInsertion *ins);
         virtual bool merge(const TextRemoval *rem);
@@ -95,7 +94,7 @@ private:
     bool m_destroy;
     FILE *m_replayFile;
     bool m_replayFileCreated;
-    std::string m_replayFileName;
+    char *m_replayFileName;
 
     std::deque<ReplayFileOperation *> m_operationQueue;
     mutable boost::mutex m_operationQueueMutex;

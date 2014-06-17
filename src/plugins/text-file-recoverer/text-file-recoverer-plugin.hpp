@@ -5,7 +5,8 @@
 #define SMYD_TXTR_TEXT_FILE_RECOVERER_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
-#include <list>
+#include <set>
+#include <string>
 
 namespace Samoyed
 {
@@ -14,10 +15,13 @@ namespace TextFileRecoverer
 {
 
 class TextEditSaver;
+class TextFileRecoverer;
 
 class TextFileRecovererPlugin: public Plugin
 {
 public:
+    static char *getTextReplayFileName(const char *uri);
+
     TextFileRecovererPlugin(PluginManager &manager,
                             const char *id,
                             GModule *module);
@@ -27,17 +31,17 @@ public:
     void onTextEditSaverCreated(TextEditSaver &saver);
     void onTextEditSaverDestroyed(TextEditSaver &saver);
 
-    void onTextFileRecoveringBegun();
-    void onTextFileRecoveringEnded();
+    void onTextFileRecoveringBegun(TextFileRecoverer &rec);
+    void onTextFileRecoveringEnded(TextFileRecoverer &rec);
 
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
     virtual bool completed() const;
     
-    std::list<TextEditSaver *> m_savers;
+    std::set<TextEditSaver *> m_savers;
 
-    int m_recoveringFileCount;
+    std::set<TextFileRecoverer *> m_recoverers;
 };
 
 }

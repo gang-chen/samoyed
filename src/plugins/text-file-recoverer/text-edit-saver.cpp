@@ -14,24 +14,22 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
-namespace
-{
-
-const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txt.rep.";
-
-}
-
 namespace Samoyed
 {
 
 namespace TextFileRecoverer
 {
 
+TextEditSaver::ReplayFileAppending::~ReplayFileAppending()
+{
+    delete m_edit;
+}
+
 bool TextEditSaver::ReplayFileCreation::execute(TextEditSaver &saver)
 {
     if (saver.m_replayFile)
         fclose(saver.m_replayFile);
-    saver.m_replayFile = g_fopen(saver.m_replayFileName.c_str(), "w");
+    saver.m_replayFile = g_fopen(saver.m_replayFileName, "w");
     return saver.m_replayFile;
 }
 
@@ -40,12 +38,13 @@ bool TextEditSaver::ReplayFileRemoval::execute(TextEditSaver &saver)
     if (saver.m_replayFile)
         fclose(saver.m_replayFile);
     saver.m_replayFile = NULL;
-    return !g_unlink(saver.m_replayFileName.c_str());
+    return !g_unlink(saver.m_replayFileName);
 }
 
 bool TextEditSaver::ReplayFileAppending::execute(TextEditSaver &saver)
 {
-    assert(saver.m_replayFile);
+    if (!saver.m_replayFile)
+        return false;
     return m_edit->write(saver.m_replayFile);
 }
 
@@ -69,28 +68,26 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
 {
     char *desc =
         g_strdup_printf("Saving text edits to file \"%s\"",
-                        saver.m_replayFileName.c_str());
+                        saver.m_replayFileName);
     setDescription(desc);
     g_free(desc);
 }
 
 bool TextEditSaver::ReplayFileOperationExecutor::step()
 {
-    return m_saver.executeQueuedRelayFileOperations();
+    return m_saver.executeOneQueuedRelayFileOperation();
 }
 
-TextEditSaver::TextEditSaver(TextFileRecovererPlugin &plugin, TextFile &file):
+TextEditSaver::TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin):
     FileObserver(file),
     m_plugin(plugin),
     m_destroy(false),
     m_replayFile(NULL),
     m_replayFileCreated(false),
-    m_replayFileName(TEXT_REPLAY_FILE_PREFIX),
     m_operationExecutor(NULL)
 {
-    char *cp = g_filename_from_uri(m_file.uri(), NULL, NULL);
-    m_replayFileName += cp;
-    g_free(cp);
+    m_replayFileName =
+        TextFileRecovererPlugin::getTextReplayFileName(m_file.uri());
     m_plugin.onTextEditSaverCreated(*this);
 }
 
@@ -99,6 +96,7 @@ TextEditSaver::~TextEditSaver()
     assert(!m_replayFile);
     assert(!m_replayFileCreated);
     m_plugin.onTextEditSaverDestroyed(*this);
+    g_free(m_replayFileName);
 }
 
 void TextEditSaver::deactivate()
@@ -246,33 +244,32 @@ bool TextEditSaver::executeOneQueuedRelayFileOperation()
     return done;
 }
 
-void TextEditSaver::onCloseFile(File &file)
+void TextEditSaver::onCloseFile()
 {
     if (m_replayFileCreated)
     {
         queueReplayFileOperation(new ReplayFileRemoval);
         m_replayFileCreated = false;
-        Application::instance().session()->removeUnsavedFile(file.uri());
+        Application::instance().session()->removeUnsavedFile(m_file.uri());
     }
 }
 
-void TextEditSaver::onFileSaved(File &file)
+void TextEditSaver::onFileSaved()
 {
     if (m_replayFileCreated)
     {
         queueReplayFileOperation(new ReplayFileRemoval);
         m_replayFileCreated = false;
-        Application::instance().session()->removeUnsavedFile(file.uri());
+        Application::instance().session()->removeUnsavedFile(m_file.uri());
     }
 }
 
-void TextEditSaver::onFileChanged(File &file,
-                                  const File::Change &change,
+void TextEditSaver::onFileChanged(const File::Change &change,
                                   bool loading)
 {
     if (loading)
         return;
-    TextFile &tf = static_cast<TextFile &>(file);
+    TextFile &tf = static_cast<TextFile &>(m_file);
     if (!m_replayFileCreated)
     {
         queueReplayFileOperation(new ReplayFileCreation);
@@ -281,8 +278,8 @@ void TextEditSaver::onFileChanged(File &file,
                 new TextInit(tf.text(0, 0, -1, -1), -1)));
         m_replayFileCreated = true;
         Application::instance().session()->addUnsavedFile(
-            file.uri(),
-            file.options());
+            tf.uri(),
+            tf.options());
     }
     const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);
     if (tc.m_type == TextFile::Change::TYPE_INSERTION)

@@ -27,6 +27,8 @@
 #include "ui/text-editor.hpp"
 #include "ui/source-editor.hpp"
 #include "ui/actions-extension-point.hpp"
+#include "ui/file-observers-extension-point.hpp"
+#include "ui/file-recoverers-extension-point.hpp"
 #include "ui/views-extension-point.hpp"
 #include "resources/file-source-manager.hpp"
 #include "resources/project-configuration.hpp"
@@ -78,6 +80,8 @@ Application::Application():
     m_projectAstManager(NULL),
     m_scheduler(NULL),
     m_actionsExtensionPoint(NULL),
+    m_fileObExtensionPoint(NULL),
+    m_fileRecExtensionPoint(NULL),
     m_viewsExtensionPoint(NULL),
     m_preferences(NULL),
     m_histories(NULL),
@@ -208,6 +212,8 @@ gboolean Application::startUp(gpointer app)
 
     // Create builtin extension points.
     a->m_actionsExtensionPoint = new ActionsExtensionPoint;
+    a->m_fileObExtensionPoint = new FileObserversExtensionPoint;
+    a->m_fileRecExtensionPoint = new FileRecoverersExtensionPoint;
     a->m_viewsExtensionPoint = new ViewsExtensionPoint;
 
     // Initialize the preferences with the default values.
@@ -296,6 +302,8 @@ void Application::shutDown()
     delete m_histories;
     delete m_preferences;
     delete m_actionsExtensionPoint;
+    delete m_fileObExtensionPoint;
+    delete m_fileRecExtensionPoint;
     delete m_viewsExtensionPoint;
     delete m_scheduler;
     m_projectAstManager->destroy();

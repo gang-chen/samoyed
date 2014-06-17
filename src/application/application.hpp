@@ -22,6 +22,8 @@ template<class> class Manager;
 class ProjectAstManager;
 class Scheduler;
 class ActionsExtensionPoint;
+class FileObserversExtensionPoint;
+class FileRecoverersExtensionPoint;
 class ViewsExtensionPoint;
 class PropertyTree;
 class Session;
@@ -196,6 +198,8 @@ private:
 
     // Builtin extension points.
     ActionsExtensionPoint *m_actionsExtensionPoint;
+    FileObserversExtensionPoint *m_fileObExtensionPoint;
+    FileRecoverersExtensionPoint *m_fileRecExtensionPoint;
     ViewsExtensionPoint *m_viewsExtensionPoint;
 
     // Preferences and histories are session specific.  They are created before
