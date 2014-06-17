@@ -10,6 +10,7 @@
 #include "utilities/property-tree.hpp"
 #include <utility>
 #include <list>
+#include <set>
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
@@ -205,6 +206,12 @@ public:
      */
     static void openByDialog(Project *project,
                              std::list<std::pair<File *, Editor *> > &opened);
+
+    bool closeable() const { return m_reserved.empty(); }
+
+    void reserve(const char *reason) { m_reserved.insert(reason); }
+
+    void release(const char *reason) { m_reserved.erase(reason); }
 
     /**
      * Close a file by closing all editors.
@@ -454,6 +461,7 @@ private:
     Editor *m_firstEditor;
     Editor *m_lastEditor;
 
+    std::set<std::string> m_reserved;
     int m_freezeCount;
     int m_internalFreezeCount;
 
