@@ -31,9 +31,6 @@ protected:
 
 private:
     void onCloseFileInternally();
-    void onFileLoadedInternally();
-    void onFileSavedInternally();
-    void onFileChangedInternally(const File::Change &change, bool loading);
 
     boost::signals2::connection m_closeConnection;
     boost::signals2::connection m_loadedConnection;
