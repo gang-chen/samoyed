@@ -22,8 +22,6 @@ public:
     static FileRecoveryBar *
         create(const std::map<std::string, PropertyTree *> &files);
 
-    virtual bool close();
-
     virtual Widget::XmlElement *save() const;
 
     void setFiles(const std::map<std::string, PropertyTree *> &files);
