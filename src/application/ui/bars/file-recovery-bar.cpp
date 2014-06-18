@@ -132,12 +132,6 @@ FileRecoveryBar::create(const std::map<std::string, PropertyTree *> &files)
     return bar;
 }
 
-bool FileRecoveryBar::close()
-{
-    delete this;
-    return true;
-}
-
 Widget::XmlElement *FileRecoveryBar::save() const
 {
     return NULL;
@@ -197,6 +191,9 @@ void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
     {
         char *uri;
         gtk_tree_model_get(model, &iter, 0, &uri, -1);
+        static_cast<FileRecoverersExtensionPoint *>(Application::instance().
+            extensionPointManager().extensionPoint(FILE_RECOVERERS))->
+            discardFile(uri);
         Application::instance().session()->removeUnsavedFile(uri);
         gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
         delete bar->m_files[uri];
