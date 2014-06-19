@@ -36,7 +36,12 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    void recoverFile(const char *fileUri, const PropertyTree &options);
+    void recoverFile(const char *fileUri,
+                     long timeStamp,
+                     const PropertyTree &options);
+
+    void discardFile(const char *fileUri,
+                     long timeStamp);
 
 private:
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>

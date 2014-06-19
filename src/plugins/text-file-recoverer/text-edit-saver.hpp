@@ -33,6 +33,7 @@ public:
     virtual void deactivate();
 
     virtual void onCloseFile();
+    virtual void onFileLoaded();
     virtual void onFileSaved();
     virtual void onFileChanged(const File::Change &change,
                                bool loading);
@@ -50,13 +51,19 @@ private:
     class ReplayFileCreation: public ReplayFileOperation
     {
     public:
+        ReplayFileCreation(long timeStamp): m_timeStamp(timeStamp) {}
         virtual bool execute(TextEditSaver &saver);
+    private:
+        long m_timeStamp;
     };
 
     class ReplayFileRemoval: public ReplayFileOperation
     {
     public:
+        ReplayFileRemoval(long timeStamp): m_timeStamp(timeStamp) {}
         virtual bool execute(TextEditSaver &saver);
+    private:
+        long m_timeStamp;
     };
 
     class ReplayFileAppending: public ReplayFileOperation
@@ -94,7 +101,7 @@ private:
     bool m_destroy;
     FILE *m_replayFile;
     bool m_replayFileCreated;
-    char *m_replayFileName;
+    long m_replayFileTimeStamp;
 
     std::deque<ReplayFileOperation *> m_operationQueue;
     mutable boost::mutex m_operationQueueMutex;

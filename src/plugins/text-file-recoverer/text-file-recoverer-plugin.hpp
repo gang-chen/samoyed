@@ -20,7 +20,7 @@ class TextFileRecoverer;
 class TextFileRecovererPlugin: public Plugin
 {
 public:
-    static char *getTextReplayFileName(const char *uri);
+    static char *getTextReplayFileName(const char *uri, long timeStamp);
 
     TextFileRecovererPlugin(PluginManager &manager,
                             const char *id,

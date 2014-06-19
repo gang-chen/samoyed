@@ -29,7 +29,11 @@ bool TextEditSaver::ReplayFileCreation::execute(TextEditSaver &saver)
 {
     if (saver.m_replayFile)
         fclose(saver.m_replayFile);
-    saver.m_replayFile = g_fopen(saver.m_replayFileName, "w");
+    char *fileName =
+        TextFileRecovererPlugin::getTextReplayFileName(saver.m_file.uri(),
+                                                       m_timeStamp);
+    saver.m_replayFile = g_fopen(fileName, "w");
+    g_free(fileName);
     return saver.m_replayFile;
 }
 
@@ -38,7 +42,12 @@ bool TextEditSaver::ReplayFileRemoval::execute(TextEditSaver &saver)
     if (saver.m_replayFile)
         fclose(saver.m_replayFile);
     saver.m_replayFile = NULL;
-    return !g_unlink(saver.m_replayFileName);
+    char *fileName =
+        TextFileRecovererPlugin::getTextReplayFileName(saver.m_file.uri(),
+                                                       m_timeStamp);
+    bool successful = !g_unlink(fileName);
+    g_free(fileName);
+    return successful;
 }
 
 bool TextEditSaver::ReplayFileAppending::execute(TextEditSaver &saver)
@@ -67,8 +76,8 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
     m_saver(saver)
 {
     char *desc =
-        g_strdup_printf("Saving text edits to file \"%s\"",
-                        saver.m_replayFileName);
+        g_strdup_printf("Saving text edits for file \"%s\"",
+                        saver.m_file.uri());
     setDescription(desc);
     g_free(desc);
 }
@@ -84,10 +93,9 @@ TextEditSaver::TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin):
     m_destroy(false),
     m_replayFile(NULL),
     m_replayFileCreated(false),
+    m_replayFileTimeStamp(-1),
     m_operationExecutor(NULL)
 {
-    m_replayFileName =
-        TextFileRecovererPlugin::getTextReplayFileName(m_file.uri());
     m_plugin.onTextEditSaverCreated(*this);
 }
 
@@ -96,7 +104,6 @@ TextEditSaver::~TextEditSaver()
     assert(!m_replayFile);
     assert(!m_replayFileCreated);
     m_plugin.onTextEditSaverDestroyed(*this);
-    g_free(m_replayFileName);
 }
 
 void TextEditSaver::deactivate()
@@ -104,9 +111,10 @@ void TextEditSaver::deactivate()
     FileObserver::deactivate();
     if (m_replayFileCreated)
     {
-        queueReplayFileOperation(new ReplayFileRemoval);
+        queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->removeUnsavedFile(m_file.uri());
+        Application::instance().session()->
+            removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
     m_destroy = true;
     if (!m_operationExecutor)
@@ -248,9 +256,21 @@ void TextEditSaver::onCloseFile()
 {
     if (m_replayFileCreated)
     {
-        queueReplayFileOperation(new ReplayFileRemoval);
+        queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->removeUnsavedFile(m_file.uri());
+        Application::instance().session()->
+            removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
+    }
+}
+
+void TextEditSaver::onFileLoaded()
+{
+    if (m_replayFileCreated)
+    {
+        queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
+        m_replayFileCreated = false;
+        Application::instance().session()->
+            removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
 }
 
@@ -258,9 +278,10 @@ void TextEditSaver::onFileSaved()
 {
     if (m_replayFileCreated)
     {
-        queueReplayFileOperation(new ReplayFileRemoval);
+        queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->removeUnsavedFile(m_file.uri());
+        Application::instance().session()->
+            removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
 }
 
@@ -272,13 +293,15 @@ void TextEditSaver::onFileChanged(const File::Change &change,
     TextFile &tf = static_cast<TextFile &>(m_file);
     if (!m_replayFileCreated)
     {
-        queueReplayFileOperation(new ReplayFileCreation);
+        m_replayFileTimeStamp = time(NULL);
+        queueReplayFileOperation(new ReplayFileCreation(m_replayFileTimeStamp));
         queueReplayFileOperation(
             new ReplayFileAppending(
                 new TextInit(tf.text(0, 0, -1, -1), -1)));
         m_replayFileCreated = true;
         Application::instance().session()->addUnsavedFile(
             tf.uri(),
+            m_replayFileTimeStamp,
             tf.options());
     }
     const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);

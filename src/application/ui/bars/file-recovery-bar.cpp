@@ -24,24 +24,24 @@ namespace Samoyed
 const char *FileRecoveryBar::ID = "file-recovery-bar";
 
 FileRecoveryBar::FileRecoveryBar(
-    const std::map<std::string, PropertyTree *> &files):
+    const Session::UnsavedFileTable &files):
     m_files(files),
     m_store(NULL)
 {
-    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+    for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
-        it->second = new PropertyTree(*it->second);
+        it->second.m_options = new PropertyTree(*it->second.m_options);
 }
 
 FileRecoveryBar::~FileRecoveryBar()
 {
     if (m_store)
         g_object_unref(m_store);
-    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+    for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
-        delete it->second;
+        delete it->second.m_options;
 }
 
 bool FileRecoveryBar::setup()
@@ -49,14 +49,14 @@ bool FileRecoveryBar::setup()
     if (!Bar::setup(ID))
         return false;
     m_store = gtk_list_store_new(1, G_TYPE_STRING);
-    GtkTreeIter it;
-    for (std::map<std::string, PropertyTree *>::iterator i = m_files.begin();
-         i != m_files.end();
-         ++i)
+    GtkTreeIter iter;
+    for (Session::UnsavedFileTable::iterator it = m_files.begin();
+         it != m_files.end();
+         ++it)
     {
-        gtk_list_store_append(m_store, &it);
-        gtk_list_store_set(m_store, &it,
-                           0, i->first.c_str(),
+        gtk_list_store_append(m_store, &iter);
+        gtk_list_store_set(m_store, &iter,
+                           0, it->first.c_str(),
                            -1);
     }
     GtkCellRenderer *renderer;
@@ -120,8 +120,7 @@ bool FileRecoveryBar::setup()
     return true;
 }
 
-FileRecoveryBar *
-FileRecoveryBar::create(const std::map<std::string, PropertyTree *> &files)
+FileRecoveryBar *FileRecoveryBar::create(const Session::UnsavedFileTable &files)
 {
     FileRecoveryBar *bar = new FileRecoveryBar(files);
     if (!bar->setup())
@@ -138,24 +137,24 @@ Widget::XmlElement *FileRecoveryBar::save() const
 }
 
 void
-FileRecoveryBar::setFiles(const std::map<std::string, PropertyTree *> &files)
+FileRecoveryBar::setFiles(const Session::UnsavedFileTable &files)
 {
-    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+    for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
-        delete it->second;
+        delete it->second.m_options;
     m_files = files;
-    for (std::map<std::string, PropertyTree *>::iterator it = m_files.begin();
+    for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
-        it->second = new PropertyTree(*it->second);
-    GtkTreeIter it;
+        it->second.m_options = new PropertyTree(*it->second.m_options);
+    GtkTreeIter iter;
     gtk_list_store_clear(m_store);
-    for (std::map<std::string, PropertyTree *>::iterator i = m_files.begin();
-         i != m_files.end();
-         ++i)
-        gtk_list_store_insert_with_values(m_store, &it,
-                                          0, i->first.c_str(),
+    for (Session::UnsavedFileTable::iterator it = m_files.begin();
+         it != m_files.end();
+         ++it)
+        gtk_list_store_insert_with_values(m_store, &iter,
+                                          0, it->first.c_str(),
                                           -1);
 }
 
@@ -169,13 +168,14 @@ void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
     {
         char *uri;
         gtk_tree_model_get(model, &iter, 0, &uri, -1);
-        const PropertyTree *options = bar->m_files[uri];
+        const Session::UnsavedFileInfo &info = bar->m_files[uri];
         static_cast<FileRecoverersExtensionPoint *>(Application::instance().
             extensionPointManager().extensionPoint(FILE_RECOVERERS))->
-            recoverFile(uri, *options);
-        Application::instance().session()->removeUnsavedFile(uri);
+            recoverFile(uri, info.m_timeStamp, *info.m_options);
+        Application::instance().session()->removeUnsavedFile(uri,
+                                                             info.m_timeStamp);
         gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
-        delete options;
+        delete info.m_options;
         bar->m_files.erase(uri);
         g_free(uri);
     }
@@ -191,12 +191,14 @@ void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
     {
         char *uri;
         gtk_tree_model_get(model, &iter, 0, &uri, -1);
+        const Session::UnsavedFileInfo &info = bar->m_files[uri];
         static_cast<FileRecoverersExtensionPoint *>(Application::instance().
             extensionPointManager().extensionPoint(FILE_RECOVERERS))->
-            discardFile(uri);
-        Application::instance().session()->removeUnsavedFile(uri);
+            discardFile(uri, info.m_timeStamp);
+        Application::instance().session()->removeUnsavedFile(uri,
+                                                             info.m_timeStamp);
         gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
-        delete bar->m_files[uri];
+        delete info.m_options;
         bar->m_files.erase(uri);
         g_free(uri);
     }

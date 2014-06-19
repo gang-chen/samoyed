@@ -18,7 +18,9 @@ public:
         Extension(id, plugin)
     {}
 
-    virtual void recoverFile(File &file) = 0;
+    virtual void recoverFile(File &file, long timeStamp) = 0;
+
+    virtual void discardFile(const char *fileUri, long timeStamp) = 0;
 };
 
 }

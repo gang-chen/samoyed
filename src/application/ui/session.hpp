@@ -56,6 +56,22 @@ public:
         STATE_LOCKED_BY_ANOTHER_PROCESS
     };
 
+    struct UnsavedFileInfo
+    {
+        UnsavedFileInfo():
+            m_timeStamp(-1),
+            m_options(NULL)
+        {}
+        UnsavedFileInfo(long timeStamp, PropertyTree *options):
+            m_timeStamp(timeStamp),
+            m_options(options)
+        {}
+        long m_timeStamp;
+        PropertyTree *m_options;
+    };
+
+    typedef std::map<std::string, UnsavedFileInfo> UnsavedFileTable;
+
     static bool makeSessionsDirectory();
 
     static void onCrashed(int signalNumber);
@@ -95,11 +111,14 @@ public:
      */
     void destroy();
 
-    const std::map<std::string, PropertyTree *> &unsavedFiles() const
+    const UnsavedFileTable &unsavedFiles() const
     { return m_unsavedFiles; }
 
-    void addUnsavedFile(const char *uri, PropertyTree *options);
-    void removeUnsavedFile(const char *uri);
+    void addUnsavedFile(const char *uri,
+                        long timeStamp,
+                        PropertyTree *options);
+    void removeUnsavedFile(const char *uri,
+                           long timeStamp);
 
 private:
     class UnsavedFilesRequest
@@ -118,12 +137,11 @@ private:
     class UnsavedFilesWrite: public UnsavedFilesRequest
     {
     public:
-        UnsavedFilesWrite(const std::map<std::string,
-                                         PropertyTree *> &unsavedFiles);
+        UnsavedFilesWrite(const UnsavedFileTable &unsavedFiles);
         virtual ~UnsavedFilesWrite();
         virtual void execute(Session &session);
     private:
-        std::map<std::string, PropertyTree *> m_unsavedFiles;
+        UnsavedFileTable m_unsavedFiles;
     };
 
     class UnsavedFilesRequestExecutor: public Worker
@@ -164,7 +182,7 @@ private:
 
     LockFile m_lockFile;
 
-    std::map<std::string, PropertyTree *> m_unsavedFiles;
+    UnsavedFileTable m_unsavedFiles;
 
     std::deque<UnsavedFilesRequest *> m_unsavedFilesRequestQueue;
     mutable boost::mutex m_unsavedFilesRequestQueueMutex;

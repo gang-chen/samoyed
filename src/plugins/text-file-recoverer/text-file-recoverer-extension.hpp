@@ -23,7 +23,9 @@ public:
         FileRecovererExtension(id, plugin)
     {}
 
-    virtual void recoverFile(File &file);
+    virtual void recoverFile(File &file, long timeStamp);
+
+    virtual void discardFile(const char *fileUri, long timeStamp);
 };
 
 }

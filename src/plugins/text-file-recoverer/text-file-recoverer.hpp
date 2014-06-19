@@ -22,7 +22,9 @@ class TextFileRecovererPlugin;
 class TextFileRecoverer
 {
 public:
-    TextFileRecoverer(TextFile &file, TextFileRecovererPlugin &plugin);
+    TextFileRecoverer(TextFile &file,
+                      long timeStamp,
+                      TextFileRecovererPlugin &plugin);
 
     ~TextFileRecoverer();
 
@@ -56,6 +58,7 @@ private:
     void onReplayFileRead(Worker &worker);
 
     TextFile &m_file;
+    long m_timeStamp;
     TextFileRecovererPlugin &m_plugin;
     bool m_destroy;
 

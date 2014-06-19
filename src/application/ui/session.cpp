@@ -48,6 +48,7 @@
 #define UNSAVED_FILES "unsaved-files"
 #define FILE_STR "file"
 #define URI "uri"
+#define TIME_STAMP "time-stamp"
 
 namespace
 {
@@ -55,10 +56,9 @@ namespace
 struct UnsavedFilesReadParam
 {
     Samoyed::Session &m_session;
-    std::map<std::string, Samoyed::PropertyTree *> m_unsavedFiles;
+    Samoyed::Session::UnsavedFileTable m_unsavedFiles;
     UnsavedFilesReadParam(Samoyed::Session &session,
-                          std::map<std::string,
-                                   Samoyed::PropertyTree *> &unsavedFiles):
+                          Samoyed::Session::UnsavedFileTable &unsavedFiles):
         m_session(session)
     { m_unsavedFiles.swap(unsavedFiles); }
 };
@@ -402,7 +402,7 @@ void Session::UnsavedFilesRead::execute(Session &session)
     unsavedFn += session.name();
     unsavedFn += G_DIR_SEPARATOR_S "unsaved-files.xml";
 
-    std::map<std::string, PropertyTree *> unsavedFiles;
+    UnsavedFileTable unsavedFiles;
     xmlDocPtr doc = xmlParseFile(unsavedFn.c_str());
     char *value;
     if (doc)
@@ -420,6 +420,7 @@ void Session::UnsavedFilesRead::execute(Session &session)
                            FILE_STR) != 0)
                     continue;
                 std::string uri;
+                long timeStamp = -1;
                 PropertyTree *options = NULL;
                 for (xmlNodePtr child = file->children;
                      child;
@@ -442,7 +443,8 @@ void Session::UnsavedFilesRead::execute(Session &session)
                             if (!error)
                             {
                                 char *type =
-                                    g_content_type_guess(fileName, NULL, 0, NULL);
+                                    g_content_type_guess(fileName, NULL, 0,
+                                                         NULL);
                                 g_free(fileName);
                                 const PropertyTree *defOpt =
                                     File::defaultOptionsForType(type);
@@ -450,6 +452,17 @@ void Session::UnsavedFilesRead::execute(Session &session)
                                 if (defOpt)
                                     options = new PropertyTree(*defOpt);
                             }
+                        }
+                    }
+                    else if (strcmp(reinterpret_cast<const char *>(child->name),
+                                    TIME_STAMP) == 0)
+                    {
+                        value = reinterpret_cast<char *>(
+                            xmlNodeGetContent(child->children));
+                        if (value)
+                        {
+                            timeStamp = atol(value);
+                            xmlFree(value);
                         }
                     }
                     else if (options &&
@@ -460,8 +473,12 @@ void Session::UnsavedFilesRead::execute(Session &session)
                         options->readXmlElement(child, errors);
                     }
                 }
-                if (options)
-                    unsavedFiles.insert(std::make_pair(uri, options));
+                if (timeStamp > 0 && options)
+                    unsavedFiles.insert(
+                        std::make_pair(uri, UnsavedFileInfo(timeStamp,
+                                                            options)));
+                else
+                    delete options;
             }
         }
         xmlFreeDoc(doc);
@@ -473,23 +490,21 @@ void Session::UnsavedFilesRead::execute(Session &session)
 }
 
 Session::UnsavedFilesWrite::UnsavedFilesWrite(
-    const std::map<std::string, PropertyTree *> &unsavedFiles):
+    const UnsavedFileTable &unsavedFiles):
     m_unsavedFiles(unsavedFiles)
 {
-    for (std::map<std::string, PropertyTree *>::iterator it =
-            m_unsavedFiles.begin();
+    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
-        it->second = new PropertyTree(*it->second);
+        it->second.m_options = new PropertyTree(*it->second.m_options);
 }
 
 Session::UnsavedFilesWrite::~UnsavedFilesWrite()
 {
-    for (std::map<std::string, PropertyTree *>::iterator it =
-            m_unsavedFiles.begin();
+    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
-        delete it->second;
+        delete it->second.m_options;
 }
 
 // Don't report any error.
@@ -502,8 +517,7 @@ void Session::UnsavedFilesWrite::execute(Session &session)
 
     xmlNodePtr root =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(UNSAVED_FILES));
-    for (std::map<std::string, PropertyTree *>::iterator it =
-            m_unsavedFiles.begin();
+    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
     {
@@ -512,7 +526,13 @@ void Session::UnsavedFilesWrite::execute(Session &session)
         xmlNewTextChild(file, NULL,
                         reinterpret_cast<const xmlChar *>(URI),
                         reinterpret_cast<const xmlChar *>(it->first.c_str()));
-        xmlAddChild(file, it->second->writeXmlElement());
+        char *timeStamp =
+            g_strdup_printf("%ld", it->second.m_timeStamp);
+        xmlNewTextChild(file, NULL,
+                        reinterpret_cast<const xmlChar *>(TIME_STAMP),
+                        reinterpret_cast<const xmlChar *>(timeStamp));
+        g_free(timeStamp);
+        xmlAddChild(file, it->second.m_options->writeXmlElement());
         xmlAddChild(root, file);
     }
 
@@ -544,11 +564,10 @@ gboolean Session::onUnsavedFilesRead(gpointer param)
 {
     UnsavedFilesReadParam *p =
         static_cast<UnsavedFilesReadParam *>(param);
-    for (std::map<std::string, PropertyTree *>::iterator it =
-            p->m_session.m_unsavedFiles.begin();
+    for (UnsavedFileTable::iterator it = p->m_session.m_unsavedFiles.begin();
          it != p->m_session.m_unsavedFiles.end();
          ++it)
-        delete it->second;
+        delete it->second.m_options;
     p->m_session.m_unsavedFiles.swap(p->m_unsavedFiles);
     if (p->m_session.m_destroy)
     {
@@ -953,11 +972,10 @@ Session::Session(const char *name, const char *lockFileName):
 Session::~Session()
 {
     writeLastSessionName(m_name.c_str());
-    for (std::map<std::string, PropertyTree *>::iterator it =
-            m_unsavedFiles.begin();
+    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
-        delete it->second;
+        delete it->second.m_options;
 }
 
 void Session::destroy()
@@ -1199,25 +1217,30 @@ bool Session::save()
     return true;
 }
 
-void Session::addUnsavedFile(const char *uri, PropertyTree *options)
+void Session::addUnsavedFile(const char *uri,
+                             long timeStamp,
+                             PropertyTree *options)
 {
-    std::pair<std::map<std::string, PropertyTree *>::iterator, bool> p =
-        m_unsavedFiles.insert(std::make_pair(uri, options));
+    std::pair<UnsavedFileTable::iterator, bool> p =
+        m_unsavedFiles.insert(
+            std::make_pair(uri, UnsavedFileInfo(timeStamp, options)));
     if (!p.second)
     {
-        delete p.first->second;
-        p.first->second = options;
+        // Update.
+        p.first->second.m_timeStamp = timeStamp;
+        delete p.first->second.m_options;
+        p.first->second.m_options = options;
     }
     queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
 }
 
-void Session::removeUnsavedFile(const char *uri)
+void Session::removeUnsavedFile(const char *uri,
+                                long timeStamp)
 {
-    std::map<std::string, PropertyTree *>::iterator it =
-        m_unsavedFiles.find(uri);
-    if (it == m_unsavedFiles.end())
+    UnsavedFileTable::iterator it = m_unsavedFiles.find(uri);
+    if (it == m_unsavedFiles.end() || it->second.m_timeStamp != timeStamp)
         return;
-    delete it->second;
+    delete it->second.m_options;
     m_unsavedFiles.erase(it);
     queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
 }

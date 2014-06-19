@@ -16,7 +16,7 @@
 namespace
 {
 
-const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txt.rep.";
+const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txtr.";
 
 }
 
@@ -26,16 +26,23 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
-char *TextFileRecovererPlugin::getTextReplayFileName(const char *uri)
+char *TextFileRecovererPlugin::getTextReplayFileName(const char *uri,
+                                                     long timeStamp)
 {
     char *path = g_filename_from_uri(uri, NULL, NULL);
     char *base = g_path_get_basename(path);
     char *dir = g_path_get_dirname(path);
-    char *newBase = g_strconcat(TEXT_REPLAY_FILE_PREFIX, base, NULL);
+    char *t = g_strdup_printf("%ld", timeStamp);
+    char *newBase = g_strconcat(".",
+                                base,
+                                TEXT_REPLAY_FILE_PREFIX,
+                                t,
+                                NULL);
     char *replayFileName = g_build_filename(dir, newBase, NULL);
     g_free(path);
     g_free(base);
     g_free(dir);
+    g_free(t);
     g_free(newBase);
     return replayFileName;
 }

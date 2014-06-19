@@ -83,6 +83,7 @@ void FileRecoverersExtensionPoint::unregisterExtension(const char *extensionId)
 }
 
 void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
+                                               long timeStamp,
                                                const PropertyTree &fileOptions)
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
@@ -103,7 +104,35 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
             {
                 file = File::open(fileUri, NULL, fileOptions, false).first;
                 if (file)
-                    ext->recoverFile(*file);
+                    ext->recoverFile(*file, timeStamp);
+                ext->release();
+                break;
+            }
+        }
+    }
+    g_free(fileName);
+    g_free(type);
+}
+
+void FileRecoverersExtensionPoint::discardFile(const char *fileUri,
+                                               long timeStamp)
+{
+    char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
+    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    for (ExtensionTable::const_iterator it = m_extensions.begin();
+         it != m_extensions.end();
+         ++it)
+    {
+        ExtensionInfo *extInfo = it->second;
+        if (g_content_type_is_a(type, extInfo->type.c_str()))
+        {
+            FileRecovererExtension *ext =
+                static_cast<FileRecovererExtension *>(
+                    Application::instance().pluginManager().
+                    acquireExtension(extInfo->id.c_str()));
+            if (ext)
+            {
+                ext->discardFile(fileUri, timeStamp);
                 ext->release();
                 break;
             }

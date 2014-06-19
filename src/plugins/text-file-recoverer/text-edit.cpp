@@ -10,6 +10,7 @@
 #include "ui/text-file.hpp"
 #include "ui/window.hpp"
 #include <stddef.h>
+#include <stdio.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
@@ -29,7 +30,7 @@ bool writeInteger(int i, FILE *file)
 {
     gint32 i32 = i;
     i32 = GINT32_TO_LE(i32);
-    return fwrite(&i32, sizeof(gint32), 1, file) == sizeof(gint32);
+    return fwrite(&i32, sizeof(gint32), 1, file) == 1;
 }
 
 bool readInteger(int &i, const char *&byteCode, int &length)

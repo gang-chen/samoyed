@@ -45,25 +45,30 @@ TextFileRecoverer::ReplayFileReader::~ReplayFileReader()
 bool TextFileRecoverer::ReplayFileReader::step()
 {
     GError *error = NULL;
-    char *fileName = TextFileRecovererPlugin::getTextReplayFileName(
-        m_recoverer.m_file.uri());
+    char *fileName =
+        TextFileRecovererPlugin::getTextReplayFileName(m_recoverer.m_file.uri(),
+                                                       m_recoverer.m_timeStamp);
     g_file_get_contents(fileName,
                         &m_byteCode,
                         &m_byteCodeLength,
                         &error);
-    g_free(fileName);
     if (error)
     {
         m_error = error->message;
         g_error_free(error);
+        g_free(fileName);
         return true;
     }
+    g_unlink(fileName);
+    g_free(fileName);
     return true;
 }
 
 TextFileRecoverer::TextFileRecoverer(TextFile &file,
+                                     long timeStamp,
                                      TextFileRecovererPlugin &plugin):
     m_file(file),
+    m_timeStamp(timeStamp),
     m_plugin(plugin),
     m_destroy(false),
     m_reader(NULL),
