@@ -185,8 +185,6 @@ gboolean Application::startUp(gpointer app)
     if (!Session::makeSessionsDirectory())
         goto ERROR_OUT;
 
-    Signal::registerCrashHandler(Session::onCrashed);
-
     // Initialize class data.
     TextFile::registerType();
     SourceFile::registerType();

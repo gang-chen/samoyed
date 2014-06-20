@@ -103,6 +103,8 @@ private:
     bool m_replayFileCreated;
     long m_replayFileTimeStamp;
 
+    char *m_initText;
+
     std::deque<ReplayFileOperation *> m_operationQueue;
     mutable boost::mutex m_operationQueueMutex;
 

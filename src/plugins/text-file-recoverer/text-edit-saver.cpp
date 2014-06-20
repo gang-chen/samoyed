@@ -94,6 +94,7 @@ TextEditSaver::TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin):
     m_replayFile(NULL),
     m_replayFileCreated(false),
     m_replayFileTimeStamp(-1),
+    m_initText(NULL),
     m_operationExecutor(NULL)
 {
     m_plugin.onTextEditSaverCreated(*this);
@@ -103,6 +104,7 @@ TextEditSaver::~TextEditSaver()
 {
     assert(!m_replayFile);
     assert(!m_replayFileCreated);
+    g_free(m_initText);
     m_plugin.onTextEditSaverDestroyed(*this);
 }
 
@@ -272,6 +274,7 @@ void TextEditSaver::onFileLoaded()
         Application::instance().session()->
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
+    m_initText = static_cast<TextFile &>(m_file).text(0, 0, -1, -1);
 }
 
 void TextEditSaver::onFileSaved()
@@ -283,6 +286,7 @@ void TextEditSaver::onFileSaved()
         Application::instance().session()->
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
+    m_initText = static_cast<TextFile &>(m_file).text(0, 0, -1, -1);
 }
 
 void TextEditSaver::onFileChanged(const File::Change &change,
@@ -290,19 +294,18 @@ void TextEditSaver::onFileChanged(const File::Change &change,
 {
     if (loading)
         return;
-    TextFile &tf = static_cast<TextFile &>(m_file);
     if (!m_replayFileCreated)
     {
         m_replayFileTimeStamp = time(NULL);
         queueReplayFileOperation(new ReplayFileCreation(m_replayFileTimeStamp));
-        queueReplayFileOperation(
-            new ReplayFileAppending(
-                new TextInit(tf.text(0, 0, -1, -1), -1)));
+        queueReplayFileOperation(new ReplayFileAppending(
+            new TextInit(m_initText, -1)));
         m_replayFileCreated = true;
+        m_initText = NULL;
         Application::instance().session()->addUnsavedFile(
-            tf.uri(),
+            m_file.uri(),
             m_replayFileTimeStamp,
-            tf.options());
+            m_file.options());
     }
     const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);
     if (tc.m_type == TextFile::Change::TYPE_INSERTION)

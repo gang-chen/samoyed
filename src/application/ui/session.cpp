@@ -25,10 +25,6 @@
 #include <string>
 #include <vector>
 #include <utility>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
@@ -669,16 +665,6 @@ bool Session::executeOneQueuedUnsavedFilesRequest()
     return done;
 }
 
-// Don't report any error.
-void Session::onCrashed(int signalNumber)
-{
-    // Set the last session name.
-    Session *session = Application::instance().session();
-    if (!session)
-        return;
-    writeLastSessionName(session->name());
-}
-
 // Report errors.
 bool Session::makeSessionsDirectory()
 {
@@ -715,17 +701,7 @@ bool Session::writeLastSessionName(const char *name)
 {
     std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
-    int fd = g_open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd == -1)
-        return false;
-    if (write(fd, name, strlen(name)) == -1)
-    {
-        close(fd);
-        return false;
-    }
-    if (close(fd))
-        return false;
-    return true;
+    return g_file_set_contents(fileName.c_str(), name, -1, NULL);
 }
 
 // Don't report any error.
@@ -967,11 +943,11 @@ Session::Session(const char *name, const char *lockFileName):
     m_lockFile(lockFileName),
     m_unsavedFilesRequestExecutor(NULL)
 {
+    writeLastSessionName(m_name.c_str());
 }
 
 Session::~Session()
 {
-    writeLastSessionName(m_name.c_str());
     for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)

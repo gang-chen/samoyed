@@ -74,8 +74,6 @@ public:
 
     static bool makeSessionsDirectory();
 
-    static void onCrashed(int signalNumber);
-
     static bool readLastSessionName(std::string &name);
 
     static bool readAllSessionNames(std::list<std::string> &names);

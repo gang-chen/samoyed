@@ -45,8 +45,6 @@ namespace
 
 const char *charEncodings[] =
 {
-    NULL,
-
     N_("Unicode (UTF-8)"),
 
     N_("Western (ISO-8859-1)"),
@@ -99,6 +97,8 @@ const char *charEncodings[] =
 
     NULL
 };
+
+bool charEncodingsTranslated = false;
 
 }
 
@@ -177,14 +177,11 @@ bool removeFileOrDirectory(const char *name, GError **error)
 
 const char **characterEncodings()
 {
-    if (!charEncodings[0])
+    if (!charEncodingsTranslated)
     {
-        const char *localeEncoding;
-        g_get_charset(&localeEncoding);
-        charEncodings[0] = g_strdup_printf(_("Current Locale (%s)"),
-                                           localeEncoding);
         for (const char **encoding = charEncodings; *encoding; ++encoding)
             *encoding = gettext(*encoding);
+        charEncodingsTranslated = true;
     }
     return charEncodings;
 }
