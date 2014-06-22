@@ -371,6 +371,7 @@ gboolean Application::checkTerminateRequest(gpointer app)
 {
     if (terminate)
     {
+        terminate = false;
         static_cast<Application *>(app)->quit();
         return FALSE;
     }

@@ -115,7 +115,7 @@ void TextEditSaver::deactivate()
     {
         queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->
+        Application::instance().session().
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
     m_destroy = true;
@@ -260,7 +260,7 @@ void TextEditSaver::onCloseFile()
     {
         queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->
+        Application::instance().session().
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
 }
@@ -271,7 +271,7 @@ void TextEditSaver::onFileLoaded()
     {
         queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->
+        Application::instance().session().
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
     m_initText = static_cast<TextFile &>(m_file).text(0, 0, -1, -1);
@@ -283,7 +283,7 @@ void TextEditSaver::onFileSaved()
     {
         queueReplayFileOperation(new ReplayFileRemoval(m_replayFileTimeStamp));
         m_replayFileCreated = false;
-        Application::instance().session()->
+        Application::instance().session().
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
     m_initText = static_cast<TextFile &>(m_file).text(0, 0, -1, -1);
@@ -302,7 +302,7 @@ void TextEditSaver::onFileChanged(const File::Change &change,
             new TextInit(m_initText, -1)));
         m_replayFileCreated = true;
         m_initText = NULL;
-        Application::instance().session()->addUnsavedFile(
+        Application::instance().session().addUnsavedFile(
             m_file.uri(),
             m_replayFileTimeStamp,
             m_file.options());

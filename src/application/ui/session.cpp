@@ -1117,24 +1117,21 @@ Session *Session::restore(const char *name)
     Application::instance().preferences().resetAll();
     Application::instance().histories().resetAll();
 
-    // Read the session file.
+    // Read the session file and restore the session.
     std::string sessionFileName(Application::instance().userDirectoryName());
     sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionFileName += name;
     sessionFileName += G_DIR_SEPARATOR_S "session.xml";
     XmlElementSession *s = parseSessionFile(sessionFileName.c_str(), name);
-    if (!s)
+    if (!s || !s->restoreSession())
     {
-        delete session;
-        return NULL;
-    }
-
-    // Restore the session.
-    if (!s->restoreSession())
-    {
-        delete s;
-        delete session;
-        return NULL;
+        // Create the main window for the session if any error occurs.
+        if (!Window::create(Window::Configuration()))
+        {
+            delete s;
+            delete session;
+            return NULL;
+        }
     }
     delete s;
 

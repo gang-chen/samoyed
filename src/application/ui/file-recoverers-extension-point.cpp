@@ -7,6 +7,9 @@
 #include "file-recoverers-extension-point.hpp"
 #include "file-recoverer-extension.hpp"
 #include "file.hpp"
+#include "editor.hpp"
+#include "window.hpp"
+#include "notebook.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
@@ -88,7 +91,6 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
     char *type = g_content_type_guess(fileName, NULL, 0, NULL);
-    File *file;
     for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
@@ -102,9 +104,22 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
                     acquireExtension(extInfo->id.c_str()));
             if (ext)
             {
-                file = File::open(fileUri, NULL, fileOptions, false).first;
-                if (file)
-                    ext->recoverFile(*file, timeStamp);
+                std::pair<File *, Editor *> fileEditor =
+                    File::open(fileUri, NULL, fileOptions, false);
+                if (fileEditor.first)
+                {
+                    if (!fileEditor.second->parent())
+                    {
+                        Window &window =
+                            Application::instance().currentWindow();
+                        Notebook &editorGroup = window.currentEditorGroup();
+                        window.addEditorToEditorGroup(
+                                *fileEditor.second,
+                                editorGroup,
+                                editorGroup.currentChildIndex() + 1);
+                    }
+                    ext->recoverFile(*fileEditor.first, timeStamp);
+                }
                 ext->release();
                 break;
             }

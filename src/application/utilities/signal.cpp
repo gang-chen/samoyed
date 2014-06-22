@@ -187,12 +187,12 @@ int main()
     Samoyed::Signal::registerTerminationHandler(myOnKilled);
     for ( ; i < 100; ++i)
     {
-        printf("Type any key:\n");
+        printf("Type an integer (0 - segmentation fault; 1 - termination):\n");
         scanf("%d", &a);
-        if (a == 3)
-            *p = 3;
+        if (a == 0)
+            *p = 0;
 #ifndef OS_WIN32
-        if (a == 8)
+        if (a == 1)
             kill(getpid(), SIGTERM);
 #endif
     }

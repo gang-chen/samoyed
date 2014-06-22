@@ -111,7 +111,7 @@ public:
 
     PropertyTree &histories() const { return *m_histories; }
 
-    Session *session() const { return m_session; }
+    Session &session() const { return *m_session; }
 
     Project *findProject(const char *uri);
     const Project *findProject(const char *uri) const;
