@@ -145,7 +145,7 @@ bool TextInsertion::write(FILE *file) const
 
 bool TextRemoval::write(FILE *file) const
 {
-    if (fputc(OP_INSERTION, file) == EOF)
+    if (fputc(OP_REMOVAL, file) == EOF)
         return false;
     if (!writeInteger(m_beginLine, file))
         return false;
@@ -160,13 +160,17 @@ bool TextRemoval::write(FILE *file) const
 
 bool TextEdit::replay(TextFile &file, const char *&byteCode, int &length)
 {
-    if (*byteCode == OP_INIT)
-        return TextInit::replay(file, byteCode, length);
-    if (*byteCode == OP_INSERTION)
-        return TextInsertion::replay(file, byteCode, length);
-    if (*byteCode == OP_REMOVAL)
-        return TextRemoval::replay(file, byteCode, length);
-    return false;
+    bool successful = true;
+    while (length > 0 && successful)
+    {
+        if (*byteCode == OP_INIT)
+            successful = TextInit::replay(file, byteCode, length);
+        else if (*byteCode == OP_INSERTION)
+            successful = TextInsertion::replay(file, byteCode, length);
+        else if (*byteCode == OP_REMOVAL)
+            successful = TextRemoval::replay(file, byteCode, length);
+    }
+    return successful;
 }
 
 bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
@@ -202,10 +206,14 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
         else
         {
             g_free(text);
+            byteCode += len;
+            length -= len;
             return false;
         }
     }
     g_free(text);
+    byteCode += len;
+    length -= len;
     return true;
 }
 

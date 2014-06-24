@@ -15,7 +15,6 @@
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
 #include "utilities/scheduler.hpp"
-#include "utilities/signal.hpp"
 #include "utilities/property-tree.hpp"
 #include "ui/dialogs/session-chooser-dialog.hpp"
 #include "ui/text-file.hpp"
@@ -53,15 +52,6 @@ namespace
 {
 
 const int PLUGIN_CACHE_SIZE = 4;
-
-const unsigned int TERMINATION_CHECK_INTERVAL = 2000;
-
-bool terminate = false;
-
-void onTerminated(int signalNumber)
-{
-    terminate = true;
-}
 
 }
 
@@ -103,7 +93,6 @@ Application::Application():
 {
     assert(!s_instance);
     s_instance = this;
-    Signal::registerTerminationHandler(onTerminated);
 }
 
 Application::~Application()
@@ -367,17 +356,6 @@ gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
     return TRUE;
 }
 
-gboolean Application::checkTerminateRequest(gpointer app)
-{
-    if (terminate)
-    {
-        terminate = false;
-        static_cast<Application *>(app)->quit();
-        return FALSE;
-    }
-    return TRUE;
-}
-
 int Application::run(int argc, char *argv[])
 {
     assert(m_mainThreadId == boost::this_thread::get_id());
@@ -511,7 +489,6 @@ int Application::run(int argc, char *argv[])
                      G_CALLBACK(onSplashScreenDeleteEvent),
                      this);
 
-    g_timeout_add(TERMINATION_CHECK_INTERVAL, checkTerminateRequest, this);
     g_idle_add(startUp, this);
 
     // Enter the main event loop.

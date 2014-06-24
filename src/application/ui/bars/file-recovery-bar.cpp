@@ -73,6 +73,7 @@ bool FileRecoveryBar::setup()
         gtk_tree_view_get_selection(GTK_TREE_VIEW(m_list));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
     gtk_widget_set_hexpand(m_list, TRUE);
+    gtk_widget_set_vexpand(m_list, TRUE);
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *label = gtk_label_new_with_mnemonic(
@@ -107,12 +108,6 @@ bool FileRecoveryBar::setup()
     gtk_grid_attach(GTK_GRID(grid), box, 1, 0, 1, 2);
     gtk_grid_set_column_spacing(GTK_GRID(grid), CONTAINER_SPACING);
     gtk_container_set_border_width(GTK_CONTAINER(grid), CONTAINER_BORDER_WIDTH);
-
-    int total_h, label_h;
-    gtk_widget_get_preferred_height(box, &total_h, NULL);
-    gtk_widget_get_preferred_height(label, &label_h, NULL);
-    gtk_widget_set_size_request(m_list, -1,
-                                total_h - label_h - CONTAINER_SPACING);
 
     setGtkWidget(grid);
     gtk_widget_show_all(grid);

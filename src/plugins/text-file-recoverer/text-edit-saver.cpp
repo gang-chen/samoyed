@@ -312,7 +312,8 @@ void TextEditSaver::onFileChanged(const File::Change &change,
         queueReplayFileAppending(
             new TextInsertion(tc.m_value.insertion.line,
                               tc.m_value.insertion.column,
-                              tc.m_value.insertion.text));
+                              tc.m_value.insertion.text,
+                              tc.m_value.insertion.length));
     else
         queueReplayFileAppending(
             new TextRemoval(tc.m_value.removal.beginLine,

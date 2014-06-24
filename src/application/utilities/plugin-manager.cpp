@@ -194,7 +194,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     g_free(dirName);
     info->extensions = NULL;
     info->xmlDoc = doc;
-    info->cache = false;
+    info->cache = true;
 
     char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)

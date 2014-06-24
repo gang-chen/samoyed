@@ -56,8 +56,8 @@ private:
 class TextInsertion: public TextEdit
 {
 public:
-    TextInsertion(int line, int column, const char *text):
-        m_line(line), m_column(column), m_text(text)
+    TextInsertion(int line, int column, const char *text, int length):
+        m_line(line), m_column(column), m_text(text, length)
     {}
 
     virtual bool merge(const TextInsertion *ins);

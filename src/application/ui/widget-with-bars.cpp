@@ -343,6 +343,8 @@ void WidgetWithBars::addMainChild(Widget &child)
     WidgetContainer::addChildInternally(child);
     m_mainChild = &child;
     gtk_grid_attach(GTK_GRID(m_horizontalGrid), child.gtkWidget(), 0, 0, 1, 1);
+    gtk_widget_set_hexpand(child.gtkWidget(), TRUE);
+    gtk_widget_set_vexpand(child.gtkWidget(), TRUE);
 }
 
 void WidgetWithBars::removeMainChild(Widget &child)
