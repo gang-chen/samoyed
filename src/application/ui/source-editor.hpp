@@ -50,6 +50,8 @@ public:
 
     static SourceEditor *create(SourceFile &file, Project *project);
 
+    static void installPreferences();
+
     virtual Widget::XmlElement *save() const;
 
 protected:

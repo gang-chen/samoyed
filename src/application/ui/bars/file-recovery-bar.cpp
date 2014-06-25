@@ -108,6 +108,7 @@ bool FileRecoveryBar::setup()
     gtk_grid_attach(GTK_GRID(grid), box, 1, 0, 1, 2);
     gtk_grid_set_column_spacing(GTK_GRID(grid), CONTAINER_SPACING);
     gtk_container_set_border_width(GTK_CONTAINER(grid), CONTAINER_BORDER_WIDTH);
+    gtk_widget_set_vexpand(grid, FALSE);
 
     setGtkWidget(grid);
     gtk_widget_show_all(grid);
@@ -173,6 +174,8 @@ void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
         delete info.m_options;
         bar->m_files.erase(uri);
         g_free(uri);
+        if (!gtk_tree_model_get_iter_first(model, &iter))
+            bar->close();
     }
 }
 
@@ -196,6 +199,8 @@ void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
         delete info.m_options;
         bar->m_files.erase(uri);
         g_free(uri);
+        if (!gtk_tree_model_get_iter_first(model, &iter))
+            bar->close();
     }
 }
 

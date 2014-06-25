@@ -53,21 +53,6 @@ void setFont(GtkWidget *view, const char *font)
     pango_font_description_free(fontDesc);
 }
 
-void setTabWidth(GtkWidget *view, int tabWidth)
-{
-    int realTabWidth;
-    std::string tabString(' ', tabWidth);
-    PangoLayout *layout = gtk_widget_create_pango_layout(view,
-                                                         tabString.c_str());
-    pango_layout_get_pixel_size(layout, &realTabWidth, NULL);
-    g_object_unref(layout);
-
-    PangoTabArray *tabArray = pango_tab_array_new(1, TRUE);
-    pango_tab_array_set_tab(tabArray, 0, PANGO_TAB_LEFT, realTabWidth);
-    gtk_text_view_set_tabs(GTK_TEXT_VIEW(view), tabArray);
-    pango_tab_array_free(tabArray);
-}
-
 }
 
 namespace Samoyed
@@ -258,7 +243,8 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     setGtkWidget(sw);
     const PropertyTree &prefs = Application::instance().preferences();
     setFont(view, prefs.get<std::string>(TEXT_EDITOR "/" FONT).c_str());
-    setTabWidth(view, prefs.get<int>(TEXT_EDITOR "/" TAB_WIDTH));
+    gtk_source_view_set_tab_width(GTK_SOURCE_VIEW(view),
+                                  prefs.get<int>(TEXT_EDITOR "/" TAB_WIDTH));
     gtk_widget_show_all(sw);
     return true;
 }

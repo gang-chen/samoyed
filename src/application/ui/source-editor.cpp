@@ -6,7 +6,9 @@
 #endif
 #include "source-editor.hpp"
 #include "source-file.hpp"
+#include "application.hpp"
 #include "utilities/miscellaneous.hpp"
+#include "utilities/property-tree.hpp"
 #include <stdlib.h>
 #include <string.h>
 #include <list>
@@ -14,10 +16,19 @@
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
+#include <gtksourceview/gtksourcebuffer.h>
+#include <gtksourceview/gtksourceview.h>
+#include <gtksourceview/gtksourcelanguage.h>
+#include <gtksourceview/gtksourcelanguagemanager.h>
 #include <libxml/tree.h>
 
 #define TEXT_EDITOR "text-editor"
 #define SOURCE_EDITOR "source-editor"
+#define HIGHLIGHT_SYNTAX "highlight-syntax"
+#define INDENT "indent"
+#define INDENT_WIDTH "indent-width"
+
+#define DEFAULT_INDENT_WIDTH 4
 
 namespace Samoyed
 {
@@ -151,6 +162,25 @@ bool SourceEditor::setup()
 {
     if (!TextEditor::setup(s_sharedTagTable))
         return false;
+    // TODO: Support syntax highlighting and indenting by ourselves.
+    GtkSourceView *view =
+        GTK_SOURCE_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+    GtkSourceBuffer *buffer =
+        GTK_SOURCE_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(view)));
+    const PropertyTree &prefs = Application::instance().preferences();
+    gtk_source_buffer_set_language(
+        buffer,
+        gtk_source_language_manager_get_language(
+            gtk_source_language_manager_get_default(), "cpp"));
+    gtk_source_buffer_set_highlight_syntax(
+        buffer,
+        prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
+    gtk_source_view_set_auto_indent(
+        view,
+        prefs.get<bool>(TEXT_EDITOR "/" INDENT));
+    gtk_source_view_set_indent_width(
+        view,
+        prefs.get<int>(TEXT_EDITOR "/" INDENT_WIDTH));
     return true;
 }
 
@@ -175,6 +205,15 @@ bool SourceEditor::restore(XmlElement &xmlElement)
 Widget::XmlElement *SourceEditor::save() const
 {
     return new SourceEditor::XmlElement(*this);
+}
+
+void SourceEditor::installPreferences()
+{
+    PropertyTree &prop = Application::instance().preferences().
+        child(TEXT_EDITOR);
+    prop.addChild(HIGHLIGHT_SYNTAX, true);
+    prop.addChild(INDENT, true);
+    prop.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
 }
 
 }
