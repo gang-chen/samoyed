@@ -11,6 +11,8 @@
 namespace Samoyed
 {
 
+class PropertyTree;
+
 namespace TextFileRecoverer
 {
 
@@ -34,6 +36,8 @@ public:
     void onTextFileRecoveringBegun(TextFileRecoverer &rec);
     void onTextFileRecoveringEnded(TextFileRecoverer &rec);
 
+    PropertyTree &preferences() { return m_preferences; }
+
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
@@ -42,6 +46,8 @@ protected:
     std::set<TextEditSaver *> m_savers;
 
     std::set<TextFileRecoverer *> m_recoverers;
+
+    PropertyTree &m_preferences;
 };
 
 }

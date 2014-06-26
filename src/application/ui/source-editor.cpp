@@ -28,7 +28,12 @@
 #define INDENT "indent"
 #define INDENT_WIDTH "indent-width"
 
-#define DEFAULT_INDENT_WIDTH 4
+namespace
+{
+
+const int DEFAULT_INDENT_WIDTH = 4;
+
+}
 
 namespace Samoyed
 {
@@ -174,10 +179,10 @@ bool SourceEditor::setup()
             gtk_source_language_manager_get_default(), "cpp"));
     gtk_source_buffer_set_highlight_syntax(
         buffer,
-        prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
+        true);//prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
     gtk_source_view_set_auto_indent(
         view,
-        prefs.get<bool>(TEXT_EDITOR "/" INDENT));
+        false);//prefs.get<bool>(TEXT_EDITOR "/" INDENT));
     gtk_source_view_set_indent_width(
         view,
         prefs.get<int>(TEXT_EDITOR "/" INDENT_WIDTH));

@@ -47,6 +47,7 @@
 
 #define PREFERENCES "preferences"
 #define HISTORIES "histories"
+#define PLUGINS "plugins"
 
 namespace
 {
@@ -205,6 +206,7 @@ gboolean Application::startUp(gpointer app)
 
     // Initialize the preferences with the default values.
     a->m_preferences = new PropertyTree(PREFERENCES);
+    a->m_preferences->addChild(PLUGINS);
     TextEditor::installPreferences();
     SourceEditor::installPreferences();
 

@@ -15,6 +15,7 @@ namespace Samoyed
 {
 
 class TextFile;
+class PropertyTree;
 
 namespace TextFileRecoverer
 {
@@ -37,6 +38,8 @@ public:
     virtual void onFileSaved();
     virtual void onFileChanged(const File::Change &change,
                                bool loading);
+
+    static void installPreferences(PropertyTree &prefs);
 
 private:
     class ReplayFileOperation
@@ -89,6 +92,7 @@ private:
         TextEditSaver &m_saver;
     };
 
+    static gboolean scheduleReplayFileOperationExecutor(gpointer param);
     static gboolean
         onReplayFileOperationExecutorDoneInMainThread(gpointer param);
     void onReplayFileOperationExecutorDone(Worker &worker);
@@ -109,6 +113,8 @@ private:
     mutable boost::mutex m_operationQueueMutex;
 
     ReplayFileOperationExecutor *m_operationExecutor;
+
+    guint m_schedulerId;
 };
 
 }

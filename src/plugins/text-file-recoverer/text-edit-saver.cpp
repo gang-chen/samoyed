@@ -6,6 +6,7 @@
 #include "text-file-recoverer-plugin.hpp"
 #include "application.hpp"
 #include "utilities/scheduler.hpp"
+#include "utilities/property-tree.hpp"
 #include "ui/text-file.hpp"
 #include "ui/session.hpp"
 #include <assert.h>
@@ -13,6 +14,15 @@
 #include <string>
 #include <glib.h>
 #include <glib/gstdio.h>
+
+#define TEXT_EDIT_SAVE_INTERVAL "text-edit-save-interval"
+
+namespace
+{
+
+int DEFAULT_TEXT_EDIT_SAVE_INTERVAL = 300000;
+
+}
 
 namespace Samoyed
 {
@@ -98,6 +108,12 @@ TextEditSaver::TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin):
     m_operationExecutor(NULL)
 {
     m_plugin.onTextEditSaverCreated(*this);
+    m_schedulerId = g_timeout_add_full(
+        G_PRIORITY_DEFAULT_IDLE,
+        m_plugin.preferences().get<int>(TEXT_EDIT_SAVE_INTERVAL),
+        scheduleReplayFileOperationExecutor,
+        this,
+        NULL);
 }
 
 TextEditSaver::~TextEditSaver()
@@ -105,6 +121,8 @@ TextEditSaver::~TextEditSaver()
     assert(!m_replayFile);
     assert(!m_replayFileCreated);
     g_free(m_initText);
+    if (m_schedulerId)
+        g_source_remove(m_schedulerId);
     m_plugin.onTextEditSaverDestroyed(*this);
 }
 
@@ -119,15 +137,15 @@ void TextEditSaver::deactivate()
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
     m_destroy = true;
+    scheduleReplayFileOperationExecutor(this);
     if (!m_operationExecutor)
         delete this;
 }
 
-gboolean
-TextEditSaver::onReplayFileOperationExecutorDoneInMainThread(gpointer param)
+gboolean TextEditSaver::scheduleReplayFileOperationExecutor(gpointer param)
 {
     TextEditSaver *saver = static_cast<TextEditSaver *>(param);
-    delete saver->m_operationExecutor;
+    if (!saver->m_operationExecutor)
     {
         boost::mutex::scoped_lock lock(saver->m_operationQueueMutex);
         if (!saver->m_operationQueue.empty())
@@ -143,11 +161,22 @@ TextEditSaver::onReplayFileOperationExecutorDoneInMainThread(gpointer param)
             Application::instance().scheduler().
                 schedule(*saver->m_operationExecutor);
         }
-        else
-            saver->m_operationExecutor = NULL;
     }
-    if (!saver->m_operationExecutor && saver->m_destroy)
-        delete saver;
+    return TRUE;
+}
+
+gboolean
+TextEditSaver::onReplayFileOperationExecutorDoneInMainThread(gpointer param)
+{
+    TextEditSaver *saver = static_cast<TextEditSaver *>(param);
+    delete saver->m_operationExecutor;
+    saver->m_operationExecutor = NULL;
+    if (saver->m_destroy)
+    {
+        scheduleReplayFileOperationExecutor(saver);
+        if (!saver->m_operationExecutor)
+            delete saver;
+    }
     return FALSE;
 }
 
@@ -162,77 +191,35 @@ void TextEditSaver::onReplayFileOperationExecutorDone(Worker &worker)
 
 void TextEditSaver::queueReplayFileOperation(ReplayFileOperation *op)
 {
-    {
-        boost::mutex::scoped_lock lock(m_operationQueueMutex);
-        m_operationQueue.push_back(op);
-    }
-
-    if (!m_operationExecutor)
-    {
-        m_operationExecutor = new ReplayFileOperationExecutor(
-            Application::instance().scheduler(),
-            Worker::PRIORITY_IDLE,
-            boost::bind(&TextEditSaver::onReplayFileOperationExecutorDone,
-                        this, _1),
-            *this);
-        Application::instance().scheduler().
-            schedule(*m_operationExecutor);
-    }
+    boost::mutex::scoped_lock lock(m_operationQueueMutex);
+    m_operationQueue.push_back(op);
 }
 
 void TextEditSaver::queueReplayFileAppending(TextInsertion *ins)
 {
+    boost::mutex::scoped_lock lock(m_operationQueueMutex);
+    if (m_operationQueue.empty())
+        m_operationQueue.push_back(new ReplayFileAppending(ins));
+    else
     {
-        boost::mutex::scoped_lock lock(m_operationQueueMutex);
-        if (m_operationQueue.empty())
-            m_operationQueue.push_back(new ReplayFileAppending(ins));
+        if (m_operationQueue.back()->merge(ins))
+            delete ins;
         else
-        {
-            if (m_operationQueue.back()->merge(ins))
-                delete ins;
-            else
-                m_operationQueue.push_back(new ReplayFileAppending(ins));
-        }
-    }
-    
-    if (!m_operationExecutor)
-    {
-        m_operationExecutor = new ReplayFileOperationExecutor(
-            Application::instance().scheduler(),
-            Worker::PRIORITY_IDLE,
-            boost::bind(&TextEditSaver::onReplayFileOperationExecutorDone,
-                        this, _1),
-            *this);
-        Application::instance().scheduler().
-            schedule(*m_operationExecutor);
+            m_operationQueue.push_back(new ReplayFileAppending(ins));
     }
 }
 
 void TextEditSaver::queueReplayFileAppending(TextRemoval *rem)
 {
+    boost::mutex::scoped_lock lock(m_operationQueueMutex);
+    if (m_operationQueue.empty())
+        m_operationQueue.push_back(new ReplayFileAppending(rem));
+    else
     {
-        boost::mutex::scoped_lock lock(m_operationQueueMutex);
-        if (m_operationQueue.empty())
-            m_operationQueue.push_back(new ReplayFileAppending(rem));
+        if (m_operationQueue.back()->merge(rem))
+            delete rem;
         else
-        {
-            if (m_operationQueue.back()->merge(rem))
-                delete rem;
-            else
-                m_operationQueue.push_back(new ReplayFileAppending(rem));
-        }
-    }
-    
-    if (!m_operationExecutor)
-    {
-        m_operationExecutor = new ReplayFileOperationExecutor(
-            Application::instance().scheduler(),
-            Worker::PRIORITY_IDLE,
-            boost::bind(&TextEditSaver::onReplayFileOperationExecutorDone,
-                        this, _1),
-            *this);
-        Application::instance().scheduler().
-            schedule(*m_operationExecutor);
+            m_operationQueue.push_back(new ReplayFileAppending(rem));
     }
 }
 
@@ -320,6 +307,11 @@ void TextEditSaver::onFileChanged(const File::Change &change,
                             tc.m_value.removal.beginColumn,
                             tc.m_value.removal.endLine,
                             tc.m_value.removal.endColumn));
+}
+
+void TextEditSaver::installPreferences(PropertyTree &prefs)
+{
+    prefs.addChild(TEXT_EDIT_SAVE_INTERVAL, DEFAULT_TEXT_EDIT_SAVE_INTERVAL);
 }
 
 }

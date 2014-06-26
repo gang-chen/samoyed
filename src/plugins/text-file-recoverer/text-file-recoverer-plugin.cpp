@@ -9,9 +9,14 @@
 #include "text-file-recoverer-extension.hpp"
 #include "text-edit-saver.hpp"
 #include "text-file-recoverer.hpp"
+#include "application.hpp"
+#include "utilities/property-tree.hpp"
 #include <string.h>
 #include <glib.h>
 #include <gmodule.h>
+
+#define PLUGINS "plugins"
+#define TEXT_FILE_RECOVERER "text-file-recoverer"
 
 namespace
 {
@@ -50,8 +55,11 @@ char *TextFileRecovererPlugin::getTextReplayFileName(const char *uri,
 TextFileRecovererPlugin::TextFileRecovererPlugin(PluginManager& manager,
                                                  const char *id,
                                                  GModule *module):
-    Plugin(manager, id, module)
+    Plugin(manager, id, module),
+    m_preferences(Application::instance().preferences().child(PLUGINS).
+                  addChild(TEXT_FILE_RECOVERER))
 {
+    TextEditSaver::installPreferences(m_preferences);
 }
 
 Extension *TextFileRecovererPlugin::createExtension(const char *extensionId)

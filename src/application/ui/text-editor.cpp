@@ -28,10 +28,16 @@
 #define FONT "font"
 #define TAB_WIDTH "tab-width"
 
-#define SCROLL_MARGIN 0.02
+namespace
+{
 
-#define DEFAULT_FONT "Monospace"
-#define DEFAULT_TAB_WIDTH 8
+const double SCROLL_MARGIN = 0.02;
+
+const char *DEFAULT_FONT = "Monospace";
+
+const int DEFAULT_TAB_WIDTH = 8;
+
+}
 
 namespace
 {
