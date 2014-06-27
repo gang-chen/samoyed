@@ -179,10 +179,10 @@ bool SourceEditor::setup()
             gtk_source_language_manager_get_default(), "cpp"));
     gtk_source_buffer_set_highlight_syntax(
         buffer,
-        true);//prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
+        prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
     gtk_source_view_set_auto_indent(
         view,
-        false);//prefs.get<bool>(TEXT_EDITOR "/" INDENT));
+        prefs.get<bool>(TEXT_EDITOR "/" INDENT));
     gtk_source_view_set_indent_width(
         view,
         prefs.get<int>(TEXT_EDITOR "/" INDENT_WIDTH));

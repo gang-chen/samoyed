@@ -7,6 +7,7 @@
 #include "miscellaneous.hpp"
 #include <map>
 #include <string>
+#include <list>
 #include <boost/utility.hpp>
 #include <glib.h>
 #include <libxml/tree.h>
@@ -94,6 +95,12 @@ public:
      */
     void scanPlugins(const char *pluignsDirName);
 
+    void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> &errors);
+    xmlNodePtr writeXmlElement();
+
+    xmlNodePtr getPluginXmlElement(const char *pluginId);
+    void setPluginXmlElement(const char *pluginId, xmlNodePtr pluginXmlElement);
+
 private:
     typedef std::map<ComparablePointer<const char>, Plugin *> Table;
 
@@ -116,6 +123,9 @@ private:
     int m_nCachedPlugins;
     Plugin *m_lruCachedPlugin;
     Plugin *m_mruCachedPlugin;
+
+    xmlNodePtr m_xmlNode;
+    std::map<std::string, xmlNodePtr> m_pluginXmlTable;
 };
 
 }

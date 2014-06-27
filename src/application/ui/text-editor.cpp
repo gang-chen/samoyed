@@ -227,7 +227,8 @@ Widget *TextEditor::XmlElement::restoreWidget()
 
 TextEditor::TextEditor(TextFile &file, Project *project):
     Editor(file, project),
-    m_bypassEdits(false),
+    m_bypassEdit(false),
+    m_selfEdit(false),
     m_presetCursorLine(0),
     m_presetCursorColumn(0)
 {
@@ -429,11 +430,13 @@ bool TextEditor::selectRange(int line, int column,
 
 void TextEditor::onFileChanged(const File::Change &change)
 {
+    if (m_selfEdit)
+        return;
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget()))));
-    m_bypassEdits = true;
+    m_bypassEdit = true;
     if (tc.m_type == File::Change::TYPE_INIT)
     {
         char *text = static_cast<const TextFile &>(file()).text(0, 0, -1, -1);
@@ -458,34 +461,36 @@ void TextEditor::onFileChanged(const File::Change &change)
                                                 rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
     }
-    m_bypassEdits = false;
+    m_bypassEdit = false;
 }
 
 void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
                         char *text, int length,
                         TextEditor *editor)
 {
-    if (editor->m_bypassEdits)
+    if (editor->m_bypassEdit)
         return;
+    editor->m_selfEdit = true;
     static_cast<TextFile &>(editor->file()).insert(
         gtk_text_iter_get_line(location),
         gtk_text_iter_get_line_offset(location),
         text, length);
-    g_signal_stop_emission_by_name(buffer, "insert-text");
+    editor->m_selfEdit = false;
 }
 
 void TextEditor::remove(GtkTextBuffer *buffer,
                         GtkTextIter *begin, GtkTextIter *end,
                         TextEditor *editor)
 {
-    if (editor->m_bypassEdits)
+    if (editor->m_bypassEdit)
         return;
+    editor->m_selfEdit = true;
     static_cast<TextFile &>(editor->file()).remove(
         gtk_text_iter_get_line(begin),
         gtk_text_iter_get_line_offset(begin),
         gtk_text_iter_get_line(end),
         gtk_text_iter_get_line_offset(end));
-    g_signal_stop_emission_by_name(buffer, "delete-range");
+    editor->m_selfEdit = false;
 }
 
 void TextEditor::onFileLoaded()

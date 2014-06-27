@@ -102,7 +102,8 @@ private:
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
 
-    bool m_bypassEdits;
+    bool m_bypassEdit;
+    bool m_selfEdit;
 
     int m_presetCursorLine;
     int m_presetCursorColumn;

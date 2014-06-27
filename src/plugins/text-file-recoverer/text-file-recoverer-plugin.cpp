@@ -10,13 +10,13 @@
 #include "text-edit-saver.hpp"
 #include "text-file-recoverer.hpp"
 #include "application.hpp"
+#include "utilities/plugin-manager.hpp"
 #include "utilities/property-tree.hpp"
 #include <string.h>
 #include <glib.h>
 #include <gmodule.h>
 
-#define PLUGINS "plugins"
-#define TEXT_FILE_RECOVERER "text-file-recoverer"
+#define PREFERENCES "preferences"
 
 namespace
 {
@@ -56,8 +56,7 @@ TextFileRecovererPlugin::TextFileRecovererPlugin(PluginManager& manager,
                                                  const char *id,
                                                  GModule *module):
     Plugin(manager, id, module),
-    m_preferences(Application::instance().preferences().child(PLUGINS).
-                  addChild(TEXT_FILE_RECOVERER))
+    m_preferences(PREFERENCES)
 {
     TextEditSaver::installPreferences(m_preferences);
 }
@@ -102,10 +101,16 @@ bool TextFileRecovererPlugin::completed() const
 
 void TextFileRecovererPlugin::deactivate()
 {
+    m_manager.setPluginXmlElement(id(), save());
     while (!m_savers.empty())
         (*m_savers.begin())->deactivate();
     while (!m_recoverers.empty())
         (*m_recoverers.begin())->deactivate();
+}
+
+xmlNodePtr TextFileRecovererPlugin::save() const
+{
+    return m_preferences.writeXmlElement();
 }
 
 }

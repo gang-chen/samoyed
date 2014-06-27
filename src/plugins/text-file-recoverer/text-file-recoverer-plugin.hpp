@@ -5,13 +5,12 @@
 #define SMYD_TXTR_TEXT_FILE_RECOVERER_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
+#include "utilities/property-tree.hpp"
 #include <set>
 #include <string>
 
 namespace Samoyed
 {
-
-class PropertyTree;
 
 namespace TextFileRecoverer
 {
@@ -38,16 +37,19 @@ public:
 
     PropertyTree &preferences() { return m_preferences; }
 
+    virtual xmlNodePtr save() const;
+
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
     virtual bool completed() const;
-    
+   
+private: 
     std::set<TextEditSaver *> m_savers;
 
     std::set<TextFileRecoverer *> m_recoverers;
 
-    PropertyTree &m_preferences;
+    PropertyTree m_preferences;
 };
 
 }

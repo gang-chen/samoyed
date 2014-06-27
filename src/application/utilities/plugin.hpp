@@ -9,6 +9,7 @@
 #include <string>
 #include <boost/utility.hpp>
 #include <gmodule.h>
+#include <libxml/tree.h>
 
 namespace Samoyed
 {
@@ -47,6 +48,8 @@ public:
     void addToCache(Plugin *&lru, Plugin *&mru);
     void removeFromCache(Plugin *&lru, Plugin *&mru);
 
+    virtual xmlNodePtr save() const { return NULL; }
+
 protected:
     Plugin(PluginManager &manager, const char *id, GModule *module);
 
@@ -58,11 +61,11 @@ protected:
 
     void onCompleted();
 
+    PluginManager &m_manager;
+
 private:
     typedef std::map<ComparablePointer<const char>, Extension *>
         ExtensionTable;
-
-    PluginManager &m_manager;
 
     const std::string m_id;
 

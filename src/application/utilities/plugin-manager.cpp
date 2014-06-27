@@ -18,6 +18,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#define PLUGINS "plugins"
 #define PLUGIN "plugin"
 #define ID "id"
 #define NAME "name"
@@ -48,7 +49,8 @@ PluginManager::PluginManager(ExtensionPointManager &extensionPointMgr,
     m_cacheSize(cacheSize),
     m_nCachedPlugins(0),
     m_lruCachedPlugin(NULL),
-    m_mruCachedPlugin(NULL)
+    m_mruCachedPlugin(NULL),
+    m_xmlNode(NULL)
 {
 }
 
@@ -70,6 +72,8 @@ PluginManager::~PluginManager()
         m_registry.erase(it2);
         delete info;
     }
+    if (m_xmlNode)
+        xmlFreeNode(m_xmlNode);
 }
 
 const PluginManager::PluginInfo *
@@ -603,6 +607,83 @@ void PluginManager::scanPlugins(const char *pluginsDirName)
             registerPlugin(manifestFileName.c_str());
     }
     g_dir_close(dir);
+}
+
+void PluginManager::readXmlElement(xmlNodePtr xmlNode,
+                                   std::list<std::string> &errors)
+{
+    char *value;
+    for (xmlNodePtr child = xmlNode->children; child; child = child->next)
+    {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   PLUGIN) == 0)
+        {
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
+            {
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
+                if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                           ID) == 0)
+                {
+                    value = reinterpret_cast<char *>(
+                        xmlNodeGetContent(grandChild->children));
+                    if (value)
+                    {
+                        m_pluginXmlTable[value] = child;
+                        xmlFree(value);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (m_xmlNode)
+    {
+        m_pluginXmlTable.clear();
+        xmlFreeNode(m_xmlNode);
+    }
+    m_xmlNode = xmlCopyNode(xmlNode, 1);
+}
+
+xmlNodePtr PluginManager::writeXmlElement()
+{
+    if (!m_xmlNode)
+        m_xmlNode = xmlNewNode(NULL,
+                               reinterpret_cast<const xmlChar *>(PLUGINS));
+
+    // Ask all plugins to save XML elements.
+    for (Table::iterator it = m_table.begin(); it != m_table.end(); ++it)
+        setPluginXmlElement(it->first, it->second->save());
+
+    return xmlCopyNode(m_xmlNode, 1);
+}
+
+xmlNodePtr PluginManager::getPluginXmlElement(const char *pluginId)
+{
+    std::map<std::string, xmlNodePtr>::iterator it =
+        m_pluginXmlTable.find(pluginId);
+    if (it == m_pluginXmlTable.end())
+        return NULL;
+    return it->second;
+}
+
+void PluginManager::setPluginXmlElement(const char *pluginId,
+                                        xmlNodePtr pluginXmlNode)
+{
+    std::map<std::string, xmlNodePtr>::iterator it =
+        m_pluginXmlTable.find(pluginId);
+    if (it != m_pluginXmlTable.end())
+    {
+        xmlNodePtr old = it->second;
+        xmlUnlinkNode(old);
+        xmlFreeNode(old);
+    }
+    m_pluginXmlTable[pluginId] = pluginXmlNode;
+    xmlAddChild(m_xmlNode, pluginXmlNode);
 }
 
 }
