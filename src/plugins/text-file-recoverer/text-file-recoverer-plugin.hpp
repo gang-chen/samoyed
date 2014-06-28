@@ -23,6 +23,8 @@ class TextFileRecovererPlugin: public Plugin
 public:
     static char *getTextReplayFileName(const char *uri, long timeStamp);
 
+    static TextFileRecovererPlugin &instance() { return *s_instance; }
+
     TextFileRecovererPlugin(PluginManager &manager,
                             const char *id,
                             GModule *module);
@@ -44,7 +46,9 @@ protected:
 
     virtual bool completed() const;
    
-private: 
+private:
+    static TextFileRecovererPlugin *s_instance;
+
     std::set<TextEditSaver *> m_savers;
 
     std::set<TextFileRecoverer *> m_recoverers;

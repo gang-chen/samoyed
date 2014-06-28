@@ -15,11 +15,14 @@ namespace Samoyed
 namespace Terminal
 {
 
+TerminalPlugin *TerminalPlugin::s_instance = NULL;
+
 TerminalPlugin::TerminalPlugin(PluginManager &manager,
                                const char *id,
                                GModule *module):
     Plugin(manager, id, module)
 {
+    s_instance = this;
 }
 
 Extension *TerminalPlugin::createExtension(const char *extensionId)

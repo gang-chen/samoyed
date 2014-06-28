@@ -17,14 +17,11 @@ class File;
 namespace TextFileRecoverer
 {
 
-class TextFileRecovererPlugin;
-
 class TextFileRecoverer
 {
 public:
     TextFileRecoverer(TextFile &file,
-                      long timeStamp,
-                      TextFileRecovererPlugin &plugin);
+                      long timeStamp);
 
     ~TextFileRecoverer();
 
@@ -59,7 +56,6 @@ private:
 
     TextFile &m_file;
     long m_timeStamp;
-    TextFileRecovererPlugin &m_plugin;
     bool m_destroy;
 
     ReplayFileReader *m_reader;

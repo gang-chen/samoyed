@@ -18,6 +18,8 @@ namespace Terminal
 class TerminalPlugin: public Plugin
 {
 public:
+    static TerminalPlugin &instance() { return *s_instance; }
+
     TerminalPlugin(PluginManager &manager, const char *id, GModule *module);
 
     virtual void deactivate();
@@ -31,6 +33,8 @@ protected:
     virtual bool completed() const;
 
 private:
+    static TerminalPlugin *s_instance;
+
     std::set<Widget *> m_views;
 };
 

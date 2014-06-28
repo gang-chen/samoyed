@@ -27,6 +27,7 @@
 #define CURSOR_COLUMN "cursor-column"
 #define FONT "font"
 #define TAB_WIDTH "tab-width"
+#define REPLACE_TABS_WITH_SPACES "replace-tabs-with-spaces"
 
 namespace
 {
@@ -36,6 +37,8 @@ const double SCROLL_MARGIN = 0.02;
 const char *DEFAULT_FONT = "Monospace";
 
 const int DEFAULT_TAB_WIDTH = 8;
+
+const bool DEFAULT_REPLACE_TABS_WITH_SPACES = true;
 
 }
 
@@ -252,6 +255,9 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     setFont(view, prefs.get<std::string>(TEXT_EDITOR "/" FONT).c_str());
     gtk_source_view_set_tab_width(GTK_SOURCE_VIEW(view),
                                   prefs.get<int>(TEXT_EDITOR "/" TAB_WIDTH));
+    gtk_source_view_set_insert_spaces_instead_of_tabs(
+        GTK_SOURCE_VIEW(view),
+        prefs.get<bool>(TEXT_EDITOR "/" REPLACE_TABS_WITH_SPACES));
     gtk_widget_show_all(sw);
     return true;
 }
@@ -523,6 +529,7 @@ void TextEditor::installPreferences()
         addChild(TEXT_EDITOR);
     prop.addChild(FONT, std::string(DEFAULT_FONT));
     prop.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
+    prop.addChild(REPLACE_TABS_WITH_SPACES, DEFAULT_REPLACE_TABS_WITH_SPACES);
 }
 
 }

@@ -97,9 +97,8 @@ bool TextEditSaver::ReplayFileOperationExecutor::step()
     return m_saver.executeOneQueuedRelayFileOperation();
 }
 
-TextEditSaver::TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin):
+TextEditSaver::TextEditSaver(TextFile &file):
     FileObserver(file),
-    m_plugin(plugin),
     m_destroy(false),
     m_replayFile(NULL),
     m_replayFileCreated(false),
@@ -107,10 +106,11 @@ TextEditSaver::TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin):
     m_initText(NULL),
     m_operationExecutor(NULL)
 {
-    m_plugin.onTextEditSaverCreated(*this);
+    TextFileRecovererPlugin::instance().onTextEditSaverCreated(*this);
     m_schedulerId = g_timeout_add_full(
         G_PRIORITY_DEFAULT_IDLE,
-        m_plugin.preferences().get<int>(TEXT_EDIT_SAVE_INTERVAL),
+        TextFileRecovererPlugin::instance().preferences().
+            get<int>(TEXT_EDIT_SAVE_INTERVAL),
         scheduleReplayFileOperationExecutor,
         this,
         NULL);
@@ -123,7 +123,7 @@ TextEditSaver::~TextEditSaver()
     g_free(m_initText);
     if (m_schedulerId)
         g_source_remove(m_schedulerId);
-    m_plugin.onTextEditSaverDestroyed(*this);
+    TextFileRecovererPlugin::instance().onTextEditSaverDestroyed(*this);
 }
 
 void TextEditSaver::deactivate()
@@ -309,9 +309,10 @@ void TextEditSaver::onFileChanged(const File::Change &change,
                             tc.m_value.removal.endColumn));
 }
 
-void TextEditSaver::installPreferences(PropertyTree &prefs)
+void TextEditSaver::installPreferences()
 {
-    prefs.addChild(TEXT_EDIT_SAVE_INTERVAL, DEFAULT_TEXT_EDIT_SAVE_INTERVAL);
+    TextFileRecovererPlugin::instance().preferences().
+        addChild(TEXT_EDIT_SAVE_INTERVAL, DEFAULT_TEXT_EDIT_SAVE_INTERVAL);
 }
 
 }

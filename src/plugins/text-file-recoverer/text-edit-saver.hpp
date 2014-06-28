@@ -15,7 +15,6 @@ namespace Samoyed
 {
 
 class TextFile;
-class PropertyTree;
 
 namespace TextFileRecoverer
 {
@@ -23,12 +22,11 @@ namespace TextFileRecoverer
 class TextEdit;
 class TextInsertion;
 class TextRemoval;
-class TextFileRecovererPlugin;
 
 class TextEditSaver: public FileObserver
 {
 public:
-    TextEditSaver(TextFile &file, TextFileRecovererPlugin &plugin);
+    TextEditSaver(TextFile &file);
     virtual ~TextEditSaver();
 
     virtual void deactivate();
@@ -39,7 +37,7 @@ public:
     virtual void onFileChanged(const File::Change &change,
                                bool loading);
 
-    static void installPreferences(PropertyTree &prefs);
+    static void installPreferences();
 
 private:
     class ReplayFileOperation
@@ -101,7 +99,6 @@ private:
     void queueReplayFileAppending(TextRemoval *rem);
     bool executeOneQueuedRelayFileOperation();
 
-    TextFileRecovererPlugin &m_plugin;
     bool m_destroy;
     FILE *m_replayFile;
     bool m_replayFileCreated;

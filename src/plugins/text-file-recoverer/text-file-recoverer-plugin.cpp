@@ -16,6 +16,8 @@
 #include <glib.h>
 #include <gmodule.h>
 
+#define PLUGIN "plugin"
+#define ID "id"
 #define PREFERENCES "preferences"
 
 namespace
@@ -30,6 +32,8 @@ namespace Samoyed
 
 namespace TextFileRecoverer
 {
+
+TextFileRecovererPlugin *TextFileRecovererPlugin::s_instance = NULL;
 
 char *TextFileRecovererPlugin::getTextReplayFileName(const char *uri,
                                                      long timeStamp)
@@ -58,7 +62,8 @@ TextFileRecovererPlugin::TextFileRecovererPlugin(PluginManager& manager,
     Plugin(manager, id, module),
     m_preferences(PREFERENCES)
 {
-    TextEditSaver::installPreferences(m_preferences);
+    s_instance = this;
+    TextEditSaver::installPreferences();
 }
 
 Extension *TextFileRecovererPlugin::createExtension(const char *extensionId)
@@ -79,7 +84,10 @@ void TextFileRecovererPlugin::onTextEditSaverDestroyed(TextEditSaver &saver)
 {
     m_savers.erase(&saver);
     if (completed())
+    {
+        m_manager.setPluginXmlElement(id(), save());
         onCompleted();
+    }
 }
 
 void TextFileRecovererPlugin::onTextFileRecoveringBegun(TextFileRecoverer &rec)
@@ -91,7 +99,10 @@ void TextFileRecovererPlugin::onTextFileRecoveringEnded(TextFileRecoverer &rec)
 {
     m_recoverers.erase(&rec);
     if (completed())
+    {
+        m_manager.setPluginXmlElement(id(), save());
         onCompleted();
+    }
 }
 
 bool TextFileRecovererPlugin::completed() const
@@ -101,7 +112,6 @@ bool TextFileRecovererPlugin::completed() const
 
 void TextFileRecovererPlugin::deactivate()
 {
-    m_manager.setPluginXmlElement(id(), save());
     while (!m_savers.empty())
         (*m_savers.begin())->deactivate();
     while (!m_recoverers.empty())
@@ -110,7 +120,14 @@ void TextFileRecovererPlugin::deactivate()
 
 xmlNodePtr TextFileRecovererPlugin::save() const
 {
-    return m_preferences.writeXmlElement();
+    xmlNodePtr node =
+        xmlNewNode(NULL,
+                   reinterpret_cast<const xmlChar *>(PLUGIN));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(ID),
+                    reinterpret_cast<const xmlChar *>(id()));
+    xmlAddChild(node, m_preferences.writeXmlElement());
+    return node;
 }
 
 }

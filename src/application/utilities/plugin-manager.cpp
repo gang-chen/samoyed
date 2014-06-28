@@ -613,7 +613,13 @@ void PluginManager::readXmlElement(xmlNodePtr xmlNode,
                                    std::list<std::string> &errors)
 {
     char *value;
-    for (xmlNodePtr child = xmlNode->children; child; child = child->next)
+    if (m_xmlNode)
+    {
+        m_pluginXmlTable.clear();
+        xmlFreeNode(m_xmlNode);
+    }
+    m_xmlNode = xmlCopyNode(xmlNode, 1);
+    for (xmlNodePtr child = m_xmlNode->children; child; child = child->next)
     {
         if (child->type != XML_ELEMENT_NODE)
             continue;
@@ -641,12 +647,6 @@ void PluginManager::readXmlElement(xmlNodePtr xmlNode,
             }
         }
     }
-    if (m_xmlNode)
-    {
-        m_pluginXmlTable.clear();
-        xmlFreeNode(m_xmlNode);
-    }
-    m_xmlNode = xmlCopyNode(xmlNode, 1);
 }
 
 xmlNodePtr PluginManager::writeXmlElement()
@@ -674,6 +674,11 @@ xmlNodePtr PluginManager::getPluginXmlElement(const char *pluginId)
 void PluginManager::setPluginXmlElement(const char *pluginId,
                                         xmlNodePtr pluginXmlNode)
 {
+    if (!pluginXmlNode)
+        return;
+    if (!m_xmlNode)
+        m_xmlNode = xmlNewNode(NULL,
+                               reinterpret_cast<const xmlChar *>(PLUGINS));
     std::map<std::string, xmlNodePtr>::iterator it =
         m_pluginXmlTable.find(pluginId);
     if (it != m_pluginXmlTable.end())

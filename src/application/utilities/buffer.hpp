@@ -259,7 +259,7 @@ private:
         void set2(int index2);
 
         /**
-         * Set this iterator at the specified tertiaary index.  Set to the
+         * Set this iterator at the specified tertiary index.  Set to the
          * beginning of the atom such that the ending index of the previous
          * atom, or zero if none, is not less than the specified index.  If
          * there are a range of atoms satisfying this condition, set to the
@@ -400,7 +400,7 @@ private:
         {}
 
         /**
-         * Add back the skip in the tertiaary index.
+         * Add back the skip in the tertiary index.
          */
         void addSkip3();
 
@@ -1231,7 +1231,7 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
     else if (index3 < (m_index3 + m_buffer.m_length3) / 2)
     {
         // Iterate from here.
-        if (index3 < m_index3 - m_index3InBlock)
+        if (index3 <= m_index3 - m_index3InBlock && m_block->previous())
         {
             // Iterate backward.
             m_index -= m_indexInBlock;

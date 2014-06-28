@@ -65,16 +65,14 @@ bool TextFileRecoverer::ReplayFileReader::step()
 }
 
 TextFileRecoverer::TextFileRecoverer(TextFile &file,
-                                     long timeStamp,
-                                     TextFileRecovererPlugin &plugin):
+                                     long timeStamp):
     m_file(file),
     m_timeStamp(timeStamp),
-    m_plugin(plugin),
     m_destroy(false),
     m_reader(NULL),
     m_read(false)
 {
-    m_plugin.onTextFileRecoveringBegun(*this);
+    TextFileRecovererPlugin::instance().onTextFileRecoveringBegun(*this);
     m_file.reserve(_("Samoyed is recovering it"));
     if (file.loading())
         m_fileLoadedConnection = file.addLoadedCallback(boost::bind(
@@ -91,7 +89,7 @@ TextFileRecoverer::~TextFileRecoverer()
 {
     delete m_reader;
     m_file.release(_("Samoyed is recovering it"));
-    m_plugin.onTextFileRecoveringEnded(*this);
+    TextFileRecovererPlugin::instance().onTextFileRecoveringEnded(*this);
 }
 
 void TextFileRecoverer::deactivate()

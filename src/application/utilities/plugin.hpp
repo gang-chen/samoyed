@@ -41,7 +41,7 @@ public:
 
     void releaseExtension(Extension &extension);
 
-    void destroy();
+    virtual void destroy();
 
     bool cached() const { return m_cached; }
 

@@ -20,8 +20,7 @@ namespace TextFileRecoverer
 void TextFileRecovererExtension::recoverFile(File &file, long timeStamp)
 {
     new TextFileRecoverer(static_cast<TextFile &>(file),
-                          timeStamp,
-                          static_cast<TextFileRecovererPlugin &>(m_plugin));
+                          timeStamp);
 }
 
 void TextFileRecovererExtension::discardFile(const char *fileUri,
