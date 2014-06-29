@@ -684,11 +684,12 @@ void PluginManager::setPluginXmlElement(const char *pluginId,
     if (it != m_pluginXmlTable.end())
     {
         xmlNodePtr old = it->second;
-        xmlUnlinkNode(old);
+        xmlReplaceNode(old, pluginXmlNode);
         xmlFreeNode(old);
     }
+    else
+        xmlAddChild(m_xmlNode, pluginXmlNode);
     m_pluginXmlTable[pluginId] = pluginXmlNode;
-    xmlAddChild(m_xmlNode, pluginXmlNode);
 }
 
 }
