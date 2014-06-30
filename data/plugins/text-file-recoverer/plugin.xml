@@ -17,4 +17,11 @@
       <mime-type>text/plain</mime-type>
     </detail>
   </extension>
+  <extension>
+    <id>preferences</id>
+    <point>preferences</point>
+    <detail>
+      <category>text-editor</category>
+    </detail>
+  </extension>
 </plugin>

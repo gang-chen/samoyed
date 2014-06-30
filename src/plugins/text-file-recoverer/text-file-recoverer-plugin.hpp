@@ -5,7 +5,6 @@
 #define SMYD_TXTR_TEXT_FILE_RECOVERER_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
-#include "utilities/property-tree.hpp"
 #include <set>
 #include <string>
 
@@ -37,10 +36,6 @@ public:
     void onTextFileRecoveringBegun(TextFileRecoverer &rec);
     void onTextFileRecoveringEnded(TextFileRecoverer &rec);
 
-    PropertyTree &preferences() { return m_preferences; }
-
-    virtual xmlNodePtr save() const;
-
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
@@ -52,8 +47,6 @@ private:
     std::set<TextEditSaver *> m_savers;
 
     std::set<TextFileRecoverer *> m_recoverers;
-
-    PropertyTree m_preferences;
 };
 
 }

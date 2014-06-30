@@ -20,13 +20,6 @@ class File;
 class FileObserversExtensionPoint: public ExtensionPoint
 {
 public:
-    struct ExtensionInfo
-    {
-        std::string id;
-        std::string type;
-        ExtensionInfo(const char *extensionId): id(extensionId) {}
-    };
-
     FileObserversExtensionPoint();
 
     virtual ~FileObserversExtensionPoint();
@@ -38,8 +31,19 @@ public:
     virtual void unregisterExtension(const char *extensionId);
 
 private:
+    struct ExtensionInfo
+    {
+        std::string id;
+        std::string type;
+        ExtensionInfo(const char *extensionId): id(extensionId) {}
+    };
+
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
         ExtensionTable;
+
+    void registerExtensionInternally(File &file,
+                                     ExtensionInfo &extInfo,
+                                     bool openFile);
 
     void registerAllExtensionsOnFileOpened(File &file);
 

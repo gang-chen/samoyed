@@ -34,26 +34,24 @@
 #define TITLE "title"
 #define MENU_ITEM "menu-item"
 
-namespace
+namespace Samoyed
 {
 
-Samoyed::Widget *
-createView(const Samoyed::ViewsExtensionPoint::ExtensionInfo &extInfo)
+Widget *ViewsExtensionPoint::createView(const ExtensionInfo &extInfo)
 {
-    Samoyed::ViewExtension *ext = static_cast<Samoyed::ViewExtension *>(
-        Samoyed::Application::instance().pluginManager().
+    ViewExtension *ext = static_cast<ViewExtension *>(
+        Application::instance().pluginManager().
         acquireExtension(extInfo.id.c_str()));
     if (!ext)
         return NULL;
-    Samoyed::Widget *widget = ext->createView(extInfo.viewId.c_str(),
-                                              extInfo.viewTitle.c_str());
+    Widget *widget = ext->createView(extInfo.viewId.c_str(),
+                                     extInfo.viewTitle.c_str());
     ext->release();
     return widget;
 }
 
-void registerExtensionInternally(
-    Samoyed::Window &window,
-    const Samoyed::ViewsExtensionPoint::ExtensionInfo &ext)
+void ViewsExtensionPoint::registerExtensionInternally(Window &window,
+                                                      const ExtensionInfo &ext)
 {
     window.registerSidePaneChild(ext.paneId.c_str(),
                                  ext.viewId.c_str(),
@@ -63,11 +61,6 @@ void registerExtensionInternally(
     if (ext.openByDefault)
         window.openSidePaneChild(ext.paneId.c_str(), ext.viewId.c_str());
 }
-
-}
-
-namespace Samoyed
-{
 
 ViewsExtensionPoint::ViewsExtensionPoint():
     ExtensionPoint(VIEWS)
@@ -83,6 +76,9 @@ ViewsExtensionPoint::ViewsExtensionPoint():
 
 ViewsExtensionPoint::~ViewsExtensionPoint()
 {
+    m_windowsCreatedConnection.disconnect();
+    m_windowsRestoredConnection.disconnect();
+
     for (ExtensionTable::iterator it = m_extensions.begin();
          it != m_extensions.end();)
     {
@@ -90,9 +86,6 @@ ViewsExtensionPoint::~ViewsExtensionPoint()
         ++it;
         unregisterExtension(it2->first);
     }
-
-    m_windowsCreatedConnection.disconnect();
-    m_windowsRestoredConnection.disconnect();
 
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);

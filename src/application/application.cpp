@@ -28,6 +28,7 @@
 #include "ui/actions-extension-point.hpp"
 #include "ui/file-observers-extension-point.hpp"
 #include "ui/file-recoverers-extension-point.hpp"
+#include "ui/preferences-extension-point.hpp"
 #include "ui/views-extension-point.hpp"
 #include "resources/file-source-manager.hpp"
 #include "resources/project-configuration.hpp"
@@ -201,6 +202,7 @@ gboolean Application::startUp(gpointer app)
     a->m_actionsExtensionPoint = new ActionsExtensionPoint;
     a->m_fileObExtensionPoint = new FileObserversExtensionPoint;
     a->m_fileRecExtensionPoint = new FileRecoverersExtensionPoint;
+    a->m_preferencesExtensionPoint = new PreferencesExtensionPoint;
     a->m_viewsExtensionPoint = new ViewsExtensionPoint;
 
     // Initialize the preferences with the default values.
@@ -292,6 +294,7 @@ void Application::shutDown()
     delete m_actionsExtensionPoint;
     delete m_fileObExtensionPoint;
     delete m_fileRecExtensionPoint;
+    delete m_preferencesExtensionPoint;
     delete m_viewsExtensionPoint;
     delete m_scheduler;
     m_projectAstManager->destroy();

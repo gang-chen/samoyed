@@ -1,6 +1,9 @@
 // Text edit saver.
 // Copyright (C) 2013 Gang Chen.
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 #include "text-edit-saver.hpp"
 #include "text-edit.hpp"
 #include "text-file-recoverer-plugin.hpp"
@@ -15,14 +18,8 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
+#define TEXT_EDITOR "text-editor"
 #define TEXT_EDIT_SAVE_INTERVAL "text-edit-save-interval"
-
-namespace
-{
-
-int DEFAULT_TEXT_EDIT_SAVE_INTERVAL = 300000;
-
-}
 
 namespace Samoyed
 {
@@ -109,8 +106,8 @@ TextEditSaver::TextEditSaver(TextFile &file):
     TextFileRecovererPlugin::instance().onTextEditSaverCreated(*this);
     m_schedulerId = g_timeout_add_full(
         G_PRIORITY_DEFAULT_IDLE,
-        TextFileRecovererPlugin::instance().preferences().
-            get<int>(TEXT_EDIT_SAVE_INTERVAL),
+        Application::instance().preferences().
+            get<int>(TEXT_EDITOR "/" TEXT_EDIT_SAVE_INTERVAL),
         scheduleReplayFileOperationExecutor,
         this,
         NULL);
@@ -307,12 +304,6 @@ void TextEditSaver::onFileChanged(const File::Change &change,
                             tc.m_value.removal.beginColumn,
                             tc.m_value.removal.endLine,
                             tc.m_value.removal.endColumn));
-}
-
-void TextEditSaver::installPreferences()
-{
-    TextFileRecovererPlugin::instance().preferences().
-        addChild(TEXT_EDIT_SAVE_INTERVAL, DEFAULT_TEXT_EDIT_SAVE_INTERVAL);
 }
 
 }

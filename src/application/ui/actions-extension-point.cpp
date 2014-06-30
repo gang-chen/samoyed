@@ -27,26 +27,20 @@
 #define MENU_TITLE "menu-title"
 #define MENU_TOOLTIP "menu-tooltip"
 
-namespace
+namespace Samoyed
 {
 
-void
-activateAction(const Samoyed::ActionsExtensionPoint::ExtensionInfo &extInfo,
-               Samoyed::Window &window)
+void ActionsExtensionPoint::activateAction(const ExtensionInfo &extInfo,
+                                           Window &window)
 {
-    Samoyed::ActionExtension *ext = static_cast<Samoyed::ActionExtension *>(
-        Samoyed::Application::instance().pluginManager().
+    ActionExtension *ext = static_cast<ActionExtension *>(
+        Application::instance().pluginManager().
         acquireExtension(extInfo.id.c_str()));
     if (!ext)
         return;
     ext->activateAction(window);
     ext->release();
 }
-
-}
-
-namespace Samoyed
-{
 
 ActionsExtensionPoint::ActionsExtensionPoint():
     ExtensionPoint(ACTIONS)
@@ -62,6 +56,9 @@ ActionsExtensionPoint::ActionsExtensionPoint():
 
 ActionsExtensionPoint::~ActionsExtensionPoint()
 {
+    m_windowsCreatedConnection.disconnect();
+    m_windowsRestoredConnection.disconnect();
+
     for (ExtensionTable::iterator it = m_extensions.begin();
          it != m_extensions.end();)
     {
@@ -69,9 +66,6 @@ ActionsExtensionPoint::~ActionsExtensionPoint()
         ++it;
         unregisterExtension(it2->first);
     }
-
-    m_windowsCreatedConnection.disconnect();
-    m_windowsRestoredConnection.disconnect();
 
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);

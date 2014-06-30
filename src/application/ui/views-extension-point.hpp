@@ -15,11 +15,23 @@
 namespace Samoyed
 {
 
+class Widget;
 class Window;
 
 class ViewsExtensionPoint: public ExtensionPoint
 {
 public:
+    ViewsExtensionPoint();
+
+    virtual ~ViewsExtensionPoint();
+
+    virtual bool registerExtension(const char *extensionId,
+                                   xmlNodePtr xmlNode,
+                                   std::list<std::string> &errors);
+
+    virtual void unregisterExtension(const char *extensionId);
+
+private:
     struct ExtensionInfo
     {
         std::string id;
@@ -36,19 +48,12 @@ public:
         {}
     };
 
-    ViewsExtensionPoint();
-
-    virtual ~ViewsExtensionPoint();
-
-    virtual bool registerExtension(const char *extensionId,
-                                   xmlNodePtr xmlNode,
-                                   std::list<std::string> &errors);
-
-    virtual void unregisterExtension(const char *extensionId);
-
-private:
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
         ExtensionTable;
+
+    static Widget *createView(const ExtensionInfo &extInfo);
+
+    void registerExtensionInternally(Window &window, const ExtensionInfo &ext);
 
     void registerAllExtensions(Window &window);
 

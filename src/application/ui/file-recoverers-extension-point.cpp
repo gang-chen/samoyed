@@ -38,6 +38,16 @@ FileRecoverersExtensionPoint::FileRecoverersExtensionPoint():
 
 FileRecoverersExtensionPoint::~FileRecoverersExtensionPoint()
 {
+    for (ExtensionTable::iterator it = m_extensions.begin();
+         it != m_extensions.end();)
+    {
+        ExtensionTable::iterator it2 = it;
+        ++it;
+        ExtensionInfo *ext = it2->second;
+        m_extensions.erase(it2);
+        delete ext;
+    }
+
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);
 }

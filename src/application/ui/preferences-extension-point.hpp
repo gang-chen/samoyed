@@ -1,27 +1,27 @@
-// Extension point: file recoverers.
-// Copyright (C) 2013 Gang Chen.
+// Extension point: preferences.
+// Copyright (C) 2014 Gang Chen.
 
-#ifndef SMYD_FILE_RECOVERERS_EXTENSION_POINT_HPP
-#define SMYD_FILE_RECOVERERS_EXTENSION_POINT_HPP
+#ifndef SMYD_PREFERENCES_EXTENSION_POINT_HPP
+#define SMYD_PREFERENCES_EXTENSION_POINT_HPP
 
 #include "utilities/extension-point.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
+#include <set>
 #include <string>
+#include <gtk/gtk.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
 
-class PropertyTree;
-
-class FileRecoverersExtensionPoint: public ExtensionPoint
+class PreferencesExtensionPoint: public ExtensionPoint
 {
 public:
-    FileRecoverersExtensionPoint();
+    PreferencesExtensionPoint();
 
-    virtual ~FileRecoverersExtensionPoint();
+    virtual ~PreferencesExtensionPoint();
 
     virtual bool registerExtension(const char *extensionId,
                                    xmlNodePtr xmlNode,
@@ -29,18 +29,13 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    void recoverFile(const char *fileUri,
-                     long timeStamp,
-                     const PropertyTree &options);
-
-    void discardFile(const char *fileUri,
-                     long timeStamp);
+    void setupPreferencesEditor(const char *category, GtkWidget *grid);
 
 private:
     struct ExtensionInfo
     {
         std::string id;
-        std::string type;
+        std::set<std::string> categories;
         ExtensionInfo(const char *extensionId): id(extensionId) {}
     };
 

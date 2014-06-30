@@ -7,18 +7,14 @@
 #include "text-file-recoverer-plugin.hpp"
 #include "text-file-observer-extension.hpp"
 #include "text-file-recoverer-extension.hpp"
+#include "preferences-extension.hpp"
 #include "text-edit-saver.hpp"
 #include "text-file-recoverer.hpp"
 #include "application.hpp"
 #include "utilities/plugin-manager.hpp"
-#include "utilities/property-tree.hpp"
 #include <string.h>
 #include <glib.h>
 #include <gmodule.h>
-
-#define PLUGIN "plugin"
-#define ID "id"
-#define PREFERENCES "preferences"
 
 namespace
 {
@@ -59,11 +55,9 @@ char *TextFileRecovererPlugin::getTextReplayFileName(const char *uri,
 TextFileRecovererPlugin::TextFileRecovererPlugin(PluginManager& manager,
                                                  const char *id,
                                                  GModule *module):
-    Plugin(manager, id, module),
-    m_preferences(PREFERENCES)
+    Plugin(manager, id, module)
 {
     s_instance = this;
-    TextEditSaver::installPreferences();
 }
 
 Extension *TextFileRecovererPlugin::createExtension(const char *extensionId)
@@ -72,6 +66,8 @@ Extension *TextFileRecovererPlugin::createExtension(const char *extensionId)
         return new TextFileRecovererExtension(extensionId, *this);
     if (strcmp(extensionId, "text-file-recoverer/file-observer") == 0)
         return new TextFileObserverExtension(extensionId, *this);
+    if (strcmp(extensionId, "text-file-recoverer/preferences") == 0)
+        return new PreferencesExtension(extensionId, *this);
     return NULL;
 }
 
@@ -84,10 +80,7 @@ void TextFileRecovererPlugin::onTextEditSaverDestroyed(TextEditSaver &saver)
 {
     m_savers.erase(&saver);
     if (completed())
-    {
-        m_manager.setPluginXmlElement(id(), save());
         onCompleted();
-    }
 }
 
 void TextFileRecovererPlugin::onTextFileRecoveringBegun(TextFileRecoverer &rec)
@@ -99,10 +92,7 @@ void TextFileRecovererPlugin::onTextFileRecoveringEnded(TextFileRecoverer &rec)
 {
     m_recoverers.erase(&rec);
     if (completed())
-    {
-        m_manager.setPluginXmlElement(id(), save());
         onCompleted();
-    }
 }
 
 bool TextFileRecovererPlugin::completed() const
@@ -116,18 +106,6 @@ void TextFileRecovererPlugin::deactivate()
         (*m_savers.begin())->deactivate();
     while (!m_recoverers.empty())
         (*m_recoverers.begin())->deactivate();
-}
-
-xmlNodePtr TextFileRecovererPlugin::save() const
-{
-    xmlNodePtr node =
-        xmlNewNode(NULL,
-                   reinterpret_cast<const xmlChar *>(PLUGIN));
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(ID),
-                    reinterpret_cast<const xmlChar *>(id()));
-    xmlAddChild(node, m_preferences.writeXmlElement());
-    return node;
 }
 
 }

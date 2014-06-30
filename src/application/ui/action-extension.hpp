@@ -18,7 +18,7 @@ public:
         Extension(id, plugin)
     {}
 
-    virtual void activateAction(Window &window);
+    virtual void activateAction(Window &window) = 0;
 };
 
 }

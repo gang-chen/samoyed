@@ -94,13 +94,4 @@ void ExtensionPointManager::unregisterExtension(const char *extensionId,
         m_extensionRegistry.erase(it2);
 }
 
-ExtensionPoint *
-ExtensionPointManager::extensionPoint(const char *extensionPointId) const
-{
-    Registry::const_iterator it = m_registry.find(extensionPointId);
-    if (it != m_registry.end())
-        return it->second;
-    return NULL;
-}
-
 }

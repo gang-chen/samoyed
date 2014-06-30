@@ -25,25 +25,25 @@
 #define FILE_OBSERVERS "file-observers"
 #define MIME_TYPE "mime-type"
 
-namespace
+namespace Samoyed
 {
 
-void registerExtensionInternally(
-    Samoyed::File &file,
-    Samoyed::FileObserversExtensionPoint::ExtensionInfo &extInfo,
+void FileObserversExtensionPoint::registerExtensionInternally(
+    File &file,
+    ExtensionInfo &extInfo,
     bool openFile)
 {
     char *fileName = g_filename_from_uri(file.uri(), NULL, NULL);
     char *type = g_content_type_guess(fileName, NULL, 0, NULL);
     if (g_content_type_is_a(type, extInfo.type.c_str()))
     {
-        Samoyed::FileObserverExtension *ext =
-            static_cast<Samoyed::FileObserverExtension *>(
-                Samoyed::Application::instance().pluginManager().
+        FileObserverExtension *ext =
+            static_cast<FileObserverExtension *>(
+                Application::instance().pluginManager().
                 acquireExtension(extInfo.id.c_str()));
         if (!ext)
             return;
-        Samoyed::FileObserver *ob = ext->activateObserver(file);
+        FileObserver *ob = ext->activateObserver(file);
         ext->release();
         if (openFile)
             ob->onFileOpened();
@@ -51,11 +51,6 @@ void registerExtensionInternally(
     g_free(fileName);
     g_free(type);
 }
-
-}
-
-namespace Samoyed
-{
 
 FileObserversExtensionPoint::FileObserversExtensionPoint():
     ExtensionPoint(FILE_OBSERVERS)
@@ -71,6 +66,16 @@ FileObserversExtensionPoint::FileObserversExtensionPoint():
 FileObserversExtensionPoint::~FileObserversExtensionPoint()
 {
     m_filesOpenedConnection.disconnect();
+
+    for (ExtensionTable::iterator it = m_extensions.begin();
+         it != m_extensions.end();)
+    {
+        ExtensionTable::iterator it2 = it;
+        ++it;
+        ExtensionInfo *ext = it2->second;
+        m_extensions.erase(it2);
+        delete ext;
+    }
 
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);

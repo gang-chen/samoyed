@@ -18,6 +18,9 @@ class ExtensionPoint;
 class ExtensionPointManager: public boost::noncopyable
 {
 public:
+    ExtensionPoint &extensionPoint(const char *extensionPointId)
+    { return *m_registry[extensionPointId]; }
+
     void registerExtensionPoint(ExtensionPoint &extPoint);
 
     void unregisterExtensionPoint(ExtensionPoint &extPoint);
@@ -28,8 +31,6 @@ public:
 
     void unregisterExtension(const char *extensionId,
                              const char *extensionPointId);
-
-    ExtensionPoint *extensionPoint(const char *extensionPointId) const;
 
 private:
     typedef std::map<ComparablePointer<const char>, ExtensionPoint *>

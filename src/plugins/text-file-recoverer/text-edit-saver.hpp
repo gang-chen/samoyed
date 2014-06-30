@@ -37,8 +37,6 @@ public:
     virtual void onFileChanged(const File::Change &change,
                                bool loading);
 
-    static void installPreferences();
-
 private:
     class ReplayFileOperation
     {

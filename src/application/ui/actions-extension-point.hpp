@@ -20,16 +20,6 @@ class Window;
 class ActionsExtensionPoint: public ExtensionPoint
 {
 public:
-    struct ExtensionInfo
-    {
-        std::string id;
-        std::string actionName;
-        std::string actionPath;
-        std::string menuTitle;
-        std::string menuTooltip;
-        ExtensionInfo(const char *extensionId): id(extensionId) {}
-    };
-
     ActionsExtensionPoint();
 
     virtual ~ActionsExtensionPoint();
@@ -41,8 +31,20 @@ public:
     virtual void unregisterExtension(const char *extensionId);
 
 private:
+    struct ExtensionInfo
+    {
+        std::string id;
+        std::string actionName;
+        std::string actionPath;
+        std::string menuTitle;
+        std::string menuTooltip;
+        ExtensionInfo(const char *extensionId): id(extensionId) {}
+    };
+
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
         ExtensionTable;
+
+    static void activateAction(const ExtensionInfo &extInfo, Window &window);
 
     void registerAllExtensions(Window &window);
 

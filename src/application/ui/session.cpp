@@ -15,7 +15,6 @@
 #include "utilities/lock-file.hpp"
 #include "utilities/property-tree.hpp"
 #include "utilities/scheduler.hpp"
-#include "utilities/plugin-manager.hpp"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -42,7 +41,6 @@
 #define WINDOW "window"
 #define PREFERENCES "preferences"
 #define HISTORIES "histories"
-#define PLUGINS "plugins"
 #define UNSAVED_FILES "unsaved-files"
 #define FILE_STR "file"
 #define URI "uri"
@@ -150,12 +148,6 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
             Samoyed::Application::instance().histories().
                 readXmlElement(child, errors);
         }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        PLUGINS) == 0)
-        {
-            Samoyed::Application::instance().pluginManager().
-                readXmlElement(child, errors);
-        }
     }
     if (session->m_windows.empty())
     {
@@ -196,9 +188,6 @@ xmlNodePtr XmlElementSession::write() const
     xmlNodePtr hists =
         Samoyed::Application::instance().histories().writeXmlElement();
     xmlAddChild(node, hists);
-    xmlNodePtr plugins =
-        Samoyed::Application::instance().pluginManager().writeXmlElement();
-    xmlAddChild(node, plugins);
     return node;
 }
 

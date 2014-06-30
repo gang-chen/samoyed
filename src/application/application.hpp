@@ -24,6 +24,7 @@ class Scheduler;
 class ActionsExtensionPoint;
 class FileObserversExtensionPoint;
 class FileRecoverersExtensionPoint;
+class PreferencesExtensionPoint;
 class ViewsExtensionPoint;
 class PropertyTree;
 class Session;
@@ -200,6 +201,7 @@ private:
     ActionsExtensionPoint *m_actionsExtensionPoint;
     FileObserversExtensionPoint *m_fileObExtensionPoint;
     FileRecoverersExtensionPoint *m_fileRecExtensionPoint;
+    PreferencesExtensionPoint *m_preferencesExtensionPoint;
     ViewsExtensionPoint *m_viewsExtensionPoint;
 
     // Preferences and histories are session specific.  They are created before

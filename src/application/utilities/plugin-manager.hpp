@@ -24,7 +24,6 @@ class PluginManager: public boost::noncopyable
 public:
     struct PluginInfo
     {
-    public:
         struct ExtensionInfo
         {
             std::string id;
@@ -33,6 +32,8 @@ public:
             ExtensionInfo *next;
             ExtensionInfo(): xmlNode(NULL) {}
         };
+
+        ~PluginInfo();
 
         std::string directoryName;
         std::string id;
@@ -95,12 +96,6 @@ public:
      */
     void scanPlugins(const char *pluignsDirName);
 
-    void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> &errors);
-    xmlNodePtr writeXmlElement();
-
-    xmlNodePtr getPluginXmlElement(const char *pluginId);
-    void setPluginXmlElement(const char *pluginId, xmlNodePtr pluginXmlElement);
-
 private:
     typedef std::map<ComparablePointer<const char>, Plugin *> Table;
 
@@ -123,9 +118,6 @@ private:
     int m_nCachedPlugins;
     Plugin *m_lruCachedPlugin;
     Plugin *m_mruCachedPlugin;
-
-    xmlNodePtr m_xmlNode;
-    std::map<std::string, xmlNodePtr> m_pluginXmlTable;
 };
 
 }

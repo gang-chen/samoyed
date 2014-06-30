@@ -12,6 +12,7 @@ libui_la_SOURCES = \
     file-recoverers-extension-point.cpp \
     notebook.cpp \
     paned.cpp \
+    preferences-extension-point.cpp \
     project.cpp \
     session.cpp \
     source-editor.cpp \
@@ -38,6 +39,8 @@ libui_la_SOURCES = \
     file-recoverers-extension-point.hpp \
     notebook.hpp \
     paned.hpp \
+    preferences-extension.hpp \
+    preferences-extension-point.hpp \
     project.hpp \
     session.hpp \
     source-editor.hpp \
