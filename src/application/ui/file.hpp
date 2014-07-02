@@ -50,7 +50,9 @@ public:
     typedef boost::signals2::signal<void (File &file)> Saved;
 
     typedef
-    boost::function<File *(const char *uri, const PropertyTree &options)>
+    boost::function<File *(const char *uri,
+                           const char *mimeType,
+                           const PropertyTree &options)>
     	Factory;
 
     /**
@@ -183,12 +185,13 @@ public:
      * files.
      * @return The default options, or NULL if the type is unsupported.
      */
-    static const PropertyTree *defaultOptionsForType(const char *type);
+    static const PropertyTree *defaultOptionsForType(const char *mimeType);
 
     /**
      * Open a file in an editor.
-     * @param uri The URI of the new file.
+     * @param uri The URI of the file.
      * @param project The project context, or NULL if none.
+     * @param mimeType The type of the file, or NULL if unknown.
      * @param options Additional file-type-specific options specifying how to
      * open the file.
      * @param newEditor True to create a new editor even if the file is already
@@ -196,6 +199,7 @@ public:
      */
     static std::pair<File *, Editor *>
     open(const char *uri, Project *project,
+         const char *mimeType,
          const PropertyTree &options,
          bool newEditor);
 
@@ -206,12 +210,6 @@ public:
      */
     static void openByDialog(Project *project,
                              std::list<std::pair<File *, Editor *> > &opened);
-
-    bool closeable() const { return m_reserved.empty(); }
-
-    void reserve(const char *reason) { m_reserved.insert(reason); }
-
-    void release(const char *reason) { m_reserved.erase(reason); }
 
     /**
      * Close a file by closing all editors.
@@ -236,6 +234,8 @@ public:
     bool closeEditor(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
+
+    const char *mimeType() const { return m_mimeType.c_str(); }
 
     /**
      * @return The options, which must be deleted by the caller.
@@ -283,6 +283,18 @@ public:
      * callback.
      */
     void save();
+
+    bool closeable() const { return m_pinned.empty(); }
+
+    /**
+     * Disallow the user to close the file.
+     */
+    void pin(const char *reason) { m_pinned.insert(reason); }
+
+    /**
+     * Allow the user to close the file.
+     */
+    void unpin(const char *reason) { m_pinned.erase(reason); }
 
     /**
      * @return True iff the file can be edited.
@@ -347,37 +359,14 @@ public:
     { return m_changed.connect(callback); }
 
 protected:
-    struct TypeRecord
-    {
-        std::string m_type;
-        Factory m_factory;
-        OptionsSetterFactory m_optSetterFactory;
-        OptionsGetter m_defOptGetter;
-        OptionsEqual m_optEqual;
-        OptionsDescriber m_optDescriber;
-        TypeRecord(const char *type,
-                   const Factory &factory,
-                   const OptionsSetterFactory &optSetterFactory,
-                   const OptionsGetter &defOptGetter,
-                   const OptionsEqual &optEqual,
-                   const OptionsDescriber &optDescriber):
-            m_type(type),
-            m_factory(factory),
-            m_optSetterFactory(optSetterFactory),
-            m_defOptGetter(defOptGetter),
-            m_optEqual(optEqual),
-            m_optDescriber(optDescriber)
-        {}
-    };
-
-    static void registerType(const char *type,
+    static void registerType(const char *mimeType,
                              const Factory &factory,
                              const OptionsSetterFactory &optSetterFactory,
                              const OptionsGetter &defOptGetter,
                              const OptionsEqual &optEqual,
                              const OptionsDescriber &optDescriber);
 
-    File(const char *uri, const PropertyTree &options);
+    File(const char *uri, const char *mimeType, const PropertyTree &options);
 
     /**
      * This function is called by a derived class to notify all editors and
@@ -404,6 +393,29 @@ protected:
     virtual void onSaved(FileSaver &saver) {}
 
 private:
+    struct TypeRecord
+    {
+        std::string m_type;
+        Factory m_factory;
+        OptionsSetterFactory m_optSetterFactory;
+        OptionsGetter m_defOptGetter;
+        OptionsEqual m_optEqual;
+        OptionsDescriber m_optDescriber;
+        TypeRecord(const char *type,
+                   const Factory &factory,
+                   const OptionsSetterFactory &optSetterFactory,
+                   const OptionsGetter &defOptGetter,
+                   const OptionsEqual &optEqual,
+                   const OptionsDescriber &optDescriber):
+            m_type(type),
+            m_factory(factory),
+            m_optSetterFactory(optSetterFactory),
+            m_defOptGetter(defOptGetter),
+            m_optEqual(optEqual),
+            m_optDescriber(optDescriber)
+        {}
+    };
+
     static const TypeRecord *findTypeRecord(const char *type);
 
     void continueClosing();
@@ -431,6 +443,8 @@ private:
     static PropertyTree s_defaultOptions;
 
     const std::string m_uri;
+
+    const std::string m_mimeType;
 
     bool m_closing;
 
@@ -461,7 +475,7 @@ private:
     Editor *m_firstEditor;
     Editor *m_lastEditor;
 
-    std::set<std::string> m_reserved;
+    std::set<std::string> m_pinned;
     int m_freezeCount;
     int m_internalFreezeCount;
 

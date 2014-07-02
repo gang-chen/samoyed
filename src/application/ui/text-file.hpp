@@ -228,7 +228,9 @@ public:
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
 protected:
-    TextFile(const char *uri, const PropertyTree &options);
+    TextFile(const char *uri,
+             const char *mimeType,
+             const PropertyTree &options);
 
     virtual Editor *createEditorInternally(Project *project);
 
@@ -241,7 +243,9 @@ protected:
     virtual void onLoaded(FileLoader &loader);
 
 private:
-    static File *create(const char *uri, const PropertyTree &options);
+    static File *create(const char *uri,
+                        const char *mimeType,
+                        const PropertyTree &options);
 
     Removal *insertOnly(int line, int column,
                         const char *text, int length);

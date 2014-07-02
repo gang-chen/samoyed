@@ -231,7 +231,14 @@ public:
                    const char *actionPath,
                    const char *menuTitle,
                    const char *menuTooltip,
-                   const boost::function<void (Window &window)> &activate);
+                   const boost::function<void (Window &)> &activate);
+    void addToggleAction(const char *actionName,
+                         const char *actionPath,
+                         const char *menuTitle,
+                         const char *menuTooltip,
+                         const boost::function<void (Window &,
+                                                      bool)> &toggled,
+                         bool activeByDefault);
     void removeAction(const char *actionName);
 
     bool toolbarVisible() const;
@@ -282,6 +289,7 @@ private:
         GtkAction *action;
         guint uiMergeId;
         boost::function<void ()> activate;
+        boost::function<void (bool)> toggled;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,

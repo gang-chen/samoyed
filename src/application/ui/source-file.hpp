@@ -33,7 +33,7 @@ public:
         virtual PropertyTree *options() const;
     };
 
-    static bool isSupportedType(const char *type);
+    static bool isSupportedType(const char *mimeType);
 
     static void registerType();
 
@@ -50,7 +50,9 @@ public:
     virtual PropertyTree *options() const;
 
 protected:
-    SourceFile(const char *uri, const PropertyTree &options);
+    SourceFile(const char *uri,
+               const char *mimeType,
+               const PropertyTree &options);
 
     ~SourceFile();
 
@@ -67,7 +69,9 @@ protected:
                            int endLine, int endColumn);
 
 private:
-    static File *create(const char *uri, const PropertyTree &options);
+    static File *create(const char *uri,
+                        const char *mimeType,
+                        const PropertyTree &options);
 
     static PropertyTree s_defaultOptions;
 

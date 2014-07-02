@@ -73,7 +73,7 @@ TextFileRecoverer::TextFileRecoverer(TextFile &file,
     m_read(false)
 {
     TextFileRecovererPlugin::instance().onTextFileRecoveringBegun(*this);
-    m_file.reserve(_("Samoyed is recovering it"));
+    m_file.pin(_("Samoyed is recovering it"));
     if (file.loading())
         m_fileLoadedConnection = file.addLoadedCallback(boost::bind(
             &TextFileRecoverer::onFileLoaded, this, _1));
@@ -88,7 +88,7 @@ TextFileRecoverer::TextFileRecoverer(TextFile &file,
 TextFileRecoverer::~TextFileRecoverer()
 {
     delete m_reader;
-    m_file.release(_("Samoyed is recovering it"));
+    m_file.unpin(_("Samoyed is recovering it"));
     TextFileRecovererPlugin::instance().onTextFileRecoveringEnded(*this);
 }
 

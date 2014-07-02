@@ -289,6 +289,7 @@ void TextEditSaver::onFileChanged(const File::Change &change,
         Application::instance().session().addUnsavedFile(
             m_file.uri(),
             m_replayFileTimeStamp,
+            m_file.mimeType(),
             m_file.options());
     }
     const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);

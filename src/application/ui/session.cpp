@@ -45,6 +45,7 @@
 #define FILE_STR "file"
 #define URI "uri"
 #define TIME_STAMP "time-stamp"
+#define MIME_TYPE "mime-type"
 
 namespace
 {
@@ -417,6 +418,7 @@ void Session::UnsavedFilesRead::execute(Session &session)
                     continue;
                 std::string uri;
                 long timeStamp = -1;
+                std::string mimeType;
                 PropertyTree *options = NULL;
                 for (xmlNodePtr child = file->children;
                      child;
@@ -433,21 +435,6 @@ void Session::UnsavedFilesRead::execute(Session &session)
                         {
                             uri = value;
                             xmlFree(value);
-                            GError *error = NULL;
-                            char *fileName =
-                                g_filename_from_uri(uri.c_str(), NULL, &error);
-                            if (!error)
-                            {
-                                char *type =
-                                    g_content_type_guess(fileName, NULL, 0,
-                                                         NULL);
-                                g_free(fileName);
-                                const PropertyTree *defOpt =
-                                    File::defaultOptionsForType(type);
-                                g_free(type);
-                                if (defOpt)
-                                    options = new PropertyTree(*defOpt);
-                            }
                         }
                     }
                     else if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -461,6 +448,21 @@ void Session::UnsavedFilesRead::execute(Session &session)
                             xmlFree(value);
                         }
                     }
+                    else if (strcmp(reinterpret_cast<const char *>(child->name),
+                                    MIME_TYPE) == 0)
+                    {
+                        value = reinterpret_cast<char *>(
+                            xmlNodeGetContent(child->children));
+                        if (value)
+                        {
+                            mimeType = value;
+                            xmlFree(value);
+                            const PropertyTree *defOpt =
+                                File::defaultOptionsForType(mimeType.c_str());
+                            if (defOpt)
+                                options = new PropertyTree(*defOpt);
+                        }
+                    }
                     else if (options &&
                              strcmp(reinterpret_cast<const char *>(child->name),
                                     options->name()) == 0)
@@ -472,6 +474,7 @@ void Session::UnsavedFilesRead::execute(Session &session)
                 if (timeStamp > 0 && options)
                     unsavedFiles.insert(
                         std::make_pair(uri, UnsavedFileInfo(timeStamp,
+                                                            mimeType.c_str(),
                                                             options)));
                 else
                     delete options;
@@ -528,6 +531,10 @@ void Session::UnsavedFilesWrite::execute(Session &session)
                         reinterpret_cast<const xmlChar *>(TIME_STAMP),
                         reinterpret_cast<const xmlChar *>(timeStamp));
         g_free(timeStamp);
+        xmlNewTextChild(file, NULL,
+                        reinterpret_cast<const xmlChar *>(MIME_TYPE),
+                        reinterpret_cast<const xmlChar *>(it->second.m_mimeType.
+                                                          c_str()));
         xmlAddChild(file, it->second.m_options->writeXmlElement());
         xmlAddChild(root, file);
     }
@@ -1192,16 +1199,18 @@ bool Session::save()
 
 void Session::addUnsavedFile(const char *uri,
                              long timeStamp,
+                             const char *mimeType,
                              PropertyTree *options)
 {
     std::pair<UnsavedFileTable::iterator, bool> p =
         m_unsavedFiles.insert(
-            std::make_pair(uri, UnsavedFileInfo(timeStamp, options)));
+            std::make_pair(uri, UnsavedFileInfo(timeStamp, mimeType, options)));
     if (!p.second)
     {
         // Update.
         p.first->second.m_timeStamp = timeStamp;
         delete p.first->second.m_options;
+        p.first->second.m_mimeType = mimeType;
         p.first->second.m_options = options;
     }
     queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));

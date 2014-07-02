@@ -34,17 +34,27 @@ private:
     struct ExtensionInfo
     {
         std::string id;
+        bool toggle;
+        bool activeByDefault;
         std::string actionName;
         std::string actionPath;
         std::string menuTitle;
         std::string menuTooltip;
-        ExtensionInfo(const char *extensionId): id(extensionId) {}
+        ExtensionInfo(const char *extensionId):
+            id(extensionId),
+            toggle(false),
+            activeByDefault(false)
+        {}
     };
 
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
         ExtensionTable;
 
     static void activateAction(const ExtensionInfo &extInfo, Window &window);
+
+    static void onActionToggled(const ExtensionInfo &extInfo,
+                                 Window &window,
+                                 bool active);
 
     void registerAllExtensions(Window &window);
 

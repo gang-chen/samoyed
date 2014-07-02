@@ -28,6 +28,7 @@
 #define FONT "font"
 #define TAB_WIDTH "tab-width"
 #define REPLACE_TABS_WITH_SPACES "replace-tabs-with-spaces"
+#define SHOW_LINE_NUMBERS "show-line-numbers"
 
 namespace
 {
@@ -39,6 +40,8 @@ const char *DEFAULT_FONT = "Monospace";
 const int DEFAULT_TAB_WIDTH = 8;
 
 const bool DEFAULT_REPLACE_TABS_WITH_SPACES = true;
+
+const bool DEFAULT_SHOW_LINE_NUMBERS = true;
 
 }
 
@@ -155,20 +158,7 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
     }
 
     // Verify that the file is a text file.
-    char *fileName = g_filename_from_uri(fileUri(), NULL, NULL);
-    if (!fileName)
-    {
-        cp = g_strdup_printf(
-            _("Line %d: Invalid URI \"%s\".\n"),
-            node->line, fileUri());
-        errors.push_back(cp);
-        g_free(cp);
-    }
-    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
-    bool isTextFile = TextFile::isSupportedType(type);
-    g_free(fileName);
-    g_free(type);
-    if (!isTextFile)
+    if (!TextFile::isSupportedType(fileMimeType()))
     {
         cp = g_strdup_printf(
             _("Line %d: File \"%s\" is not a text file.\n"),
@@ -258,6 +248,9 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     gtk_source_view_set_insert_spaces_instead_of_tabs(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(TEXT_EDITOR "/" REPLACE_TABS_WITH_SPACES));
+    gtk_source_view_set_show_line_numbers(
+        GTK_SOURCE_VIEW(view),
+        prefs.get<bool>(TEXT_EDITOR "/" SHOW_LINE_NUMBERS));
     gtk_widget_show_all(sw);
     return true;
 }
@@ -530,6 +523,7 @@ void TextEditor::installPreferences()
     prop.addChild(FONT, std::string(DEFAULT_FONT));
     prop.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
     prop.addChild(REPLACE_TABS_WITH_SPACES, DEFAULT_REPLACE_TABS_WITH_SPACES);
+    prop.addChild(SHOW_LINE_NUMBERS, DEFAULT_SHOW_LINE_NUMBERS);
 }
 
 }

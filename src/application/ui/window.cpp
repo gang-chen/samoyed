@@ -112,6 +112,12 @@ void activateAction(GtkAction *action, boost::function<void ()> *activate)
     (*activate)();
 }
 
+void onActionToggled(GtkToggleAction *action,
+                     boost::function<void (bool)> *toggled)
+{
+    (*toggled)(gtk_toggle_action_get_active(action));
+}
+
 }
 
 namespace Samoyed
@@ -1326,7 +1332,7 @@ void Window::addAction(const char *actionName,
                        const char *actionPath,
                        const char *menuTitle,
                        const char *menuTooltip,
-                       const boost::function<void (Window &window)> &activate)
+                       const boost::function<void (Window &)> &activate)
 {
     ActionData *data = new ActionData;
     data->activate = boost::bind(activate, boost::ref(*this));
@@ -1347,6 +1353,38 @@ void Window::addAction(const char *actionName,
                           GTK_UI_MANAGER_MENUITEM,
                           FALSE);
     data->action = action;
+    data->uiMergeId = uiMergeId;
+    m_actionData[actionName] = data;
+}
+
+void
+Window::addToggleAction(const char *actionName,
+                        const char *actionPath,
+                        const char *menuTitle,
+                        const char *menuTooltip,
+                        const boost::function<void (Window &, bool)> &toggled,
+                        bool activeByDefault)
+{
+    ActionData *data = new ActionData;
+    data->toggled = boost::bind(toggled, boost::ref(*this), _1);
+
+    GtkToggleAction *action =
+        gtk_toggle_action_new(actionName, menuTitle, menuTooltip, NULL);
+    gtk_toggle_action_set_active(action, activeByDefault);
+    g_signal_connect(action, "toggled",
+                     G_CALLBACK(onActionToggled), &data->toggled);
+    gtk_action_group_add_action(m_actions->actionGroup(), GTK_ACTION(action));
+    g_object_unref(action);
+
+    guint uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
+    gtk_ui_manager_add_ui(m_uiManager,
+                          uiMergeId,
+                          actionPath,
+                          actionName,
+                          actionName,
+                          GTK_UI_MANAGER_MENUITEM,
+                          FALSE);
+    data->action = GTK_ACTION(action);
     data->uiMergeId = uiMergeId;
     m_actionData[actionName] = data;
 }

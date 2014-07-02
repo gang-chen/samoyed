@@ -62,11 +62,15 @@ public:
             m_timeStamp(-1),
             m_options(NULL)
         {}
-        UnsavedFileInfo(long timeStamp, PropertyTree *options):
+        UnsavedFileInfo(long timeStamp,
+                        const char *mimeType,
+                        PropertyTree *options):
             m_timeStamp(timeStamp),
+            m_mimeType(mimeType),
             m_options(options)
         {}
         long m_timeStamp;
+        std::string m_mimeType;
         PropertyTree *m_options;
     };
 
@@ -114,6 +118,7 @@ public:
 
     void addUnsavedFile(const char *uri,
                         long timeStamp,
+                        const char *mimeType,
                         PropertyTree *options);
     void removeUnsavedFile(const char *uri,
                            long timeStamp);

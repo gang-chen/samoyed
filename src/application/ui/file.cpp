@@ -137,19 +137,21 @@ void File::installHistories()
     prop.addChild(FILTER, std::string());
 }
 
-void File::registerType(const char *type,
+void File::registerType(const char *mimeType,
                         const Factory &factory,
                         const OptionsSetterFactory &optSetterFactory,
                         const OptionsGetter &defOptGetter,
                         const OptionsEqual &optEqual,
                         const OptionsDescriber &optDescriber)
 {
+    char *type = g_content_type_from_mime_type(mimeType);
     s_typeRegistry.push_back(TypeRecord(type,
                                         factory,
                                         optSetterFactory,
                                         defOptGetter,
                                         optEqual,
                                         optDescriber));
+    g_free(type);
 }
 
 const File::TypeRecord *File::findTypeRecord(const char *type)
@@ -188,9 +190,11 @@ const File::TypeRecord *File::findTypeRecord(const char *type)
     return &(**it);
 }
 
-const PropertyTree *File::defaultOptionsForType(const char *type)
+const PropertyTree *File::defaultOptionsForType(const char *mimeType)
 {
+    char *type = g_content_type_from_mime_type(mimeType);
     const TypeRecord *rec = findTypeRecord(type);
+    g_free(type);
     if (rec)
         return &rec->m_defOptGetter();
     return NULL;
@@ -198,9 +202,11 @@ const PropertyTree *File::defaultOptionsForType(const char *type)
 
 std::pair<File *, Editor *>
 File::open(const char *uri, Project *project,
+           const char *mimeType,
            const PropertyTree &options,
            bool newEditor)
 {
+    char *type;
     File *file;
     Editor *editor;
 
@@ -226,8 +232,15 @@ File::open(const char *uri, Project *project,
         g_error_free(error);
         return std::pair<File *, Editor *>(NULL, NULL);
     }
-    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    gboolean uncertain;
+    type = g_content_type_guess(fileName, NULL, 0, &uncertain);
     g_free(fileName);
+    if (uncertain && mimeType)
+    {
+        g_free(type);
+        type = g_content_type_from_mime_type(mimeType);
+    }
+
     const TypeRecord *rec = findTypeRecord(type);
     if (!rec)
     {
@@ -238,15 +251,17 @@ File::open(const char *uri, Project *project,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to open file \"%s\"."),
             uri);
+        char *desc = g_content_type_get_description(type);
+        g_free(type);
         gtkMessageDialogAddDetails(
             dialog,
             _("The type of file \"%s\" is \"%s\", which is unsupported."),
-            uri, type);
+            uri, desc);
+        g_free(desc);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        g_free(type);
         return std::pair<File *, Editor *>(NULL, NULL);
     }
     g_free(type);
@@ -286,7 +301,9 @@ File::open(const char *uri, Project *project,
         return std::make_pair(file, editor);
     }
 
-    file = rec->m_factory(uri, options);
+    char *matchedMimeType = g_content_type_get_mime_type(rec->m_type.c_str());
+    file = rec->m_factory(uri, matchedMimeType, options);
+    g_free(matchedMimeType);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
     editor = file->createEditorInternally(project);
@@ -316,15 +333,17 @@ void File::openByDialog(Project *project,
             NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 
-    gtk_file_chooser_set_current_folder_uri(
-        GTK_FILE_CHOOSER(dialog),
-        Application::instance().histories().
-            get<std::string>(FILE_OPEN "/" DIRECTORY).c_str());
+    const std::string &lastDir = Application::instance().histories().
+        get<std::string>(FILE_OPEN "/" DIRECTORY);
+    if (!lastDir.empty())
+        gtk_file_chooser_set_current_folder_uri(GTK_FILE_CHOOSER(dialog),
+                                                lastDir.c_str());
 
-    std::string lastFilterName = Application::instance().histories().
+    const std::string &lastFilterMimeType = Application::instance().histories().
         get<std::string>(FILE_OPEN "/" FILTER);
     GtkFileFilter *lastFilter = NULL;
 
+    std::map<GtkFileFilter *, char *> filter2MimeType;
     FilterChangedParam param;
     for (std::list<File::TypeRecord>::const_iterator it =
             s_typeRegistry.begin();
@@ -332,12 +351,17 @@ void File::openByDialog(Project *project,
          ++it)
     {
         GtkFileFilter *filter = gtk_file_filter_new();
-        char *name = g_content_type_get_description(it->m_type.c_str());
-        if (!lastFilter || lastFilterName == name)
+
+        char *mimeType = g_content_type_get_mime_type(it->m_type.c_str());
+        gtk_file_filter_add_mime_type(filter, mimeType);
+        if (!lastFilter || lastFilterMimeType == mimeType)
             lastFilter = filter;
-        gtk_file_filter_set_name(filter, name);
-        g_free(name);
-        gtk_file_filter_add_mime_type(filter, it->m_type.c_str());
+        filter2MimeType[filter] = mimeType;
+
+        char *desc = g_content_type_get_description(it->m_type.c_str());
+        gtk_file_filter_set_name(filter, desc);
+        g_free(desc);
+
         gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
         param.filter2Factory[filter] = &it->m_optSetterFactory;
     }
@@ -346,23 +370,41 @@ void File::openByDialog(Project *project,
                            G_CALLBACK(onFileChooserFilterChanged),
                            &param);
 
-    gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), lastFilter);
+    if (lastFilter)
+        gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), lastFilter);
 
     Window &window = Application::instance().currentWindow();
     Notebook &editorGroup = window.currentEditorGroup();
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
-        GSList *uris, *uri;
-        uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
+        std::list<std::string> errors;
+        char *dirName =
+            gtk_file_chooser_get_current_folder_uri(GTK_FILE_CHOOSER(dialog));
+        if (dirName)
+        {
+            Application::instance().histories().
+                set(FILE_OPEN "/" DIRECTORY, std::string(dirName),
+                    false, errors);
+            g_free(dirName);
+        }
+
+        GtkFileFilter *filter =
+            gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
+        const char *mimeType = filter2MimeType[filter];
+        Application::instance().histories().
+            set(FILE_OPEN "/" FILTER, std::string(mimeType),
+                false, errors);
 
         PropertyTree *options = param.optSetter->options();
         delete param.optSetter;
 
+        GSList *uris, *uri;
+        uris = gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
         for (uri = uris; uri; uri = uri->next)
         {
             std::pair<File *, Editor *> fileEditor =
-                open(static_cast<const char *>(uri->data), project, *options,
-                     true);
+                open(static_cast<const char *>(uri->data), project,
+                     mimeType, *options, true);
             if (fileEditor.first)
             {
                 opened.push_back(fileEditor);
@@ -374,36 +416,15 @@ void File::openByDialog(Project *project,
             }
         }
         delete options;
-        if (uris)
-        {
-            GFile *f = g_file_new_for_uri(
-                static_cast<const char *>(uris->data));
-            GFile *d = g_file_get_parent(f);
-            if (d)
-            {
-                char *dirName = g_file_get_uri(d);
-                std::list<std::string> errors;
-                Application::instance().histories().
-                    set(FILE_OPEN "/" DIRECTORY,
-                        std::string(dirName),
-                        false,
-                        errors);
-                g_free(dirName);
-                g_object_unref(d);
-            }
-            g_object_unref(f);
-        }
-        g_slist_free_full(uris, g_free);
 
-        GtkFileFilter *filter =
-            gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
-        std::list<std::string> errors;
-        Application::instance().histories().
-            set(FILE_OPEN "/" FILTER,
-                std::string(gtk_file_filter_get_name(filter)),
-                false,
-                errors);
+        g_slist_free_full(uris, g_free);
     }
+
+    for (std::map<GtkFileFilter *, char *>::iterator it = filter2MimeType.begin();
+         it != filter2MimeType.end();
+         ++it)
+        g_free(it->second);
+
     gtk_widget_destroy(dialog);
 }
 
@@ -473,7 +494,7 @@ bool File::closeEditor(Editor &editor)
             GTK_MESSAGE_INFO,
             GTK_BUTTONS_CLOSE,
             _("Samoyed cannot close file \"%s\" because %s."),
-            uri(), m_reserved.begin()->c_str());
+            uri(), m_pinned.begin()->c_str());
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -559,7 +580,7 @@ bool File::close()
             GTK_MESSAGE_INFO,
             GTK_BUTTONS_CLOSE,
             _("Samoyed cannot close file \"%s\" because %s."),
-            uri(), m_reserved.begin()->c_str());
+            uri(), m_pinned.begin()->c_str());
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -582,8 +603,11 @@ void File::removeEditor(Editor &editor)
     editor.removeFromListInFile(m_firstEditor, m_lastEditor);
 }
 
-File::File(const char *uri, const PropertyTree &options):
+File::File(const char *uri,
+           const char *mimeType,
+           const PropertyTree &options):
     m_uri(uri),
+    m_mimeType(mimeType),
     m_closing(false),
     m_reopening(false),
     m_loading(false),

@@ -74,8 +74,11 @@ void SourceFile::describeOptions(const PropertyTree &options,
 }
 
 // It is possible that options for text files are given.
-SourceFile::SourceFile(const char *uri, const PropertyTree &options):
+SourceFile::SourceFile(const char *uri,
+                       const char *mimeType,
+                       const PropertyTree &options):
     TextFile(uri,
+             mimeType,
              strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
              options.child(TEXT_FILE_OPTIONS) : options)
 {
@@ -87,37 +90,38 @@ SourceFile::SourceFile(const char *uri, const PropertyTree &options):
         reference(uriEncoding.c_str());
 }
 
-File *SourceFile::create(const char *uri, const PropertyTree &options)
+File *SourceFile::create(const char *uri,
+                         const char *mimeType,
+                         const PropertyTree &options)
 {
-    return new SourceFile(uri, options);
+    return new SourceFile(uri, mimeType, options);
 }
 
-bool SourceFile::isSupportedType(const char *type)
+bool SourceFile::isSupportedType(const char *mimeType)
 {
-    for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
+    bool supported = false;
+    char *type = g_content_type_from_mime_type(mimeType);
+    for (const char **mimeType2 = mimeTypes; *mimeType2; ++mimeType2)
     {
-        char *cType = g_content_type_from_mime_type(*mimeType);
-        bool supported = g_content_type_is_a(type, cType);
-        g_free(cType);
+        char *type2 = g_content_type_from_mime_type(*mimeType2);
+        supported = g_content_type_is_a(type, type2);
+        g_free(type2);
         if (supported)
-            return true;
+            break;
     }
-    return false;
+    g_free(type);
+    return supported;
 }
 
 void SourceFile::registerType()
 {
     for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
-    {
-        char *type = g_content_type_from_mime_type(*mimeType);
-        File::registerType(type,
+        File::registerType(*mimeType,
                            create,
                            createOptionsSetter,
                            defaultOptions,
                            optionsEqual,
                            describeOptions);
-        g_free(type);
-    }
 }
 
 SourceFile::~SourceFile()

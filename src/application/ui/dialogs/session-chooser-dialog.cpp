@@ -164,6 +164,7 @@ NewSessionDialog::NewSessionDialog(GtkWindow *parent)
     GtkWidget *label = gtk_label_new_with_mnemonic(_("_Session name:"));
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     m_name = gtk_entry_new();
+    gtk_entry_set_text(GTK_ENTRY(m_name), "default");
     gtk_entry_set_activates_default(GTK_ENTRY(m_name), TRUE);
     gtk_widget_set_hexpand(m_name, TRUE);
     gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_name);

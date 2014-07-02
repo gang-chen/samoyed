@@ -21,6 +21,7 @@
 #define EDITOR "editor"
 #define FILE_URI "file-uri"
 #define PROJECT_URI "project-uri"
+#define FILE_MIME_TYPE "file-mime-type"
 #define FILE_OPTIONS "file-options"
 
 #define EDITOR_ID "editor"
@@ -85,6 +86,17 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        FILE_MIME_TYPE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_fileMimeType = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
                         m_fileOptions.name()) == 0)
             m_fileOptions.readXmlElement(child, errors);
     }
@@ -122,6 +134,9 @@ xmlNodePtr Editor::XmlElement::write() const
         xmlNewTextChild(node, NULL,
                         reinterpret_cast<const xmlChar *>(PROJECT_URI),
                         reinterpret_cast<const xmlChar *>(projectUri()));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(FILE_MIME_TYPE),
+                    reinterpret_cast<const xmlChar *>(fileMimeType()));
     xmlAddChild(node, m_fileOptions.writeXmlElement());
     return node;
 }
@@ -129,6 +144,7 @@ xmlNodePtr Editor::XmlElement::write() const
 Editor::XmlElement::XmlElement(const Editor &editor):
     Widget::XmlElement(editor),
     m_fileUri(editor.file().uri()),
+    m_fileMimeType(editor.file().mimeType()),
     m_fileOptions(*std::auto_ptr<PropertyTree>(editor.file().options()))
 {
     if (editor.project())
@@ -149,7 +165,9 @@ Editor *Editor::XmlElement::createEditor()
         if (!project)
             m_projectUri.clear();
     }
-    Editor *editor = File::open(fileUri(), project, fileOptions(), true).second;
+    Editor *editor =
+        File::open(fileUri(), project, fileMimeType(), fileOptions(), true).
+        second;
     return editor;
 }
 

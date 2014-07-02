@@ -249,8 +249,11 @@ void TextFile::installHistories()
     prop.addChild(ENCODING, std::string(DEFAULT_ENCODING));
 }
 
-TextFile::TextFile(const char *uri, const PropertyTree &options):
+TextFile::TextFile(const char *uri,
+                   const char *mimeType,
+                   const PropertyTree &options):
     File(uri,
+         mimeType,
          strcmp(options.name(), TEXT_FILE_OPTIONS) == 0 ?
          options.child(FILE_OPTIONS) : options)
 {
@@ -260,29 +263,31 @@ TextFile::TextFile(const char *uri, const PropertyTree &options):
         m_encoding = DEFAULT_ENCODING;
 }
 
-File *TextFile::create(const char *uri, const PropertyTree &options)
+File *TextFile::create(const char *uri,
+                       const char *mimeType,
+                       const PropertyTree &options)
 {
-    return new TextFile(uri, options);
+    return new TextFile(uri, mimeType, options);
 }
 
-bool TextFile::isSupportedType(const char *type)
+bool TextFile::isSupportedType(const char *mimeType)
 {
+    char *type = g_content_type_from_mime_type(mimeType);
     char *textType = g_content_type_from_mime_type("text/plain");
     bool supported = g_content_type_is_a(type, textType);
+    g_free(type);
     g_free(textType);
     return supported;
 }
 
 void TextFile::registerType()
 {
-    char *type = g_content_type_from_mime_type("text/plain");
-    File::registerType(type,
+    File::registerType("text/plain",
                        create,
                        createOptionsSetter,
                        defaultOptions,
                        optionsEqual,
                        describeOptions);
-    g_free(type);
 }
 
 PropertyTree *TextFile::options() const

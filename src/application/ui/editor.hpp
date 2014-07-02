@@ -37,6 +37,7 @@ public:
         const char *fileUri() const { return m_fileUri.c_str(); }
         const char *projectUri() const
         { return m_projectUri.empty() ? NULL : m_projectUri.c_str(); }
+        const char *fileMimeType() const { return m_fileMimeType.c_str(); }
         const PropertyTree &fileOptions() const { return m_fileOptions; }
 
     protected:
@@ -51,6 +52,7 @@ public:
     private:
         std::string m_fileUri;
         std::string m_projectUri;
+        std::string m_fileMimeType;
         PropertyTree m_fileOptions;
     };
 

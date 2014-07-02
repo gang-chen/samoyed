@@ -31,10 +31,12 @@ public:
 
     void recoverFile(const char *fileUri,
                      long timeStamp,
-                     const PropertyTree &options);
+                     const char *fileMimeType,
+                     const PropertyTree &fileOptions);
 
     void discardFile(const char *fileUri,
-                     long timeStamp);
+                     long timeStamp,
+                     const char *fileMimeType);
 
 private:
     struct ExtensionInfo

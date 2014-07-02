@@ -69,7 +69,9 @@ bool FileRecoverersExtensionPoint::registerExtension(const char *extensionId,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                ext->type = value;
+                cp = g_content_type_from_mime_type(value);
+                ext->type = cp;
+                g_free(cp);
                 xmlFree(value);
             }
         }
@@ -97,10 +99,10 @@ void FileRecoverersExtensionPoint::unregisterExtension(const char *extensionId)
 
 void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
                                                long timeStamp,
+                                               const char *fileMimeType,
                                                const PropertyTree &fileOptions)
 {
-    char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
-    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    char *type = g_content_type_from_mime_type(fileMimeType);
     for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
@@ -115,7 +117,7 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
             if (ext)
             {
                 std::pair<File *, Editor *> fileEditor =
-                    File::open(fileUri, NULL, fileOptions, false);
+                    File::open(fileUri, NULL, fileMimeType, fileOptions, false);
                 if (fileEditor.first)
                 {
                     if (!fileEditor.second->parent())
@@ -135,15 +137,14 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
             }
         }
     }
-    g_free(fileName);
     g_free(type);
 }
 
 void FileRecoverersExtensionPoint::discardFile(const char *fileUri,
-                                               long timeStamp)
+                                               long timeStamp,
+                                               const char *fileMimeType)
 {
-    char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
-    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    char *type = g_content_type_from_mime_type(fileMimeType);
     for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
@@ -163,7 +164,6 @@ void FileRecoverersExtensionPoint::discardFile(const char *fileUri,
             }
         }
     }
-    g_free(fileName);
     g_free(type);
 }
 

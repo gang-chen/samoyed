@@ -167,7 +167,10 @@ void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
         const Session::UnsavedFileInfo &info = bar->m_files[uri];
         static_cast<FileRecoverersExtensionPoint &>(Application::instance().
             extensionPointManager().extensionPoint(FILE_RECOVERERS)).
-            recoverFile(uri, info.m_timeStamp, *info.m_options);
+            recoverFile(uri,
+                        info.m_timeStamp,
+                        info.m_mimeType.c_str(),
+                        *info.m_options);
         Application::instance().session().removeUnsavedFile(uri,
                                                             info.m_timeStamp);
         gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
@@ -192,7 +195,7 @@ void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
         const Session::UnsavedFileInfo &info = bar->m_files[uri];
         static_cast<FileRecoverersExtensionPoint &>(Application::instance().
             extensionPointManager().extensionPoint(FILE_RECOVERERS)).
-            discardFile(uri, info.m_timeStamp);
+            discardFile(uri, info.m_timeStamp, info.m_mimeType.c_str());
         Application::instance().session().removeUnsavedFile(uri,
                                                             info.m_timeStamp);
         gtk_list_store_remove(GTK_LIST_STORE(model), &iter);

@@ -19,6 +19,8 @@ public:
     {}
 
     virtual void activateAction(Window &window) = 0;
+
+    virtual void onActionToggled(Window &window, bool active) = 0;
 };
 
 }

@@ -33,8 +33,7 @@ void FileObserversExtensionPoint::registerExtensionInternally(
     ExtensionInfo &extInfo,
     bool openFile)
 {
-    char *fileName = g_filename_from_uri(file.uri(), NULL, NULL);
-    char *type = g_content_type_guess(fileName, NULL, 0, NULL);
+    char *type = g_content_type_from_mime_type(file.mimeType());
     if (g_content_type_is_a(type, extInfo.type.c_str()))
     {
         FileObserverExtension *ext =
@@ -48,7 +47,6 @@ void FileObserversExtensionPoint::registerExtensionInternally(
         if (openFile)
             ob->onFileOpened();
     }
-    g_free(fileName);
     g_free(type);
 }
 
@@ -107,7 +105,9 @@ bool FileObserversExtensionPoint::registerExtension(const char *extensionId,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                ext->type = value;
+                cp = g_content_type_from_mime_type(value);
+                ext->type = cp;
+                g_free(cp);
                 xmlFree(value);
             }
         }
