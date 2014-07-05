@@ -107,15 +107,16 @@ void addEditorRemovedCallbacks(Samoyed::Widget &widget)
         addChildRemovedCallback(onEditorRemoved);
 }
 
-void activateAction(GtkAction *action, boost::function<void ()> *activate)
+void activateAction(GtkAction *action,
+                    boost::function<void (GtkAction *)> *activate)
 {
-    (*activate)();
+    (*activate)(action);
 }
 
 void onActionToggled(GtkToggleAction *action,
-                     boost::function<void (bool)> *toggled)
+                     boost::function<void (GtkToggleAction *)> *toggled)
 {
-    (*toggled)(gtk_toggle_action_get_active(action));
+    (*toggled)(action);
 }
 
 }
@@ -1328,14 +1329,15 @@ gboolean Window::onKeyPressEvent(GtkWidget *widget,
     return handled;
 }
 
-void Window::addAction(const char *actionName,
-                       const char *actionPath,
-                       const char *menuTitle,
-                       const char *menuTooltip,
-                       const boost::function<void (Window &)> &activate)
+GtkAction *Window::addAction(
+    const char *actionName,
+    const char *actionPath,
+    const char *menuTitle,
+    const char *menuTooltip,
+    const boost::function<void (Window &, GtkAction *)> &activate)
 {
     ActionData *data = new ActionData;
-    data->activate = boost::bind(activate, boost::ref(*this));
+    data->activate = boost::bind(activate, boost::ref(*this), _1);
 
     GtkAction *action =
         gtk_action_new(actionName, menuTitle, menuTooltip, NULL);
@@ -1355,15 +1357,16 @@ void Window::addAction(const char *actionName,
     data->action = action;
     data->uiMergeId = uiMergeId;
     m_actionData[actionName] = data;
+    return action;
 }
 
-void
-Window::addToggleAction(const char *actionName,
-                        const char *actionPath,
-                        const char *menuTitle,
-                        const char *menuTooltip,
-                        const boost::function<void (Window &, bool)> &toggled,
-                        bool activeByDefault)
+GtkToggleAction *Window::addToggleAction(
+    const char *actionName,
+    const char *actionPath,
+    const char *menuTitle,
+    const char *menuTooltip,
+    const boost::function<void (Window &, GtkToggleAction *)> &toggled,
+    bool activeByDefault)
 {
     ActionData *data = new ActionData;
     data->toggled = boost::bind(toggled, boost::ref(*this), _1);
@@ -1387,6 +1390,7 @@ Window::addToggleAction(const char *actionName,
     data->action = GTK_ACTION(action);
     data->uiMergeId = uiMergeId;
     m_actionData[actionName] = data;
+    return action;
 }
 
 void Window::removeAction(const char *actionName)

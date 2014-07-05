@@ -34,28 +34,72 @@ namespace Samoyed
 {
 
 void ActionsExtensionPoint::activateAction(const ExtensionInfo &extInfo,
-                                           Window &window)
+                                           Window &window,
+                                           GtkAction *action)
 {
     ActionExtension *ext = static_cast<ActionExtension *>(
         Application::instance().pluginManager().
         acquireExtension(extInfo.id.c_str()));
     if (!ext)
         return;
-    ext->activateAction(window);
+    ext->activateAction(window, action);
     ext->release();
 }
 
 void ActionsExtensionPoint::onActionToggled(const ExtensionInfo &extInfo,
                                             Window &window,
-                                            bool active)
+                                            GtkToggleAction *action)
 {
     ActionExtension *ext = static_cast<ActionExtension *>(
         Application::instance().pluginManager().
         acquireExtension(extInfo.id.c_str()));
     if (!ext)
         return;
-    ext->onActionToggled(window, active);
+    ext->onActionToggled(window, action);
     ext->release();
+}
+
+void
+ActionsExtensionPoint::registerExtensionInternally(Window &window,
+                                                   const ExtensionInfo &extInfo)
+{
+    if (extInfo.toggle)
+    {
+        GtkToggleAction *action =
+            window.addToggleAction(extInfo.actionName.c_str(),
+                                   extInfo.actionPath.c_str(),
+                                   extInfo.menuTitle.c_str(),
+                                   extInfo.menuTooltip.c_str(),
+                                   boost::bind(onActionToggled,
+                                               boost::cref(extInfo), _1, _2),
+                                   extInfo.activeByDefault);
+        ActionExtension *ext = static_cast<ActionExtension *>(
+            Application::instance().pluginManager().
+            acquireExtension(extInfo.id.c_str()));
+        if (ext)
+        {
+            ext->addToggleAction(window, action);
+            ext->release();
+        }
+    }
+    else
+    {
+        GtkAction *action =
+            window.addAction(extInfo.actionName.c_str(),
+                             extInfo.actionPath.c_str(),
+                             extInfo.menuTitle.c_str(),
+                             extInfo.menuTooltip.c_str(),
+                             boost::bind(activateAction,
+                                         boost::cref(extInfo), _1, _2));
+        ActionExtension *ext = static_cast<ActionExtension *>(
+            Application::instance().pluginManager().
+            acquireExtension(extInfo.id.c_str()));
+        if (ext)
+        {
+            ext->addAction(window, action);
+            ext->release();
+        }
+    }
 }
 
 ActionsExtensionPoint::ActionsExtensionPoint():
@@ -92,24 +136,7 @@ void ActionsExtensionPoint::registerAllExtensions(Window &window)
     for (ExtensionTable::const_iterator it = m_extensions.begin();
          it != m_extensions.end();
          ++it)
-    {
-        if (it->second->toggle)
-            window.addToggleAction(it->second->actionName.c_str(),
-                                   it->second->actionPath.c_str(),
-                                   it->second->menuTitle.c_str(),
-                                   it->second->menuTooltip.c_str(),
-                                   boost::bind(onActionToggled,
-                                               boost::cref(*it->second),
-                                               _1, _2),
-                                   it->second->activeByDefault);
-        else
-            window.addAction(it->second->actionName.c_str(),
-                             it->second->actionPath.c_str(),
-                             it->second->menuTitle.c_str(),
-                             it->second->menuTooltip.c_str(),
-                             boost::bind(activateAction,
-                                         boost::cref(*it->second), _1));
-    }
+        registerExtensionInternally(window, *it->second);
 }
 
 bool ActionsExtensionPoint::registerExtension(const char *extensionId,
@@ -232,23 +259,7 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
-    {
-        if (ext->toggle)
-            window->addToggleAction(ext->actionName.c_str(),
-                                    ext->actionPath.c_str(),
-                                    ext->menuTitle.c_str(),
-                                    ext->menuTooltip.c_str(),
-                                    boost::bind(onActionToggled,
-                                                boost::cref(*ext), _1, _2),
-                                    ext->activeByDefault);
-        else
-            window->addAction(ext->actionName.c_str(),
-                              ext->actionPath.c_str(),
-                              ext->menuTitle.c_str(),
-                              ext->menuTooltip.c_str(),
-                              boost::bind(activateAction,
-                                          boost::cref(*ext), _1));
-    }
+        registerExtensionInternally(*window, *ext);
 
     return true;
 }

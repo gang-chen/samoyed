@@ -227,18 +227,20 @@ public:
     void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                 int index);
 
-    void addAction(const char *actionName,
-                   const char *actionPath,
-                   const char *menuTitle,
-                   const char *menuTooltip,
-                   const boost::function<void (Window &)> &activate);
-    void addToggleAction(const char *actionName,
+    GtkAction *addAction(const char *actionName,
                          const char *actionPath,
                          const char *menuTitle,
                          const char *menuTooltip,
                          const boost::function<void (Window &,
-                                                      bool)> &toggled,
-                         bool activeByDefault);
+                                                     GtkAction *)> &activate);
+    GtkToggleAction *addToggleAction(
+        const char *actionName,
+        const char *actionPath,
+        const char *menuTitle,
+        const char *menuTooltip,
+        const boost::function<void (Window &,
+                                    GtkToggleAction *)> &toggled,
+        bool activeByDefault);
     void removeAction(const char *actionName);
 
     bool toolbarVisible() const;
@@ -288,8 +290,8 @@ private:
     {
         GtkAction *action;
         guint uiMergeId;
-        boost::function<void ()> activate;
-        boost::function<void (bool)> toggled;
+        boost::function<void (GtkAction *)> activate;
+        boost::function<void (GtkToggleAction *)> toggled;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
