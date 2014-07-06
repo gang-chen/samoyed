@@ -62,13 +62,17 @@ private:
     typedef std::map<ComparablePointer<const char>, ExtensionInfo *>
         ExtensionTable;
 
-    static void activateAction(const ExtensionInfo &extInfo, 
+    static void activateAction(const ExtensionInfo &extInfo,
                                Window &window,
                                GtkAction *action);
 
     static void onActionToggled(const ExtensionInfo &extInfo,
                                  Window &window,
                                  GtkToggleAction *);
+
+    static bool isActionSensitive(const ExtensionInfo &extInfo,
+                                   Window &window,
+                                   GtkAction *action);
 
     void registerExtensionInternally(Window &window, const ExtensionInfo &ext);
 

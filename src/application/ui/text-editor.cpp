@@ -19,6 +19,8 @@
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksourcebuffer.h>
 #include <gtksourceview/gtksourceview.h>
+#include <gtksourceview/gtksourcelanguage.h>
+#include <gtksourceview/gtksourcelanguagemanager.h>
 #include <libxml/tree.h>
 
 #define EDITOR "editor"
@@ -29,6 +31,9 @@
 #define TAB_WIDTH "tab-width"
 #define REPLACE_TABS_WITH_SPACES "replace-tabs-with-spaces"
 #define SHOW_LINE_NUMBERS "show-line-numbers"
+#define HIGHLIGHT_SYNTAX "highlight-syntax"
+#define INDENT "indent"
+#define INDENT_WIDTH "indent-width"
 
 namespace
 {
@@ -42,6 +47,8 @@ const int DEFAULT_TAB_WIDTH = 8;
 const bool DEFAULT_REPLACE_TABS_WITH_SPACES = true;
 
 const bool DEFAULT_SHOW_LINE_NUMBERS = true;
+
+const int DEFAULT_INDENT_WIDTH = 4;
 
 }
 
@@ -251,6 +258,21 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     gtk_source_view_set_show_line_numbers(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(TEXT_EDITOR "/" SHOW_LINE_NUMBERS));
+    // TODO: Support syntax highlighting and indenting for C/C++ by ourselves.
+    char *fileType = g_content_type_from_mime_type(file().mimeType());
+    GtkSourceLanguage *lang = gtk_source_language_manager_guess_language(
+        gtk_source_language_manager_get_default(), NULL, fileType);
+    g_free(fileType);
+    gtk_source_buffer_set_language(buffer, lang);
+    gtk_source_buffer_set_highlight_syntax(
+        buffer,
+        prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
+    gtk_source_view_set_auto_indent(
+        GTK_SOURCE_VIEW(view),
+        prefs.get<bool>(TEXT_EDITOR "/" INDENT));
+    gtk_source_view_set_indent_width(
+        GTK_SOURCE_VIEW(view),
+        prefs.get<int>(TEXT_EDITOR "/" INDENT_WIDTH));
     gtk_widget_show_all(sw);
     return true;
 }
@@ -524,6 +546,9 @@ void TextEditor::installPreferences()
     prop.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
     prop.addChild(REPLACE_TABS_WITH_SPACES, DEFAULT_REPLACE_TABS_WITH_SPACES);
     prop.addChild(SHOW_LINE_NUMBERS, DEFAULT_SHOW_LINE_NUMBERS);
+    prop.addChild(HIGHLIGHT_SYNTAX, true);
+    prop.addChild(INDENT, true);
+    prop.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
 }
 
 }

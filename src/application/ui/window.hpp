@@ -240,15 +240,19 @@ public:
                          const char *actionPath,
                          const char *menuTitle,
                          const char *menuTooltip,
-                         boost::function<void (Window &,
-                                               GtkAction *)> activate);
+                         const boost::function<void (Window &,
+                                                     GtkAction *)> &activate,
+                         const boost::function<bool (Window &,
+                                                     GtkAction *)> &sensitive);
     GtkToggleAction *addToggleAction(
         const char *actionName,
         const char *actionPath,
         const char *menuTitle,
         const char *menuTooltip,
-        boost::function<void (Window &,
-                              GtkToggleAction *)> toggled,
+        const boost::function<void (Window &,
+                                    GtkToggleAction *)> &toggled,
+        const boost::function<bool (Window &,
+                                    GtkAction *)> &sensitive,
         bool activeByDefault);
     void removeAction(const char *actionName);
 
@@ -306,6 +310,7 @@ private:
         guint uiMergeId;
         boost::function<void (GtkAction *)> activate;
         boost::function<void (GtkToggleAction *)> toggled;
+        boost::function<bool (GtkAction *)> sensitive;
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -327,6 +332,9 @@ private:
     static void onToolbarVisibilityChanged(GtkWidget *toolbar,
                                            GParamSpec *spec,
                                            Window *window);
+    static void onStatusBarVisibilityChanged(GtkWidget *statusBar,
+                                             GParamSpec *spec,
+                                             Window *window);
 
     static void showHideSidePane(GtkToggleAction *action, Window *window);
     static void onSidePaneVisibilityChanged(GtkWidget *pane,

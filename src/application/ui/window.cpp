@@ -10,8 +10,10 @@
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
 #include "editor.hpp"
+#include "text-editor.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
+#include "utilities/worker.hpp"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -527,6 +529,16 @@ bool Window::build(const Configuration &config)
                             GTK_POS_BOTTOM, 1, 1);
     g_signal_connect_after(m_toolbar, "notify::visible",
                            G_CALLBACK(onToolbarVisibilityChanged), this);
+
+    m_statusBar = gtk_grid_new();
+    Worker::setupStatusBar(m_statusBar);
+    TextEditor::setupStatusBar(*this, m_statusBar);
+    gtk_widget_set_hexpand(m_statusBar, TRUE);
+    gtk_grid_attach_next_to(GTK_GRID(grid),
+                            m_statusBar, m_toolbar,
+                            GTK_POS_BOTTOM, 1, 1);
+    g_signal_connect_after(m_statusBar, "notify::visible",
+                           G_CALLBACK(onStatusBarVisibilityChanged), this);
 
     g_signal_connect(window, "delete-event",
                      G_CALLBACK(onDeleteEvent), this);
@@ -1312,6 +1324,16 @@ void Window::setToolbarVisible(bool visible)
     gtk_widget_set_visible(m_toolbar, visible);
 }
 
+bool Window::statusBarVisible() const
+{
+    return gtk_widget_get_visible(m_statusBar);
+}
+
+void Window::setStatusBarVisible(bool visible)
+{
+    gtk_widget_set_visible(m_statusBar, visible);
+}
+
 void Window::enterFullScreen()
 {
     m_toolbarVisible = gtk_widget_get_visible(m_toolbar);
@@ -1372,6 +1394,14 @@ void Window::onToolbarVisibilityChanged(GtkWidget *toolbar,
         gtk_widget_get_visible(toolbar));
 }
 
+void Window::onStatusBarVisibilityChanged(GtkWidget *statusBar,
+                                          GParamSpec *spec,
+                                          Window *window)
+{
+    window->m_actions->onStatusBarVisibilityChanged(
+        gtk_widget_get_visible(statusBar));
+}
+
 gboolean Window::onKeyPressEvent(GtkWidget *widget,
                                  GdkEvent *event,
                                  Window *window)
@@ -1400,10 +1430,12 @@ GtkAction *Window::addAction(
     const char *actionPath,
     const char *menuTitle,
     const char *menuTooltip,
-    const boost::function<void (Window &, GtkAction *)> &activate)
+    const boost::function<void (Window &, GtkAction *)> &activate,
+    const boost::function<bool (Window &, GtkAction *)> &sensitive)
 {
     ActionData *data = new ActionData;
     data->activate = boost::bind(activate, boost::ref(*this), _1);
+    data->sensitive = boost::bind(sensitive, boost::ref(*this), _1);
 
     GtkAction *action =
         gtk_action_new(actionName, menuTitle, menuTooltip, NULL);
@@ -1432,10 +1464,12 @@ GtkToggleAction *Window::addToggleAction(
     const char *menuTitle,
     const char *menuTooltip,
     const boost::function<void (Window &, GtkToggleAction *)> &toggled,
+    const boost::function<bool (Window &, GtkAction *)> &sensitive,
     bool activeByDefault)
 {
     ActionData *data = new ActionData;
     data->toggled = boost::bind(toggled, boost::ref(*this), _1);
+    data->sensitive = boost::bind(sensitive, boost::ref(*this), _1);
 
     GtkToggleAction *action =
         gtk_toggle_action_new(actionName, menuTitle, menuTooltip, NULL);
@@ -1466,6 +1500,16 @@ void Window::removeAction(const char *actionName)
     gtk_action_group_remove_action(m_actions->actionGroup(), data->action);
     m_actionData.erase(actionName);
     delete data;
+}
+
+void Window::updateActionsSensitivity()
+{
+    for (std::map<std::string, ActionData *>::iterator it =
+         m_actionData.begin();
+         it != m_actionData.end();
+         ++it)
+        gtk_action_set_sensitive(it->second->action,
+                                 it->second->sensitive(it->second->action));
 }
 
 }

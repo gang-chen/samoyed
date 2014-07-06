@@ -64,6 +64,7 @@
                 action="split-editor-horizontally"/>
       <separator/>
       <menuitem name="toolbar" action="show-hide-toolbar"/>
+      <menuitem name="status-bar" action="show-hide-status-bar"/>
       <placeholder name="side-panes"/>
       <separator/>
       <menuitem name="full-screen" action="enter-leave-full-screen"/>

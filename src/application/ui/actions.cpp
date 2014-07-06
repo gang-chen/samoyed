@@ -290,6 +290,11 @@ void showHideToolbar(GtkToggleAction *action, Samoyed::Window *window)
     window->setToolbarVisible(gtk_toggle_action_get_active(action));
 }
 
+void showHideStatusBar(GtkToggleAction *action, Samoyed::Window *window)
+{
+    window->setStatusBarVisible(gtk_toggle_action_get_active(action));
+}
+
 void enterLeaveFullScreen(GtkToggleAction *action, Samoyed::Window *window)
 {
     if (gtk_toggle_action_get_active(action))
@@ -411,6 +416,8 @@ toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
 {
     { "show-hide-toolbar", NULL, N_("_Toolbar"), NULL,
       N_("Show or hide toolbar"), G_CALLBACK(showHideToolbar), TRUE },
+    { "show-hide-status-bar", NULL, N_("_Status Bar"), NULL,
+      N_("Show or hide status bar"), G_CALLBACK(showHideStatusBar), TRUE },
     { "enter-leave-full-screen", GTK_STOCK_FULLSCREEN,
       N_("_Full Screen"), "F11",
       N_("Enter or leave full screen mode"),
@@ -556,6 +563,13 @@ Actions::~Actions()
 void Actions::onToolbarVisibilityChanged(bool visibility)
 {
     gtk_toggle_action_set_active(toggleAction(TOGGLE_ACTION_SHOW_HIDE_TOOLBAR),
+                                 visibility);
+}
+
+void Actions::onStatusBarVisibilityChanged(bool visibility)
+{
+    gtk_toggle_action_set_active(toggleAction(
+                                     TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR),
                                  visibility);
 }
 

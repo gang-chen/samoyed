@@ -76,6 +76,7 @@ public:
     enum ToggleActionIndex
     {
         TOGGLE_ACTION_SHOW_HIDE_TOOLBAR,
+        TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR,
         TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN,
 
         N_TOGGLE_ACTIONS
@@ -94,6 +95,7 @@ public:
     GtkActionGroup *actionGroup() const { return m_actionGroup; }
 
     void onToolbarVisibilityChanged(bool visibility);
+    void onStatusBarVisibilityChanged(bool visibility);
     void onWindowFullScreenChanged(bool inFullScreen);
 
 private:

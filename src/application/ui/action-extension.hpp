@@ -19,12 +19,14 @@ public:
     {}
 
     virtual void addAction(Window &window, GtkAction *action) = 0;
-    
+
     virtual void addToggleAction(Window &window, GtkToggleAction *action) = 0;
 
     virtual void activateAction(Window &window, GtkAction *action) = 0;
 
     virtual void onActionToggled(Window &window, GtkToggleAction *action) = 0;
+
+    virtual bool isActionSensitive(Window &window, GtkAction *action) = 0;
 };
 
 }

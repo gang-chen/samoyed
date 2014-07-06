@@ -60,6 +60,22 @@ void ActionsExtensionPoint::onActionToggled(const ExtensionInfo &extInfo,
     ext->release();
 }
 
+bool ActionsExtensionPoint::isActionSensitive(const ExtensionInfo &extInfo,
+                                              Window &window,
+                                              GtkAction *action)
+{
+    if (extInfo.alwaysSensitive)
+        return true;
+    ActionExtension *ext = static_cast<ActionExtension *>(
+        Application::instance().pluginManager().
+        acquireExtension(extInfo.id.c_str()));
+    if (!ext)
+        return true;
+    bool sensitive = ext->isActionSensitive(window, action);
+    ext->release();
+    return sensitive;
+}
+
 void
 ActionsExtensionPoint::registerExtensionInternally(Window &window,
                                                    const ExtensionInfo &extInfo)
@@ -72,6 +88,8 @@ ActionsExtensionPoint::registerExtensionInternally(Window &window,
                                    extInfo.menuTitle.c_str(),
                                    extInfo.menuTooltip.c_str(),
                                    boost::bind(onActionToggled,
+                                               boost::cref(extInfo), _1, _2),
+                                   boost::bind(isActionSensitive,
                                                boost::cref(extInfo), _1, _2),
                                    extInfo.activeByDefault);
         ActionExtension *ext = static_cast<ActionExtension *>(
@@ -91,6 +109,8 @@ ActionsExtensionPoint::registerExtensionInternally(Window &window,
                              extInfo.menuTitle.c_str(),
                              extInfo.menuTooltip.c_str(),
                              boost::bind(activateAction,
+                                         boost::cref(extInfo), _1, _2),
+                             boost::bind(isActionSensitive,
                                          boost::cref(extInfo), _1, _2));
         ActionExtension *ext = static_cast<ActionExtension *>(
             Application::instance().pluginManager().
