@@ -840,11 +840,77 @@ const Notebook &Window::currentEditorGroup() const
     return static_cast<const Notebook &>(*current);
 }
 
-Notebook *Window::splitCurrentEditorGroup(Side side)
+Notebook *Window::neighborEditorGroup(Notebook &editorGroup, Side side)
 {
-    Widget &current = currentEditorGroup();
+    for (Widget *child = &editorGroup, *parent = child->parent();
+         strcmp(parent->id(), PANED_ID) == 0;
+         child = parent, parent = parent->parent())
+    {
+        Paned *paned = static_cast<Paned *>(parent);
+        switch (side)
+        {
+        case SIDE_TOP:
+            if (paned->orientation() == Paned::ORIENTATION_VERTICAL &&
+                &paned->child(1) == child)
+                return static_cast<Notebook *>(&paned->child(0));
+            break;
+        case SIDE_BOTTOM:
+            if (paned->orientation() == Paned::ORIENTATION_VERTICAL &&
+                &paned->child(0) == child)
+                return static_cast<Notebook *>(&paned->child(1));
+            break;
+        case SIDE_LEFT:
+            if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL &&
+                &paned->child(1) == child)
+                return static_cast<Notebook *>(&paned->child(0));
+            break;
+        default:
+            if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL &&
+                &paned->child(0) == child)
+                return static_cast<Notebook *>(&paned->child(1));
+        }
+    }
+    return NULL;
+}
+
+const Notebook *Window::neighborEditorGroup(const Notebook &editorGroup,
+                                            Side side) const
+{
+    for (const Widget *child = &editorGroup, *parent = child->parent();
+         strcmp(parent->id(), PANED_ID) == 0;
+         child = parent, parent = parent->parent())
+    {
+        const Paned *paned = static_cast<const Paned *>(parent);
+        switch (side)
+        {
+        case SIDE_TOP:
+            if (paned->orientation() == Paned::ORIENTATION_VERTICAL &&
+                &paned->child(1) == child)
+                return static_cast<const Notebook *>(&paned->child(0));
+            break;
+        case SIDE_BOTTOM:
+            if (paned->orientation() == Paned::ORIENTATION_VERTICAL &&
+                &paned->child(0) == child)
+                return static_cast<const Notebook *>(&paned->child(1));
+            break;
+        case SIDE_LEFT:
+            if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL &&
+                &paned->child(1) == child)
+                return static_cast<const Notebook *>(&paned->child(0));
+            break;
+        default:
+            if (paned->orientation() == Paned::ORIENTATION_HORIZONTAL &&
+                &paned->child(0) == child)
+                return static_cast<const Notebook *>(&paned->child(1));
+        }
+    }
+    return NULL;
+}
+
+Notebook *Window::splitEditorGroup(Notebook &editorGroup, Side side)
+{
     Notebook *newEditorGroup =
-        Notebook::create(*(current.id() + 13) == '0' ?
+        Notebook::create(*(editorGroup.id() + 13) == '0' ?
                          EDITOR_GROUP_ID "-1" : EDITOR_GROUP_ID "-0",
                          EDITOR_GROUP_ID,
                          true, true, false);
@@ -852,19 +918,19 @@ Notebook *Window::splitCurrentEditorGroup(Side side)
     {
     case SIDE_TOP:
         Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
-                     *newEditorGroup, current, 0.5);
+                     *newEditorGroup, editorGroup, 0.5);
         break;
     case SIDE_BOTTOM:
         Paned::split(PANED_ID, Paned::ORIENTATION_VERTICAL,
-                     current, *newEditorGroup, 0.5);
+                     editorGroup, *newEditorGroup, 0.5);
         break;
     case SIDE_LEFT:
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
-                     *newEditorGroup, current, 0.5);
+                     *newEditorGroup, editorGroup, 0.5);
         break;
     default:
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
-                     current, *newEditorGroup, 0.5);
+                     editorGroup, *newEditorGroup, 0.5);
     }
     return newEditorGroup;
 }

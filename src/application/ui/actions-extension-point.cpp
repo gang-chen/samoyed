@@ -24,6 +24,7 @@
 
 #define ACTIONS "actions"
 #define TOGGLE "toggle"
+#define ALWAYS_SENSITIVE "always-sensitive"
 #define ACTIVE_BY_DEFAULT "active-by-default"
 #define ACTION_NAME "action-name"
 #define ACTION_PATH "action-path"
@@ -167,6 +168,29 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                         _("Line %d: Invalid Boolean value \"%s\" for element "
                           "\"%s\". %s.\n"),
                     child->line, value, TOGGLE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        ALWAYS_SENSITIVE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                try
+                {
+                    ext->alwaysSensitive = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                    child->line, value, ALWAYS_SENSITIVE, exp.what());
                     errors.push_back(cp);
                     g_free(cp);
                 }

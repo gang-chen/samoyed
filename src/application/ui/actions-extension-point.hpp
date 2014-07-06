@@ -34,7 +34,18 @@ private:
     struct ExtensionInfo
     {
         std::string id;
+        /**
+         * Is this action a toggle action?
+         */
         bool toggle;
+        /**
+         * Is this action always sensitive?  If so, the extension does not need
+         * to implement 'isActionSensitive()'.
+         */
+        bool alwaysSensitive;
+        /**
+         * Is this toggle action active by default?  N/A for non-toggle actions.
+         */
         bool activeByDefault;
         std::string actionName;
         std::string actionPath;
@@ -43,6 +54,7 @@ private:
         ExtensionInfo(const char *extensionId):
             id(extensionId),
             toggle(false),
+            alwaysSensitive(false),
             activeByDefault(false)
         {}
     };

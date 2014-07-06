@@ -217,12 +217,21 @@ public:
     const Notebook &currentEditorGroup() const;
 
     /**
-     * Split the current editor group into two.
-     * @param side The side of the current editor group where the new editor
-     * group will adjoin.
+     * Get the neighbor of an editor group.
+     * @param side The side of the editor group where the neighbor adjoins.
+     * @return The neighbor editor group.
+     */
+    Notebook *neighborEditorGroup(Notebook &editorGroup, Side side);
+    const Notebook *neighborEditorGroup(const Notebook &editorGroup,
+                                        Side side) const;
+
+    /**
+     * Split an editor group into two.
+     * @param side The side of the editor group where the new editor group will
+     * adjoin.
      * @return The new editor group.
      */
-    Notebook *splitCurrentEditorGroup(Side side);
+    Notebook *splitEditorGroup(Notebook &editorGroup, Side side);
 
     void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                 int index);
@@ -231,20 +240,25 @@ public:
                          const char *actionPath,
                          const char *menuTitle,
                          const char *menuTooltip,
-                         const boost::function<void (Window &,
-                                                     GtkAction *)> &activate);
+                         boost::function<void (Window &,
+                                               GtkAction *)> activate);
     GtkToggleAction *addToggleAction(
         const char *actionName,
         const char *actionPath,
         const char *menuTitle,
         const char *menuTooltip,
-        const boost::function<void (Window &,
-                                    GtkToggleAction *)> &toggled,
+        boost::function<void (Window &,
+                              GtkToggleAction *)> toggled,
         bool activeByDefault);
     void removeAction(const char *actionName);
 
+    void updateActionsSensitivity();
+
     bool toolbarVisible() const;
     void setToolbarVisible(bool visible);
+
+    bool statusBarVisible() const;
+    void setStatusBarVisible(bool visible);
 
     bool inFullScreen() const { return m_inFullScreen; }
     void enterFullScreen();
@@ -339,6 +353,8 @@ private:
     GtkWidget *m_menuBar;
 
     GtkWidget *m_toolbar;
+
+    GtkWidget *m_statusBar;
 
     Widget *m_child;
 

@@ -50,6 +50,9 @@
       <menuitem name="preferences" action="edit-preferences"/>
     </menu>
 
+    <menu name="search" action="search">
+    </menu>
+
     <menu name="view" action="view">
       <menuitem name="new-window" action="create-window"/>
       <menuitem name="new-editor" action="create-editor"/>
