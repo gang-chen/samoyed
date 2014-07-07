@@ -622,6 +622,7 @@ File::File(const char *uri,
     m_loader(NULL)
 {
     Application::instance().addFile(*this);
+    Window::onFileOpened(uri);
 }
 
 File::~File()
@@ -630,6 +631,7 @@ File::~File()
     assert(!m_superUndo);
     assert(!m_loader);
 
+    Window::onFileClosed(uri());
     Application::instance().removeFile(*this);
 
     delete m_superUndo;

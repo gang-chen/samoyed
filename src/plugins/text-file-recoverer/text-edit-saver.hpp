@@ -50,19 +50,21 @@ private:
     class ReplayFileCreation: public ReplayFileOperation
     {
     public:
-        ReplayFileCreation(long timeStamp): m_timeStamp(timeStamp) {}
+        ReplayFileCreation(char *fileName): m_fileName(fileName) {}
+        ~ReplayFileCreation() { g_free(m_fileName); }
         virtual bool execute(TextEditSaver &saver);
     private:
-        long m_timeStamp;
+        char *m_fileName;
     };
 
     class ReplayFileRemoval: public ReplayFileOperation
     {
     public:
-        ReplayFileRemoval(long timeStamp): m_timeStamp(timeStamp) {}
+        ReplayFileRemoval(char *fileName): m_fileName(fileName) {}
+        ~ReplayFileRemoval() { g_free(m_fileName); }
         virtual bool execute(TextEditSaver &saver);
     private:
-        long m_timeStamp;
+        char *m_fileName;
     };
 
     class ReplayFileAppending: public ReplayFileOperation

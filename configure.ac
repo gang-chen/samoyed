@@ -83,6 +83,7 @@ AC_CONFIG_FILES([
 Makefile
 data/Makefile
 data/plugins/Makefile
+data/plugins/search/Makefile
 data/plugins/terminal/Makefile
 data/plugins/text-file-recoverer/Makefile
 po/Makefile.in
@@ -95,6 +96,7 @@ src/application/ui/dialogs/Makefile
 src/application/utilities/Makefile
 src/launcher/Makefile
 src/plugins/Makefile
+src/plugins/search/Makefile
 src/plugins/terminal/Makefile
 src/plugins/text-file-recoverer/Makefile
 ])

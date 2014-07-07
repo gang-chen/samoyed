@@ -143,6 +143,9 @@ TextFile::OptionsSetter::OptionsSetter()
             lastEncIndex = i;
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(combo), lastEncIndex);
+    gtk_widget_set_tooltip_text(
+        combo,
+        _("Select in which character encoding the text files are encoded"));
     m_gtkWidget = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(m_gtkWidget),
                             label, NULL,

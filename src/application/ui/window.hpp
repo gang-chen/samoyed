@@ -68,6 +68,7 @@ public:
         bool m_inFullScreen;
         bool m_maximized;
         bool m_toolbarVisible;
+        bool m_statusBarVisible;
         bool m_toolbarVisibleInFullScreen;
         Configuration():
             m_screenIndex(-1),
@@ -76,6 +77,7 @@ public:
             m_inFullScreen(false),
             m_maximized(true),
             m_toolbarVisible(true),
+            m_statusBarVisible(true),
             m_toolbarVisibleInFullScreen(false)
         {}
     };
@@ -270,6 +272,16 @@ public:
 
     Actions &actions() { return *m_actions; }
 
+    static void onFileOpened(const char *uri);
+    static void onFileClosed(const char *uri);
+
+    void onCurrentFileChanged(const char *uri);
+
+    void onCurrentTextEditorCursorChanged(int line, int column);
+
+    static void onWorkerBegun(const char *desc);
+    static void onWorkerEnded(const char *desc);
+
 protected:
     Window();
 
@@ -353,6 +365,11 @@ private:
     void onSidePaneClosed(const Widget &pane);
     void onSidePaneChildClosed(const Widget &paneChild, const Widget &pane);
 
+    void createStatusBar();
+
+    static gboolean onWorkerBegunInMainThread(gpointer param);
+    static gboolean onWorkerEndedInMainThread(gpointer param);
+
     static Created s_created;
     static Restored s_restored;
     static SidePaneCreated s_navigationPaneCreated;
@@ -363,6 +380,11 @@ private:
     GtkWidget *m_toolbar;
 
     GtkWidget *m_statusBar;
+    GtkWidget *m_currentFile;
+    GtkWidget *m_currentLine;
+    GtkWidget *m_currentColumn;
+    int m_workerCount;
+    GtkWidget **m_workersStatus;
 
     Widget *m_child;
 
@@ -379,6 +401,7 @@ private:
     bool m_inFullScreen;
     bool m_maximized;
     bool m_toolbarVisible;
+    bool m_statusBarVisible;
     bool m_toolbarVisibleInFullScreen;
 
     std::map<ComparablePointer<const char>, SidePaneData *> m_sidePaneData;

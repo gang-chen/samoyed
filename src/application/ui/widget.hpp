@@ -26,7 +26,7 @@ class WidgetContainer;
  * widgets.  When requested to destroy a child widget, a widget removes the
  * child widget, destroys the child, checks to see if the parent has been
  * requested to be closed and all child widgets are destroyed, and if true
- * requests the owner of the parent to destroy it. During this process, any
+ * requests the owner of the parent to destroy it.  During this process, any
  * participant may refuse to close itself, aborting the process.
  */
 class Widget: public boost::noncopyable

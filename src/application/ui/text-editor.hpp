@@ -15,7 +15,6 @@ namespace Samoyed
 
 class TextFile;
 class Project;
-class Window;
 
 class TextEditor: public Editor
 {
@@ -51,8 +50,6 @@ public:
     static TextEditor *create(TextFile &file, Project *project);
 
     static void installPreferences();
-
-    static void setupStatusBar(Window &window, GtkWidget *statusBar);
 
     virtual Widget::XmlElement *save() const;
 

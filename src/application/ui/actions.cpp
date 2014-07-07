@@ -216,7 +216,10 @@ void moveEditorDown(GtkAction *action, Samoyed::Window *window)
                 window->splitEditorGroup(editorGroup,
                                          Samoyed::Window::SIDE_BOTTOM);
         editorGroup.removeChild(editor);
-        window->addEditorToEditorGroup(editor, *newEditorGroup, 0);
+        window->addEditorToEditorGroup(
+            editor,
+            *newEditorGroup,
+            newEditorGroup->currentChildIndex() + 1);
         editor.setCurrent();
     }
 }
@@ -236,7 +239,10 @@ void moveEditorRight(GtkAction *action, Samoyed::Window *window)
                 window->splitEditorGroup(editorGroup,
                                          Samoyed::Window::SIDE_RIGHT);
         editorGroup.removeChild(editor);
-        window->addEditorToEditorGroup(editor, *newEditorGroup, 0);
+        window->addEditorToEditorGroup(
+            editor,
+            *newEditorGroup,
+            newEditorGroup->currentChildIndex() + 1);
         editor.setCurrent();
     }
 }
@@ -323,7 +329,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       G_CALLBACK(switchSession) },
     { "manage-sessions", NULL, N_("_Manage"), NULL,
       N_("Manage saved sessions"), G_CALLBACK(manageSessions) },
-    { "quit-session", GTK_STOCK_QUIT, N_("_Quit"), "<Control>q",
+    { "quit-session", "application-exit", N_("_Quit"), "<Control>q",
       N_("Quit the current session"), G_CALLBACK(quitSession) },
 
     // Project menu.
@@ -335,55 +341,55 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Close the current project"), G_CALLBACK(closeProject) },
     { "close-all-projects", NULL, N_("Close _All"), NULL,
       N_("Close all opened projects"), G_CALLBACK(closeAllProjects) },
-    { "create-file", GTK_STOCK_NEW, N_("New _File..."), NULL,
+    { "create-file", "document-new", N_("New _File..."), NULL,
       N_("Create a file"), G_CALLBACK(createFile) },
     { "create-directory", NULL, N_("New _Directory..."), NULL,
       N_("Create a directory"), G_CALLBACK(createDirectory) },
-    { "configure", GTK_STOCK_PROPERTIES, N_("Confi_gure"), "<Alt>Return",
+    { "configure", "document-properties", N_("Confi_gure"), "<Alt>Return",
       N_("Configure the selected object"), G_CALLBACK(configure) },
     { "manage-configurations", NULL, N_("Manage Confi_gurations"), NULL,
       N_("Manage configurations of the current project"),
       G_CALLBACK(manageConfigurations) },
 
     // File menu.
-    { "open-file", NULL, N_("_Open..."), "<Control>o",
+    { "open-file", "document-open", N_("_Open..."), "<Control>o",
       N_("Open a file"), G_CALLBACK(openFile) },
-    { "save-file", GTK_STOCK_SAVE, N_("_Save"), "<Control>s",
+    { "save-file", "document-save", N_("_Save"), "<Control>s",
       N_("Save the current file"), G_CALLBACK(saveFile) },
     { "save-all-files", NULL, N_("Save _All"), "<Shift><Control>s",
       N_("Save all edited files"), G_CALLBACK(saveAllFiles) },
-    { "reload-file", GTK_STOCK_REVERT_TO_SAVED, N_("_Reload"), NULL,
+    { "reload-file", "document-revert", N_("_Reload"), NULL,
       N_("Reload the curren file"), G_CALLBACK(reloadFile) },
-    { "close-file", GTK_STOCK_CLOSE, N_("_Close"), "<Control>w",
+    { "close-file", "window-close", N_("_Close"), "<Control>w",
       N_("Close the current file"), G_CALLBACK(closeFile) },
     { "close-all-files", NULL, N_("C_lose All"), "<Shift><Control>w",
       N_("Close all opened files"), G_CALLBACK(closeAllFiles) },
-    { "setup-page", GTK_STOCK_PAGE_SETUP, N_("Page _Setup..."), NULL,
+    { "setup-page", "document-print-preview", N_("Page _Setup..."), NULL,
       N_("Set up the page settings for printing"), G_CALLBACK(setupPage) },
-    { "preview-printed-file", GTK_STOCK_PRINT_PREVIEW,
+    { "preview-printed-file", "document-print-preview",
       N_("Print Pre_view"), NULL,
       N_("Preview the printed file"), G_CALLBACK(previewPrintedFile) },
-    { "print-file", GTK_STOCK_PRINT, N_("_Print"), "<Control>p",
+    { "print-file", "document-print", N_("_Print"), "<Control>p",
       N_("Print the current file"), G_CALLBACK(printFile) },
 
     // Edit menu.
-    { "undo", GTK_STOCK_UNDO, N_("_Undo"), "<Control>z",
+    { "undo", "edit-undo", N_("_Undo"), "<Control>z",
       N_("Undo the last operation"), G_CALLBACK(undo) },
-    { "redo", GTK_STOCK_REDO, N_("_Redo"), "<Shift><Control>z",
+    { "redo", "edit-redo", N_("_Redo"), "<Shift><Control>z",
       N_("Redo the last undone operation"), G_CALLBACK(redo) },
-    { "cut", GTK_STOCK_CUT, N_("Cu_t"), "<Control>x",
+    { "cut", "edit-cut", N_("Cu_t"), "<Control>x",
       N_("Cut the selected object"), G_CALLBACK(cut) },
-    { "copy", GTK_STOCK_COPY, N_("_Copy"), "<Control>c",
+    { "copy", "edit-copy", N_("_Copy"), "<Control>c",
       N_("Copy the selected object"), G_CALLBACK(copy) },
-    { "paste", GTK_STOCK_PASTE, N_("_Paste"), "<Control>v",
+    { "paste", "edit-paste", N_("_Paste"), "<Control>v",
       N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
-    { "delete", GTK_STOCK_DELETE, N_("_Delete"), NULL,
+    { "delete", "edit-delete", N_("_Delete"), NULL,
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
     { "edit-preferences", GTK_STOCK_PREFERENCES, N_("Pre_ferences"), NULL,
       N_("Edit your preferences"), G_CALLBACK(editPreferences) },
 
     // View menu.
-    { "create-window", NULL, N_("New _Window"), NULL,
+    { "create-window", "window-new", N_("New _Window"), NULL,
       N_("Create a window"), G_CALLBACK(createWindow) },
     { "create-editor", NULL, N_("New _Editor"), NULL,
       N_("Create an editor for the current file"), G_CALLBACK(createEditor) },
@@ -403,11 +409,11 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       G_CALLBACK(splitEditorHorizontally) },
 
     // Help menu.
-    { "show-manual", GTK_STOCK_HELP, N_("_Manual"), "F1",
+    { "show-manual", "help-contents", N_("_Manual"), "F1",
       N_("Show the user manual"), G_CALLBACK(showManual) },
     { "show-tutorial", NULL, N_("_Tutorial"), NULL,
       N_("Show the tutorial"), G_CALLBACK(showTutorial) },
-    { "show-about", GTK_STOCK_ABOUT, N_("_About"), NULL,
+    { "show-about", "help-about", N_("_About"), NULL,
       N_("About Samoyed"), G_CALLBACK(showAbout) }
 };
 
@@ -418,7 +424,7 @@ toggleActionEntries[Samoyed::Actions::N_TOGGLE_ACTIONS] =
       N_("Show or hide toolbar"), G_CALLBACK(showHideToolbar), TRUE },
     { "show-hide-status-bar", NULL, N_("_Status Bar"), NULL,
       N_("Show or hide status bar"), G_CALLBACK(showHideStatusBar), TRUE },
-    { "enter-leave-full-screen", GTK_STOCK_FULLSCREEN,
+    { "enter-leave-full-screen", "view-fullscreen",
       N_("_Full Screen"), "F11",
       N_("Enter or leave full screen mode"),
       G_CALLBACK(enterLeaveFullScreen), FALSE }

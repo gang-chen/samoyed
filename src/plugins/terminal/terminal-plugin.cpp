@@ -7,7 +7,6 @@
 #include "terminal-plugin.hpp"
 #include "terminal-view-extension.hpp"
 #include "ui/widget.hpp"
-#include <gmodule.h>
 
 namespace Samoyed
 {

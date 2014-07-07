@@ -12,6 +12,9 @@ g++ worker.cpp -DSMYD_WORKER_UNIT_TEST `pkg-config --cflags --libs glib-2.0`\
 #endif
 #include "worker.hpp"
 #include "scheduler.hpp"
+#ifndef SMYD_WORKER_UNIT_TEST
+# include "ui/window.hpp"
+#endif
 #include <assert.h>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -28,6 +31,9 @@ namespace Samoyed
 Worker::ExecutionWrapper::ExecutionWrapper(Worker &worker):
     m_worker(worker)
 {
+#ifndef SMYD_WORKER_UNIT_TEST
+    Window::onWorkerBegun(m_worker.description());
+#endif
     if (!m_worker.m_blocked)
         m_worker.begin();
 }
@@ -36,6 +42,9 @@ Worker::ExecutionWrapper::~ExecutionWrapper()
 {
     if (!m_worker.m_blocked)
         m_worker.end();
+#ifndef SMYD_WORKER_UNIT_TEST
+    Window::onWorkerEnded(m_worker.description());
+#endif
 }
 
 void Worker::operator()()

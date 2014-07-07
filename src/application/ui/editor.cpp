@@ -7,6 +7,8 @@
 #include "editor.hpp"
 #include "file.hpp"
 #include "project.hpp"
+#include "widget-container.hpp"
+#include "window.hpp"
 #include "application.hpp"
 #include <string.h>
 #include <list>
@@ -261,6 +263,15 @@ void Editor::destroyInFile()
 void Editor::destroyInProject()
 {
     destroy();
+}
+
+void Editor::onGrabFocus(GtkWidget *widget, gpointer editor)
+{
+    Widget *w = static_cast<Widget *>(editor);
+    while (w->parent())
+        w = w->parent();
+    static_cast<Window *>(w)->onCurrentFileChanged(
+        static_cast<Editor *>(editor)->file().uri());
 }
 
 }

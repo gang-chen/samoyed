@@ -14,7 +14,6 @@
 #include "utilities/plugin-manager.hpp"
 #include <string.h>
 #include <glib.h>
-#include <gmodule.h>
 
 namespace
 {
@@ -115,13 +114,13 @@ void TextFileRecovererPlugin::deactivate()
 extern "C"
 {
 
-Samoyed::Plugin *createPlugin(Samoyed::PluginManager &manager,
+Samoyed::Plugin *createPlugin(Samoyed::PluginManager *manager,
                               const char *id,
                               GModule *module,
-                              std::string &error)
+                              std::string *error)
 {
     return
-        new Samoyed::TextFileRecoverer::TextFileRecovererPlugin(manager,
+        new Samoyed::TextFileRecoverer::TextFileRecovererPlugin(*manager,
                                                                 id,
                                                                 module);
 }

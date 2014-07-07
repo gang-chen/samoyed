@@ -18,10 +18,10 @@
 namespace
 {
 
-typedef Samoyed::Plugin *(*PluginFactory)(Samoyed::PluginManager &manager,
+typedef Samoyed::Plugin *(*PluginFactory)(Samoyed::PluginManager *manager,
                                           const char *id,
                                           GModule *module,
-                                          std::string &error);
+                                          std::string *error);
 
 }
 
@@ -68,7 +68,7 @@ Plugin *Plugin::activate(PluginManager &manager,
         g_module_close(module);
         return NULL;
     }
-    Plugin *plugin = factory(manager, id, module, error);
+    Plugin *plugin = factory(&manager, id, module, &error);
     if (!plugin)
     {
         g_module_close(module);

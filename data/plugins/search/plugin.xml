@@ -1,0 +1,16 @@
+<plugin>
+  <id>search</id>
+  <name>Search</name>
+  <description>This plugin adds search functionality.</description>
+  <module>search</module>
+  <extension>
+    <id>text</id>
+    <point>actions</point>
+    <detail>
+      <action-name>search-text</action-name>
+      <action-path></action-path>
+      <menu-title>Text</menu-title>
+      <menu-tooltip>Search text in the current file</menu-tooltip>
+    </detail>
+  </extension>
+</plugin>

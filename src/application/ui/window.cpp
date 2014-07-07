@@ -39,6 +39,7 @@
 #define IN_FULL_SCREEN "in-full-screen"
 #define MAXIMIZED "maximized"
 #define TOOLBAR_VISIBLE "toolbar-visible"
+#define STATUS_BAR_VISIBLE "status-bar-visible"
 #define TOOLBAR_VISIBLE_IN_FULL_SCREEN "toolbar-visible-in-full-screen"
 #define CHILD "child"
 
@@ -308,6 +309,30 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        STATUS_BAR_VISIBLE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                try
+                {
+                    m_configuration.m_statusBarVisible =
+                        boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                        child->line, value, STATUS_BAR_VISIBLE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
                         TOOLBAR_VISIBLE_IN_FULL_SCREEN) == 0)
         {
             value = reinterpret_cast<char *>(
@@ -425,6 +450,10 @@ xmlNodePtr Window::XmlElement::write() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.m_statusBarVisible);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(STATUS_BAR_VISIBLE),
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     str = boost::lexical_cast<std::string>(
         m_configuration.m_toolbarVisibleInFullScreen);
     xmlNewTextChild(
@@ -464,12 +493,19 @@ Window::XmlElement::~XmlElement()
 Window::Window():
     m_menuBar(NULL),
     m_toolbar(NULL),
+    m_statusBar(NULL),
+    m_currentFile(NULL),
+    m_currentLine(NULL),
+    m_currentColumn(NULL),
+    m_workerCount(numberOfProcessors()),
+    m_workersStatus(NULL),
     m_child(NULL),
     m_uiManager(NULL),
     m_actions(new Actions(this)),
     m_inFullScreen(false),
     m_maximized(false),
     m_toolbarVisible(true),
+    m_statusBarVisible(true),
     m_toolbarVisibleInFullScreen(false)
 {
     Application::instance().addWindow(*this);
@@ -530,15 +566,10 @@ bool Window::build(const Configuration &config)
     g_signal_connect_after(m_toolbar, "notify::visible",
                            G_CALLBACK(onToolbarVisibilityChanged), this);
 
-    m_statusBar = gtk_grid_new();
-    Worker::setupStatusBar(m_statusBar);
-    TextEditor::setupStatusBar(*this, m_statusBar);
-    gtk_widget_set_hexpand(m_statusBar, TRUE);
+    createStatusBar();
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             m_statusBar, m_toolbar,
                             GTK_POS_BOTTOM, 1, 1);
-    g_signal_connect_after(m_statusBar, "notify::visible",
-                           G_CALLBACK(onStatusBarVisibilityChanged), this);
 
     g_signal_connect(window, "delete-event",
                      G_CALLBACK(onDeleteEvent), this);
@@ -573,10 +604,13 @@ bool Window::build(const Configuration &config)
     gtk_window_set_default_size(GTK_WINDOW(window), m_width, m_height);
 
     m_toolbarVisible = config.m_toolbarVisible;
+    m_statusBarVisible = config.m_statusBarVisible;
     m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
     gtk_widget_show_all(grid);
     if (!m_toolbarVisible)
         setToolbarVisible(false);
+    if (!m_statusBarVisible)
+        setStatusBarVisible(false);
     if (config.m_inFullScreen)
         enterFullScreen();
     else if (config.m_maximized)
@@ -668,6 +702,7 @@ bool Window::restore(XmlElement &xmlElement)
 Window::~Window()
 {
     assert(!m_child);
+    delete[] m_workersStatus;
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
@@ -735,7 +770,7 @@ void Window::addChildInternally(Widget &child)
     WidgetContainer::addChildInternally(child);
     m_child = &child;
     gtk_grid_attach_next_to(GTK_GRID(gtk_bin_get_child(GTK_BIN(gtkWidget()))),
-                            child.gtkWidget(), m_toolbar,
+                            child.gtkWidget(), m_statusBar,
                             GTK_POS_BOTTOM, 1, 1);
 }
 
@@ -1348,6 +1383,7 @@ void Window::enterFullScreen()
             setToolbarVisible(true);
     }
     gtk_widget_hide(m_menuBar);
+    gtk_widget_hide(m_statusBar);
     gtk_window_fullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = true;
     m_actions->onWindowFullScreenChanged(true);
@@ -1367,6 +1403,7 @@ void Window::leaveFullScreen()
             setToolbarVisible(true);
     }
     gtk_widget_show(m_menuBar);
+    gtk_widget_show(m_statusBar);
     gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
     m_inFullScreen = false;
     m_actions->onWindowFullScreenChanged(false);
@@ -1382,6 +1419,7 @@ Window::Configuration Window::configuration() const
     config.m_inFullScreen = m_inFullScreen;
     config.m_maximized = m_maximized;
     config.m_toolbarVisible = m_toolbarVisible;
+    config.m_statusBarVisible = m_statusBarVisible;
     config.m_toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
     return config;
 }
@@ -1510,6 +1548,242 @@ void Window::updateActionsSensitivity()
          ++it)
         gtk_action_set_sensitive(it->second->action,
                                  it->second->sensitive(it->second->action));
+}
+
+void Window::createStatusBar()
+{
+    m_statusBar = gtk_grid_new();
+    GtkWidget *label;
+    label = gtk_label_new(_("File:"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            label, NULL,
+                            GTK_POS_RIGHT, 1, 1);
+    m_currentFile = gtk_combo_box_text_new();
+
+    // Add existing files.
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        char *fileName = g_filename_from_uri(file->uri(), NULL, NULL);
+        char *title = g_filename_display_basename(fileName);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(m_currentFile),
+                                       title);
+        g_free(title);
+        g_free(fileName);
+    }
+
+    gtk_widget_set_tooltip_text(
+        m_currentFile,
+        _("Select which file to edit"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            m_currentFile, label,
+                            GTK_POS_RIGHT, 1, 1);
+    label = gtk_label_new(_("Line:"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            label, m_currentFile,
+                            GTK_POS_RIGHT, 1, 1);
+    m_currentLine = gtk_entry_new();
+    gtk_widget_set_tooltip_text(
+        m_currentLine,
+        _("Input the line number to go"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            m_currentLine, label,
+                            GTK_POS_RIGHT, 1, 1);
+    label = gtk_label_new(_("Column:"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            label, m_currentLine,
+                            GTK_POS_RIGHT, 1, 1);
+    m_currentColumn = gtk_entry_new();
+    gtk_widget_set_tooltip_text(
+        m_currentColumn,
+        _("Input the column number to go"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            m_currentColumn, label,
+                            GTK_POS_RIGHT, 1, 1);
+
+    label = gtk_label_new(_("Background workers:"));
+    gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
+                            label, m_currentColumn,
+                            GTK_POS_RIGHT, 1, 1);
+    m_workersStatus = new GtkWidget *[m_workerCount];
+    for (int i = 0; i < m_workerCount; ++i)
+    {
+        m_workersStatus[i] = gtk_spinner_new();
+        gtk_widget_set_tooltip_text(m_workersStatus[i], _("Idle"));
+        gtk_grid_attach_next_to(
+            GTK_GRID(m_statusBar),
+            m_workersStatus[i],
+            i == 0 ? label : m_workersStatus[i - 1],
+            GTK_POS_RIGHT, 1, 1);
+    }
+
+    gtk_grid_set_column_spacing(GTK_GRID(m_statusBar), CONTAINER_SPACING);
+
+    gtk_widget_set_hexpand(m_statusBar, TRUE);
+    g_signal_connect_after(m_statusBar, "notify::visible",
+                           G_CALLBACK(onStatusBarVisibilityChanged), this);
+}
+
+void Window::onFileOpened(const char *uri)
+{
+    char *fileName = g_filename_from_uri(uri, NULL, NULL);
+    char *title = g_filename_display_basename(fileName);
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        // The window has not been setup completely in the early stage of
+        // restoring a session.
+        if (window->m_currentFile)
+            gtk_combo_box_text_append_text(
+                GTK_COMBO_BOX_TEXT(window->m_currentFile),
+                title);
+    }
+    g_free(title);
+    g_free(fileName);
+}
+
+void Window::onFileClosed(const char *uri)
+{
+    char *fileName = g_filename_from_uri(uri, NULL, NULL);
+    char *title = g_filename_display_basename(fileName);
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        // Hack into GtkComboBoxText.
+        GtkTreeModel *model = gtk_combo_box_get_model(
+            GTK_COMBO_BOX(window->m_currentFile));
+        GtkListStore *store = GTK_LIST_STORE(model);
+        GtkTreeIter iter;
+        if (gtk_tree_model_get_iter_first(model, &iter))
+        {
+            do
+            {
+                GValue t = G_VALUE_INIT;
+                gtk_tree_model_get_value(model, &iter, 0, &t);
+                if (strcmp(g_value_get_string(&t), title) == 0)
+                {
+                    gtk_list_store_remove(store, &iter);
+                    g_value_unset(&t);
+                    break;
+                }
+                g_value_unset(&t);
+            }
+            while (gtk_tree_model_iter_next(model, &iter));
+        }
+    }
+    g_free(title);
+    g_free(fileName);
+}
+
+void Window::onCurrentFileChanged(const char *uri)
+{
+    char *fileName = g_filename_from_uri(uri, NULL, NULL);
+    char *title = g_filename_display_basename(fileName);
+    // Hack into GtkComboBoxText.
+    GtkTreeModel *model = gtk_combo_box_get_model(
+        GTK_COMBO_BOX(m_currentFile));
+    GtkTreeIter iter;
+    if (gtk_tree_model_get_iter_first(model, &iter))
+    {
+        int i = 0;
+        do
+        {
+            GValue t = G_VALUE_INIT;
+            gtk_tree_model_get_value(model, &iter, 0, &t);
+            if (strcmp(g_value_get_string(&t), title) == 0)
+            {
+                gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile),
+                                         i);
+                g_value_unset(&t);
+                break;
+            }
+            g_value_unset(&t);
+            ++i;
+        }
+        while (gtk_tree_model_iter_next(model, &iter));
+    }
+    g_free(title);
+    g_free(fileName);
+}
+
+void Window::onCurrentTextEditorCursorChanged(int line, int column)
+{
+    char *cp;
+    cp = g_strdup_printf("%d", line + 1);
+    gtk_entry_set_text(GTK_ENTRY(m_currentLine), cp);
+    cp = g_strdup_printf("%d", column + 1);
+    gtk_entry_set_text(GTK_ENTRY(m_currentColumn), cp);
+}
+
+gboolean Window::onWorkerBegunInMainThread(gpointer param)
+{
+    char *desc = static_cast<char *>(param);
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        for (int i = 0; i < window->m_workerCount; ++i)
+        {
+            GValue active = G_VALUE_INIT;
+            g_value_init(&active, G_TYPE_BOOLEAN);
+            g_object_get_property(G_OBJECT(window->m_workersStatus[i]),
+                                  "active", &active);
+            if (!g_value_get_boolean(&active))
+            {
+                gtk_spinner_start(GTK_SPINNER(window->m_workersStatus[i]));
+                gtk_widget_set_tooltip_text(window->m_workersStatus[i], desc);
+                g_value_unset(&active);
+                break;
+            }
+            g_value_unset(&active);
+        }
+    }
+    return FALSE;
+}
+
+gboolean Window::onWorkerEndedInMainThread(gpointer param)
+{
+    char *desc = static_cast<char *>(param);
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        for (int i = 0; i < window->m_workerCount; ++i)
+        {
+            char *d =
+                gtk_widget_get_tooltip_text(window->m_workersStatus[i]);
+            if (strcmp(d, desc) == 0)
+            {
+                gtk_spinner_stop(GTK_SPINNER(window->m_workersStatus[i]));
+                gtk_widget_set_tooltip_text(window->m_workersStatus[i],
+                                            _("Idle"));
+                g_free(d);
+                break;
+            }
+            g_free(d);
+        }
+    }
+    g_free(desc);
+    return FALSE;
+}
+
+void Window::onWorkerBegun(const char *desc)
+{
+    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+                    onWorkerBegunInMainThread,
+                    g_strdup(desc),
+                    NULL);
+}
+
+void Window::onWorkerEnded(const char *desc)
+{
+    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+                    onWorkerEndedInMainThread,
+                    g_strdup(desc),
+                    NULL);
 }
 
 }

@@ -6,6 +6,8 @@
 #endif
 #include "text-editor.hpp"
 #include "text-file.hpp"
+#include "widget-container.hpp"
+#include "window.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/property-tree.hpp"
 #include "application.hpp"
@@ -49,6 +51,32 @@ const bool DEFAULT_REPLACE_TABS_WITH_SPACES = true;
 const bool DEFAULT_SHOW_LINE_NUMBERS = true;
 
 const int DEFAULT_INDENT_WIDTH = 4;
+
+void onCursorChanged(GtkTextBuffer *buffer, gpointer editor)
+{
+    Samoyed::Widget *w = static_cast<Samoyed::Widget *>(editor);
+    while (w->parent())
+        w = w->parent();
+    if (&w->current() == static_cast<Samoyed::Widget *>(editor))
+    {
+        GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
+        GtkTextIter iter;
+        gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
+        static_cast<Samoyed::Window *>(w)->
+            onCurrentTextEditorCursorChanged(
+                gtk_text_iter_get_line(&iter),
+                gtk_text_iter_get_line_offset(&iter));
+    }
+}
+
+void onMarkSet(GtkTextBuffer *buffer,
+               GtkTextIter *iter,
+               GtkTextMark *mark,
+               gpointer editor)
+{
+    if (mark == gtk_text_buffer_get_insert(buffer))
+        onCursorChanged(buffer, editor);
+}
 
 }
 
@@ -274,6 +302,12 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
         GTK_SOURCE_VIEW(view),
         prefs.get<int>(TEXT_EDITOR "/" INDENT_WIDTH));
     gtk_widget_show_all(sw);
+    g_signal_connect(view, "grab-focus",
+                     G_CALLBACK(onGrabFocus), this);
+    g_signal_connect(buffer, "changed",
+                     G_CALLBACK(onCursorChanged), this);
+    g_signal_connect(buffer, "mark-set",
+                     G_CALLBACK(onMarkSet), this);
     return true;
 }
 
@@ -471,6 +505,11 @@ void TextEditor::onFileChanged(const File::Change &change)
         gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                                 ins.line, ins.column);
         gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
+        Widget *window = this;
+        while (window->parent())
+            window = window->parent();
+        if (&window->current() == this)
+            setCursor(ins.newLine, ins.newColumn);
     }
     else
     {
@@ -481,6 +520,11 @@ void TextEditor::onFileChanged(const File::Change &change)
         gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
                                                 rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
+        Widget *window = this;
+        while (window->parent())
+            window = window->parent();
+        if (&window->current() == this)
+            setCursor(rem.beginLine, rem.beginColumn);
     }
     m_bypassEdit = false;
 }

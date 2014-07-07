@@ -99,6 +99,8 @@ protected:
 
     bool restore(XmlElement &xmlElement);
 
+    static void onGrabFocus(GtkWidget *widget, gpointer editor);
+
 private:
     /**
      * The file being edited.
