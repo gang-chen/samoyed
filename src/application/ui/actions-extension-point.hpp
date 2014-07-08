@@ -47,15 +47,21 @@ private:
          * Is this toggle action active by default?  N/A for non-toggle actions.
          */
         bool activeByDefault;
+        /**
+         * Call 'addAction()' when an action is added to a window?
+         */
+        bool addAction;
         std::string actionName;
         std::string actionPath;
         std::string menuTitle;
         std::string menuTooltip;
+        std::string accelerator;
         ExtensionInfo(const char *extensionId):
             id(extensionId),
             toggle(false),
             alwaysSensitive(false),
-            activeByDefault(false)
+            activeByDefault(false),
+            addAction(true)
         {}
     };
 
