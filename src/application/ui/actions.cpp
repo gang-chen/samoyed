@@ -125,18 +125,6 @@ void closeAllFiles(GtkAction *action, Samoyed::Window *window)
         file->close();
 }
 
-void setupPage(GtkAction *action, Samoyed::Window *window)
-{
-}
-
-void previewPrintedFile(GtkAction *action, Samoyed::Window *window)
-{
-}
-
-void printFile(GtkAction *action, Samoyed::Window *window)
-{
-}
-
 void undo(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
@@ -364,13 +352,6 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Close the current file"), G_CALLBACK(closeFile) },
     { "close-all-files", NULL, N_("C_lose All"), "<Shift><Control>w",
       N_("Close all opened files"), G_CALLBACK(closeAllFiles) },
-    { "setup-page", "document-print-preview", N_("Page _Setup..."), NULL,
-      N_("Set up the page settings for printing"), G_CALLBACK(setupPage) },
-    { "preview-printed-file", "document-print-preview",
-      N_("Print Pre_view"), NULL,
-      N_("Preview the printed file"), G_CALLBACK(previewPrintedFile) },
-    { "print-file", "document-print", N_("_Print"), "<Control>p",
-      N_("Print the current file"), G_CALLBACK(printFile) },
 
     // Edit menu.
     { "undo", "edit-undo", N_("_Undo"), "<Control>z",

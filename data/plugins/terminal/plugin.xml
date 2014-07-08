@@ -15,7 +15,7 @@
         <title>_Terminal</title>
       </view>
       <menu-item>
-        <title>_Terminal</title>
+        <label>_Terminal</label>
       </menu-item>
     </detail>
   </extension>

@@ -240,24 +240,30 @@ public:
 
     GtkAction *addAction(const char *actionName,
                          const char *actionPath,
-                         const char *menuTitle,
-                         const char *menuTooltip,
+                         const char *actionPath2,
+                         const char *label,
+                         const char *tooltip,
+                         const char *iconName,
                          const char *accelerator,
                          const boost::function<void (Window &,
                                                      GtkAction *)> &activate,
                          const boost::function<bool (Window &,
-                                                     GtkAction *)> &sensitive);
+                                                     GtkAction *)> &sensitive,
+                         bool separate);
     GtkToggleAction *addToggleAction(
         const char *actionName,
         const char *actionPath,
-        const char *menuTitle,
-        const char *menuTooltip,
+        const char *actionPath2,
+        const char *label,
+        const char *tooltip,
+        const char *iconName,
         const char *accelerator,
         const boost::function<void (Window &,
                                     GtkToggleAction *)> &toggled,
         const boost::function<bool (Window &,
                                     GtkAction *)> &sensitive,
-        bool activeByDefault);
+        bool activeByDefault,
+        bool separate);
     void removeAction(const char *actionName);
 
     void updateActionsSensitivity();
@@ -322,9 +328,19 @@ private:
     {
         GtkAction *action;
         guint uiMergeId;
+        guint uiMergeIdSeparator;
+        guint uiMergeId2;
+        guint uiMergeIdSeparator2;
         boost::function<void (GtkAction *)> activate;
         boost::function<void (GtkToggleAction *)> toggled;
         boost::function<bool (GtkAction *)> sensitive;
+        ActionData():
+            action(NULL),
+            uiMergeId(-1),
+            uiMergeIdSeparator(-1),
+            uiMergeId2(-1),
+            uiMergeIdSeparator2(-1)
+        {}
     };
 
     static gboolean onDeleteEvent(GtkWidget *widget,
@@ -368,6 +384,12 @@ private:
     void onSidePaneChildClosed(const Widget &paneChild, const Widget &pane);
 
     void createStatusBar();
+
+    void addUiForAction(const char *actionName,
+                        const char *actionPath,
+                        guint &uiMergeId,
+                        guint &uiMergeIdSeparator,
+                        bool separate);
 
     static gboolean onWorkerBegunInMainThread(gpointer param);
     static gboolean onWorkerEndedInMainThread(gpointer param);

@@ -4,13 +4,18 @@
   <description>This plugin adds search functionality.</description>
   <module>search</module>
   <extension>
-    <id>text</id>
+    <id>find-text</id>
     <point>actions</point>
     <detail>
-      <action-name>search-text</action-name>
-      <action-path></action-path>
-      <menu-title>Text</menu-title>
-      <menu-tooltip>Search text in the current file</menu-tooltip>
+      <name>find-text</name>
+      <path>/main-menu-bar/edit</path>
+      <path-2>/main-toolbar</path-2>
+      <label>Find _Text...</label>
+      <tooltip>Find text in the current file</tooltip>
+      <icon-name>edit-find</icon-name>
+      <accelerator>&lt;Control&gt;f</accelerator>
+      <separate>1</separate>
+      <add-action>0</add-action>
     </detail>
   </extension>
 </plugin>

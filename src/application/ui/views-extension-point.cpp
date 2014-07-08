@@ -33,6 +33,7 @@
 #define ID "id"
 #define TITLE "title"
 #define MENU_ITEM "menu-item"
+#define LABEL "label"
 
 namespace Samoyed
 {
@@ -57,7 +58,7 @@ void ViewsExtensionPoint::registerExtensionInternally(Window &window,
                                  ext.viewId.c_str(),
                                  ext.viewIndex,
                                  boost::bind(createView, boost::cref(ext)),
-                                 ext.menuTitle.c_str());
+                                 ext.menuItemLabel.c_str());
     if (ext.openByDefault)
         window.openSidePaneChild(ext.paneId.c_str(), ext.viewId.c_str());
 }
@@ -222,13 +223,13 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 if (grandChild->type != XML_ELEMENT_NODE)
                     continue;
                 if (strcmp(reinterpret_cast<const char *>(grandChild->name),
-                           TITLE) == 0)
+                           LABEL) == 0)
                 {
                     value = reinterpret_cast<char *>(
                         xmlNodeGetContent(grandChild->children));
                     if (value)
                     {
-                        ext->menuTitle = value;
+                        ext->menuItemLabel = value;
                         xmlFree(value);
                     }
                 }
@@ -236,8 +237,8 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
         }
     }
 
-    if (ext->menuTitle.empty())
-        ext->menuTitle = ext->viewTitle;
+    if (ext->menuItemLabel.empty())
+        ext->menuItemLabel = ext->viewTitle;
     if (ext->paneId.empty() || ext->viewId.empty() || ext->viewTitle.empty())
     {
         cp = g_strdup_printf(

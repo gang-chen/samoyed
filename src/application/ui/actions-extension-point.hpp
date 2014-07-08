@@ -51,17 +51,21 @@ private:
          * Call 'addAction()' when an action is added to a window?
          */
         bool addAction;
-        std::string actionName;
-        std::string actionPath;
-        std::string menuTitle;
-        std::string menuTooltip;
+        std::string name;
+        std::string path;
+        std::string path2;
+        std::string label;
+        std::string tooltip;
+        std::string iconName;
         std::string accelerator;
+        bool separate;
         ExtensionInfo(const char *extensionId):
             id(extensionId),
             toggle(false),
             alwaysSensitive(false),
             activeByDefault(false),
-            addAction(true)
+            addAction(true),
+            separate(false)
         {}
     };
 

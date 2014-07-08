@@ -48,9 +48,9 @@
 #define EDITOR_GROUP_ID "editor-group"
 #define PANED_ID "paned"
 
-#define SIDE_PANE_MENU_ITEM_TITLE "side-pane-menu-item-title"
-#define SIDE_PANE_CHILDREN_MENU_TITLE "side-pane-children-menu-title"
-#define SIDE_PANE_CHILD_MENU_ITEM_TITLE "side-pane-child-manu-item-title"
+#define SIDE_PANE_MENU_ITEM_LABEL "side-pane-menu-item-label"
+#define SIDE_PANE_CHILDREN_MENU_LABEL "side-pane-children-menu-label"
+#define SIDE_PANE_CHILD_MENU_ITEM_LABEL "side-pane-child-manu-item-label"
 
 namespace
 {
@@ -1000,8 +1000,8 @@ void Window::createNavigationPane(Window &window)
     Notebook *pane =
         Notebook::create(NAVIGATION_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Navigation Pane"));
-    pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE, _("_Navigation Pane"));
-    pane->setProperty(SIDE_PANE_CHILDREN_MENU_TITLE, _("Na_vigators"));
+    pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("_Navigation Pane"));
+    pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("Na_vigators"));
     window.addSidePane(*pane, window.mainArea(), SIDE_LEFT,
                        window.configuration().m_width * SIDE_PANE_SIZE_RATIO);
     s_navigationPaneCreated(*pane);
@@ -1012,8 +1012,8 @@ void Window::createToolsPane(Window &window)
     Notebook *pane =
         Notebook::create(TOOLS_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Tools Pane"));
-    pane->setProperty(SIDE_PANE_MENU_ITEM_TITLE, _("_Tools Pane"));
-    pane->setProperty(SIDE_PANE_CHILDREN_MENU_TITLE, _("T_ools"));
+    pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("_Tools Pane"));
+    pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("T_ools"));
     window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT,
                        window.configuration().m_width * SIDE_PANE_SIZE_RATIO);
     s_toolsPaneCreated(*pane);
@@ -1032,26 +1032,26 @@ void Window::createMenuItemForSidePane(Widget &pane)
     std::string actionName("show-hide-");
     actionName += pane.id();
 
-    const std::string *menuTitle = pane.getProperty(SIDE_PANE_MENU_ITEM_TITLE);
+    const std::string *label = pane.getProperty(SIDE_PANE_MENU_ITEM_LABEL);
     std::string str;
-    if (!menuTitle)
+    if (!label)
     {
         // To be safe, remove all underscores.
         str = pane.title();
         str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
-        menuTitle = &str;
+        label = &str;
     }
 
-    std::string menuTooltip(pane.title());
-    menuTooltip.erase(std::remove(menuTooltip.begin(), menuTooltip.end(), '_'),
-                      menuTooltip.end());
-    std::transform(menuTooltip.begin(), menuTooltip.end(), menuTooltip.begin(),
-                  tolower);
-    menuTooltip.insert(0, _("Show or hide "));
+    std::string tooltip(pane.title());
+    tooltip.erase(std::remove(tooltip.begin(), tooltip.end(), '_'),
+                  tooltip.end());
+    std::transform(tooltip.begin(), tooltip.end(), tooltip.begin(),
+                   tolower);
+    tooltip.insert(0, _("Show or hide "));
 
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
-                                                    menuTitle->c_str(),
-                                                    menuTooltip.c_str(),
+                                                    label->c_str(),
+                                                    tooltip.c_str(),
                                                     NULL);
     gtk_toggle_action_set_active(action,
                                  gtk_widget_get_visible(pane.gtkWidget()));
@@ -1076,19 +1076,19 @@ void Window::createMenuItemForSidePane(Widget &pane)
     std::string actionName2(pane.id());
     actionName2 += "-children";
 
-    const std::string *menuTitle2 =
-        pane.getProperty(SIDE_PANE_CHILDREN_MENU_TITLE);
-    if (!menuTitle2)
+    const std::string *label2 =
+        pane.getProperty(SIDE_PANE_CHILDREN_MENU_LABEL);
+    if (!label2)
     {
         // To be safe, remove all underscores.
         str = pane.title();
         str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
         str += _(" Children");
-        menuTitle2 = &str;
+        label2 = &str;
     }
 
     GtkAction *action2 = gtk_action_new(actionName2.c_str(),
-                                        menuTitle2->c_str(),
+                                        label2->c_str(),
                                         NULL,
                                         NULL);
     gtk_action_group_add_action(m_actions->actionGroup(), action2);
@@ -1179,7 +1179,7 @@ void Window::onSidePaneVisibilityChanged(GtkWidget *pane,
 void Window::registerSidePaneChild(const char *paneId,
                                    const char *id, int index,
                                    const WidgetFactory &factory,
-                                   const char *menuTitle)
+                                   const char *label)
 {
     const WidgetContainer *pane =
         static_cast<const WidgetContainer *>(findSidePane(paneId));
@@ -1196,16 +1196,16 @@ void Window::registerSidePaneChild(const char *paneId,
     actionName += '+';
     actionName += id;
 
-    std::string menuTooltip(menuTitle);
-    menuTooltip.erase(std::remove(menuTooltip.begin(), menuTooltip.end(), '_'),
-                      menuTooltip.end());
-    std::transform(menuTooltip.begin(), menuTooltip.end(), menuTooltip.begin(),
-                  tolower);
-    menuTooltip.insert(0, _("Open or close "));
+    std::string tooltip(label);
+    tooltip.erase(std::remove(tooltip.begin(), tooltip.end(), '_'),
+                  tooltip.end());
+    std::transform(tooltip.begin(), tooltip.end(), tooltip.begin(),
+                   tolower);
+    tooltip.insert(0, _("Open or close "));
 
     GtkToggleAction *action = gtk_toggle_action_new(actionName.c_str(),
-                                                    menuTitle,
-                                                    menuTooltip.c_str(),
+                                                    label,
+                                                    tooltip.c_str(),
                                                     NULL);
     gtk_toggle_action_set_active(action, pane->findChild(id) ? TRUE : FALSE);
     g_signal_connect(action, "toggled",
@@ -1469,38 +1469,71 @@ gboolean Window::onKeyPressEvent(GtkWidget *widget,
     return handled;
 }
 
+void Window::addUiForAction(const char *actionName,
+                            const char *actionPath,
+                            guint &uiMergeId,
+                            guint &uiMergeIdSeparator,
+                            bool separate)
+{
+    if (separate)
+    {
+        uiMergeIdSeparator = gtk_ui_manager_new_merge_id(m_uiManager);
+        std::string separatorName(actionName);
+        separatorName += "-separator";
+        gtk_ui_manager_add_ui(m_uiManager,
+                              uiMergeIdSeparator,
+                              actionPath,
+                              separatorName.c_str(),
+                              NULL,
+                              GTK_UI_MANAGER_SEPARATOR,
+                              FALSE);
+    }
+
+    uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
+    gtk_ui_manager_add_ui(m_uiManager,
+                          uiMergeId,
+                          actionPath,
+                          actionName,
+                          actionName,
+                          GTK_UI_MANAGER_AUTO,
+                          FALSE);
+}
+
 GtkAction *Window::addAction(
     const char *actionName,
     const char *actionPath,
-    const char *menuTitle,
-    const char *menuTooltip,
+    const char *actionPath2,
+    const char *label,
+    const char *tooltip,
+    const char *iconName,
     const char *accelerator,
     const boost::function<void (Window &, GtkAction *)> &activate,
-    const boost::function<bool (Window &, GtkAction *)> &sensitive)
+    const boost::function<bool (Window &, GtkAction *)> &sensitive,
+    bool separate)
 {
     ActionData *data = new ActionData;
     data->activate = boost::bind(activate, boost::ref(*this), _1);
     data->sensitive = boost::bind(sensitive, boost::ref(*this), _1);
 
     GtkAction *action =
-        gtk_action_new(actionName, menuTitle, menuTooltip, NULL);
+        gtk_action_new(actionName, label, tooltip, NULL);
+    gtk_action_set_icon_name(action, iconName);
     g_signal_connect(action, "activate",
                      G_CALLBACK(activateAction), &data->activate);
     gtk_action_group_add_action_with_accel(m_actions->actionGroup(),
                                            action,
                                            accelerator);
     g_object_unref(action);
-
-    guint uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
-    gtk_ui_manager_add_ui(m_uiManager,
-                          uiMergeId,
-                          actionPath,
-                          actionName,
-                          actionName,
-                          GTK_UI_MANAGER_MENUITEM,
-                          FALSE);
     data->action = action;
-    data->uiMergeId = uiMergeId;
+
+    addUiForAction(actionName, actionPath,
+                   data->uiMergeId, data->uiMergeIdSeparator,
+                   separate);
+    if (actionPath2)
+        addUiForAction(actionName, actionPath2,
+                       data->uiMergeId2, data->uiMergeIdSeparator2,
+                       separate);
+
     m_actionData[actionName] = data;
     return action;
 }
@@ -1508,19 +1541,23 @@ GtkAction *Window::addAction(
 GtkToggleAction *Window::addToggleAction(
     const char *actionName,
     const char *actionPath,
-    const char *menuTitle,
-    const char *menuTooltip,
+    const char *actionPath2,
+    const char *label,
+    const char *tooltip,
+    const char *iconName,
     const char *accelerator,
     const boost::function<void (Window &, GtkToggleAction *)> &toggled,
     const boost::function<bool (Window &, GtkAction *)> &sensitive,
-    bool activeByDefault)
+    bool activeByDefault,
+    bool separate)
 {
     ActionData *data = new ActionData;
     data->toggled = boost::bind(toggled, boost::ref(*this), _1);
     data->sensitive = boost::bind(sensitive, boost::ref(*this), _1);
 
     GtkToggleAction *action =
-        gtk_toggle_action_new(actionName, menuTitle, menuTooltip, NULL);
+        gtk_toggle_action_new(actionName, label, tooltip, NULL);
+    gtk_action_set_icon_name(GTK_ACTION(action), iconName);
     gtk_toggle_action_set_active(action, activeByDefault);
     g_signal_connect(action, "toggled",
                      G_CALLBACK(onActionToggled), &data->toggled);
@@ -1528,17 +1565,16 @@ GtkToggleAction *Window::addToggleAction(
                                            GTK_ACTION(action),
                                            accelerator);
     g_object_unref(action);
-
-    guint uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
-    gtk_ui_manager_add_ui(m_uiManager,
-                          uiMergeId,
-                          actionPath,
-                          actionName,
-                          actionName,
-                          GTK_UI_MANAGER_MENUITEM,
-                          FALSE);
     data->action = GTK_ACTION(action);
-    data->uiMergeId = uiMergeId;
+
+    addUiForAction(actionName, actionPath,
+                   data->uiMergeId, data->uiMergeIdSeparator,
+                   separate);
+    if (actionPath2)
+        addUiForAction(actionName, actionPath2,
+                       data->uiMergeId2, data->uiMergeIdSeparator2,
+                       separate);
+
     m_actionData[actionName] = data;
     return action;
 }
@@ -1547,6 +1583,12 @@ void Window::removeAction(const char *actionName)
 {
     ActionData *data = m_actionData[actionName];
     gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeId);
+    if (data->uiMergeIdSeparator != static_cast<guint>(-1))
+        gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeIdSeparator);
+    if (data->uiMergeId2 != static_cast<guint>(-1))
+        gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeId2);
+    if (data->uiMergeIdSeparator2 != static_cast<guint>(-1))
+        gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeIdSeparator2);
     gtk_action_group_remove_action(m_actions->actionGroup(), data->action);
     m_actionData.erase(actionName);
     delete data;

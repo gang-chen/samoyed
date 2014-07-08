@@ -26,10 +26,15 @@
 #define TOGGLE "toggle"
 #define ALWAYS_SENSITIVE "always-sensitive"
 #define ACTIVE_BY_DEFAULT "active-by-default"
-#define ACTION_NAME "action-name"
-#define ACTION_PATH "action-path"
-#define MENU_TITLE "menu-title"
-#define MENU_TOOLTIP "menu-tooltip"
+#define ADD_ACTION "add-action"
+#define NAME "name"
+#define PATH "path"
+#define PATH_2 "path-2"
+#define LABEL "label"
+#define TOOLTIP "tooltip"
+#define ICON_NAME "icon-name"
+#define ACCELERATOR "accelerator"
+#define SEPARATE "separate"
 
 namespace Samoyed
 {
@@ -83,35 +88,50 @@ ActionsExtensionPoint::registerExtensionInternally(Window &window,
     if (extInfo.toggle)
     {
         GtkToggleAction *action =
-            window.addToggleAction(extInfo.actionName.c_str(),
-                                   extInfo.actionPath.c_str(),
-                                   extInfo.menuTitle.c_str(),
-                                   extInfo.menuTooltip.c_str(),
+            window.addToggleAction(extInfo.name.c_str(),
+                                   extInfo.path.c_str(),
+                                   extInfo.path2.empty() ?
+                                   NULL : extInfo.path2.c_str(),
+                                   extInfo.label.c_str(),
+                                   extInfo.tooltip.c_str(),
+                                   extInfo.iconName.empty() ?
+                                   NULL : extInfo.iconName.c_str(),
+                                   extInfo.accelerator.c_str(),
                                    boost::bind(onActionToggled,
                                                boost::cref(extInfo), _1, _2),
                                    boost::bind(isActionSensitive,
                                                boost::cref(extInfo), _1, _2),
-                                   extInfo.activeByDefault);
-        ActionExtension *ext = static_cast<ActionExtension *>(
-            Application::instance().pluginManager().
-            acquireExtension(extInfo.id.c_str()));
-        if (ext)
+                                   extInfo.activeByDefault,
+                                   extInfo.separate);
+        if (extInfo.addAction)
         {
-            ext->addToggleAction(window, action);
-            ext->release();
+            ActionExtension *ext = static_cast<ActionExtension *>(
+                Application::instance().pluginManager().
+                acquireExtension(extInfo.id.c_str()));
+            if (ext)
+            {
+                ext->addToggleAction(window, action);
+                ext->release();
+            }
         }
     }
     else
     {
         GtkAction *action =
-            window.addAction(extInfo.actionName.c_str(),
-                             extInfo.actionPath.c_str(),
-                             extInfo.menuTitle.c_str(),
-                             extInfo.menuTooltip.c_str(),
+            window.addAction(extInfo.name.c_str(),
+                             extInfo.path.c_str(),
+                             extInfo.path2.empty() ?
+                             NULL : extInfo.path2.c_str(),
+                             extInfo.label.c_str(),
+                             extInfo.tooltip.c_str(),
+                             extInfo.iconName.empty() ?
+                             NULL : extInfo.iconName.c_str(),
+                             extInfo.accelerator.c_str(),
                              boost::bind(activateAction,
                                          boost::cref(extInfo), _1, _2),
                              boost::bind(isActionSensitive,
-                                         boost::cref(extInfo), _1, _2));
+                                         boost::cref(extInfo), _1, _2),
+                             extInfo.separate);
         ActionExtension *ext = static_cast<ActionExtension *>(
             Application::instance().pluginManager().
             acquireExtension(extInfo.id.c_str()));
@@ -241,53 +261,132 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        ACTION_NAME) == 0)
+                        ADD_ACTION) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                ext->actionName = value;
+                try
+                {
+                    ext->addAction = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                    child->line, value, ADD_ACTION, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
                 xmlFree(value);
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        ACTION_PATH) == 0)
+                        NAME) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                ext->actionPath = value;
+                ext->name = value;
                 xmlFree(value);
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        MENU_TITLE) == 0)
+                        PATH) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                ext->path = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        PATH_2) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                ext->path2 = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        LABEL) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {   
-                ext->menuTitle = value;
+                ext->label = value;
                 xmlFree(value);
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        MENU_TOOLTIP) == 0)
+                        TOOLTIP) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                ext->menuTooltip = value;
+                ext->tooltip = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        ICON_NAME) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                ext->iconName = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        ACCELERATOR) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                ext->accelerator = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        SEPARATE) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                try
+                {
+                    ext->separate = boost::lexical_cast<bool>(value);
+                }
+                catch (boost::bad_lexical_cast &exp)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: Invalid Boolean value \"%s\" for element "
+                          "\"%s\". %s.\n"),
+                    child->line, value, SEPARATE, exp.what());
+                    errors.push_back(cp);
+                    g_free(cp);
+                }
                 xmlFree(value);
             }
         }
     }
-    if (ext->actionName.empty() ||
-        ext->actionPath.empty() ||
-        ext->menuTitle.empty())
+    if (ext->name.empty() ||
+        ext->path.empty() ||
+        ext->label.empty())
     {
         cp = g_strdup_printf(
             _("Line %d: Incomplete action extension specification.\n"),
@@ -314,7 +413,7 @@ void ActionsExtensionPoint::unregisterExtension(const char *extensionId)
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
-        window->removeAction(ext->actionName.c_str());
+        window->removeAction(ext->name.c_str());
     m_extensions.erase(extensionId);
     delete ext;
 }

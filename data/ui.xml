@@ -30,10 +30,6 @@
       <separator/>
       <menuitem name="close" action="close-file"/>
       <menuitem name="close-all" action="close-all-files"/>
-      <separator/>
-      <menuitem name="page-setup" action="setup-page"/>
-      <menuitem name="print-preview" action="preview-printed-file"/>
-      <menuitem name="print" action="print-file"/>
     </menu>
 
     <menu name="edit" action="edit">
@@ -48,9 +44,6 @@
       <menuitem name="configure" action="configure"/>
       <separator/>
       <menuitem name="preferences" action="edit-preferences"/>
-    </menu>
-
-    <menu name="search" action="search">
     </menu>
 
     <menu name="view" action="view">

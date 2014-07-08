@@ -39,7 +39,7 @@ private:
         std::string viewId;
         int viewIndex;
         std::string viewTitle;
-        std::string menuTitle;
+        std::string menuItemLabel;
         bool openByDefault;
         ExtensionInfo(const char *extensionId):
             id(extensionId),
