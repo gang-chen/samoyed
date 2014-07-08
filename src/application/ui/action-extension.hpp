@@ -18,9 +18,9 @@ public:
         Extension(id, plugin)
     {}
 
-    virtual void setAction(Window &window, GtkAction *action) = 0;
+    virtual void addAction(Window &window, GtkAction *action) = 0;
 
-    virtual void setToggleAction(Window &window, GtkToggleAction *action) = 0;
+    virtual void addToggleAction(Window &window, GtkToggleAction *action) = 0;
 
     virtual void activateAction(Window &window, GtkAction *action) = 0;
 
