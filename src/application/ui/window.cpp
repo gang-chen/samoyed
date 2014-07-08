@@ -59,6 +59,12 @@ const double DEFAULT_SIZE_RATIO = 0.7;
 
 const double SIDE_PANE_SIZE_RATIO = 0.25;
 
+const int STATUS_BAR_MARGIN = 6;
+
+const int LINE_NUMBER_WIDTH = 6;
+
+const int COLUMN_NUMBER_WIDTH = 4;
+
 int serialNumber = 0;
 
 Samoyed::Widget *findPane(Samoyed::Widget &root, const char *id)
@@ -1468,6 +1474,7 @@ GtkAction *Window::addAction(
     const char *actionPath,
     const char *menuTitle,
     const char *menuTooltip,
+    const char *accelerator,
     const boost::function<void (Window &, GtkAction *)> &activate,
     const boost::function<bool (Window &, GtkAction *)> &sensitive)
 {
@@ -1479,7 +1486,9 @@ GtkAction *Window::addAction(
         gtk_action_new(actionName, menuTitle, menuTooltip, NULL);
     g_signal_connect(action, "activate",
                      G_CALLBACK(activateAction), &data->activate);
-    gtk_action_group_add_action(m_actions->actionGroup(), action);
+    gtk_action_group_add_action_with_accel(m_actions->actionGroup(),
+                                           action,
+                                           accelerator);
     g_object_unref(action);
 
     guint uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
@@ -1501,6 +1510,7 @@ GtkToggleAction *Window::addToggleAction(
     const char *actionPath,
     const char *menuTitle,
     const char *menuTooltip,
+    const char *accelerator,
     const boost::function<void (Window &, GtkToggleAction *)> &toggled,
     const boost::function<bool (Window &, GtkAction *)> &sensitive,
     bool activeByDefault)
@@ -1514,7 +1524,9 @@ GtkToggleAction *Window::addToggleAction(
     gtk_toggle_action_set_active(action, activeByDefault);
     g_signal_connect(action, "toggled",
                      G_CALLBACK(onActionToggled), &data->toggled);
-    gtk_action_group_add_action(m_actions->actionGroup(), GTK_ACTION(action));
+    gtk_action_group_add_action_with_accel(m_actions->actionGroup(),
+                                           GTK_ACTION(action),
+                                           accelerator);
     g_object_unref(action);
 
     guint uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
@@ -1560,7 +1572,7 @@ void Window::createStatusBar()
                             GTK_POS_RIGHT, 1, 1);
     m_currentFile = gtk_combo_box_text_new();
 
-    // Add existing files.
+    // Add already opened files.
     for (File *file = Application::instance().files();
          file;
          file = file->next())
@@ -1584,6 +1596,8 @@ void Window::createStatusBar()
                             label, m_currentFile,
                             GTK_POS_RIGHT, 1, 1);
     m_currentLine = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(m_currentLine),
+                              LINE_NUMBER_WIDTH);
     gtk_widget_set_tooltip_text(
         m_currentLine,
         _("Input the line number to go"));
@@ -1595,6 +1609,8 @@ void Window::createStatusBar()
                             label, m_currentLine,
                             GTK_POS_RIGHT, 1, 1);
     m_currentColumn = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(m_currentColumn),
+                              COLUMN_NUMBER_WIDTH);
     gtk_widget_set_tooltip_text(
         m_currentColumn,
         _("Input the column number to go"));
@@ -1619,6 +1635,8 @@ void Window::createStatusBar()
     }
 
     gtk_grid_set_column_spacing(GTK_GRID(m_statusBar), CONTAINER_SPACING);
+    gtk_widget_set_margin_left(m_statusBar, STATUS_BAR_MARGIN);
+    gtk_widget_set_margin_right(m_statusBar, STATUS_BAR_MARGIN);
 
     gtk_widget_set_hexpand(m_statusBar, TRUE);
     g_signal_connect_after(m_statusBar, "notify::visible",
