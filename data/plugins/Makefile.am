@@ -1,4 +1,4 @@
 SUBDIRS = \
-    search \
+    finder \
     terminal \
     text-file-recoverer

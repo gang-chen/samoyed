@@ -46,6 +46,9 @@
       <menuitem name="preferences" action="edit-preferences"/>
     </menu>
 
+    <menu name="search" action="search">
+    </menu>
+
     <menu name="view" action="view">
       <menuitem name="new-window" action="create-window"/>
       <menuitem name="new-editor" action="create-editor"/>
@@ -81,14 +84,5 @@
     <toolitem name="edit-paste" action="paste"/>
     <toolitem name="edit-delete" action="delete"/>
   </toolbar>
-
-  <popup name="new-popup-menu">
-    <menuitem name="file" action="create-file"/>
-    <menuitem name="directory" action="create-directory"/>
-  </popup>
-
-  <popup name="editor-popup-menu">
-    <menuitem name="edit-cut" action="cut"/>
-  </popup>
 
 </ui>

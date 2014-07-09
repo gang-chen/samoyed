@@ -1,14 +1,14 @@
 <plugin>
-  <id>search</id>
-  <name>Search</name>
+  <id>finder</id>
+  <name>Finder</name>
   <description>This plugin adds search functionality.</description>
-  <module>search</module>
+  <module>finder</module>
   <extension>
     <id>find-text</id>
     <point>actions</point>
     <detail>
       <name>find-text</name>
-      <path>/main-menu-bar/edit</path>
+      <path>/main-menu-bar/search</path>
       <path-2>/main-toolbar</path-2>
       <label>Find _Text...</label>
       <tooltip>Find text in the current file</tooltip>

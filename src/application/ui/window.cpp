@@ -65,6 +65,8 @@ const int LINE_NUMBER_WIDTH = 6;
 
 const int COLUMN_NUMBER_WIDTH = 4;
 
+const int WORKER_STATUS_WIDTH = 20;
+
 int serialNumber = 0;
 
 Samoyed::Widget *findPane(Samoyed::Widget &root, const char *id)
@@ -725,22 +727,6 @@ gboolean Window::onDeleteEvent(GtkWidget *widget,
 {
     if (!Application::instance().windows()->next())
     {
-        // This is the last window.  Closing this window will quit the
-        // application.  Confirm it.
-        GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(window->gtkWidget()),
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_QUESTION,
-            GTK_BUTTONS_YES_NO,
-            _("You will quit Samoyed if you close this window. Continue "
-              "closing this window and quitting Samoyed?"));
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                        GTK_RESPONSE_YES);
-        int response = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        if (response == GTK_RESPONSE_NO)
-            return TRUE;
-
         // Quitting the application will destroy the window if the user doesn't
         // prevent it.
         Application::instance().quit();
@@ -1667,12 +1653,26 @@ void Window::createStatusBar()
     m_workersStatus = new GtkWidget *[m_workerCount];
     for (int i = 0; i < m_workerCount; ++i)
     {
-        m_workersStatus[i] = gtk_spinner_new();
+        char *cp = g_strdup_printf(_("%d."), i + 1);
+        GtkWidget *label2 = gtk_label_new(cp);
+        g_free(cp);
+        gtk_grid_attach_next_to(
+            GTK_GRID(m_statusBar),
+            label2,
+            i == 0 ? label : m_workersStatus[i - 1],
+            GTK_POS_RIGHT, 1, 1);
+        m_workersStatus[i] = gtk_label_new(_("Idle"));
+        gtk_label_set_single_line_mode(GTK_LABEL(m_workersStatus[i]),
+                                       TRUE);
+        gtk_label_set_max_width_chars(GTK_LABEL(m_workersStatus[i]),
+                                      WORKER_STATUS_WIDTH);
+        gtk_label_set_ellipsize(GTK_LABEL(m_workersStatus[i]),
+                                PANGO_ELLIPSIZE_END);
         gtk_widget_set_tooltip_text(m_workersStatus[i], _("Idle"));
         gtk_grid_attach_next_to(
             GTK_GRID(m_statusBar),
             m_workersStatus[i],
-            i == 0 ? label : m_workersStatus[i - 1],
+            label2,
             GTK_POS_RIGHT, 1, 1);
     }
 
@@ -1774,8 +1774,10 @@ void Window::onCurrentTextEditorCursorChanged(int line, int column)
     char *cp;
     cp = g_strdup_printf("%d", line + 1);
     gtk_entry_set_text(GTK_ENTRY(m_currentLine), cp);
+    g_free(cp);
     cp = g_strdup_printf("%d", column + 1);
     gtk_entry_set_text(GTK_ENTRY(m_currentColumn), cp);
+    g_free(cp);
 }
 
 gboolean Window::onWorkerBegunInMainThread(gpointer param)
@@ -1787,18 +1789,15 @@ gboolean Window::onWorkerBegunInMainThread(gpointer param)
     {
         for (int i = 0; i < window->m_workerCount; ++i)
         {
-            GValue active = G_VALUE_INIT;
-            g_value_init(&active, G_TYPE_BOOLEAN);
-            g_object_get_property(G_OBJECT(window->m_workersStatus[i]),
-                                  "active", &active);
-            if (!g_value_get_boolean(&active))
+            const char *d =
+                gtk_label_get_text(GTK_LABEL(window->m_workersStatus[i]));
+            if (strcmp(d, _("Idle")) == 0)
             {
-                gtk_spinner_start(GTK_SPINNER(window->m_workersStatus[i]));
+                gtk_label_set_text(GTK_LABEL(window->m_workersStatus[i]),
+                                   desc);
                 gtk_widget_set_tooltip_text(window->m_workersStatus[i], desc);
-                g_value_unset(&active);
                 break;
             }
-            g_value_unset(&active);
         }
     }
     return FALSE;
@@ -1813,17 +1812,16 @@ gboolean Window::onWorkerEndedInMainThread(gpointer param)
     {
         for (int i = 0; i < window->m_workerCount; ++i)
         {
-            char *d =
-                gtk_widget_get_tooltip_text(window->m_workersStatus[i]);
+            const char *d =
+                gtk_label_get_text(GTK_LABEL(window->m_workersStatus[i]));
             if (strcmp(d, desc) == 0)
             {
-                gtk_spinner_stop(GTK_SPINNER(window->m_workersStatus[i]));
+                gtk_label_set_text(GTK_LABEL(window->m_workersStatus[i]),
+                                   _("Idle"));
                 gtk_widget_set_tooltip_text(window->m_workersStatus[i],
                                             _("Idle"));
-                g_free(d);
                 break;
             }
-            g_free(d);
         }
     }
     g_free(desc);

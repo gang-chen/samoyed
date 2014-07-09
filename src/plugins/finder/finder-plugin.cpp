@@ -1,21 +1,21 @@
-// Plugin: search.
+// Plugin: finder.
 // Copyright (C) 2014 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "search-plugin.hpp"
+#include "finder-plugin.hpp"
 #include <gmodule.h>
 
 namespace Samoyed
 {
 
-namespace Search
+namespace Finder
 {
 
-SearchPlugin *SearchPlugin::s_instance = NULL;
+FinderPlugin *FinderPlugin::s_instance = NULL;
 
-SearchPlugin::SearchPlugin(PluginManager &manager,
+FinderPlugin::FinderPlugin(PluginManager &manager,
                            const char *id,
                            GModule *module):
     Plugin(manager, id, module)
@@ -23,17 +23,17 @@ SearchPlugin::SearchPlugin(PluginManager &manager,
     s_instance = this;
 }
 
-Extension *SearchPlugin::createExtension(const char *extensionId)
+Extension *FinderPlugin::createExtension(const char *extensionId)
 {
     return NULL;
 }
 
-bool SearchPlugin::completed() const
+bool FinderPlugin::completed() const
 {
     return true;
 }
 
-void SearchPlugin::deactivate()
+void FinderPlugin::deactivate()
 {
 }
 
@@ -49,7 +49,7 @@ Samoyed::Plugin *createPlugin(Samoyed::PluginManager *manager,
                               GModule *module,
                               std::string *error)
 {
-    return new Samoyed::Search::SearchPlugin(*manager, id, module);
+    return new Samoyed::Finder::FinderPlugin(*manager, id, module);
 }
 
 }

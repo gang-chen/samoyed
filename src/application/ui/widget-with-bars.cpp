@@ -380,6 +380,8 @@ void WidgetWithBars::removeBar(Bar &bar)
     else
         gtk_container_remove(GTK_CONTAINER(m_horizontalGrid), bar.gtkWidget());
     WidgetContainer::removeChildInternally(bar);
+    if (m_currentChildIndex > barCount())
+        m_currentChildIndex = barCount();
 }
 
 void WidgetWithBars::removeChild(Widget &child)
