@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
 #include <gtk/gtk.h>
@@ -238,9 +239,9 @@ public:
     void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                 int index);
 
-    GtkAction *addAction(const char *actionName,
-                         const char *actionPath,
-                         const char *actionPath2,
+    GtkAction *addAction(const char *name,
+                         const char *path,
+                         const char *path2,
                          const char *label,
                          const char *tooltip,
                          const char *iconName,
@@ -251,9 +252,9 @@ public:
                                                      GtkAction *)> &sensitive,
                          bool separate);
     GtkToggleAction *addToggleAction(
-        const char *actionName,
-        const char *actionPath,
-        const char *actionPath2,
+        const char *name,
+        const char *path,
+        const char *path2,
         const char *label,
         const char *tooltip,
         const char *iconName,
@@ -264,7 +265,7 @@ public:
                                     GtkAction *)> &sensitive,
         bool activeByDefault,
         bool separate);
-    void removeAction(const char *actionName);
+    void removeAction(const char *name);
 
     void updateActionsSensitivity();
 
@@ -385,10 +386,10 @@ private:
 
     void createStatusBar();
 
-    void addUiForAction(const char *actionName,
-                        const char *actionPath,
-                        guint &uiMergeId,
-                        guint &uiMergeIdSeparator,
+    void addUiForAction(const char *name,
+                        const char *path,
+                        guint &mergeId,
+                        guint &mergeIdSeparator,
                         bool separate);
 
     static gboolean onWorkerBegunInMainThread(gpointer param);
@@ -405,6 +406,7 @@ private:
 
     GtkWidget *m_statusBar;
     GtkWidget *m_currentFile;
+    std::vector<const char *> m_fileUris;
     GtkWidget *m_currentLine;
     GtkWidget *m_currentColumn;
     int m_workerCount;

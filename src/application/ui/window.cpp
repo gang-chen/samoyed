@@ -1455,40 +1455,40 @@ gboolean Window::onKeyPressEvent(GtkWidget *widget,
     return handled;
 }
 
-void Window::addUiForAction(const char *actionName,
-                            const char *actionPath,
-                            guint &uiMergeId,
-                            guint &uiMergeIdSeparator,
+void Window::addUiForAction(const char *name,
+                            const char *path,
+                            guint &mergeId,
+                            guint &mergeIdSeparator,
                             bool separate)
 {
     if (separate)
     {
-        uiMergeIdSeparator = gtk_ui_manager_new_merge_id(m_uiManager);
-        std::string separatorName(actionName);
+        mergeIdSeparator = gtk_ui_manager_new_merge_id(m_uiManager);
+        std::string separatorName(name);
         separatorName += "-separator";
         gtk_ui_manager_add_ui(m_uiManager,
-                              uiMergeIdSeparator,
-                              actionPath,
+                              mergeIdSeparator,
+                              path,
                               separatorName.c_str(),
                               NULL,
                               GTK_UI_MANAGER_SEPARATOR,
                               FALSE);
     }
 
-    uiMergeId = gtk_ui_manager_new_merge_id(m_uiManager);
+    mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
-                          uiMergeId,
-                          actionPath,
-                          actionName,
-                          actionName,
+                          mergeId,
+                          path,
+                          name,
+                          name,
                           GTK_UI_MANAGER_AUTO,
                           FALSE);
 }
 
 GtkAction *Window::addAction(
-    const char *actionName,
-    const char *actionPath,
-    const char *actionPath2,
+    const char *name,
+    const char *path,
+    const char *path2,
     const char *label,
     const char *tooltip,
     const char *iconName,
@@ -1502,7 +1502,7 @@ GtkAction *Window::addAction(
     data->sensitive = boost::bind(sensitive, boost::ref(*this), _1);
 
     GtkAction *action =
-        gtk_action_new(actionName, label, tooltip, NULL);
+        gtk_action_new(name, label, tooltip, NULL);
     gtk_action_set_icon_name(action, iconName);
     g_signal_connect(action, "activate",
                      G_CALLBACK(activateAction), &data->activate);
@@ -1512,22 +1512,22 @@ GtkAction *Window::addAction(
     g_object_unref(action);
     data->action = action;
 
-    addUiForAction(actionName, actionPath,
+    addUiForAction(name, path,
                    data->uiMergeId, data->uiMergeIdSeparator,
                    separate);
-    if (actionPath2)
-        addUiForAction(actionName, actionPath2,
+    if (path2)
+        addUiForAction(name, path2,
                        data->uiMergeId2, data->uiMergeIdSeparator2,
                        separate);
 
-    m_actionData[actionName] = data;
+    m_actionData[name] = data;
     return action;
 }
 
 GtkToggleAction *Window::addToggleAction(
-    const char *actionName,
-    const char *actionPath,
-    const char *actionPath2,
+    const char *name,
+    const char *path,
+    const char *path2,
     const char *label,
     const char *tooltip,
     const char *iconName,
@@ -1542,7 +1542,7 @@ GtkToggleAction *Window::addToggleAction(
     data->sensitive = boost::bind(sensitive, boost::ref(*this), _1);
 
     GtkToggleAction *action =
-        gtk_toggle_action_new(actionName, label, tooltip, NULL);
+        gtk_toggle_action_new(name, label, tooltip, NULL);
     gtk_action_set_icon_name(GTK_ACTION(action), iconName);
     gtk_toggle_action_set_active(action, activeByDefault);
     g_signal_connect(action, "toggled",
@@ -1553,21 +1553,21 @@ GtkToggleAction *Window::addToggleAction(
     g_object_unref(action);
     data->action = GTK_ACTION(action);
 
-    addUiForAction(actionName, actionPath,
+    addUiForAction(name, path,
                    data->uiMergeId, data->uiMergeIdSeparator,
                    separate);
-    if (actionPath2)
-        addUiForAction(actionName, actionPath2,
+    if (path2)
+        addUiForAction(name, path2,
                        data->uiMergeId2, data->uiMergeIdSeparator2,
                        separate);
 
-    m_actionData[actionName] = data;
+    m_actionData[name] = data;
     return action;
 }
 
-void Window::removeAction(const char *actionName)
+void Window::removeAction(const char *name)
 {
-    ActionData *data = m_actionData[actionName];
+    ActionData *data = m_actionData[name];
     gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeId);
     if (data->uiMergeIdSeparator != static_cast<guint>(-1))
         gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeIdSeparator);
@@ -1576,7 +1576,7 @@ void Window::removeAction(const char *actionName)
     if (data->uiMergeIdSeparator2 != static_cast<guint>(-1))
         gtk_ui_manager_remove_ui(m_uiManager, data->uiMergeIdSeparator2);
     gtk_action_group_remove_action(m_actions->actionGroup(), data->action);
-    m_actionData.erase(actionName);
+    m_actionData.erase(name);
     delete data;
 }
 
@@ -1611,6 +1611,7 @@ void Window::createStatusBar()
                                        title);
         g_free(title);
         g_free(fileName);
+        m_fileUris.push_back(file->uri());
     }
 
     gtk_widget_set_tooltip_text(
@@ -1696,9 +1697,12 @@ void Window::onFileOpened(const char *uri)
         // The window has not been setup completely in the early stage of
         // restoring a session.
         if (window->m_currentFile)
+        {
             gtk_combo_box_text_append_text(
                 GTK_COMBO_BOX_TEXT(window->m_currentFile),
                 title);
+            window->m_fileUris.push_back(uri);
+        }
     }
     g_free(title);
     g_free(fileName);
@@ -1706,67 +1710,38 @@ void Window::onFileOpened(const char *uri)
 
 void Window::onFileClosed(const char *uri)
 {
-    char *fileName = g_filename_from_uri(uri, NULL, NULL);
-    char *title = g_filename_display_basename(fileName);
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
     {
-        // Hack into GtkComboBoxText.
-        GtkTreeModel *model = gtk_combo_box_get_model(
-            GTK_COMBO_BOX(window->m_currentFile));
-        GtkListStore *store = GTK_LIST_STORE(model);
-        GtkTreeIter iter;
-        if (gtk_tree_model_get_iter_first(model, &iter))
+        for (std::vector<const char *>::iterator i = window->m_fileUris.begin();
+             i != window->m_fileUris.end();
+             ++i)
         {
-            do
+            if (strcmp(*i, uri) == 0)
             {
-                GValue t = G_VALUE_INIT;
-                gtk_tree_model_get_value(model, &iter, 0, &t);
-                if (strcmp(g_value_get_string(&t), title) == 0)
-                {
-                    gtk_list_store_remove(store, &iter);
-                    g_value_unset(&t);
-                    break;
-                }
-                g_value_unset(&t);
+                gtk_combo_box_text_remove(
+                    GTK_COMBO_BOX_TEXT(window->m_currentFile),
+                    i - window->m_fileUris.begin());
+                window->m_fileUris.erase(i);
+                break;
             }
-            while (gtk_tree_model_iter_next(model, &iter));
         }
     }
-    g_free(title);
-    g_free(fileName);
 }
 
 void Window::onCurrentFileChanged(const char *uri)
 {
-    char *fileName = g_filename_from_uri(uri, NULL, NULL);
-    char *title = g_filename_display_basename(fileName);
-    // Hack into GtkComboBoxText.
-    GtkTreeModel *model = gtk_combo_box_get_model(
-        GTK_COMBO_BOX(m_currentFile));
-    GtkTreeIter iter;
-    if (gtk_tree_model_get_iter_first(model, &iter))
+    for (std::vector<const char *>::size_type i = 0;
+         i < m_fileUris.size();
+         ++i)
     {
-        int i = 0;
-        do
+        if (strcmp(m_fileUris[i], uri) == 0)
         {
-            GValue t = G_VALUE_INIT;
-            gtk_tree_model_get_value(model, &iter, 0, &t);
-            if (strcmp(g_value_get_string(&t), title) == 0)
-            {
-                gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile),
-                                         i);
-                g_value_unset(&t);
-                break;
-            }
-            g_value_unset(&t);
-            ++i;
+            gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile), i);
+            break;
         }
-        while (gtk_tree_model_iter_next(model, &iter));
     }
-    g_free(title);
-    g_free(fileName);
 }
 
 void Window::onCurrentTextEditorCursorChanged(int line, int column)

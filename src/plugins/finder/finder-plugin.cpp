@@ -5,6 +5,8 @@
 # include <config.h>
 #endif
 #include "finder-plugin.hpp"
+#include "find-text-action-extension.hpp"
+#include "ui/widget.hpp"
 #include <gmodule.h>
 
 namespace Samoyed
@@ -25,16 +27,32 @@ FinderPlugin::FinderPlugin(PluginManager &manager,
 
 Extension *FinderPlugin::createExtension(const char *extensionId)
 {
+    if (strcmp(extensionId, "finder/find-text") == 0)
+        return new FindTextActionExtension(extensionId, *this);
     return NULL;
+}
+
+void FinderPlugin::onTextFinderBarCreated(Widget &bar)
+{
+    m_bars.insert(&bar);
+}
+
+void FinderPlugin::onTextFinderBarDestroyed(Widget &bar)
+{
+    m_bars.erase(&bar);
+    if (completed())
+        onCompleted();
 }
 
 bool FinderPlugin::completed() const
 {
-    return true;
+    return m_bars.empty();
 }
 
 void FinderPlugin::deactivate()
 {
+    while (!m_bars.empty())
+        (*m_bars.begin())->close();
 }
 
 }

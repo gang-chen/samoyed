@@ -26,7 +26,6 @@
 #define TOGGLE "toggle"
 #define ALWAYS_SENSITIVE "always-sensitive"
 #define ACTIVE_BY_DEFAULT "active-by-default"
-#define ADD_ACTION "add-action"
 #define NAME "name"
 #define PATH "path"
 #define PATH_2 "path-2"
@@ -87,59 +86,38 @@ ActionsExtensionPoint::registerExtensionInternally(Window &window,
 {
     if (extInfo.toggle)
     {
-        GtkToggleAction *action =
-            window.addToggleAction(extInfo.name.c_str(),
-                                   extInfo.path.c_str(),
-                                   extInfo.path2.empty() ?
-                                   NULL : extInfo.path2.c_str(),
-                                   extInfo.label.c_str(),
-                                   extInfo.tooltip.c_str(),
-                                   extInfo.iconName.empty() ?
-                                   NULL : extInfo.iconName.c_str(),
-                                   extInfo.accelerator.c_str(),
-                                   boost::bind(onActionToggled,
-                                               boost::cref(extInfo), _1, _2),
-                                   boost::bind(isActionSensitive,
-                                               boost::cref(extInfo), _1, _2),
-                                   extInfo.activeByDefault,
-                                   extInfo.separate);
-        if (extInfo.addAction)
-        {
-            ActionExtension *ext = static_cast<ActionExtension *>(
-                Application::instance().pluginManager().
-                acquireExtension(extInfo.id.c_str()));
-            if (ext)
-            {
-                ext->addToggleAction(window, action);
-                ext->release();
-            }
-        }
+        window.addToggleAction(extInfo.name.c_str(),
+                               extInfo.path.c_str(),
+                               extInfo.path2.empty() ?
+                               NULL : extInfo.path2.c_str(),
+                               extInfo.label.c_str(),
+                               extInfo.tooltip.c_str(),
+                               extInfo.iconName.empty() ?
+                               NULL : extInfo.iconName.c_str(),
+                               extInfo.accelerator.c_str(),
+                               boost::bind(onActionToggled,
+                                           boost::cref(extInfo), _1, _2),
+                               boost::bind(isActionSensitive,
+                                           boost::cref(extInfo), _1, _2),
+                               extInfo.activeByDefault,
+                               extInfo.separate);
     }
     else
     {
-        GtkAction *action =
-            window.addAction(extInfo.name.c_str(),
-                             extInfo.path.c_str(),
-                             extInfo.path2.empty() ?
-                             NULL : extInfo.path2.c_str(),
-                             extInfo.label.c_str(),
-                             extInfo.tooltip.c_str(),
-                             extInfo.iconName.empty() ?
-                             NULL : extInfo.iconName.c_str(),
-                             extInfo.accelerator.c_str(),
-                             boost::bind(activateAction,
-                                         boost::cref(extInfo), _1, _2),
-                             boost::bind(isActionSensitive,
-                                         boost::cref(extInfo), _1, _2),
-                             extInfo.separate);
-        ActionExtension *ext = static_cast<ActionExtension *>(
-            Application::instance().pluginManager().
-            acquireExtension(extInfo.id.c_str()));
-        if (ext)
-        {
-            ext->addAction(window, action);
-            ext->release();
-        }
+        window.addAction(extInfo.name.c_str(),
+                         extInfo.path.c_str(),
+                         extInfo.path2.empty() ?
+                         NULL : extInfo.path2.c_str(),
+                         extInfo.label.c_str(),
+                         extInfo.tooltip.c_str(),
+                         extInfo.iconName.empty() ?
+                         NULL : extInfo.iconName.c_str(),
+                         extInfo.accelerator.c_str(),
+                         boost::bind(activateAction,
+                                     boost::cref(extInfo), _1, _2),
+                         boost::bind(isActionSensitive,
+                                     boost::cref(extInfo), _1, _2),
+                         extInfo.separate);
     }
 }
 
@@ -254,29 +232,6 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                         _("Line %d: Invalid Boolean value \"%s\" for element "
                           "\"%s\". %s.\n"),
                     child->line, value, ACTIVE_BY_DEFAULT, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
-                }
-                xmlFree(value);
-            }
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        ADD_ACTION) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeGetContent(child->children));
-            if (value)
-            {
-                try
-                {
-                    ext->addAction = boost::lexical_cast<bool>(value);
-                }
-                catch (boost::bad_lexical_cast &exp)
-                {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                    child->line, value, ADD_ACTION, exp.what());
                     errors.push_back(cp);
                     g_free(cp);
                 }

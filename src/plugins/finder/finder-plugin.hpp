@@ -1,10 +1,11 @@
 // Plugin: finder.
 // Copyright (C) 2014 Gang Chen.
 
-#ifndef SMYD_FIND_SEARCH_PLUGIN_HPP
-#define SMYD_FIND_SEARCH_PLUGIN_HPP
+#ifndef SMYD_FIND_FINDER_PLUGIN_HPP
+#define SMYD_FIND_FINDER_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
+#include <set>
 
 namespace Samoyed
 {
@@ -21,6 +22,9 @@ public:
 
     virtual void deactivate();
 
+    void onTextFinderBarCreated(Widget &bar);
+    void onTextFinderBarClosed(Widget &bar);
+
 protected:
     virtual Extension *createExtension(const char *extensionId);
 
@@ -28,6 +32,8 @@ protected:
 
 private:
     static FinderPlugin *s_instance;
+
+    std::set<Widget *> m_textFinderBars;
 };
 
 }

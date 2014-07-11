@@ -47,24 +47,29 @@ private:
          * Is this toggle action active by default?  N/A for non-toggle actions.
          */
         bool activeByDefault;
-        /**
-         * Call 'addAction()' when an action is added to a window?
-         */
-        bool addAction;
         std::string name;
+        /**
+         * The path of the primary proxy UI element, typically a menu item.
+         */
         std::string path;
+        /**
+         * The path of the secondary proxy UI element, typically a toolbar item,
+         * or none if not specified.
+         */
         std::string path2;
         std::string label;
         std::string tooltip;
         std::string iconName;
         std::string accelerator;
+        /**
+         * Separate the proxy menu item or toolbar item from the preceding ones?
+         */
         bool separate;
         ExtensionInfo(const char *extensionId):
             id(extensionId),
             toggle(false),
             alwaysSensitive(false),
             activeByDefault(false),
-            addAction(true),
             separate(false)
         {}
     };

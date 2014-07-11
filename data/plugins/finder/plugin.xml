@@ -15,7 +15,6 @@
       <icon-name>edit-find</icon-name>
       <accelerator>&lt;Control&gt;f</accelerator>
       <separate>1</separate>
-      <add-action>0</add-action>
     </detail>
   </extension>
 </plugin>
