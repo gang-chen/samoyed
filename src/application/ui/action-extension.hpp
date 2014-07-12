@@ -5,6 +5,7 @@
 #define SMYD_ACTION_EXTENSION_HPP
 
 #include "utilities/extension.hpp"
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {

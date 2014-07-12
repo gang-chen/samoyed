@@ -34,25 +34,25 @@ Extension *FinderPlugin::createExtension(const char *extensionId)
 
 void FinderPlugin::onTextFinderBarCreated(Widget &bar)
 {
-    m_bars.insert(&bar);
+    m_textFinderBars.insert(&bar);
 }
 
-void FinderPlugin::onTextFinderBarDestroyed(Widget &bar)
+void FinderPlugin::onTextFinderBarClosed(Widget &bar)
 {
-    m_bars.erase(&bar);
+    m_textFinderBars.erase(&bar);
     if (completed())
         onCompleted();
 }
 
 bool FinderPlugin::completed() const
 {
-    return m_bars.empty();
+    return m_textFinderBars.empty();
 }
 
 void FinderPlugin::deactivate()
 {
-    while (!m_bars.empty())
-        (*m_bars.begin())->close();
+    while (!m_textFinderBars.empty())
+        (*m_textFinderBars.begin())->close();
 }
 
 }

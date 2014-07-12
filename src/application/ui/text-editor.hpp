@@ -8,6 +8,7 @@
 #include <list>
 #include <string>
 #include <gtk/gtk.h>
+#include <gtksourceview/gtksourceview.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -86,12 +87,21 @@ public:
 
     void onFileLoaded();
 
+    GtkSourceView *gtkSourceView() const
+    {
+        return GTK_SOURCE_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
+    }
+
 protected:
     TextEditor(TextFile &file, Project *project);
 
     bool setup(GtkTextTagTable *tagTable);
 
     bool restore(XmlElement &xmlElement, GtkTextTagTable *tagTable);
+
+    static gboolean onFocusIn(GtkWidget *widget,
+                              GdkEventFocus *event,
+                              gpointer editor);
 
 private:
     static void insert(GtkTextBuffer *buffer, GtkTextIter *location,

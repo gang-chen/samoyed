@@ -265,13 +265,20 @@ void Editor::destroyInProject()
     destroy();
 }
 
-void Editor::onGrabFocus(GtkWidget *widget, gpointer editor)
+gboolean Editor::onFocusIn(GtkWidget *widget,
+                           GdkEventFocus *event,
+                           gpointer editor)
 {
-    Widget *w = static_cast<Widget *>(editor);
-    while (w->parent())
-        w = w->parent();
-    static_cast<Window *>(w)->onCurrentFileChanged(
-        static_cast<Editor *>(editor)->file().uri());
+    Widget *window = static_cast<Widget *>(editor);
+    if (window->parent())
+    {
+        do
+            window = window->parent();
+        while (window->parent());
+        static_cast<Window *>(window)->onCurrentFileChanged(
+            static_cast<Editor *>(editor)->file().uri());
+    }
+    return FALSE;
 }
 
 }

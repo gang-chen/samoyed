@@ -59,8 +59,6 @@ const double DEFAULT_SIZE_RATIO = 0.7;
 
 const double SIDE_PANE_SIZE_RATIO = 0.25;
 
-const int STATUS_BAR_MARGIN = 6;
-
 const int LINE_NUMBER_WIDTH = 6;
 
 const int COLUMN_NUMBER_WIDTH = 4;
@@ -1678,8 +1676,8 @@ void Window::createStatusBar()
     }
 
     gtk_grid_set_column_spacing(GTK_GRID(m_statusBar), CONTAINER_SPACING);
-    gtk_widget_set_margin_left(m_statusBar, STATUS_BAR_MARGIN);
-    gtk_widget_set_margin_right(m_statusBar, STATUS_BAR_MARGIN);
+    gtk_widget_set_margin_left(m_statusBar, CONTAINER_SPACING);
+    gtk_widget_set_margin_right(m_statusBar, CONTAINER_SPACING);
 
     gtk_widget_set_hexpand(m_statusBar, TRUE);
     g_signal_connect_after(m_statusBar, "notify::visible",

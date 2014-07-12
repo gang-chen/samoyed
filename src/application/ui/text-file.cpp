@@ -153,7 +153,7 @@ TextFile::OptionsSetter::OptionsSetter()
     gtk_grid_attach_next_to(GTK_GRID(m_gtkWidget),
                             combo, label,
                             GTK_POS_RIGHT, 1, 1);
-    gtk_grid_set_column_spacing(GTK_GRID(m_gtkWidget), LABEL_SPACING);
+    gtk_grid_set_column_spacing(GTK_GRID(m_gtkWidget), CONTAINER_SPACING);
     gtk_widget_show_all(m_gtkWidget);
 }
 

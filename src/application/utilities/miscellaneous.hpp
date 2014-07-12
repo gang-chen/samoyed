@@ -78,7 +78,6 @@ namespace Samoyed
 
 const int CONTAINER_BORDER_WIDTH = 12;
 const int CONTAINER_SPACING = 6;
-const int LABEL_SPACING = 12;
 const int TEXT_WIDTH_REQUEST = 400;
 const int TEXT_HEIGHT_REQUEST = 300;
 

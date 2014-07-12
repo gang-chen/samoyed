@@ -81,7 +81,7 @@ void saveFile(GtkAction *action, Samoyed::Window *window)
     if (editorGroup.childCount() > 0)
     {
         Samoyed::File &file =
-            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
         if (file.edited() && !file.frozen() && !file.inEditGroup())
             file.save();
     }
@@ -104,7 +104,7 @@ void reloadFile(GtkAction *action, Samoyed::Window *window)
     if (editorGroup.childCount() > 0)
     {
         Samoyed::File &file =
-            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
         if (!file.frozen() && !file.inEditGroup())
             file.load(true);
     }
@@ -114,7 +114,8 @@ void closeFile(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
     if (editorGroup.childCount() > 0)
-        static_cast<Samoyed::Editor &>(editorGroup.current()).file().close();
+        static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file().
+            close();
 }
 
 void closeAllFiles(GtkAction *action, Samoyed::Window *window)
@@ -131,7 +132,7 @@ void undo(GtkAction *action, Samoyed::Window *window)
     if (editorGroup.childCount() > 0)
     {
         Samoyed::File &file =
-            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
         if (file.undoable())
             file.undo();
     }
@@ -143,7 +144,7 @@ void redo(GtkAction *action, Samoyed::Window *window)
     if (editorGroup.childCount() > 0)
     {
         Samoyed::File &file =
-            static_cast<Samoyed::Editor &>(editorGroup.current()).file();
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
         if (file.redoable())
             file.redo();
     }

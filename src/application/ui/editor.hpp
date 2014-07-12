@@ -10,6 +10,7 @@
 #include "utilities/property-tree.hpp"
 #include <list>
 #include <string>
+#include <gdk/gdk.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -99,7 +100,9 @@ protected:
 
     bool restore(XmlElement &xmlElement);
 
-    static void onGrabFocus(GtkWidget *widget, gpointer editor);
+    static gboolean onFocusIn(GtkWidget *widget,
+                              GdkEventFocus *event,
+                              gpointer editor);
 
 private:
     /**

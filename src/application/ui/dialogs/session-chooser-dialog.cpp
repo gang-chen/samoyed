@@ -175,7 +175,7 @@ NewSessionDialog::NewSessionDialog(GtkWindow *parent)
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             m_name, label,
                             GTK_POS_RIGHT, 1, 1);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), Samoyed::LABEL_SPACING);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), Samoyed::CONTAINER_SPACING);
     gtk_container_set_border_width(GTK_CONTAINER(grid),
                                    Samoyed::CONTAINER_BORDER_WIDTH);
     m_dialog = gtk_dialog_new_with_buttons(

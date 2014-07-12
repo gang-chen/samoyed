@@ -10,6 +10,8 @@
 namespace Samoyed
 {
 
+class Widget;
+
 namespace Finder
 {
 

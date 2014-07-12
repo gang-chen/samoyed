@@ -82,7 +82,6 @@ bool FileRecoveryBar::setup()
     gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_list);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), m_list, 0, 1, 1, 1);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
 
     GtkWidget *button;
     GtkWidget *box = gtk_button_box_new(GTK_ORIENTATION_VERTICAL);
@@ -106,6 +105,8 @@ bool FileRecoveryBar::setup()
     gtk_button_box_set_child_secondary(GTK_BUTTON_BOX(box), button, TRUE);
     g_signal_connect(button, "clicked", G_CALLBACK(onClose), this);
     gtk_grid_attach(GTK_GRID(grid), box, 1, 0, 1, 2);
+
+    gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
     gtk_grid_set_column_spacing(GTK_GRID(grid), CONTAINER_SPACING);
     gtk_container_set_border_width(GTK_CONTAINER(grid), CONTAINER_BORDER_WIDTH);
     gtk_widget_set_vexpand(grid, FALSE);

@@ -3,8 +3,12 @@ pluginlibdir = $(pkglibdir)/plugins
 pluginlib_LTLIBRARIES = libfinder.la
 
 libfinder_la_SOURCES = \
+    find-text-action-extension.cpp \
     finder-plugin.cpp \
-    finder-plugin.hpp
+    text-finder-bar.cpp \
+    find-text-action-extension.hpp \
+    finder-plugin.hpp \
+    text-finder-bar.hpp
 
 libfinder_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
