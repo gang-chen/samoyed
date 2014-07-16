@@ -1,4 +1,5 @@
-<!-- Definitions of menu bar, toolbars and popup menus. -->
+<!-- Definitions of the main menu bar and toolbar. -->
+<?xml version="1.0" encoding="UTF-8"?>
 <ui>
 
   <menubar name="main-menu-bar">

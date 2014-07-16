@@ -1,3 +1,9 @@
+@INTLTOOL_XML_RULE@
+
 finderdatadir = $(pkgdatadir)/plugins/finder
 
-dist_finderdata_DATA = plugin.xml
+finderdata_DATA = plugin.xml
+
+EXTRA_DIST = plugin.xml.in
+
+CLEANFILES = plugin.xml

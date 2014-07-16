@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin>
   <id>terminal</id>
-  <name>Terminal</name>
-  <description>This plugin integrates a terminal emulator.</description>
+  <_name>Terminal</_name>
+  <_description>This plugin integrates a terminal emulator.</_description>
   <module>terminal</module>
   <extension>
     <id>view</id>
@@ -13,10 +13,10 @@
       <open-by-default>0</open-by-default>
       <view>
         <id>terminal</id>
-        <title>_Terminal</title>
+        <_title>_Terminal</_title>
       </view>
       <menu-item>
-        <label>_Terminal</label>
+        <_label>_Terminal</_label>
       </menu-item>
     </detail>
   </extension>

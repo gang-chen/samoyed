@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin>
   <id>finder</id>
-  <name>Finder</name>
-  <description>This plugin adds search functionality.</description>
+  <_name>Finder</_name>
+  <_description>This plugin adds search functionality.</_description>
   <module>finder</module>
   <extension>
     <id>find-text</id>
@@ -11,8 +11,8 @@
       <name>find-text</name>
       <path>/main-menu-bar/search</path>
       <path-2>/main-toolbar</path-2>
-      <label>Find _Text...</label>
-      <tooltip>Find text in the current file</tooltip>
+      <_label>Find _Text...</_label>
+      <_tooltip>Find text in the current file</_tooltip>
       <icon-name>edit-find</icon-name>
       <accelerator>&lt;Control&gt;f</accelerator>
       <separate>1</separate>

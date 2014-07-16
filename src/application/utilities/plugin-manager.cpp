@@ -10,6 +10,7 @@
 #include "miscellaneous.hpp"
 #include <string.h>
 #include <utility>
+#include <libintl.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gmodule.h>
@@ -228,7 +229,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                info->name = value;
+                info->name = gettext(value);
                 xmlFree(value);
             }
         }
@@ -239,7 +240,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                info->description = value;
+                info->description = gettext(value);
                 xmlFree(value);
             }
         }

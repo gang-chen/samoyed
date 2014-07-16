@@ -19,6 +19,7 @@
 #include <boost/ref.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <libintl.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <libxml/tree.h>
@@ -207,7 +208,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                         xmlNodeGetContent(grandChild->children));
                     if (value)
                     {
-                        ext->viewTitle = value;
+                        ext->viewTitle = gettext(value);
                         xmlFree(value);
                     }
                 }
@@ -229,7 +230,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                         xmlNodeGetContent(grandChild->children));
                     if (value)
                     {
-                        ext->menuItemLabel = value;
+                        ext->menuItemLabel = gettext(value);
                         xmlFree(value);
                     }
                 }
