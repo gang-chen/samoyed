@@ -85,6 +85,9 @@ Makefile
 *.so.*
 /src/launcher/samoyed
 
+# plugin.xml generated from plugin.xml.in.
+plugin.xml
+
 # Unit test builds.
 src/application/ui/dialogs/session-chooser-dialog
 src/application/ui/splash-screen
