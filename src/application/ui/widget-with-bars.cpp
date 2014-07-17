@@ -10,6 +10,7 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <utility>
 #include <boost/lexical_cast.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -21,6 +22,28 @@
 #define MAIN_CHILD "main-child"
 #define BARS "bars"
 #define CURRENT_CHILD_INDEX "current-child-index"
+
+namespace
+{
+
+gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, gpointer bar)
+{
+    static_cast<Samoyed::Bar *>(bar)->close();
+    return FALSE;
+}
+
+void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, gpointer bar)
+{
+    GtkWidget *barWidget = static_cast<Samoyed::Bar *>(bar)->gtkWidget();
+    for (GtkWidget *p = widget; p; p = gtk_widget_get_parent(p))
+    {
+        if (p == barWidget)
+            return;
+    }
+    static_cast<Samoyed::Bar *>(bar)->close();
+}
+
+}
 
 namespace Samoyed
 {
@@ -294,7 +317,7 @@ bool WidgetWithBars::restore(XmlElement &xmlElement)
             --i;
         }
         else
-            addBar(*bar);
+            addBar(*bar, false);
     }
     setCurrentChildIndex(xmlElement.currentChildIndex());
     return true;
@@ -356,7 +379,7 @@ void WidgetWithBars::removeMainChild(Widget &child)
     WidgetContainer::removeChildInternally(child);
 }
 
-void WidgetWithBars::addBar(Bar &bar)
+void WidgetWithBars::addBar(Bar &bar, bool transient)
 {
     WidgetContainer::addChildInternally(bar);
     m_bars.push_back(&bar);
@@ -368,6 +391,19 @@ void WidgetWithBars::addBar(Bar &bar)
         gtk_grid_attach_next_to(GTK_GRID(m_horizontalGrid),
                                 bar.gtkWidget(), NULL,
                                 GTK_POS_LEFT, 1, 1);
+    if (transient)
+    {
+        GtkWidget *window = gtkWidget();
+        for (GtkWidget *p = window; p; p = gtk_widget_get_parent(p))
+            window = p;
+        unsigned handler1 =
+            g_signal_connect(window, "focus-out-event",
+                             G_CALLBACK(onWindowFocusOut), &bar);
+        unsigned handler2 =
+            g_signal_connect(GTK_WINDOW(window), "set-focus",
+                             G_CALLBACK(onWindowSetFocus), &bar);
+        m_barHandlers[&bar] = std::make_pair(handler1, handler2);
+    }
 }
 
 void WidgetWithBars::removeBar(Bar &bar)
@@ -382,6 +418,18 @@ void WidgetWithBars::removeBar(Bar &bar)
     WidgetContainer::removeChildInternally(bar);
     if (m_currentChildIndex > barCount())
         m_currentChildIndex = barCount();
+    std::map<Bar *, std::pair<unsigned, unsigned> >::iterator it =
+        m_barHandlers.find(&bar);
+    if (it != m_barHandlers.end())
+    {
+        GtkWidget *window = gtkWidget();
+        for (GtkWidget *p = gtk_widget_get_parent(window); p;
+             p = gtk_widget_get_parent(window))
+            window = p;
+        g_signal_handler_disconnect(window, it->second.first);
+        g_signal_handler_disconnect(window, it->second.second);
+        m_barHandlers.erase(it);
+    }
 }
 
 void WidgetWithBars::removeChild(Widget &child)

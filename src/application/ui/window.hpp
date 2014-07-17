@@ -406,7 +406,7 @@ private:
 
     GtkWidget *m_statusBar;
     GtkWidget *m_currentFile;
-    std::vector<const char *> m_fileUris;
+    std::vector<ComparablePointer<const char> > m_fileUris;
     GtkWidget *m_currentLine;
     GtkWidget *m_currentColumn;
     int m_workerCount;

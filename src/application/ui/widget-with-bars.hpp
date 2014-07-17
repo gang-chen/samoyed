@@ -81,7 +81,7 @@ public:
     Widget &mainChild() { return *m_mainChild; }
     const Widget &mainChild() const { return *m_mainChild; }
 
-    void addBar(Bar &bar);
+    void addBar(Bar &bar, bool transient);
 
     void removeBar(Bar &bar);
 
@@ -121,6 +121,8 @@ private:
     std::vector<Bar *> m_bars;
 
     int m_currentChildIndex;
+
+    std::map<Bar *, std::pair<unsigned, unsigned> > m_barHandlers;
 };
 
 }

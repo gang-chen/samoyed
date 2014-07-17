@@ -591,7 +591,7 @@ gboolean Session::onUnsavedFilesRead(gpointer param)
         else
         {
             bar = FileRecoveryBar::create(p->m_session.unsavedFiles());
-            mainArea.addBar(*bar);
+            mainArea.addBar(*bar, false);
         }
     }
     delete p;

@@ -24,6 +24,8 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    virtual ~TextFinderBar();
+
     virtual Orientation orientation() const { return ORIENTATION_HORIZONTAL; }
 
     virtual void grabFocus();
@@ -35,9 +37,6 @@ private:
     static void onFindPrevious(GtkButton *button, gpointer bar);
     static void onDone(GtkEntry *entry, gpointer bar);
     static void onClose(GtkButton *button, gpointer bar);
-    static gboolean onFocusOut(GtkWidget *widget,
-                               GdkEventFocus *event,
-                               gpointer bar);
     static gboolean onKeyPress(GtkWidget *widget,
                                GdkEventKey *event,
                                gpointer bar);
@@ -55,6 +54,9 @@ private:
     TextEditor &m_editor;
     int m_line;
     int m_column;
+
+    bool m_endReached;
+    bool m_beginReached;
 };
 
 }

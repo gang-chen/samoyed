@@ -22,6 +22,7 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <utility>
 #include <boost/ref.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -1603,13 +1604,17 @@ void Window::createStatusBar()
          file;
          file = file->next())
     {
+        std::vector<ComparablePointer<const char> >::iterator it =
+            std::lower_bound(m_fileUris.begin(), m_fileUris.end(),
+                             ComparablePointer<const char>(file->uri()));
+        m_fileUris.insert(it, file->uri());
         char *fileName = g_filename_from_uri(file->uri(), NULL, NULL);
         char *title = g_filename_display_basename(fileName);
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(m_currentFile),
+        gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(m_currentFile),
+                                       it - m_fileUris.begin(),
                                        title);
         g_free(title);
         g_free(fileName);
-        m_fileUris.push_back(file->uri());
     }
 
     gtk_widget_set_tooltip_text(
@@ -1660,14 +1665,14 @@ void Window::createStatusBar()
             label2,
             i == 0 ? label : m_workersStatus[i - 1],
             GTK_POS_RIGHT, 1, 1);
-        m_workersStatus[i] = gtk_label_new(_("Idle"));
+        m_workersStatus[i] = gtk_label_new(_("Idle."));
         gtk_label_set_single_line_mode(GTK_LABEL(m_workersStatus[i]),
                                        TRUE);
         gtk_label_set_max_width_chars(GTK_LABEL(m_workersStatus[i]),
                                       WORKER_STATUS_WIDTH);
         gtk_label_set_ellipsize(GTK_LABEL(m_workersStatus[i]),
                                 PANGO_ELLIPSIZE_END);
-        gtk_widget_set_tooltip_text(m_workersStatus[i], _("Idle"));
+        gtk_widget_set_tooltip_text(m_workersStatus[i], _("Idle."));
         gtk_grid_attach_next_to(
             GTK_GRID(m_statusBar),
             m_workersStatus[i],
@@ -1696,10 +1701,15 @@ void Window::onFileOpened(const char *uri)
         // restoring a session.
         if (window->m_currentFile)
         {
-            gtk_combo_box_text_append_text(
+            std::vector<ComparablePointer<const char> >::iterator it =
+                std::lower_bound(window->m_fileUris.begin(),
+                                 window->m_fileUris.end(),
+                                 ComparablePointer<const char>(uri));
+            window->m_fileUris.insert(it, uri);
+            gtk_combo_box_text_insert_text(
                 GTK_COMBO_BOX_TEXT(window->m_currentFile),
+                it - window->m_fileUris.begin(),
                 title);
-            window->m_fileUris.push_back(uri);
         }
     }
     g_free(title);
@@ -1712,34 +1722,27 @@ void Window::onFileClosed(const char *uri)
          window;
          window = window->next())
     {
-        for (std::vector<const char *>::iterator i = window->m_fileUris.begin();
-             i != window->m_fileUris.end();
-             ++i)
-        {
-            if (strcmp(*i, uri) == 0)
-            {
-                gtk_combo_box_text_remove(
-                    GTK_COMBO_BOX_TEXT(window->m_currentFile),
-                    i - window->m_fileUris.begin());
-                window->m_fileUris.erase(i);
-                break;
-            }
-        }
+        std::pair<std::vector<ComparablePointer<const char> >::iterator,
+                  std::vector<ComparablePointer<const char> >::iterator> p =
+            std::equal_range(window->m_fileUris.begin(),
+                             window->m_fileUris.end(),
+                             ComparablePointer<const char>(uri));
+        gtk_combo_box_text_remove(
+            GTK_COMBO_BOX_TEXT(window->m_currentFile),
+            p.first - window->m_fileUris.begin());
+        window->m_fileUris.erase(p.first);
     }
 }
 
 void Window::onCurrentFileChanged(const char *uri)
 {
-    for (std::vector<const char *>::size_type i = 0;
-         i < m_fileUris.size();
-         ++i)
-    {
-        if (strcmp(m_fileUris[i], uri) == 0)
-        {
-            gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile), i);
-            break;
-        }
-    }
+    std::pair<std::vector<ComparablePointer<const char> >::iterator,
+              std::vector<ComparablePointer<const char> >::iterator> p =
+        std::equal_range(m_fileUris.begin(),
+                         m_fileUris.end(),
+                         ComparablePointer<const char>(uri));
+    gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile),
+                             p.first - m_fileUris.begin());
 }
 
 void Window::onCurrentTextEditorCursorChanged(int line, int column)
@@ -1764,7 +1767,7 @@ gboolean Window::onWorkerBegunInMainThread(gpointer param)
         {
             const char *d =
                 gtk_label_get_text(GTK_LABEL(window->m_workersStatus[i]));
-            if (strcmp(d, _("Idle")) == 0)
+            if (strcmp(d, _("Idle.")) == 0)
             {
                 gtk_label_set_text(GTK_LABEL(window->m_workersStatus[i]),
                                    desc);
@@ -1790,9 +1793,9 @@ gboolean Window::onWorkerEndedInMainThread(gpointer param)
             if (strcmp(d, desc) == 0)
             {
                 gtk_label_set_text(GTK_LABEL(window->m_workersStatus[i]),
-                                   _("Idle"));
+                                   _("Idle."));
                 gtk_widget_set_tooltip_text(window->m_workersStatus[i],
-                                            _("Idle"));
+                                            _("Idle."));
                 break;
             }
         }
