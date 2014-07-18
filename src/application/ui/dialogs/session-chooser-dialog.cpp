@@ -89,8 +89,7 @@ private:
                                GtkTreeIter *iter,
                                GtkTreePath *path,
                                RestoreSessionDialog *dialog);
-    GtkListStore *m_store;
-    GtkWidget *m_list;
+    GtkWidget *m_sessions;
     GtkWidget *m_dialog;
 };
 
@@ -243,7 +242,7 @@ RestoreSessionDialog::onResponse(GtkDialog *gtkDialog,
             gtk_dialog_run(GTK_DIALOG(d));
             gtk_widget_destroy(d);
             g_signal_stop_emission_by_name(gtkDialog, "response");
-            gtk_widget_grab_focus(dialog->m_list);
+            gtk_widget_grab_focus(dialog->m_sessions);
         }
     }
 }
@@ -258,8 +257,7 @@ RestoreSessionDialog::onRowActivated(GtkTreeView *list,
 }
 
 RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
-    m_store(NULL),
-    m_list(NULL),
+    m_sessions(NULL),
     m_dialog(NULL)
 {
     // Read sessions.
@@ -268,15 +266,15 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
     readSessions(sessionNames, sessionStates);
     if (sessionNames.empty())
         return;
-    m_store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_BOOLEAN);
+    GtkListStore *store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_BOOLEAN);
     GtkTreeIter it;
     std::list<std::string>::const_iterator it1 = sessionNames.begin();
     std::list<Samoyed::Session::LockState>::const_iterator it2 =
         sessionStates.begin();
     for (; it1 != sessionNames.end(); ++it1, ++it2)
     {
-        gtk_list_store_append(m_store, &it);
-        gtk_list_store_set(m_store, &it,
+        gtk_list_store_append(store, &it);
+        gtk_list_store_set(store, &it,
                            0, it1->c_str(),
                            1,
                            *it2 != Samoyed::Session::STATE_UNLOCKED,
@@ -286,14 +284,15 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
     // Make the session list.
     GtkCellRenderer *renderer;
     GtkTreeViewColumn *column;
-    m_list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
+    m_sessions = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+    g_object_unref(store);
     renderer = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(_("Name"),
                                                       renderer,
                                                       "text", 0,
                                                       NULL);
     gtk_tree_view_column_set_expand(column, TRUE);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(m_sessions), column);
     renderer = gtk_cell_renderer_toggle_new();
     gtk_cell_renderer_toggle_set_activatable(
         GTK_CELL_RENDERER_TOGGLE(renderer), FALSE);
@@ -301,19 +300,19 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
                                                       renderer,
                                                       "active", 1,
                                                       NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
-    gtk_widget_set_hexpand(m_list, TRUE);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(m_sessions), column);
+    gtk_widget_set_hexpand(m_sessions, TRUE);
 
     // Make the dialog.
     GtkWidget *label = gtk_label_new_with_mnemonic(_("Choose a _session:"));
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_list);
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_sessions);
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(grid),
                             label, NULL,
                             GTK_POS_BOTTOM, 1, 1);
     gtk_grid_attach_next_to(GTK_GRID(grid),
-                            m_list, label,
+                            m_sessions, label,
                             GTK_POS_BOTTOM, 1, 1);
     gtk_grid_set_row_spacing(GTK_GRID(grid), Samoyed::CONTAINER_SPACING);
     gtk_container_set_border_width(GTK_CONTAINER(grid),
@@ -345,17 +344,15 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
         TRUE);
     gtk_dialog_set_default_response(GTK_DIALOG(m_dialog), GTK_RESPONSE_OK);
     g_signal_connect(m_dialog, "response", G_CALLBACK(onResponse), this);
-    g_signal_connect(m_list, "row-activated", G_CALLBACK(onRowActivated), this);
+    g_signal_connect(m_sessions, "row-activated",
+                     G_CALLBACK(onRowActivated), this);
     gtk_widget_show_all(grid);
 }
 
 RestoreSessionDialog::~RestoreSessionDialog()
 {
     if (m_dialog)
-    {
         gtk_widget_destroy(m_dialog);
-        g_object_unref(m_store);
-    }
 }
 
 int RestoreSessionDialog::run()
@@ -371,7 +368,7 @@ const char *RestoreSessionDialog::name() const
     GtkTreeModel *model;
     GtkTreeIter it;
     char *sessionName;
-    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(m_list));
+    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(m_sessions));
     if (!gtk_tree_selection_get_selected(selection, &model, &it))
         return NULL;
     gtk_tree_model_get(model, &it, 0, &sessionName, -1);

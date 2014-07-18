@@ -9,6 +9,7 @@
 #include "paned.hpp"
 #include "widget-with-bars.hpp"
 #include "notebook.hpp"
+#include "file.hpp"
 #include "editor.hpp"
 #include "text-editor.hpp"
 #include "application.hpp"
@@ -709,6 +710,10 @@ bool Window::restore(XmlElement &xmlElement)
 Window::~Window()
 {
     assert(!m_child);
+    for (std::vector<FileTitleUri>::iterator it = m_fileTitlesUris.begin();
+         it != m_fileTitlesUris.end();
+         ++it)
+        g_free(it->title);
     delete[] m_workersStatus;
     Application::instance().removeWindow(*this);
     if (m_uiManager)
@@ -1604,16 +1609,17 @@ void Window::createStatusBar()
          file;
          file = file->next())
     {
-        std::vector<ComparablePointer<const char> >::iterator it =
-            std::lower_bound(m_fileUris.begin(), m_fileUris.end(),
-                             ComparablePointer<const char>(file->uri()));
-        m_fileUris.insert(it, file->uri());
         char *fileName = g_filename_from_uri(file->uri(), NULL, NULL);
-        char *title = g_filename_display_basename(fileName);
+        FileTitleUri titleUri;
+        titleUri.title = g_filename_display_basename(fileName);
+        titleUri.uri = file->uri();
+        std::vector<FileTitleUri>::iterator it =
+            std::lower_bound(m_fileTitlesUris.begin(), m_fileTitlesUris.end(),
+                             titleUri, compareFileTitles);
         gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(m_currentFile),
-                                       it - m_fileUris.begin(),
-                                       title);
-        g_free(title);
+                                       it - m_fileTitlesUris.begin(),
+                                       titleUri.title);
+        m_fileTitlesUris.insert(it, titleUri);
         g_free(fileName);
     }
 
@@ -1623,6 +1629,10 @@ void Window::createStatusBar()
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
                             m_currentFile, label,
                             GTK_POS_RIGHT, 1, 1);
+
+    g_signal_connect(m_currentFile, "changed",
+                     G_CALLBACK(goToCurrentFile), this);
+
     label = gtk_label_new(_("Line:"));
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
                             label, m_currentFile,
@@ -1649,6 +1659,9 @@ void Window::createStatusBar()
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
                             m_currentColumn, label,
                             GTK_POS_RIGHT, 1, 1);
+
+    g_signal_connect(m_currentLine, "activate", G_CALLBACK(setCursor), this);
+    g_signal_connect(m_currentColumn, "activate", G_CALLBACK(setCursor), this);
 
     label = gtk_label_new(_("Background workers:"));
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
@@ -1692,7 +1705,6 @@ void Window::createStatusBar()
 void Window::onFileOpened(const char *uri)
 {
     char *fileName = g_filename_from_uri(uri, NULL, NULL);
-    char *title = g_filename_display_basename(fileName);
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
@@ -1701,48 +1713,61 @@ void Window::onFileOpened(const char *uri)
         // restoring a session.
         if (window->m_currentFile)
         {
-            std::vector<ComparablePointer<const char> >::iterator it =
-                std::lower_bound(window->m_fileUris.begin(),
-                                 window->m_fileUris.end(),
-                                 ComparablePointer<const char>(uri));
-            window->m_fileUris.insert(it, uri);
+            FileTitleUri titleUri;
+            titleUri.title = g_filename_display_basename(fileName);
+            titleUri.uri = uri;
+            std::vector<FileTitleUri>::iterator it =
+                std::lower_bound(window->m_fileTitlesUris.begin(),
+                                 window->m_fileTitlesUris.end(),
+                                 titleUri, compareFileTitles);
             gtk_combo_box_text_insert_text(
                 GTK_COMBO_BOX_TEXT(window->m_currentFile),
-                it - window->m_fileUris.begin(),
-                title);
+                it - window->m_fileTitlesUris.begin(),
+                titleUri.title);
+            window->m_fileTitlesUris.insert(it, titleUri);
         }
     }
-    g_free(title);
     g_free(fileName);
 }
 
 void Window::onFileClosed(const char *uri)
 {
+    char *fileName = g_filename_from_uri(uri, NULL, NULL);
+    FileTitleUri titleUri;
+    titleUri.title = g_filename_display_basename(fileName);
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
     {
-        std::pair<std::vector<ComparablePointer<const char> >::iterator,
-                  std::vector<ComparablePointer<const char> >::iterator> p =
-            std::equal_range(window->m_fileUris.begin(),
-                             window->m_fileUris.end(),
-                             ComparablePointer<const char>(uri));
+        std::pair<std::vector<FileTitleUri>::iterator,
+                  std::vector<FileTitleUri>::iterator> p =
+            std::equal_range(window->m_fileTitlesUris.begin(),
+                             window->m_fileTitlesUris.end(),
+                             titleUri, compareFileTitles);
         gtk_combo_box_text_remove(
             GTK_COMBO_BOX_TEXT(window->m_currentFile),
-            p.first - window->m_fileUris.begin());
-        window->m_fileUris.erase(p.first);
+            p.first - window->m_fileTitlesUris.begin());
+        g_free(p.first->title);
+        window->m_fileTitlesUris.erase(p.first);
     }
+    g_free(titleUri.title);
+    g_free(fileName);
 }
 
 void Window::onCurrentFileChanged(const char *uri)
 {
-    std::pair<std::vector<ComparablePointer<const char> >::iterator,
-              std::vector<ComparablePointer<const char> >::iterator> p =
-        std::equal_range(m_fileUris.begin(),
-                         m_fileUris.end(),
-                         ComparablePointer<const char>(uri));
+    char *fileName = g_filename_from_uri(uri, NULL, NULL);
+    FileTitleUri titleUri;
+    titleUri.title = g_filename_display_basename(fileName);
+    std::pair<std::vector<FileTitleUri>::iterator,
+              std::vector<FileTitleUri>::iterator> p =
+        std::equal_range(m_fileTitlesUris.begin(),
+                         m_fileTitlesUris.end(),
+                         titleUri, compareFileTitles);
     gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile),
-                             p.first - m_fileUris.begin());
+                             p.first - m_fileTitlesUris.begin());
+    g_free(titleUri.title);
+    g_free(fileName);
 }
 
 void Window::onCurrentTextEditorCursorChanged(int line, int column)
@@ -1818,6 +1843,89 @@ void Window::onWorkerEnded(const char *desc)
                     onWorkerEndedInMainThread,
                     g_strdup(desc),
                     NULL);
+}
+
+void Window::goToCurrentFile(GtkComboBox *combo, gpointer window)
+{
+    int index = gtk_combo_box_get_active(combo);
+    if (index < 0)
+        return;
+
+    Window *w = static_cast<Window *>(window);
+
+    std::vector<FileTitleUri>::iterator it =
+        w->m_fileTitlesUris.begin() + index;
+
+    // Check to see if the file is opened in this window.  If any, switch to
+    // the editor.
+    File *file = Application::instance().findFile(it->uri);
+    for (Editor *editor = file->editors();
+         editor;
+         editor = editor->nextInFile())
+    {
+        Widget *win = editor;
+        for (Widget *p = win; p; p = win->parent())
+            win = p;
+        if (win == w)
+        {
+            editor->setCurrent();
+            return;
+        }
+    }
+
+    // Open the file in this window.
+    Editor *editor = file->createEditor(NULL);
+    w->addEditorToEditorGroup(*editor,
+                              w->currentEditorGroup(),
+                              w->currentEditorGroup().currentChildIndex() + 1);
+    editor->setCurrent();
+}
+
+void Window::setCursor(GtkEntry *entry, gpointer window)
+{
+    Window *w = static_cast<Window *>(window);
+    Notebook &editorGroup = w->currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::TextEditor &editor =
+            static_cast<TextEditor &>(editorGroup.currentChild());
+        const char *line = gtk_entry_get_text(GTK_ENTRY(w->m_currentLine));
+        const char *column = gtk_entry_get_text(GTK_ENTRY(w->m_currentColumn));
+        int ln, col;
+        try
+        {
+            ln = boost::lexical_cast<int>(line);
+        }
+        catch (boost::bad_lexical_cast &exp)
+        {
+            ln = -1;
+        }
+        try
+        {
+            col = boost::lexical_cast<int>(column);
+        }
+        catch (boost::bad_lexical_cast &exp)
+        {
+            col = -1;
+        }
+        if (ln >= 1 && col >= 1)
+        {
+            ln--;
+            col--;
+            if (ln >= editor.lineCount())
+                ln = editor.lineCount() - 1;
+            if (col > editor.maxColumnInLine(ln))
+                col = 0;
+            editor.setCursor(ln, col);
+        }
+        editor.setCurrent();
+    }
+}
+
+bool Window::compareFileTitles(const FileTitleUri &titleUri1,
+                               const FileTitleUri &titleUri2)
+{
+    return strcmp(titleUri1.title, titleUri2.title) < 0;
 }
 
 }

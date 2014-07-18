@@ -344,6 +344,12 @@ private:
         {}
     };
 
+    struct FileTitleUri
+    {
+        char *title;
+        const char *uri;
+    };
+
     static gboolean onDeleteEvent(GtkWidget *widget,
                                   GdkEvent *event,
                                   Window *window);
@@ -395,6 +401,12 @@ private:
     static gboolean onWorkerBegunInMainThread(gpointer param);
     static gboolean onWorkerEndedInMainThread(gpointer param);
 
+    static void goToCurrentFile(GtkComboBox *combo, gpointer window);
+    static void setCursor(GtkEntry *entry, gpointer window);
+
+    static bool compareFileTitles(const FileTitleUri &titleUri1,
+                                  const FileTitleUri &titleUri2);
+
     static Created s_created;
     static Restored s_restored;
     static SidePaneCreated s_navigationPaneCreated;
@@ -406,7 +418,7 @@ private:
 
     GtkWidget *m_statusBar;
     GtkWidget *m_currentFile;
-    std::vector<ComparablePointer<const char> > m_fileUris;
+    std::vector<FileTitleUri> m_fileTitlesUris;
     GtkWidget *m_currentLine;
     GtkWidget *m_currentColumn;
     int m_workerCount;

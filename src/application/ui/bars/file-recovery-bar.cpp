@@ -25,8 +25,7 @@ const char *FileRecoveryBar::ID = "file-recovery-bar";
 
 FileRecoveryBar::FileRecoveryBar(
     const Session::UnsavedFileTable &files):
-    m_files(files),
-    m_store(NULL)
+    m_files(files)
 {
     for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
@@ -36,8 +35,6 @@ FileRecoveryBar::FileRecoveryBar(
 
 FileRecoveryBar::~FileRecoveryBar()
 {
-    if (m_store)
-        g_object_unref(m_store);
     for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
@@ -48,40 +45,41 @@ bool FileRecoveryBar::setup()
 {
     if (!Bar::setup(ID))
         return false;
-    m_store = gtk_list_store_new(1, G_TYPE_STRING);
+    GtkListStore *store = gtk_list_store_new(1, G_TYPE_STRING);
     GtkTreeIter iter;
     for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
     {
-        gtk_list_store_append(m_store, &iter);
-        gtk_list_store_set(m_store, &iter,
+        gtk_list_store_append(store, &iter);
+        gtk_list_store_set(store, &iter,
                            0, it->first.c_str(),
                            -1);
     }
     GtkCellRenderer *renderer;
     GtkTreeViewColumn *column;
-    m_list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(m_store));
-    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(m_list), FALSE);
+    m_fileList = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+    g_object_unref(store);
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(m_fileList), FALSE);
     renderer = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(_("URIs"),
                                                       renderer,
                                                       "text", 0,
                                                       NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(m_list), column);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(m_fileList), column);
     GtkTreeSelection *select =
-        gtk_tree_view_get_selection(GTK_TREE_VIEW(m_list));
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(m_fileList));
     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
-    gtk_widget_set_hexpand(m_list, TRUE);
-    gtk_widget_set_vexpand(m_list, TRUE);
+    gtk_widget_set_hexpand(m_fileList, TRUE);
+    gtk_widget_set_vexpand(m_fileList, TRUE);
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *label = gtk_label_new_with_mnemonic(
         _("_Files that were edited but not saved in the last session:"));
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_list);
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_fileList);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), m_list, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), m_fileList, 0, 1, 1, 1);
 
     GtkWidget *button;
     GtkWidget *box = gtk_button_box_new(GTK_ORIENTATION_VERTICAL);
@@ -146,11 +144,13 @@ FileRecoveryBar::setFiles(const Session::UnsavedFileTable &files)
          ++it)
         it->second.m_options = new PropertyTree(*it->second.m_options);
     GtkTreeIter iter;
-    gtk_list_store_clear(m_store);
+    GtkListStore *store =
+        GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(m_fileList)));
+    gtk_list_store_clear(store);
     for (Session::UnsavedFileTable::iterator it = m_files.begin();
          it != m_files.end();
          ++it)
-        gtk_list_store_insert_with_values(m_store, &iter,
+        gtk_list_store_insert_with_values(store, &iter,
                                           0, it->first.c_str(),
                                           -1);
 }
@@ -158,7 +158,7 @@ FileRecoveryBar::setFiles(const Session::UnsavedFileTable &files)
 void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
 {
     GtkTreeSelection *select =
-        gtk_tree_view_get_selection(GTK_TREE_VIEW(bar->m_list));
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(bar->m_fileList));
     GtkTreeIter iter;
     GtkTreeModel *model;
     if (gtk_tree_selection_get_selected(select, &model, &iter))
@@ -186,7 +186,7 @@ void FileRecoveryBar::onRecover(GtkButton *button, FileRecoveryBar *bar)
 void FileRecoveryBar::onDiscard(GtkButton *button, FileRecoveryBar *bar)
 {
     GtkTreeSelection *select =
-        gtk_tree_view_get_selection(GTK_TREE_VIEW(bar->m_list));
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(bar->m_fileList));
     GtkTreeIter iter;
     GtkTreeModel *model;
     if (gtk_tree_selection_get_selected(select, &model, &iter))

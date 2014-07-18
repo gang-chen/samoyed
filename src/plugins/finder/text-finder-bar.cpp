@@ -114,31 +114,35 @@ Widget::XmlElement *TextFinderBar::save() const
 
 void TextFinderBar::search(bool next)
 {
+    // Clear the message.
+    gtk_label_set_text(GTK_LABEL(m_message), "");
+    gtk_widget_set_tooltip_text(m_message, "");
+
     const char *text = gtk_entry_get_text(GTK_ENTRY(m_text));
     if (*text == '\0')
         return;
+
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_editor.gtkSourceView()));
-    GtkTextIter start, limit, matchBegin, matchEnd;
+    GtkTextIter start, matchBegin, matchEnd;
     gtk_text_buffer_get_iter_at_mark(buffer, &start,
                                      gtk_text_buffer_get_insert(buffer));
     unsigned int flags = GTK_TEXT_SEARCH_VISIBLE_ONLY |
         GTK_TEXT_SEARCH_TEXT_ONLY;
     if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(m_matchCase)))
         flags |= GTK_TEXT_SEARCH_CASE_INSENSITIVE;
+
     gboolean found;
     if (next)
     {
         if (m_endReached)
         {
             gtk_text_buffer_get_start_iter(buffer, &start);
-            gtk_text_buffer_get_iter_at_line_offset(buffer, &limit,
-                                                    m_line, m_column);
             found = gtk_text_iter_forward_search(
                 &start, text,
                 static_cast<GtkTextSearchFlags>(flags),
                 &matchBegin, &matchEnd,
-                &limit);
+                NULL);
         }
         else
         {
@@ -157,13 +161,11 @@ void TextFinderBar::search(bool next)
         if (m_beginReached)
         {
             gtk_text_buffer_get_end_iter(buffer, &start);
-            gtk_text_buffer_get_iter_at_line_offset(buffer, &limit,
-                                                    m_line, m_column);
             found = gtk_text_iter_backward_search(
                 &start, text,
                 static_cast<GtkTextSearchFlags>(flags),
                 &matchBegin, &matchEnd,
-                &limit);
+                NULL);
         }
         else
         {
@@ -177,6 +179,7 @@ void TextFinderBar::search(bool next)
                 NULL);
         }
     }
+
     if (found)
     {
         int line, column, line2, column2;
@@ -185,6 +188,32 @@ void TextFinderBar::search(bool next)
         line2 = gtk_text_iter_get_line(&matchEnd);
         column2 = gtk_text_iter_get_line_offset(&matchEnd);
         m_editor.selectRange(line, column, line2, column2);
+        if (next)
+        {
+            if (m_endReached)
+            {
+                m_endReached = false;
+                gtk_label_set_text(
+                    GTK_LABEL(m_message),
+                    _("Searching from the beginning of the file."));
+                gtk_widget_set_tooltip_text(
+                    m_message,
+                    _("Searching from the beginning of the file."));
+            }
+        }
+        else
+        {
+            if (m_beginReached)
+            {
+                m_beginReached = false;
+                gtk_label_set_text(
+                    GTK_LABEL(m_message),
+                    _("Searching backward from the end of the file."));
+                gtk_widget_set_tooltip_text(
+                    m_message,
+                    _("Searching backward from the end of the file."));
+            }
+        }
     }
     else
     {
