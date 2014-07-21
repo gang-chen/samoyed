@@ -1,27 +1,25 @@
-// Extension point: preferences.
+// Extension point: histories.
 // Copyright (C) 2014 Gang Chen.
 
-#ifndef SMYD_PREFERENCES_EXTENSION_POINT_HPP
-#define SMYD_PREFERENCES_EXTENSION_POINT_HPP
+#ifndef SMYD_HISTORIES_EXTENSION_POINT_HPP
+#define SMYD_HISTORIES_EXTENSION_POINT_HPP
 
 #include "utilities/extension-point.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
-#include <set>
 #include <string>
-#include <gtk/gtk.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
 
-class PreferencesExtensionPoint: public ExtensionPoint
+class HistoriesExtensionPoint: public ExtensionPoint
 {
 public:
-    PreferencesExtensionPoint();
+    HistoriesExtensionPoint();
 
-    virtual ~PreferencesExtensionPoint();
+    virtual ~HistoriesExtensionPoint();
 
     virtual bool registerExtension(const char *extensionId,
                                    xmlNodePtr xmlNode,
@@ -29,15 +27,10 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    void categories(std::set<std::string> &categories);
-
-    void setupPreferencesEditor(const char *category, GtkWidget *grid);
-
 private:
     struct ExtensionInfo
     {
         std::string id;
-        std::set<std::string> categories;
         ExtensionInfo(const char *extensionId): id(extensionId) {}
     };
 

@@ -401,8 +401,9 @@ private:
     static gboolean onWorkerBegunInMainThread(gpointer param);
     static gboolean onWorkerEndedInMainThread(gpointer param);
 
-    static void goToCurrentFile(GtkComboBox *combo, gpointer window);
-    static void setCursor(GtkEntry *entry, gpointer window);
+    static void onCurrentFileInput(GtkComboBox *combo, gpointer window);
+    static void onCurrentTextEditorCursorInput(GtkEntry *entry,
+                                               gpointer window);
 
     static bool compareFileTitles(const FileTitleUri &titleUri1,
                                   const FileTitleUri &titleUri2);
@@ -423,6 +424,9 @@ private:
     GtkWidget *m_currentColumn;
     int m_workerCount;
     GtkWidget **m_workersStatus;
+
+    bool m_bypassCurrentFileChange;
+    bool m_bypassCurrentFileInput;
 
     Widget *m_child;
 

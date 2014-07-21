@@ -24,6 +24,7 @@ class Scheduler;
 class ActionsExtensionPoint;
 class FileObserversExtensionPoint;
 class FileRecoverersExtensionPoint;
+class HistoriesExtensionPoint;
 class PreferencesExtensionPoint;
 class ViewsExtensionPoint;
 class PropertyTree;
@@ -201,6 +202,7 @@ private:
     ActionsExtensionPoint *m_actionsExtensionPoint;
     FileObserversExtensionPoint *m_fileObExtensionPoint;
     FileRecoverersExtensionPoint *m_fileRecExtensionPoint;
+    HistoriesExtensionPoint *m_historiesExtensionPoint;
     PreferencesExtensionPoint *m_preferencesExtensionPoint;
     ViewsExtensionPoint *m_viewsExtensionPoint;
 

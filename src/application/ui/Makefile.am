@@ -10,8 +10,10 @@ libui_la_SOURCES = \
     file-observer.cpp \
     file-observers-extension-point.cpp \
     file-recoverers-extension-point.cpp \
+    histories-extension-point.cpp \
     notebook.cpp \
     paned.cpp \
+    preferences-editor.cpp \
     preferences-extension-point.cpp \
     project.cpp \
     session.cpp \
@@ -37,8 +39,11 @@ libui_la_SOURCES = \
     file-observers-extension-point.hpp \
     file-recoverer-extension.hpp \
     file-recoverers-extension-point.hpp \
+    histories-extension.hpp \
+    histories-extension-point.hpp \
     notebook.hpp \
     paned.hpp \
+    preferences-editor.hpp \
     preferences-extension.hpp \
     preferences-extension-point.hpp \
     project.hpp \

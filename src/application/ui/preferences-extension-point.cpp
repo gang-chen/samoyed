@@ -105,6 +105,15 @@ PreferencesExtensionPoint::unregisterExtension(const char *extensionId)
     delete ext;
 }
 
+void PreferencesExtensionPoint::categories(std::set<std::string> &categories)
+{
+    for (ExtensionTable::iterator it = m_extensions.begin();
+         it != m_extensions.end();
+         ++it)
+        categories.insert(it->second->categories.begin(),
+                          it->second->categories.end());
+}
+
 void
 PreferencesExtensionPoint::setupPreferencesEditor(const char *category,
                                                   GtkWidget *grid)

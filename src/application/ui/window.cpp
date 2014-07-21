@@ -507,6 +507,8 @@ Window::Window():
     m_currentColumn(NULL),
     m_workerCount(numberOfProcessors()),
     m_workersStatus(NULL),
+    m_bypassCurrentFileChange(false),
+    m_bypassCurrentFileInput(false),
     m_child(NULL),
     m_uiManager(NULL),
     m_actions(new Actions(this)),
@@ -1631,7 +1633,7 @@ void Window::createStatusBar()
                             GTK_POS_RIGHT, 1, 1);
 
     g_signal_connect(m_currentFile, "changed",
-                     G_CALLBACK(goToCurrentFile), this);
+                     G_CALLBACK(onCurrentFileInput), this);
 
     label = gtk_label_new(_("Line:"));
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
@@ -1660,8 +1662,10 @@ void Window::createStatusBar()
                             m_currentColumn, label,
                             GTK_POS_RIGHT, 1, 1);
 
-    g_signal_connect(m_currentLine, "activate", G_CALLBACK(setCursor), this);
-    g_signal_connect(m_currentColumn, "activate", G_CALLBACK(setCursor), this);
+    g_signal_connect(m_currentLine, "activate",
+                     G_CALLBACK(onCurrentTextEditorCursorInput), this);
+    g_signal_connect(m_currentColumn, "activate",
+                     G_CALLBACK(onCurrentTextEditorCursorInput), this);
 
     label = gtk_label_new(_("Background workers:"));
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
@@ -1756,6 +1760,9 @@ void Window::onFileClosed(const char *uri)
 
 void Window::onCurrentFileChanged(const char *uri)
 {
+    if (m_bypassCurrentFileChange)
+        return;
+
     char *fileName = g_filename_from_uri(uri, NULL, NULL);
     FileTitleUri titleUri;
     titleUri.title = g_filename_display_basename(fileName);
@@ -1764,8 +1771,10 @@ void Window::onCurrentFileChanged(const char *uri)
         std::equal_range(m_fileTitlesUris.begin(),
                          m_fileTitlesUris.end(),
                          titleUri, compareFileTitles);
+    m_bypassCurrentFileInput = true;
     gtk_combo_box_set_active(GTK_COMBO_BOX(m_currentFile),
                              p.first - m_fileTitlesUris.begin());
+    m_bypassCurrentFileInput = false;
     g_free(titleUri.title);
     g_free(fileName);
 }
@@ -1845,13 +1854,15 @@ void Window::onWorkerEnded(const char *desc)
                     NULL);
 }
 
-void Window::goToCurrentFile(GtkComboBox *combo, gpointer window)
+void Window::onCurrentFileInput(GtkComboBox *combo, gpointer window)
 {
+    Window *w = static_cast<Window *>(window);
+    if (w->m_bypassCurrentFileInput)
+        return;
+
     int index = gtk_combo_box_get_active(combo);
     if (index < 0)
         return;
-
-    Window *w = static_cast<Window *>(window);
 
     std::vector<FileTitleUri>::iterator it =
         w->m_fileTitlesUris.begin() + index;
@@ -1868,20 +1879,24 @@ void Window::goToCurrentFile(GtkComboBox *combo, gpointer window)
             win = p;
         if (win == w)
         {
+            w->m_bypassCurrentFileChange = true;
             editor->setCurrent();
+            w->m_bypassCurrentFileChange = false;
             return;
         }
     }
 
     // Open the file in this window.
     Editor *editor = file->createEditor(NULL);
+    w->m_bypassCurrentFileChange = true;
     w->addEditorToEditorGroup(*editor,
                               w->currentEditorGroup(),
                               w->currentEditorGroup().currentChildIndex() + 1);
     editor->setCurrent();
+    w->m_bypassCurrentFileChange = false;
 }
 
-void Window::setCursor(GtkEntry *entry, gpointer window)
+void Window::onCurrentTextEditorCursorInput(GtkEntry *entry, gpointer window)
 {
     Window *w = static_cast<Window *>(window);
     Notebook &editorGroup = w->currentEditorGroup();
