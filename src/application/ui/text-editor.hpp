@@ -16,6 +16,7 @@ namespace Samoyed
 
 class TextFile;
 class Project;
+class Window;
 
 class TextEditor: public Editor
 {
@@ -91,6 +92,10 @@ public:
     {
         return GTK_SOURCE_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
     }
+
+    virtual void activateAction(Window &window, GtkAction *action);
+
+    virtual bool isActionSensitive(Window &window, GtkAction *action);
 
 protected:
     TextEditor(TextFile &file, Project *project);

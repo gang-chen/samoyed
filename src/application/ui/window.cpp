@@ -1511,7 +1511,7 @@ GtkAction *Window::addAction(
         gtk_action_new(name, label, tooltip, NULL);
     gtk_action_set_icon_name(action, iconName);
     g_signal_connect(action, "activate",
-                     G_CALLBACK(activateAction), &data->activate);
+                     G_CALLBACK(::activateAction), &data->activate);
     gtk_action_group_add_action_with_accel(m_actions->actionGroup(),
                                            action,
                                            accelerator);

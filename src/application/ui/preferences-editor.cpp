@@ -17,8 +17,6 @@ namespace Samoyed
 std::map<std::string, PreferencesEditor::Setup *>
     PreferencesEditor::s_preferences;
 
-PreferencesEditor *PreferencesEditor::s_instance = NULL;
-
 void PreferencesEditor::registerPreferences(const char *category,
                                             const Setup::slot_type &setup)
 {
@@ -28,16 +26,14 @@ void PreferencesEditor::registerPreferences(const char *category,
     it->second->connect(setup);
 }
 
-PreferencesEditor &PreferencesEditor::instance()
-{
-    if (!s_instance)
-        s_instance = new PreferencesEditor;
-    return *s_instance;
-}
-
 PreferencesEditor::PreferencesEditor()
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+}
+
+PreferencesEditor::~PreferencesEditor()
+{
+    gtk_widget_destroy(m_window);
 }
 
 void PreferencesEditor::show()

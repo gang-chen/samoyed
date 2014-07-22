@@ -622,7 +622,7 @@ File::File(const char *uri,
     m_loader(NULL)
 {
     Application::instance().addFile(*this);
-    Window::onFileOpened(uri);
+    Window::onFileOpened(this->uri());
 }
 
 File::~File()

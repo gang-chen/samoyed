@@ -128,42 +128,32 @@ void closeAllFiles(GtkAction *action, Samoyed::Window *window)
 
 void undo(GtkAction *action, Samoyed::Window *window)
 {
-    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
-    if (editorGroup.childCount() > 0)
-    {
-        Samoyed::File &file =
-            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
-        if (file.undoable())
-            file.undo();
-    }
+    window->current().activateAction(*window, action);
 }
 
 void redo(GtkAction *action, Samoyed::Window *window)
 {
-    Samoyed::Notebook &editorGroup = window->currentEditorGroup();
-    if (editorGroup.childCount() > 0)
-    {
-        Samoyed::File &file =
-            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
-        if (file.redoable())
-            file.redo();
-    }
+    window->current().activateAction(*window, action);
 }
 
 void cut(GtkAction *action, Samoyed::Window *window)
 {
+    window->current().activateAction(*window, action);
 }
 
 void copy(GtkAction *action, Samoyed::Window *window)
 {
+    window->current().activateAction(*window, action);
 }
 
 void paste(GtkAction *action, Samoyed::Window *window)
 {
+    window->current().activateAction(*window, action);
 }
 
 void deleteObject(GtkAction *action, Samoyed::Window *window)
 {
+    window->current().activateAction(*window, action);
 }
 
 void editPreferences(GtkAction *action, Samoyed::Window *window)
@@ -443,9 +433,6 @@ gboolean Actions::updateSensitivity(gpointer)
             gtk_action_set_sensitive(actions.action(ACTION_RELOAD_FILE), FALSE);
             gtk_action_set_sensitive(actions.action(ACTION_CLOSE_FILE), FALSE);
 
-            gtk_action_set_sensitive(actions.action(ACTION_UNDO), FALSE);
-            gtk_action_set_sensitive(actions.action(ACTION_REDO), FALSE);
-
             gtk_action_set_sensitive(actions.action(ACTION_CREATE_EDITOR),
                                      FALSE);
             gtk_action_set_sensitive(actions.action(ACTION_MOVE_EDITOR_DOWN),
@@ -476,15 +463,6 @@ gboolean Actions::updateSensitivity(gpointer)
                                          FALSE);
             gtk_action_set_sensitive(actions.action(ACTION_CLOSE_FILE), TRUE);
 
-            if (file.undoable())
-                gtk_action_set_sensitive(actions.action(ACTION_UNDO), TRUE);
-            else
-                gtk_action_set_sensitive(actions.action(ACTION_UNDO), FALSE);
-            if (file.redoable())
-                gtk_action_set_sensitive(actions.action(ACTION_REDO), TRUE);
-            else
-                gtk_action_set_sensitive(actions.action(ACTION_REDO), FALSE);
-
             gtk_action_set_sensitive(actions.action(ACTION_CREATE_EDITOR),
                                      TRUE);
             if (editorGroup.childCount() > 1)
@@ -512,6 +490,33 @@ gboolean Actions::updateSensitivity(gpointer)
                 actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
                 TRUE);
         }
+
+        Widget &current = window->current();
+        if (current.isActionSensitive(*window, actions.action(ACTION_UNDO)))
+            gtk_action_set_sensitive(actions.action(ACTION_UNDO), TRUE);
+        else
+            gtk_action_set_sensitive(actions.action(ACTION_UNDO), FALSE);
+        if (current.isActionSensitive(*window, actions.action(ACTION_REDO)))
+            gtk_action_set_sensitive(actions.action(ACTION_REDO), TRUE);
+        else
+            gtk_action_set_sensitive(actions.action(ACTION_REDO), FALSE);
+        if (current.isActionSensitive(*window, actions.action(ACTION_CUT)))
+            gtk_action_set_sensitive(actions.action(ACTION_CUT), TRUE);
+        else
+            gtk_action_set_sensitive(actions.action(ACTION_CUT), FALSE);
+        if (current.isActionSensitive(*window, actions.action(ACTION_COPY)))
+            gtk_action_set_sensitive(actions.action(ACTION_COPY), TRUE);
+        else
+            gtk_action_set_sensitive(actions.action(ACTION_COPY), FALSE);
+        if (current.isActionSensitive(*window, actions.action(ACTION_PASTE)))
+            gtk_action_set_sensitive(actions.action(ACTION_PASTE), TRUE);
+        else
+            gtk_action_set_sensitive(actions.action(ACTION_PASTE), FALSE);
+        if (current.isActionSensitive(*window, actions.action(ACTION_DELETE)))
+            gtk_action_set_sensitive(actions.action(ACTION_DELETE), TRUE);
+        else
+            gtk_action_set_sensitive(actions.action(ACTION_DELETE), FALSE);
+
         window->updateActionsSensitivity();
     }
 

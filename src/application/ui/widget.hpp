@@ -17,6 +17,7 @@ namespace Samoyed
 {
 
 class WidgetContainer;
+class Window;
 
 /**
  * A widget is owned by its parent widget if it is not a top-level widget.  To
@@ -176,6 +177,11 @@ public:
     const std::string *getProperty(const char *name) const;
     void setProperty(const char *name, const std::string &value);
     const PropertyMap &properties() const { return m_properties; }
+
+    virtual void activateAction(Window &window, GtkAction *action) {}
+
+    virtual bool isActionSensitive(Window &window, GtkAction *action)
+    { return false; }
 
 protected:
     Widget(): m_gtkWidget(NULL), m_parent(NULL), m_closing(false) {}

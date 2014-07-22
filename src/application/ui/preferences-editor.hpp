@@ -20,18 +20,14 @@ public:
     static void registerPreferences(const char *category,
                                     const Setup::slot_type &setup);
 
-    static PreferencesEditor &instance();
+    PreferencesEditor();
+    ~PreferencesEditor();
 
     void show();
-
     void hide();
 
 private:
     static std::map<std::string, Setup *> s_preferences;
-
-    static PreferencesEditor *s_instance;
-
-    PreferencesEditor();
 
     GtkWidget *m_window;
 };

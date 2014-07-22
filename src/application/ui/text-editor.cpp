@@ -16,6 +16,7 @@
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <glib.h>
+#include <glib-object.h>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
@@ -99,6 +100,88 @@ void setFont(GtkWidget *view, const char *font)
     PangoFontDescription *fontDesc = pango_font_description_from_string(font);
     gtk_widget_override_font(view, fontDesc);
     pango_font_description_free(fontDesc);
+}
+
+// A GtkSourceUndoManager.
+struct SourceUndoManager
+{
+    GObject parent;
+    Samoyed::TextFile *file;
+};
+
+struct SourceUndoManagerClass
+{
+    GObjectClass parent;
+};
+
+static void source_undo_manager_iface_init(GtkSourceUndoManagerIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE(
+    SourceUndoManager,
+    source_undo_manager,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE(GTK_SOURCE_TYPE_UNDO_MANAGER,
+                          source_undo_manager_iface_init))
+
+#define SOURCE_UNDO_MANAGER(obj) \
+    (G_TYPE_CHECK_INSTANCE_CAST((obj), \
+                                source_undo_manager_get_type(), \
+                                SourceUndoManager))
+
+static gboolean source_undo_manager_can_undo_impl(GtkSourceUndoManager *m)
+{
+    if (SOURCE_UNDO_MANAGER(m)->file->undoable())
+        return TRUE;
+    return FALSE;
+}
+
+static gboolean source_undo_manager_can_redo_impl(GtkSourceUndoManager *m)
+{
+    if (SOURCE_UNDO_MANAGER(m)->file->redoable())
+        return TRUE;
+    return FALSE;
+}
+
+static void source_undo_manager_undo_impl(GtkSourceUndoManager *m)
+{
+    SOURCE_UNDO_MANAGER(m)->file->undo();
+}
+
+static void source_undo_manager_redo_impl(GtkSourceUndoManager *m)
+{
+    SOURCE_UNDO_MANAGER(m)->file->redo();
+}
+
+static void
+source_undo_manager_begin_not_undoable_action_impl(GtkSourceUndoManager *m)
+{
+    SOURCE_UNDO_MANAGER(m)->file->beginEditGroup();
+}
+
+static void
+source_undo_manager_end_not_undoable_action_impl(GtkSourceUndoManager *m)
+{
+    SOURCE_UNDO_MANAGER(m)->file->endEditGroup();
+}
+
+static void source_undo_manager_iface_init(GtkSourceUndoManagerIface *iface)
+{
+    iface->can_undo = source_undo_manager_can_undo_impl;
+    iface->can_redo = source_undo_manager_can_redo_impl;
+    iface->undo = source_undo_manager_undo_impl;
+    iface->redo = source_undo_manager_redo_impl;
+    iface->begin_not_undoable_action =
+        source_undo_manager_begin_not_undoable_action_impl;
+    iface->end_not_undoable_action =
+        source_undo_manager_end_not_undoable_action_impl;
+}
+
+static void source_undo_manager_init(SourceUndoManager *m)
+{
+}
+
+static void source_undo_manager_class_init(SourceUndoManagerClass *c)
+{
 }
 
 }
@@ -268,6 +351,10 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     if (!Editor::setup())
         return false;
     GtkSourceBuffer *buffer = gtk_source_buffer_new(tagTable);
+    SourceUndoManager *undo = SOURCE_UNDO_MANAGER(
+        g_object_new(source_undo_manager_get_type(), NULL));
+    undo->file = static_cast<TextFile *>(&file());
+    gtk_source_buffer_set_undo_manager(buffer, GTK_SOURCE_UNDO_MANAGER(undo));
     GtkWidget *view = gtk_source_view_new_with_buffer(buffer);
     GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
     g_signal_connect(GTK_TEXT_BUFFER(buffer), "insert-text",
@@ -601,6 +688,20 @@ void TextEditor::installPreferences()
     prop.addChild(HIGHLIGHT_SYNTAX, true);
     prop.addChild(INDENT, true);
     prop.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
+}
+
+void TextEditor::activateAction(Window &window, GtkAction *action)
+{
+    const char *name = gtk_action_get_name(action);
+    if (strcmp(name, "undo") == 0)
+        file().undo();
+    else if (strcmp(name, "redo") == 0)
+        file().redo();
+}
+
+bool TextEditor::isActionSensitive(Window &window, GtkAction *action)
+{
+    return true;
 }
 
 }
