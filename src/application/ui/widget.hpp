@@ -4,6 +4,7 @@
 #ifndef SMYD_WIDGET_HPP
 #define SMYD_WIDGET_HPP
 
+#include "actions.hpp"
 #include <list>
 #include <map>
 #include <string>
@@ -178,7 +179,10 @@ public:
     void setProperty(const char *name, const std::string &value);
     const PropertyMap &properties() const { return m_properties; }
 
-    virtual void activateAction(Window &window, GtkAction *action) {}
+    virtual void activateAction(Window &window,
+                                GtkAction *action,
+                                Actions::ActionIndex index)
+    {}
 
     virtual bool isActionSensitive(Window &window, GtkAction *action)
     { return false; }

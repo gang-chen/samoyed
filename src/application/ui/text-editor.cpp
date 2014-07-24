@@ -106,7 +106,7 @@ void setFont(GtkWidget *view, const char *font)
 struct SourceUndoManager
 {
     GObject parent;
-    Samoyed::TextFile *file;
+    Samoyed::TextEditor *editor;
 };
 
 struct SourceUndoManagerClass
@@ -130,38 +130,38 @@ G_DEFINE_TYPE_WITH_CODE(
 
 static gboolean source_undo_manager_can_undo_impl(GtkSourceUndoManager *m)
 {
-    if (SOURCE_UNDO_MANAGER(m)->file->undoable())
+    if (SOURCE_UNDO_MANAGER(m)->editor->file().undoable())
         return TRUE;
     return FALSE;
 }
 
 static gboolean source_undo_manager_can_redo_impl(GtkSourceUndoManager *m)
 {
-    if (SOURCE_UNDO_MANAGER(m)->file->redoable())
+    if (SOURCE_UNDO_MANAGER(m)->editor->file().redoable())
         return TRUE;
     return FALSE;
 }
 
 static void source_undo_manager_undo_impl(GtkSourceUndoManager *m)
 {
-    SOURCE_UNDO_MANAGER(m)->file->undo();
+    SOURCE_UNDO_MANAGER(m)->editor->undo();
 }
 
 static void source_undo_manager_redo_impl(GtkSourceUndoManager *m)
 {
-    SOURCE_UNDO_MANAGER(m)->file->redo();
+    SOURCE_UNDO_MANAGER(m)->editor->redo();
 }
 
 static void
 source_undo_manager_begin_not_undoable_action_impl(GtkSourceUndoManager *m)
 {
-    SOURCE_UNDO_MANAGER(m)->file->beginEditGroup();
+    SOURCE_UNDO_MANAGER(m)->editor->file().beginEditGroup();
 }
 
 static void
 source_undo_manager_end_not_undoable_action_impl(GtkSourceUndoManager *m)
 {
-    SOURCE_UNDO_MANAGER(m)->file->endEditGroup();
+    SOURCE_UNDO_MANAGER(m)->editor->file().endEditGroup();
 }
 
 static void source_undo_manager_iface_init(GtkSourceUndoManagerIface *iface)
@@ -341,6 +341,7 @@ TextEditor::TextEditor(TextFile &file, Project *project):
     Editor(file, project),
     m_bypassEdit(false),
     m_selfEdit(false),
+    m_followCursor(false),
     m_presetCursorLine(0),
     m_presetCursorColumn(0)
 {
@@ -353,7 +354,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     GtkSourceBuffer *buffer = gtk_source_buffer_new(tagTable);
     SourceUndoManager *undo = SOURCE_UNDO_MANAGER(
         g_object_new(source_undo_manager_get_type(), NULL));
-    undo->file = static_cast<TextFile *>(&file());
+    undo->editor = this;
     gtk_source_buffer_set_undo_manager(buffer, GTK_SOURCE_UNDO_MANAGER(undo));
     GtkWidget *view = gtk_source_view_new_with_buffer(buffer);
     GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
@@ -588,7 +589,7 @@ void TextEditor::onFileChanged(const File::Change &change)
         gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                                 ins.line, ins.column);
         gtk_text_buffer_insert(buffer, &iter, ins.text, ins.length);
-        if (&Application::instance().currentWindow().current() == this)
+        if (m_followCursor)
             setCursor(ins.newLine, ins.newColumn);
     }
     else
@@ -600,7 +601,7 @@ void TextEditor::onFileChanged(const File::Change &change)
         gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
                                                 rem.endLine, rem.endColumn);
         gtk_text_buffer_delete(buffer, &begin, &end);
-        if (&Application::instance().currentWindow().current() == this)
+        if (m_followCursor)
             setCursor(rem.beginLine, rem.beginColumn);
     }
     m_bypassEdit = false;
@@ -690,13 +691,46 @@ void TextEditor::installPreferences()
     prop.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
 }
 
-void TextEditor::activateAction(Window &window, GtkAction *action)
+void TextEditor::undo()
 {
-    const char *name = gtk_action_get_name(action);
-    if (strcmp(name, "undo") == 0)
-        file().undo();
-    else if (strcmp(name, "redo") == 0)
-        file().redo();
+    m_followCursor = true;
+    file().undo();
+    m_followCursor = false;
+}
+
+void TextEditor::redo()
+{
+    m_followCursor = true;
+    file().redo();
+    m_followCursor = false;
+}
+
+void TextEditor::activateAction(Window &window,
+                                GtkAction *action,
+                                Actions::ActionIndex index)
+{
+    if (index == Actions::ACTION_UNDO)
+    {
+        if (file().undoable())
+            undo();
+    }
+    else if (index == Actions::ACTION_REDO)
+    {
+        if (file().redoable())
+            redo();
+    }
+    else if (index == Actions::ACTION_CUT)
+        g_signal_emit_by_name(gtkWidget(), "cut-clipboard");
+    else if (index == Actions::ACTION_COPY)
+        g_signal_emit_by_name(gtkWidget(), "copy-clipboard");
+    else if (index == Actions::ACTION_PASTE)
+        g_signal_emit_by_name(gtkWidget(), "paste-clipboard");
+    else if (index == Actions::ACTION_DELETE)
+        g_signal_emit_by_name(gtkWidget(),
+                              "delete-from-cursor",
+                              GTK_DELETE_CHARS,
+                              0,
+                              NULL);
 }
 
 bool TextEditor::isActionSensitive(Window &window, GtkAction *action)

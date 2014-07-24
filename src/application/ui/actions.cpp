@@ -128,32 +128,44 @@ void closeAllFiles(GtkAction *action, Samoyed::Window *window)
 
 void undo(GtkAction *action, Samoyed::Window *window)
 {
-    window->current().activateAction(*window, action);
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_UNDO);
 }
 
 void redo(GtkAction *action, Samoyed::Window *window)
 {
-    window->current().activateAction(*window, action);
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_REDO);
 }
 
 void cut(GtkAction *action, Samoyed::Window *window)
 {
-    window->current().activateAction(*window, action);
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_CUT);
 }
 
 void copy(GtkAction *action, Samoyed::Window *window)
 {
-    window->current().activateAction(*window, action);
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_COPY);
 }
 
 void paste(GtkAction *action, Samoyed::Window *window)
 {
-    window->current().activateAction(*window, action);
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_PASTE);
 }
 
 void deleteObject(GtkAction *action, Samoyed::Window *window)
 {
-    window->current().activateAction(*window, action);
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_DELETE);
 }
 
 void editPreferences(GtkAction *action, Samoyed::Window *window)

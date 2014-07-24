@@ -5,25 +5,32 @@
 # include <config.h>
 #endif
 #include "preferences-editor.hpp"
-#include <map>
-#include <string>
-#include <utility>
-#include <boost/signals2/signal.hpp>
+#include <vector>
+#include <boost/function.hpp>
 #include <gtk/gtk.h>
+#include <glib/gi18n.h>
+
+namespace
+{
+/*
+const char *categoriesLabels[] =
+{
+    N_("Text Editor"),
+    NULL
+};
+*/
+}
 
 namespace Samoyed
 {
 
-std::map<std::string, PreferencesEditor::Setup *>
-    PreferencesEditor::s_preferences;
+std::vector<PreferencesEditor::Setup>
+    PreferencesEditor::s_categories[N_CATEGORIES];
 
-void PreferencesEditor::registerPreferences(const char *category,
-                                            const Setup::slot_type &setup)
+void PreferencesEditor::registerPreferences(Category category,
+                                            const Setup &setup)
 {
-    std::map<std::string, Setup *>::iterator it = s_preferences.find(category);
-    if (it == s_preferences.end())
-        it = s_preferences.insert(std::make_pair(category, new Setup)).first;
-    it->second->connect(setup);
+    s_categories[category].push_back(setup);
 }
 
 PreferencesEditor::PreferencesEditor()

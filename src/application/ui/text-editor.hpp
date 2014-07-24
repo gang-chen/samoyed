@@ -93,7 +93,12 @@ public:
         return GTK_SOURCE_VIEW(gtk_bin_get_child(GTK_BIN(gtkWidget())));
     }
 
-    virtual void activateAction(Window &window, GtkAction *action);
+    void undo();
+    void redo();
+
+    virtual void activateAction(Window &window,
+                                GtkAction *action,
+                                Actions::ActionIndex index);
 
     virtual bool isActionSensitive(Window &window, GtkAction *action);
 
@@ -119,6 +124,7 @@ private:
 
     bool m_bypassEdit;
     bool m_selfEdit;
+    bool m_followCursor;
 
     int m_presetCursorLine;
     int m_presetCursorColumn;
