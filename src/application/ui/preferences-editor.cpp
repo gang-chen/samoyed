@@ -12,13 +12,13 @@
 
 namespace
 {
-/*
+
 const char *categoriesLabels[] =
 {
-    N_("Text Editor"),
+    N_("_Text Editor"),
     NULL
 };
-*/
+
 }
 
 namespace Samoyed
@@ -33,9 +33,33 @@ void PreferencesEditor::registerPreferences(Category category,
     s_categories[category].push_back(setup);
 }
 
+gboolean PreferencesEditor::setupCategoryPage()
+{
+
+}
+
+void PreferencesEditor::onCategoryPageMapped(GtkWidget *grid,
+                                             PreferencesEditor *editor)
+{
+    g_idle_add(setupCategoryPage);
+}
+
 PreferencesEditor::PreferencesEditor()
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    GtkWidget *notebook = gtk_notebook_new();
+    gtk_container_add(GTK_CONTAINER(m_window), notebook);
+    for (int i = 0; i < N_CATEGORIES; ++i)
+    {
+        GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
+        GtkWidget *grid = gtk_grid_new();
+        gtk_widget_hexpand(grid, TRUE);
+        gtk_widget_vexpand(grid, TRUE);
+        gtk_container_add(GTK_CONTAINER(sw), grid);
+        GtkWidget *label = gtk_label_new(gettext(categoriesLabels[i]));
+        gtk_notebook_append_page(GTK_NOTEBOOK(notebook), sw, label);
+        g_signal_connect(grid, "map", G_CALLBACK(onCategoryPageMapped), this);
+    }
 }
 
 PreferencesEditor::~PreferencesEditor()
