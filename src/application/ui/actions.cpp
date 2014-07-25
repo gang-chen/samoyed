@@ -9,6 +9,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "notebook.hpp"
+#include "preferences-editor.hpp"
 #include "application.hpp"
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
@@ -170,6 +171,7 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
 
 void editPreferences(GtkAction *action, Samoyed::Window *window)
 {
+    window->preferencesEditor().show();
 }
 
 void createWindow(GtkAction *action, Samoyed::Window *window)

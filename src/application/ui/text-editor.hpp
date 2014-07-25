@@ -111,7 +111,7 @@ protected:
 
     static gboolean onFocusIn(GtkWidget *widget,
                               GdkEventFocus *event,
-                              gpointer editor);
+                              TextEditor *editor);
 
 private:
     static void insert(GtkTextBuffer *buffer, GtkTextIter *location,

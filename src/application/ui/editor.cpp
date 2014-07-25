@@ -267,16 +267,16 @@ void Editor::destroyInProject()
 
 gboolean Editor::onFocusIn(GtkWidget *widget,
                            GdkEventFocus *event,
-                           gpointer editor)
+                           Editor *editor)
 {
-    Widget *window = static_cast<Widget *>(editor);
+    Widget *window = editor;
     if (window->parent())
     {
         do
             window = window->parent();
         while (window->parent());
         static_cast<Window *>(window)->onCurrentFileChanged(
-            static_cast<Editor *>(editor)->file().uri());
+            editor->file().uri());
     }
     return FALSE;
 }

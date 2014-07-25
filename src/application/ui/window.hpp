@@ -24,6 +24,7 @@ class WidgetWithBars;
 class Notebook;
 class Paned;
 class Editor;
+class PreferencesEditor;
 
 /**
  * A window represents a top-level window.  A window is a container that manages
@@ -291,6 +292,11 @@ public:
     static void onWorkerBegun(const char *desc);
     static void onWorkerEnded(const char *desc);
 
+    PreferencesEditor &preferencesEditor();
+
+    void onPreferencesEditorClosed()
+    { m_prefsEditor = NULL; }
+
 protected:
     Window();
 
@@ -401,9 +407,9 @@ private:
     static gboolean onWorkerBegunInMainThread(gpointer param);
     static gboolean onWorkerEndedInMainThread(gpointer param);
 
-    static void onCurrentFileInput(GtkComboBox *combo, gpointer window);
+    static void onCurrentFileInput(GtkComboBox *combo, Window *window);
     static void onCurrentTextEditorCursorInput(GtkEntry *entry,
-                                               gpointer window);
+                                               Window *window);
 
     static bool compareFileTitles(const FileTitleUri &titleUri1,
                                   const FileTitleUri &titleUri2);
@@ -449,6 +455,8 @@ private:
     std::map<ComparablePointer<const char>, SidePaneData *> m_sidePaneData;
 
     std::map<std::string, ActionData *> m_actionData;
+
+    PreferencesEditor *m_prefsEditor;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
 };

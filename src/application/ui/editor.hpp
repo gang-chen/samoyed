@@ -102,7 +102,7 @@ protected:
 
     static gboolean onFocusIn(GtkWidget *widget,
                               GdkEventFocus *event,
-                              gpointer editor);
+                              Editor *editor);
 
 private:
     /**

@@ -53,15 +53,15 @@ const bool DEFAULT_SHOW_LINE_NUMBERS = true;
 
 const int DEFAULT_INDENT_WIDTH = 4;
 
-void onCursorChanged(GtkTextBuffer *buffer, gpointer editor)
+void onCursorChanged(GtkTextBuffer *buffer, Samoyed::TextEditor *editor)
 {
-    Samoyed::Widget *window = static_cast<Samoyed::Widget *>(editor);
+    Samoyed::Widget *window = editor;
     if (window->parent())
     {
         do
             window = window->parent();
         while (window->parent());
-        if (&window->current() == static_cast<Samoyed::Widget *>(editor))
+        if (&window->current() == editor)
         {
             GtkTextIter iter;
             gtk_text_buffer_get_iter_at_mark(
@@ -79,7 +79,7 @@ void onCursorChanged(GtkTextBuffer *buffer, gpointer editor)
 void onMarkSet(GtkTextBuffer *buffer,
                GtkTextIter *iter,
                GtkTextMark *mark,
-               gpointer editor)
+               Samoyed::TextEditor *editor)
 {
     if (mark == gtk_text_buffer_get_insert(buffer))
         onCursorChanged(buffer, editor);
@@ -662,16 +662,16 @@ void TextEditor::grabFocus()
 
 gboolean TextEditor::onFocusIn(GtkWidget *widget,
                                GdkEventFocus *event,
-                               gpointer editor)
+                               TextEditor *editor)
 {
-    Widget *window = static_cast<Widget *>(editor);
+    Widget *window = editor;
     if (window->parent())
     {
         do
             window = window->parent();
         while (window->parent());
         int line, column;
-        static_cast<TextEditor *>(editor)->getCursor(line, column);
+        editor->getCursor(line, column);
         static_cast<Window *>(window)->onCurrentTextEditorCursorChanged(
             line, column);
     }

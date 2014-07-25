@@ -26,21 +26,21 @@
 namespace
 {
 
-gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, gpointer bar)
+gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, Samoyed::Bar *bar)
 {
-    static_cast<Samoyed::Bar *>(bar)->close();
+    bar->close();
     return FALSE;
 }
 
-void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, gpointer bar)
+void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, Samoyed::Bar *bar)
 {
-    GtkWidget *barWidget = static_cast<Samoyed::Bar *>(bar)->gtkWidget();
+    GtkWidget *barWidget = bar->gtkWidget();
     for (GtkWidget *p = widget; p; p = gtk_widget_get_parent(p))
     {
         if (p == barWidget)
             return;
     }
-    static_cast<Samoyed::Bar *>(bar)->close();
+    bar->close();
 }
 
 }

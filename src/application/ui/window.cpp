@@ -12,6 +12,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "text-editor.hpp"
+#include "preferences-editor.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/worker.hpp"
@@ -516,7 +517,8 @@ Window::Window():
     m_maximized(false),
     m_toolbarVisible(true),
     m_statusBarVisible(true),
-    m_toolbarVisibleInFullScreen(false)
+    m_toolbarVisibleInFullScreen(false),
+    m_prefsEditor(NULL)
 {
     Application::instance().addWindow(*this);
 }
@@ -712,6 +714,7 @@ bool Window::restore(XmlElement &xmlElement)
 Window::~Window()
 {
     assert(!m_child);
+    assert(!m_prefsEditor);
     for (std::vector<FileTitleUri>::iterator it = m_fileTitlesUris.begin();
          it != m_fileTitlesUris.end();
          ++it)
@@ -749,6 +752,8 @@ bool Window::close()
         return true;
 
     setClosing(true);
+    if (m_prefsEditor)
+        m_prefsEditor->close();
     if (!m_child->close())
     {
         setClosing(false);
@@ -1854,10 +1859,9 @@ void Window::onWorkerEnded(const char *desc)
                     NULL);
 }
 
-void Window::onCurrentFileInput(GtkComboBox *combo, gpointer window)
+void Window::onCurrentFileInput(GtkComboBox *combo, Window *window)
 {
-    Window *w = static_cast<Window *>(window);
-    if (w->m_bypassCurrentFileInput)
+    if (window->m_bypassCurrentFileInput)
         return;
 
     int index = gtk_combo_box_get_active(combo);
@@ -1865,7 +1869,7 @@ void Window::onCurrentFileInput(GtkComboBox *combo, gpointer window)
         return;
 
     std::vector<FileTitleUri>::iterator it =
-        w->m_fileTitlesUris.begin() + index;
+        window->m_fileTitlesUris.begin() + index;
 
     // Check to see if the file is opened in this window.  If any, switch to
     // the editor.
@@ -1877,35 +1881,36 @@ void Window::onCurrentFileInput(GtkComboBox *combo, gpointer window)
         Widget *win = editor;
         for (Widget *p = win; p; p = win->parent())
             win = p;
-        if (win == w)
+        if (win == window)
         {
-            w->m_bypassCurrentFileChange = true;
+            window->m_bypassCurrentFileChange = true;
             editor->setCurrent();
-            w->m_bypassCurrentFileChange = false;
+            window->m_bypassCurrentFileChange = false;
             return;
         }
     }
 
     // Open the file in this window.
     Editor *editor = file->createEditor(NULL);
-    w->m_bypassCurrentFileChange = true;
-    w->addEditorToEditorGroup(*editor,
-                              w->currentEditorGroup(),
-                              w->currentEditorGroup().currentChildIndex() + 1);
+    window->m_bypassCurrentFileChange = true;
+    window->addEditorToEditorGroup(
+        *editor,
+        window->currentEditorGroup(),
+        window->currentEditorGroup().currentChildIndex() + 1);
     editor->setCurrent();
-    w->m_bypassCurrentFileChange = false;
+    window->m_bypassCurrentFileChange = false;
 }
 
-void Window::onCurrentTextEditorCursorInput(GtkEntry *entry, gpointer window)
+void Window::onCurrentTextEditorCursorInput(GtkEntry *entry, Window *window)
 {
-    Window *w = static_cast<Window *>(window);
-    Notebook &editorGroup = w->currentEditorGroup();
+    Notebook &editorGroup = window->currentEditorGroup();
     if (editorGroup.childCount() > 0)
     {
         Samoyed::TextEditor &editor =
             static_cast<TextEditor &>(editorGroup.currentChild());
-        const char *line = gtk_entry_get_text(GTK_ENTRY(w->m_currentLine));
-        const char *column = gtk_entry_get_text(GTK_ENTRY(w->m_currentColumn));
+        const char *line = gtk_entry_get_text(GTK_ENTRY(window->m_currentLine));
+        const char *column =
+            gtk_entry_get_text(GTK_ENTRY(window->m_currentColumn));
         int ln, col;
         try
         {
@@ -1941,6 +1946,13 @@ bool Window::compareFileTitles(const FileTitleUri &titleUri1,
                                const FileTitleUri &titleUri2)
 {
     return strcmp(titleUri1.title, titleUri2.title) < 0;
+}
+
+PreferencesEditor &Window::preferencesEditor()
+{
+    if (!m_prefsEditor)
+        m_prefsEditor = new PreferencesEditor(*this);
+    return *m_prefsEditor;
 }
 
 }

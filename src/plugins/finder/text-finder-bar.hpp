@@ -31,15 +31,15 @@ public:
     virtual void grabFocus();
 
 private:
-    static void onTextChanged(GtkEditable *edit, gpointer bar);
-    static void onMatchCaseChanged(GtkToggleButton *button, gpointer bar);
-    static void onFindNext(GtkButton *button, gpointer bar);
-    static void onFindPrevious(GtkButton *button, gpointer bar);
-    static void onDone(GtkEntry *entry, gpointer bar);
-    static void onClose(GtkButton *button, gpointer bar);
+    static void onTextChanged(GtkEditable *edit, TextFinderBar *bar);
+    static void onMatchCaseChanged(GtkToggleButton *button, TextFinderBar *bar);
+    static void onFindNext(GtkButton *button, TextFinderBar *bar);
+    static void onFindPrevious(GtkButton *button, TextFinderBar *bar);
+    static void onDone(GtkEntry *entry, TextFinderBar *bar);
+    static void onClose(GtkButton *button, TextFinderBar *bar);
     static gboolean onKeyPress(GtkWidget *widget,
                                GdkEventKey *event,
-                               gpointer bar);
+                               TextFinderBar *bar);
 
     TextFinderBar(TextEditor &editor);
 

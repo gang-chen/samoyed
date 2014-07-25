@@ -262,68 +262,61 @@ void TextFinderBar::search(bool next)
     }
 }
 
-void TextFinderBar::onTextChanged(GtkEditable *edit, gpointer bar)
+void TextFinderBar::onTextChanged(GtkEditable *edit, TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
     // Always start from the initial cursor.
-    b->m_editor.setCursor(b->m_line, b->m_column);
-    b->m_endReached = false;
-    b->m_beginReached = false;
-    b->search(true);
+    bar->m_editor.setCursor(bar->m_line, bar->m_column);
+    bar->m_endReached = false;
+    bar->m_beginReached = false;
+    bar->search(true);
 }
 
 void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
-                                       gpointer bar)
+                                       TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
     // Always start from the initial cursor.
-    b->m_editor.setCursor(b->m_line, b->m_column);
-    b->m_endReached = false;
-    b->m_beginReached = false;
-    b->search(true);
+    bar->m_editor.setCursor(bar->m_line, bar->m_column);
+    bar->m_endReached = false;
+    bar->m_beginReached = false;
+    bar->search(true);
 }
 
-void TextFinderBar::onFindNext(GtkButton *button, gpointer bar)
+void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
     // Move the cursor to the end of the found text.
     int line, column, line2, column2;
-    b->m_editor.getSelectedRange(line, column, line2, column2);
+    bar->m_editor.getSelectedRange(line, column, line2, column2);
     if (line2 > line || (line2 == line && column2 > column))
-        b->m_editor.setCursor(line2, column2);
-    b->m_beginReached = false;
-    b->search(true);
+        bar->m_editor.setCursor(line2, column2);
+    bar->m_beginReached = false;
+    bar->search(true);
 }
 
-void TextFinderBar::onFindPrevious(GtkButton *button, gpointer bar)
+void TextFinderBar::onFindPrevious(GtkButton *button, TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
-    b->m_endReached = false;
-    b->search(false);
+    bar->m_endReached = false;
+    bar->search(false);
 }
 
-void TextFinderBar::onDone(GtkEntry *entry, gpointer bar)
+void TextFinderBar::onDone(GtkEntry *entry, TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
-    b->close();
+    bar->close();
 }
 
-void TextFinderBar::onClose(GtkButton *button, gpointer bar)
+void TextFinderBar::onClose(GtkButton *button, TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
-    b->close();
+    bar->close();
 }
 
 gboolean TextFinderBar::onKeyPress(GtkWidget *widget,
                                    GdkEventKey *event,
-                                   gpointer bar)
+                                   TextFinderBar *bar)
 {
-    TextFinderBar *b = static_cast<TextFinderBar *>(bar);
     if (event->keyval == GDK_KEY_Escape)
     {
         // Restore the initial cursor.
-        b->m_editor.setCursor(b->m_line, b->m_column);
-        b->close();
+        bar->m_editor.setCursor(bar->m_line, bar->m_column);
+        bar->close();
         return TRUE;
     }
     return FALSE;
