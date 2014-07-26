@@ -12,7 +12,6 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "text-editor.hpp"
-#include "preferences-editor.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/worker.hpp"
@@ -517,8 +516,7 @@ Window::Window():
     m_maximized(false),
     m_toolbarVisible(true),
     m_statusBarVisible(true),
-    m_toolbarVisibleInFullScreen(false),
-    m_prefsEditor(NULL)
+    m_toolbarVisibleInFullScreen(false)
 {
     Application::instance().addWindow(*this);
 }
@@ -714,7 +712,6 @@ bool Window::restore(XmlElement &xmlElement)
 Window::~Window()
 {
     assert(!m_child);
-    assert(!m_prefsEditor);
     for (std::vector<FileTitleUri>::iterator it = m_fileTitlesUris.begin();
          it != m_fileTitlesUris.end();
          ++it)
@@ -752,8 +749,6 @@ bool Window::close()
         return true;
 
     setClosing(true);
-    if (m_prefsEditor)
-        m_prefsEditor->close();
     if (!m_child->close())
     {
         setClosing(false);
@@ -1946,13 +1941,6 @@ bool Window::compareFileTitles(const FileTitleUri &titleUri1,
                                const FileTitleUri &titleUri2)
 {
     return strcmp(titleUri1.title, titleUri2.title) < 0;
-}
-
-PreferencesEditor &Window::preferencesEditor()
-{
-    if (!m_prefsEditor)
-        m_prefsEditor = new PreferencesEditor(*this);
-    return *m_prefsEditor;
 }
 
 }

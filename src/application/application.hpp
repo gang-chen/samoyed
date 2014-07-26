@@ -33,6 +33,7 @@ class Project;
 class File;
 class Window;
 class SplashScreen;
+class PreferencesEditor;
 
 /**
  * An application represents a running instance of this application.
@@ -158,6 +159,9 @@ public:
     const char *userDirectoryName() const
     { return m_userDirName.c_str(); }
 
+    PreferencesEditor &preferencesEditor();
+    void onPreferencesEditorClosed();
+
 private:
     typedef std::map<ComparablePointer<const char>, Project *> ProjectTable;
 
@@ -236,6 +240,8 @@ private:
     int m_chooseSession;
 
     SplashScreen *m_splashScreen;
+
+    PreferencesEditor *m_preferencesEditor;
 
     std::string m_dataDirName;
     std::string m_librariesDirName;

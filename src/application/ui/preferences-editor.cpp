@@ -5,7 +5,7 @@
 # include <config.h>
 #endif
 #include "preferences-editor.hpp"
-#include "window.hpp"
+#include "application.hpp"
 #include <utility>
 #include <vector>
 #include <boost/function.hpp>
@@ -57,8 +57,7 @@ void PreferencesEditor::onCategoryPageMapped(GtkWidget *grid,
                new std::pair<PreferencesEditor *, GtkWidget *>(editor, grid));
 }
 
-PreferencesEditor::PreferencesEditor(Window &window):
-    m_owner(window)
+PreferencesEditor::PreferencesEditor()
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
@@ -107,7 +106,7 @@ void PreferencesEditor::hide()
 void PreferencesEditor::close()
 {
     gtk_widget_destroy(m_window);
-    m_owner.onPreferencesEditorClosed();
+    Application::instance().onPreferencesEditorClosed();
 }
 
 }

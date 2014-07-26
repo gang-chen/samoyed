@@ -31,6 +31,7 @@
 #include "ui/histories-extension-point.hpp"
 #include "ui/preferences-extension-point.hpp"
 #include "ui/views-extension-point.hpp"
+#include "ui/preferences-editor.hpp"
 #include "resources/file-source-manager.hpp"
 #include "resources/project-configuration.hpp"
 #include "resources/project-ast-manager.hpp"
@@ -91,7 +92,8 @@ Application::Application():
     m_sessionName(NULL),
     m_newSessionName(NULL),
     m_chooseSession(0),
-    m_splashScreen(NULL)
+    m_splashScreen(NULL),
+    m_preferencesEditor(NULL)
 {
     assert(!s_instance);
     s_instance = this;
@@ -329,6 +331,9 @@ bool Application::quit()
         return false;
 
     m_quitting = true;
+
+    if (m_preferencesEditor)
+        m_preferencesEditor->close();
 
     // Close all projects.
     for (Project *project = m_firstProject, *next; project; project = next)
@@ -658,6 +663,18 @@ bool Application::makeUserDirectory()
         }
     }
     return true;
+}
+
+PreferencesEditor &Application::preferencesEditor()
+{
+    if (!m_preferencesEditor)
+        m_preferencesEditor = new PreferencesEditor;
+    return *m_preferencesEditor;
+}
+
+void Application::onPreferencesEditorClosed()
+{
+    m_preferencesEditor = NULL;
 }
 
 }

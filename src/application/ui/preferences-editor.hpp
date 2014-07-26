@@ -11,8 +11,6 @@
 namespace Samoyed
 {
 
-class Window;
-
 class PreferencesEditor
 {
 public:
@@ -27,7 +25,7 @@ public:
     static void registerPreferences(Category category,
                                     const Setup &setup);
 
-    PreferencesEditor(Window &window);
+    PreferencesEditor();
     ~PreferencesEditor();
 
     void show();
@@ -41,8 +39,6 @@ private:
                                      PreferencesEditor *editor);
 
     static std::vector<Setup> s_categories[N_CATEGORIES];
-
-    Window &m_owner;
 
     GtkWidget *m_window;
 };

@@ -171,7 +171,7 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
 
 void editPreferences(GtkAction *action, Samoyed::Window *window)
 {
-    window->preferencesEditor().show();
+    Samoyed::Application::instance().preferencesEditor().show();
 }
 
 void createWindow(GtkAction *action, Samoyed::Window *window)
