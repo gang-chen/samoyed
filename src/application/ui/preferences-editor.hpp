@@ -4,6 +4,7 @@
 #ifndef SMYD_PREFERENCES_EDITOR_HPP
 #define SMYD_PREFERENCES_EDITOR_HPP
 
+#include <string>
 #include <vector>
 #include <boost/function.hpp>
 #include <gtk/gtk.h>
@@ -14,15 +15,12 @@ namespace Samoyed
 class PreferencesEditor
 {
 public:
-    enum Category
-    {
-        CATEGORY_TEXT_EDITOR,
-        N_CATEGORIES
-    };
+    typedef boost::function<void (GtkGrid *grid)> Setup;
 
-    typedef boost::function<void (GtkWidget *grid)> Setup;
+    static void addCategory(const char *id, const char *label);
+    static void removeCategory(const char *id);
 
-    static void registerPreferences(Category category,
+    static void registerPreferences(const char *category,
                                     const Setup &setup);
 
     PreferencesEditor();
@@ -34,11 +32,21 @@ public:
     void close();
 
 private:
+    struct Category
+    {
+        std::string m_id;
+        std::string m_label;
+        std::vector<Setup> m_preferences;
+        Category(const char *id, const char *label):
+            m_id(id), m_label(label)
+        {}
+    };
+
     static gboolean setupCategoryPage(gpointer param);
     static void onCategoryPageMapped(GtkWidget *grid,
                                      PreferencesEditor *editor);
 
-    static std::vector<Setup> s_categories[N_CATEGORIES];
+    static std::vector<Category> s_categories;
 
     GtkWidget *m_window;
 };

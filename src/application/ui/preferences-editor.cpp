@@ -5,23 +5,23 @@
 # include <config.h>
 #endif
 #include "preferences-editor.hpp"
+#include "preferences-extension-point.hpp"
 #include "application.hpp"
+#include "utilities/extension-point-manager.hpp"
+#include "utilities/miscellaneous.hpp"
+#include <string>
 #include <utility>
 #include <vector>
 #include <boost/function.hpp>
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
 
+#define PREFERENCES "preferences"
+
 namespace
 {
 
 const double DEFAULT_SIZE_RATIO = 0.5;
-
-const char *categoriesLabels[] =
-{
-    N_("_Text Editor"),
-    NULL
-};
 
 gboolean onDeleteEvent(GtkWidget *widget,
                        GdkEvent *event,
@@ -36,17 +36,57 @@ gboolean onDeleteEvent(GtkWidget *widget,
 namespace Samoyed
 {
 
-std::vector<PreferencesEditor::Setup>
-    PreferencesEditor::s_categories[N_CATEGORIES];
+std::vector<PreferencesEditor::Category> PreferencesEditor::s_categories;
 
-void PreferencesEditor::registerPreferences(Category category,
+void PreferencesEditor::addCategory(const char *id, const char *label)
+{
+    s_categories.push_back(Category(id, label));
+}
+
+void PreferencesEditor::removeCategory(const char *id)
+{
+    for (std::vector<Category>::iterator it = s_categories.begin();
+         it != s_categories.end();
+         ++it)
+        if (it->m_id == id)
+        {
+            s_categories.erase(it);
+            break;
+        }
+}
+
+void PreferencesEditor::registerPreferences(const char *category,
                                             const Setup &setup)
 {
-    s_categories[category].push_back(setup);
+    for (std::vector<Category>::iterator it = s_categories.begin();
+         it != s_categories.end();
+         ++it)
+        if (it->m_id == category)
+        {
+            it->m_preferences.push_back(setup);
+            break;
+        }
 }
 
 gboolean PreferencesEditor::setupCategoryPage(gpointer param)
 {
+    std::pair<PreferencesEditor *, GtkWidget *> *p =
+        static_cast<std::pair<PreferencesEditor *, GtkWidget *> *>(param);
+    gtk_container_remove(GTK_CONTAINER(p->second),
+                         gtk_grid_get_child_at(GTK_GRID(p->second), 0, 0));
+    GtkWidget *c = gtk_widget_get_parent(gtk_widget_get_parent(p->second));
+    GtkWidget *n = gtk_bin_get_child(GTK_BIN(p->first->m_window));
+    int i = gtk_notebook_page_num(GTK_NOTEBOOK(n), c);
+    for (std::vector<Setup>::iterator it =
+            s_categories[i].m_preferences.begin();
+         it != s_categories[i].m_preferences.end();
+         ++it)
+        (*it)(GTK_GRID(p->second));
+    delete p;
+    static_cast<PreferencesExtensionPoint &>(Application::instance().
+        extensionPointManager().extensionPoint(PREFERENCES)).
+        setupPreferencesEditor(s_categories[i].m_id.c_str(),
+                               GTK_GRID(p->second));
     return FALSE;
 }
 
@@ -62,7 +102,11 @@ PreferencesEditor::PreferencesEditor()
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
     gtk_container_add(GTK_CONTAINER(m_window), notebook);
-    for (int i = 0; i < N_CATEGORIES; ++i)
+    gtk_container_set_border_width(GTK_CONTAINER(m_window),
+                                   CONTAINER_BORDER_WIDTH);
+    for (std::vector<Category>::iterator it = s_categories.begin();
+         it != s_categories.end();
+         ++it)
     {
         GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
         GtkWidget *grid = gtk_grid_new();
@@ -73,9 +117,11 @@ PreferencesEditor::PreferencesEditor()
         gtk_widget_set_hexpand(grid, TRUE);
         gtk_widget_set_vexpand(grid, TRUE);
         gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(sw), grid);
-        GtkWidget *label =
-            gtk_label_new_with_mnemonic(gettext(categoriesLabels[i]));
+        GtkWidget *label = gtk_label_new_with_mnemonic(it->m_label.c_str());
         gtk_notebook_append_page(GTK_NOTEBOOK(notebook), sw, label);
+        gtk_container_set_border_width(GTK_CONTAINER(grid),
+                                       CONTAINER_BORDER_WIDTH);
+        gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
         g_signal_connect(grid, "map", G_CALLBACK(onCategoryPageMapped), this);
     }
     GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(m_window));

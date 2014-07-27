@@ -122,6 +122,10 @@ private:
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
 
+    static void setupPreferencesEditor(GtkGrid *grid);
+
+    static void onFontSet(GtkFontButton *button, gpointer data);
+
     bool m_bypassEdit;
     bool m_selfEdit;
     bool m_followCursor;

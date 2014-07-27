@@ -439,7 +439,7 @@ TextFile::insertOnly(int line, int column, const char *text, int length)
     int nLines = 0, nColumns = 0;
     if (length == -1)
         length = strlen(text);
-    const char *cp = text + length - 1;
+    const char *cp = Utf8::begin(text + length - 1);
     while (cp >= text)
     {
         if (*cp == '\n')

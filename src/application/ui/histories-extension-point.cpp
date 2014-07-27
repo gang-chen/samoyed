@@ -9,6 +9,7 @@
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
+#include <assert.h>
 #include <list>
 #include <map>
 #include <string>
@@ -29,18 +30,10 @@ HistoriesExtensionPoint::HistoriesExtensionPoint():
 
 HistoriesExtensionPoint::~HistoriesExtensionPoint()
 {
-    for (ExtensionTable::iterator it = m_extensions.begin();
-         it != m_extensions.end();)
-    {
-        ExtensionTable::iterator it2 = it;
-        ++it;
-        ExtensionInfo *ext = it2->second;
-        m_extensions.erase(it2);
-        delete ext;
-    }
-
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);
+
+    assert(m_extensions.empty());
 }
 
 bool HistoriesExtensionPoint::registerExtension(

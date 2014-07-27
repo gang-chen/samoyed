@@ -19,8 +19,10 @@ public:
 
     virtual void installPreferences() = 0;
 
+    virtual void uninstallPreferences() = 0;
+
     virtual void setupPreferencesEditor(const char *category,
-                                         GtkWidget *grid) = 0;
+                                         GtkGrid *grid) = 0;
 };
 
 }

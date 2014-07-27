@@ -276,7 +276,8 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                         xmlFree(value);
                     }
                 }
-                else if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                else if (strcmp(reinterpret_cast<const char *>
+                                    (grandChild->name),
                                 POINT) == 0)
                 {
                     value = reinterpret_cast<char *>(
@@ -287,7 +288,8 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
                         xmlFree(value);
                     }
                 }
-                else if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                else if (strcmp(reinterpret_cast<const char *>
+                                    (grandChild->name),
                                 DETAIL) == 0)
                     ext->xmlNode = grandChild;
             }

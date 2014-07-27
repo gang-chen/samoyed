@@ -6,12 +6,13 @@
 #endif
 #include "preferences-extension-point.hpp"
 #include "preferences-extension.hpp"
+#include "preferences-editor.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
+#include <assert.h>
 #include <list>
 #include <map>
-#include <set>
 #include <string>
 #include <utility>
 #include <glib/gi18n.h>
@@ -20,6 +21,8 @@
 
 #define PREFERENCES "preferences"
 #define CATEGORY "category"
+#define ID "id"
+#define LABEL "label"
 
 namespace Samoyed
 {
@@ -33,18 +36,10 @@ PreferencesExtensionPoint::PreferencesExtensionPoint():
 
 PreferencesExtensionPoint::~PreferencesExtensionPoint()
 {
-    for (ExtensionTable::iterator it = m_extensions.begin();
-         it != m_extensions.end();)
-    {
-        ExtensionTable::iterator it2 = it;
-        ++it;
-        ExtensionInfo *ext = it2->second;
-        m_extensions.erase(it2);
-        delete ext;
-    }
-
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);
+
+    assert(m_extensions.empty());
 }
 
 bool PreferencesExtensionPoint::registerExtension(
@@ -62,13 +57,39 @@ bool PreferencesExtensionPoint::registerExtension(
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    CATEGORY) == 0)
         {
-            value = reinterpret_cast<char *>(
-                xmlNodeGetContent(child->children));
-            if (value)
+            std::string id, label;
+            for (xmlNodePtr grandChild = child->children;
+                 grandChild;
+                 grandChild = grandChild->next)
             {
-                extInfo->categories.insert(value);
-                xmlFree(value);
+                if (grandChild->type != XML_ELEMENT_NODE)
+                    continue;
+                if (strcmp(reinterpret_cast<const char *>(grandChild->name),
+                           ID) == 0)
+                {
+                    value = reinterpret_cast<char *>(
+                        xmlNodeGetContent(grandChild->children));
+                    if (value)
+                    {
+                        id = value;
+                        xmlFree(value);
+                    }
+                }
+                else if (strcmp(reinterpret_cast<const char *>
+                                    (grandChild->name),
+                                LABEL) == 0)
+                {
+                    value = reinterpret_cast<char *>(
+                        xmlNodeGetContent(grandChild->children));
+                    if (value)
+                    {
+                        label = value;
+                        xmlFree(value);
+                    }
+                }
             }
+            if (!id.empty())
+                extInfo->categories[id] = label;
         }
     }
     if (extInfo->categories.empty())
@@ -94,29 +115,43 @@ bool PreferencesExtensionPoint::registerExtension(
     }
     ext->installPreferences();
     ext->release();
+
+    for (std::map<std::string, std::string>::iterator it =
+         extInfo->categories.begin();
+         it != extInfo->categories.end();
+         ++it)
+        if (!it->second.empty())
+            PreferencesEditor::addCategory(it->first.c_str(),
+                                           it->second.c_str());
+
     return true;
 }
 
 void
 PreferencesExtensionPoint::unregisterExtension(const char *extensionId)
 {
-    ExtensionInfo *ext = m_extensions[extensionId];
-    m_extensions.erase(extensionId);
-    delete ext;
-}
-
-void PreferencesExtensionPoint::categories(std::set<std::string> &categories)
-{
-    for (ExtensionTable::iterator it = m_extensions.begin();
-         it != m_extensions.end();
+    ExtensionInfo *extInfo = m_extensions[extensionId];
+    PreferencesExtension *ext = static_cast<PreferencesExtension *>(
+        Application::instance().pluginManager().
+        acquireExtension(extensionId));
+    if (ext)
+    {
+        ext->uninstallPreferences();
+        ext->release();
+    }
+    for (std::map<std::string, std::string>::iterator it =
+         extInfo->categories.begin();
+         it != extInfo->categories.end();
          ++it)
-        categories.insert(it->second->categories.begin(),
-                          it->second->categories.end());
+        if (!it->second.empty())
+            PreferencesEditor::removeCategory(it->first.c_str());
+    m_extensions.erase(extensionId);
+    delete extInfo;
 }
 
 void
 PreferencesExtensionPoint::setupPreferencesEditor(const char *category,
-                                                  GtkWidget *grid)
+                                                  GtkGrid *grid)
 {
     for (ExtensionTable::iterator it = m_extensions.begin();
          it != m_extensions.end();

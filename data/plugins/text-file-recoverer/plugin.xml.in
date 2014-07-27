@@ -22,7 +22,9 @@
     <id>preferences</id>
     <point>preferences</point>
     <detail>
-      <category>text-editor</category>
+      <category>
+        <id>text-editor</id>
+      </category>
     </detail>
   </extension>
 </plugin>

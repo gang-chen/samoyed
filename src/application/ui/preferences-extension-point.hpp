@@ -8,7 +8,6 @@
 #include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
-#include <set>
 #include <string>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
@@ -29,15 +28,13 @@ public:
 
     virtual void unregisterExtension(const char *extensionId);
 
-    void categories(std::set<std::string> &categories);
-
-    void setupPreferencesEditor(const char *category, GtkWidget *grid);
+    void setupPreferencesEditor(const char *category, GtkGrid *grid);
 
 private:
     struct ExtensionInfo
     {
         std::string id;
-        std::set<std::string> categories;
+        std::map<std::string, std::string> categories;
         ExtensionInfo(const char *extensionId): id(extensionId) {}
     };
 

@@ -8,6 +8,7 @@
 #include "text-file.hpp"
 #include "widget-container.hpp"
 #include "window.hpp"
+#include "preferences-editor.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/property-tree.hpp"
 #include "application.hpp"
@@ -43,7 +44,7 @@ namespace
 
 const double SCROLL_MARGIN = 0.02;
 
-const char *DEFAULT_FONT = "Monospace";
+const char *DEFAULT_FONT = "Monospace 10";
 
 const int DEFAULT_TAB_WIDTH = 8;
 
@@ -365,16 +366,17 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     g_object_unref(buffer);
     gtk_container_add(GTK_CONTAINER(sw), view);
     setGtkWidget(sw);
-    const PropertyTree &prefs = Application::instance().preferences();
-    setFont(view, prefs.get<std::string>(TEXT_EDITOR "/" FONT).c_str());
+    const PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    setFont(view, prefs.get<std::string>(FONT).c_str());
     gtk_source_view_set_tab_width(GTK_SOURCE_VIEW(view),
-                                  prefs.get<int>(TEXT_EDITOR "/" TAB_WIDTH));
+                                  prefs.get<int>(TAB_WIDTH));
     gtk_source_view_set_insert_spaces_instead_of_tabs(
         GTK_SOURCE_VIEW(view),
-        prefs.get<bool>(TEXT_EDITOR "/" REPLACE_TABS_WITH_SPACES));
+        prefs.get<bool>(REPLACE_TABS_WITH_SPACES));
     gtk_source_view_set_show_line_numbers(
         GTK_SOURCE_VIEW(view),
-        prefs.get<bool>(TEXT_EDITOR "/" SHOW_LINE_NUMBERS));
+        prefs.get<bool>(SHOW_LINE_NUMBERS));
     // TODO: Support syntax highlighting and indenting for C/C++ by ourselves.
     char *fileType = g_content_type_from_mime_type(file().mimeType());
     GtkSourceLanguage *lang = gtk_source_language_manager_guess_language(
@@ -383,13 +385,13 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     gtk_source_buffer_set_language(buffer, lang);
     gtk_source_buffer_set_highlight_syntax(
         buffer,
-        prefs.get<bool>(TEXT_EDITOR "/" HIGHLIGHT_SYNTAX));
+        prefs.get<bool>(HIGHLIGHT_SYNTAX));
     gtk_source_view_set_auto_indent(
         GTK_SOURCE_VIEW(view),
-        prefs.get<bool>(TEXT_EDITOR "/" INDENT));
+        prefs.get<bool>(INDENT));
     gtk_source_view_set_indent_width(
         GTK_SOURCE_VIEW(view),
-        prefs.get<int>(TEXT_EDITOR "/" INDENT_WIDTH));
+        prefs.get<int>(INDENT_WIDTH));
     gtk_widget_show_all(sw);
     g_signal_connect(view, "focus-in-event",
                      G_CALLBACK(onFocusIn), this);
@@ -680,15 +682,18 @@ gboolean TextEditor::onFocusIn(GtkWidget *widget,
 
 void TextEditor::installPreferences()
 {
-    PropertyTree &prop = Application::instance().preferences().
+    PropertyTree &prefs = Application::instance().preferences().
         addChild(TEXT_EDITOR);
-    prop.addChild(FONT, std::string(DEFAULT_FONT));
-    prop.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
-    prop.addChild(REPLACE_TABS_WITH_SPACES, DEFAULT_REPLACE_TABS_WITH_SPACES);
-    prop.addChild(SHOW_LINE_NUMBERS, DEFAULT_SHOW_LINE_NUMBERS);
-    prop.addChild(HIGHLIGHT_SYNTAX, true);
-    prop.addChild(INDENT, true);
-    prop.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
+    prefs.addChild(FONT, std::string(DEFAULT_FONT));
+    prefs.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
+    prefs.addChild(REPLACE_TABS_WITH_SPACES, DEFAULT_REPLACE_TABS_WITH_SPACES);
+    prefs.addChild(SHOW_LINE_NUMBERS, DEFAULT_SHOW_LINE_NUMBERS);
+    prefs.addChild(HIGHLIGHT_SYNTAX, true);
+    prefs.addChild(INDENT, true);
+    prefs.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
+
+    PreferencesEditor::addCategory(TEXT_EDITOR, _("_Text Editor"));
+    PreferencesEditor::registerPreferences(TEXT_EDITOR, setupPreferencesEditor);
 }
 
 void TextEditor::undo()
@@ -720,13 +725,13 @@ void TextEditor::activateAction(Window &window,
             redo();
     }
     else if (index == Actions::ACTION_CUT)
-        g_signal_emit_by_name(gtkWidget(), "cut-clipboard");
+        g_signal_emit_by_name(gtkSourceView(), "cut-clipboard");
     else if (index == Actions::ACTION_COPY)
-        g_signal_emit_by_name(gtkWidget(), "copy-clipboard");
+        g_signal_emit_by_name(gtkSourceView(), "copy-clipboard");
     else if (index == Actions::ACTION_PASTE)
-        g_signal_emit_by_name(gtkWidget(), "paste-clipboard");
+        g_signal_emit_by_name(gtkSourceView(), "paste-clipboard");
     else if (index == Actions::ACTION_DELETE)
-        g_signal_emit_by_name(gtkWidget(),
+        g_signal_emit_by_name(gtkSourceView(),
                               "delete-from-cursor",
                               GTK_DELETE_CHARS,
                               0,
@@ -736,6 +741,50 @@ void TextEditor::activateAction(Window &window,
 bool TextEditor::isActionSensitive(Window &window, GtkAction *action)
 {
     return true;
+}
+
+void TextEditor::onFontSet(GtkFontButton *button, gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    std::list<std::string> errors;
+    prefs.set(FONT,
+              std::string(gtk_font_button_get_font_name(button)),
+              true,
+              errors);
+    std::string font = prefs.get<std::string>(FONT);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                setFont(GTK_WIDGET(static_cast<TextEditor *>(editor)->
+                                   gtkSourceView()),
+                        font.c_str());
+        }
+    }
+}
+
+void TextEditor::setupPreferencesEditor(GtkGrid *grid)
+{
+    const PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    GtkWidget *fontLine = gtk_grid_new();
+    GtkWidget *fontLabel = gtk_label_new_with_mnemonic(_("_Font:"));
+    GtkWidget *fontButton = gtk_font_button_new();
+    gtk_font_button_set_font_name(
+        GTK_FONT_BUTTON(fontButton), prefs.get<std::string>(FONT).c_str());
+    g_signal_connect(fontButton, "font-set", G_CALLBACK(onFontSet), NULL);
+    gtk_label_set_mnemonic_widget(GTK_LABEL(fontLabel), fontButton);
+    gtk_grid_attach(GTK_GRID(fontLine), fontLabel, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(fontLine), fontButton, 1, 0, 1, 1);
+    gtk_grid_set_column_spacing(GTK_GRID(fontLine), CONTAINER_SPACING);
+    gtk_grid_attach_next_to(grid, fontLine, NULL, GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(fontLine);
 }
 
 }

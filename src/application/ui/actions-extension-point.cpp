@@ -10,6 +10,7 @@
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
+#include <assert.h>
 #include <string.h>
 #include <list>
 #include <map>
@@ -139,16 +140,10 @@ ActionsExtensionPoint::~ActionsExtensionPoint()
     m_windowsCreatedConnection.disconnect();
     m_windowsRestoredConnection.disconnect();
 
-    for (ExtensionTable::iterator it = m_extensions.begin();
-         it != m_extensions.end();)
-    {
-        ExtensionTable::iterator it2 = it;
-        ++it;
-        unregisterExtension(it2->first);
-    }
-
     Application::instance().extensionPointManager().
         unregisterExtensionPoint(*this);
+
+    assert(m_extensions.empty());
 }
 
 void ActionsExtensionPoint::registerAllExtensions(Window &window)
