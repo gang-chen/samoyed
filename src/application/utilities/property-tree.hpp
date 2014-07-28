@@ -5,7 +5,7 @@
 #define SMYD_PROPERTY_TREE_HPP
 
 #include "miscellaneous.hpp"
-#include "libs/boost/spirit/home/support/detail/hold_any.hpp"
+#include "boost/spirit/home/support/detail/hold_any.hpp"
 #include <list>
 #include <map>
 #include <string>
@@ -31,7 +31,7 @@ public:
      */
     typedef boost::function<bool (PropertyTree &prop,
                                   bool correct,
-                                  std::list<std::string> &errors)> Validator;
+                                  std::list<std::string> *errors)> Validator;
 
     /**
      * A property node is changed.  Note that its children are not changed.
@@ -72,15 +72,15 @@ public:
     const boost::spirit::hold_any &get() const { return m_value; }
     bool set(const boost::spirit::hold_any &value,
              bool correct,
-             std::list<std::string> &errors);
-    bool reset(bool correct, std::list<std::string> &errors)
+             std::list<std::string> *errors);
+    bool reset(bool correct, std::list<std::string> *errors)
     { return set(m_defaultValue, correct, errors); }
 
     template<class T> const T &get() const
     { return boost::spirit::any_cast<T>(get()); }
     template<class T> bool set(const T &value,
                                bool correct,
-                               std::list<std::string> &errors)
+                               std::list<std::string> *errors)
     { return set(boost::spirit::hold_any(value), correct, errors); }
 
     void addChild(PropertyTree &child);
@@ -90,24 +90,24 @@ public:
     bool set(const char *path,
              const boost::spirit::hold_any &value,
              bool correct,
-             std::list<std::string> &errors);
-    bool reset(const char *path, bool correct, std::list<std::string> &errors);
+             std::list<std::string> *errors);
+    bool reset(const char *path, bool correct, std::list<std::string> *errors);
 
     template<class T> const T &get(const char *path) const
     { return boost::spirit::any_cast<T>(get(path)); }
     template<class T> bool set(const char *path,
                                const T &value,
                                bool correct,
-                               std::list<std::string> &errors)
+                               std::list<std::string> *errors)
     { return set(path, boost::spirit::hold_any(value), correct, errors); }
 
     bool set(const std::list<std::pair<const char *,
                                        boost::spirit::hold_any> > &pathsValues,
              bool correct,
-             std::list<std::string> &errors);
+             std::list<std::string> *errors);
     bool reset(const std::list<const char *> &paths,
                bool correct,
-               std::list<std::string> &errors);
+               std::list<std::string> *errors);
 
     void resetAll();
 
@@ -115,6 +115,7 @@ public:
     const PropertyTree &child(const char *path) const;
     PropertyTree &addChild(const char *path,
                            const boost::spirit::hold_any &defaultValue);
+    void removeChild(const char *path);
 
     PropertyTree &addChild(const char *path)
     { return addChild(path, boost::spirit::hold_any()); }
@@ -130,7 +131,7 @@ public:
 
     boost::signals2::connection addObserver(const Changed::slot_type &observer);
 
-    void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> &errors);
+    void readXmlElement(xmlNodePtr xmlNode, std::list<std::string> *errors);
     xmlNodePtr writeXmlElement() const;
 
 private:

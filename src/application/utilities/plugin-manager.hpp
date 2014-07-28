@@ -96,6 +96,8 @@ public:
      */
     void scanPlugins(const char *pluignsDirName);
 
+    void unregisterAllPlugins();
+
 private:
     typedef std::map<ComparablePointer<const char>, Plugin *> Table;
 

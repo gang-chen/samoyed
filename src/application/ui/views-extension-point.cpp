@@ -98,7 +98,7 @@ void ViewsExtensionPoint::registerAllExtensions(Window &window)
 
 bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                                             xmlNodePtr xmlNode,
-                                            std::list<std::string> &errors)
+                                            std::list<std::string> *errors)
 {
     // Parse the extension.
     ExtensionInfo *ext = new ExtensionInfo(extensionId);
@@ -118,12 +118,12 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                     ext->paneId = Window::NAVIGATION_PANE_ID;
                 else if (strcmp(value, TOOL) == 0)
                     ext->paneId = Window::TOOLS_PANE_ID;
-                else
+                else if (errors)
                 {
                     cp = g_strdup_printf(
                         _("Line %d: Invalid view category \"%s\".\n"),
                         child->line, value);
-                    errors.push_back(cp);
+                    errors->push_back(cp);
                     g_free(cp);
                 }
                 xmlFree(value);
@@ -142,12 +142,15 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, INDEX, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, INDEX, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -165,12 +168,15 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                        child->line, value, OPEN_BY_DEFAULT, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                            child->line, value, OPEN_BY_DEFAULT, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -237,11 +243,14 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
         ext->menuItemLabel = ext->viewTitle;
     if (ext->paneId.empty() || ext->viewId.empty() || ext->viewTitle.empty())
     {
-        cp = g_strdup_printf(
-            _("Line %d: Incomplete view extension specification.\n"),
-            xmlNode->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Incomplete view extension specification.\n"),
+                xmlNode->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         delete ext;
         return false;
     }

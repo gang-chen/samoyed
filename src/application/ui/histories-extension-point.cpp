@@ -39,7 +39,7 @@ HistoriesExtensionPoint::~HistoriesExtensionPoint()
 bool HistoriesExtensionPoint::registerExtension(
     const char *extensionId,
     xmlNodePtr xmlNode,
-    std::list<std::string> &errors)
+    std::list<std::string> *errors)
 {
     // Parse the extension.
     ExtensionInfo *extInfo = new ExtensionInfo(extensionId);

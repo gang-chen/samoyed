@@ -39,7 +39,7 @@ namespace Samoyed
 {
 
 bool Editor::XmlElement::readInternally(xmlNodePtr node,
-                                        std::list<std::string> &errors)
+                                        std::list<std::string> *errors)
 {
     char *value, *cp;
     bool widgetSeen = false;
@@ -53,11 +53,14 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
         {
             if (widgetSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, WIDGET);
-                errors.push_back(cp);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, WIDGET);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!Widget::XmlElement::readInternally(child, errors))
@@ -105,20 +108,26 @@ bool Editor::XmlElement::readInternally(xmlNodePtr node,
 
     if (!widgetSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, WIDGET);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, WIDGET);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     if (!fileUriSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, FILE_URI);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, FILE_URI);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     return true;

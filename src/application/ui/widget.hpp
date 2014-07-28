@@ -46,7 +46,7 @@ public:
     public:
         typedef
         boost::function<XmlElement *(xmlNodePtr node,
-                                     std::list<std::string> &errors)> Reader;
+                                     std::list<std::string> *errors)> Reader;
 
         static void registerReader(const char *className,
                                    const Reader &reader);
@@ -62,7 +62,7 @@ public:
          * if any error is found.
          */
         static XmlElement *read(xmlNodePtr node,
-                                std::list<std::string> &errors);
+                                std::list<std::string> *errors);
 
         /**
          * Write to an XML node.
@@ -93,7 +93,7 @@ public:
     protected:
         XmlElement(): m_visible(true) {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
 
     private:
         static std::map<std::string, Reader> s_readerRegistry;

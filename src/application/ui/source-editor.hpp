@@ -26,7 +26,7 @@ public:
         static void registerReader();
 
         static XmlElement *read(xmlNodePtr node,
-                                std::list<std::string> &errors);
+                                std::list<std::string> *errors);
         virtual xmlNodePtr write() const;
         XmlElement(const SourceEditor &editor);
         virtual Widget *restoreWidget();
@@ -36,7 +36,7 @@ public:
             TextEditor::XmlElement(defaultFileOptions)
         {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
     };
 
     /**

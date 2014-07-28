@@ -66,7 +66,7 @@ public:
     ~XmlElementSession();
 
     static XmlElementSession *read(xmlNodePtr node,
-                                   std::list<std::string> &errors);
+                                   std::list<std::string> *errors);
     xmlNodePtr write() const;
     static XmlElementSession *saveSession();
     bool restoreSession();
@@ -79,19 +79,22 @@ private:
 };
 
 XmlElementSession *XmlElementSession::read(xmlNodePtr node,
-                                           std::list<std::string> &errors)
+                                           std::list<std::string> *errors)
 {
     char *cp;
     if (strcmp(reinterpret_cast<const char *>(node->name),
                SESSION) != 0)
     {
-        cp = g_strdup_printf(
-            _("Line %d: Root element is \"%s\"; should be \"%s\".\n"),
-            node->line,
-            reinterpret_cast<const char *>(node->name),
-            SESSION);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Root element is \"%s\"; should be \"%s\".\n"),
+                node->line,
+                reinterpret_cast<const char *>(node->name),
+                SESSION);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return NULL;
     }
     XmlElementSession *session = new XmlElementSession;
@@ -152,11 +155,14 @@ XmlElementSession *XmlElementSession::read(xmlNodePtr node,
     }
     if (session->m_windows.empty())
     {
-        cp = g_strdup_printf(
-            _("Line %d: No window in the session.\n"),
-            node->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: No window in the session.\n"),
+                node->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         delete session;
         return NULL;
     }
@@ -305,7 +311,7 @@ XmlElementSession *parseSessionFile(const char *fileName,
     }
 
     std::list<std::string> errors;
-    XmlElementSession *session = XmlElementSession::read(node, errors);
+    XmlElementSession *session = XmlElementSession::read(node, &errors);
     xmlFreeDoc(doc);
     if (!session)
     {
@@ -466,10 +472,7 @@ void Session::UnsavedFilesRead::execute(Session &session)
                     else if (options &&
                              strcmp(reinterpret_cast<const char *>(child->name),
                                     options->name()) == 0)
-                    {
-                        std::list<std::string> errors;
-                        options->readXmlElement(child, errors);
-                    }
+                        options->readXmlElement(child, NULL);
                 }
                 if (timeStamp > 0 && options)
                     unsavedFiles.insert(

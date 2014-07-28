@@ -45,7 +45,7 @@ PreferencesExtensionPoint::~PreferencesExtensionPoint()
 bool PreferencesExtensionPoint::registerExtension(
     const char *extensionId,
     xmlNodePtr xmlNode,
-    std::list<std::string> &errors)
+    std::list<std::string> *errors)
 {
     // Parse the extension.
     ExtensionInfo *extInfo = new ExtensionInfo(extensionId);
@@ -94,11 +94,14 @@ bool PreferencesExtensionPoint::registerExtension(
     }
     if (extInfo->categories.empty())
     {
-        cp = g_strdup_printf(
-            _("Line %d: Incomplete preferences extension specification.\n"),
-            xmlNode->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Incomplete preferences extension specification.\n"),
+                xmlNode->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         delete extInfo;
         return false;
     }

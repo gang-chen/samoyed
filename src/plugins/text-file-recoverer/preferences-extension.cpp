@@ -32,6 +32,12 @@ void PreferencesExtension::installPreferences()
         addChild(TEXT_EDIT_SAVE_INTERVAL, DEFAULT_TEXT_EDIT_SAVE_INTERVAL);
 }
 
+void PreferencesExtension::uninstallPreferences()
+{
+    Application::instance().preferences().child(TEXT_EDITOR).
+        removeChild(TEXT_EDIT_SAVE_INTERVAL);
+}
+
 void PreferencesExtension::setupPreferencesEditor(const char *category,
                                                   GtkGrid *grid)
 {

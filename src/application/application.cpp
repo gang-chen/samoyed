@@ -292,6 +292,7 @@ void Application::shutDown()
     assert(!m_sessionName);
     assert(!m_newSessionName);
 
+    m_pluginManager->unregisterAllPlugins();
     delete m_histories;
     delete m_preferences;
     delete m_actionsExtensionPoint;

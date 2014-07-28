@@ -197,7 +197,7 @@ void TextEditor::XmlElement::registerReader()
 }
 
 bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
-                                            std::list<std::string> &errors)
+                                            std::list<std::string> *errors)
 {
     char *value, *cp;
     bool editorSeen = false;
@@ -208,11 +208,14 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
         {
             if (editorSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, EDITOR);
-                errors.push_back(cp);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, EDITOR);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!Editor::XmlElement::readInternally(child, errors))
@@ -232,12 +235,15 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, CURSOR_LINE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, CURSOR_LINE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -255,12 +261,15 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, CURSOR_COLUMN, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, CURSOR_COLUMN, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -269,29 +278,35 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
 
     if (!editorSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, EDITOR);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, EDITOR);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
 
     // Verify that the file is a text file.
     if (!TextFile::isSupportedType(fileMimeType()))
     {
-        cp = g_strdup_printf(
-            _("Line %d: File \"%s\" is not a text file.\n"),
-            node->line, fileUri());
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: File \"%s\" is not a text file.\n"),
+                node->line, fileUri());
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     return true;
 }
 
 TextEditor::XmlElement *
-TextEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> &errors)
+TextEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement(TextFile::defaultOptions());
     if (!element->readInternally(node, errors))
@@ -747,11 +762,10 @@ void TextEditor::onFontSet(GtkFontButton *button, gpointer data)
 {
     PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
-    std::list<std::string> errors;
     prefs.set(FONT,
               std::string(gtk_font_button_get_font_name(button)),
-              true,
-              errors);
+              false,
+              NULL);
     std::string font = prefs.get<std::string>(FONT);
     for (File *file = Application::instance().files();
          file;

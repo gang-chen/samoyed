@@ -173,14 +173,13 @@ PropertyTree *TextFile::OptionsSetter::options() const
         cp2 = strchr(cp1, ')');
         if (cp2)
         {
-            std::list<std::string> errors;
             Application::instance().histories().
                 set(FILE_OPEN "/" TEXT_FILE "/" ENCODING,
                     std::string(encoding),
                     false,
-                    errors);
+                    NULL);
             *cp2 = '\0';
-            options->set(ENCODING, std::string(cp1), false, errors);
+            options->set(ENCODING, std::string(cp1), false, NULL);
         }
     }
     g_free(encoding);

@@ -23,7 +23,7 @@ namespace Samoyed
 {
 
 bool Project::XmlElement::readInternally(xmlNodePtr node,
-                                         std::list<std::string> &errors)
+                                         std::list<std::string> *errors)
 {
     char *value, *cp;
     bool uriSeen = false;
@@ -45,18 +45,21 @@ bool Project::XmlElement::readInternally(xmlNodePtr node,
 
     if (!uriSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, URI);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, URI);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     return true;
 }
 
 Project::XmlElement *Project::XmlElement::read(xmlNodePtr node,
-                                               std::list<std::string> &errors)
+                                               std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(node, errors))

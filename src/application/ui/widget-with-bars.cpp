@@ -26,9 +26,15 @@
 namespace
 {
 
+gboolean closeBar(gpointer bar)
+{
+    static_cast<Samoyed::Bar *>(bar)->close();
+    return FALSE;
+}
+
 gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, Samoyed::Bar *bar)
 {
-    bar->close();
+    g_idle_add(closeBar, bar);
     return FALSE;
 }
 
@@ -40,7 +46,7 @@ void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, Samoyed::Bar *bar)
         if (p == barWidget)
             return;
     }
-    bar->close();
+    g_idle_add(closeBar, bar);
 }
 
 }
@@ -55,7 +61,7 @@ void WidgetWithBars::XmlElement::registerReader()
 }
 
 bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
-                                                std::list<std::string> &errors)
+                                                std::list<std::string> *errors)
 {
     char *value, *cp;
     bool containerSeen = false;
@@ -68,11 +74,14 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
         {
             if (containerSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, WIDGET_CONTAINER);
-                errors.push_back(cp);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, WIDGET_CONTAINER);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!WidgetContainer::XmlElement::readInternally(child, errors))
@@ -92,12 +101,15 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
                 {
                     if (m_mainChild)
                     {
-                        cp = g_strdup_printf(
-                            _("Line %d: More than one main children contained "
-                              "by the bin.\n"),
-                            grandChild->line);
-                        errors.push_back(cp);
-                        g_free(cp);
+                        if (errors)
+                        {
+                            cp = g_strdup_printf(
+                                _("Line %d: More than one main children "
+                                  "contained by the bin.\n"),
+                                grandChild->line);
+                            errors->push_back(cp);
+                            g_free(cp);
+                        }
                         delete ch;
                     }
                     else
@@ -133,12 +145,16 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, CURRENT_CHILD_INDEX, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, CURRENT_CHILD_INDEX,
+                            exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -147,22 +163,28 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
 
     if (!containerSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, WIDGET_CONTAINER);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, WIDGET_CONTAINER);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
 
     if (!m_mainChild)
     {
-        cp = g_strdup_printf(
-            _("Line %d: No main child contained by the bin.\n"),
-            node->line);
-        errors.push_back(cp);
-        g_free(cp);
-        return false;
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: No main child contained by the bin.\n"),
+                node->line);
+            errors->push_back(cp);
+            g_free(cp);
+            return false;
+        }
     }
 
     if (m_currentChildIndex < 0)
@@ -174,7 +196,7 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
 
 WidgetWithBars::XmlElement *
 WidgetWithBars::XmlElement::read(xmlNodePtr node,
-                                 std::list<std::string> &errors)
+                                 std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(node, errors))
@@ -400,7 +422,7 @@ void WidgetWithBars::addBar(Bar &bar, bool transient)
             g_signal_connect(window, "focus-out-event",
                              G_CALLBACK(onWindowFocusOut), &bar);
         unsigned handler2 =
-            g_signal_connect(GTK_WINDOW(window), "set-focus",
+            g_signal_connect(window, "set-focus",
                              G_CALLBACK(onWindowSetFocus), &bar);
         m_barHandlers[&bar] = std::make_pair(handler1, handler2);
     }

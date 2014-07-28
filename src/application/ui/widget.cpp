@@ -38,7 +38,7 @@ void Widget::XmlElement::registerReader(const char *className,
 }
 
 Widget::XmlElement* Widget::XmlElement::read(xmlNodePtr node,
-                                             std::list<std::string> &errors)
+                                             std::list<std::string> *errors)
 {
     std::string className(reinterpret_cast<const char *>(node->name));
     std::map<std::string, Reader>::const_iterator it =
@@ -50,7 +50,7 @@ Widget::XmlElement* Widget::XmlElement::read(xmlNodePtr node,
 }
 
 bool Widget::XmlElement::readInternally(xmlNodePtr node,
-                                        std::list<std::string> &errors)
+                                        std::list<std::string> *errors)
 {
     char *value, *cp;
     for (xmlNodePtr child = node->children; child; child = child->next)
@@ -103,12 +103,15 @@ bool Widget::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                        child->line, value, VISIBLE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                            child->line, value, VISIBLE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }

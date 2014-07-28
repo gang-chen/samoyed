@@ -36,7 +36,7 @@ void Notebook::XmlElement::registerReader()
 }
 
 bool Notebook::XmlElement::readInternally(xmlNodePtr node,
-                                          std::list<std::string> &errors)
+                                          std::list<std::string> *errors)
 {
     char *value, *cp;
     bool containerSeen = false;
@@ -49,11 +49,14 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
         {
             if (containerSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, WIDGET_CONTAINER);
-                errors.push_back(cp);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, WIDGET_CONTAINER);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!WidgetContainer::XmlElement::readInternally(child, errors))
@@ -84,12 +87,16 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                        child->line, value, CREATE_CLOSE_BUTTONS, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                            child->line, value, CREATE_CLOSE_BUTTONS,
+                            exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -107,12 +114,15 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                        child->line, value, CAN_DRAG_CHILDREN, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                            child->line, value, CAN_DRAG_CHILDREN, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -130,12 +140,15 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                        child->line, value, USE_UNDERLINE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                            child->line, value, USE_UNDERLINE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -168,12 +181,16 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, CURRENT_CHILD_INDEX, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, CURRENT_CHILD_INDEX,
+                            exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -182,11 +199,14 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
 
     if (!containerSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, WIDGET_CONTAINER);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, WIDGET_CONTAINER);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
 
@@ -203,7 +223,7 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
 }
 
 Notebook::XmlElement *Notebook::XmlElement::read(xmlNodePtr node,
-                                                 std::list<std::string> &errors)
+                                                 std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(node, errors))

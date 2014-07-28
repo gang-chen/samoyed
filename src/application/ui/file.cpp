@@ -377,14 +377,13 @@ void File::openByDialog(Project *project,
     Notebook &editorGroup = window.currentEditorGroup();
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
-        std::list<std::string> errors;
         char *dirName =
             gtk_file_chooser_get_current_folder_uri(GTK_FILE_CHOOSER(dialog));
         if (dirName)
         {
             Application::instance().histories().
                 set(FILE_OPEN "/" DIRECTORY, std::string(dirName),
-                    false, errors);
+                    false, NULL);
             g_free(dirName);
         }
 
@@ -393,7 +392,7 @@ void File::openByDialog(Project *project,
         const char *mimeType = filter2MimeType[filter];
         Application::instance().histories().
             set(FILE_OPEN "/" FILTER, std::string(mimeType),
-                false, errors);
+                false, NULL);
 
         PropertyTree *options = param.optSetter->options();
         delete param.optSetter;

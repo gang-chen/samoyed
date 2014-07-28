@@ -22,7 +22,7 @@ public:
 
     virtual void installPreferences();
 
-    virtual void uninstallPreferences() {}
+    virtual void uninstallPreferences();
 
     virtual void setupPreferencesEditor(const char *category,
                                          GtkGrid *grid);

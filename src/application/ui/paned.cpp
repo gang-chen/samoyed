@@ -37,7 +37,7 @@ void Paned::XmlElement::registerReader()
 }
 
 bool Paned::XmlElement::readInternally(xmlNodePtr node,
-                                       std::list<std::string> &errors)
+                                       std::list<std::string> *errors)
 {
     char *value, *cp;
     bool containerSeen = false;
@@ -50,11 +50,14 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
         {
             if (containerSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, WIDGET_CONTAINER);
-                errors.push_back(cp);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, WIDGET_CONTAINER);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!WidgetContainer::XmlElement::readInternally(child, errors))
@@ -72,12 +75,12 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                     m_orientation = Paned::ORIENTATION_HORIZONTAL;
                 else if (strcmp(value, VERTICAL) == 0)
                     m_orientation = Paned::ORIENTATION_VERTICAL;
-                else
+                else if (errors)
                 {
                     cp = g_strdup_printf(
                         _("Line %d: Invalid orientation \"%s\".\n"),
                         child->line, value);
-                    errors.push_back(cp);
+                    errors->push_back(cp);
                     g_free(cp);
                 }
                 xmlFree(value);
@@ -96,12 +99,15 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, SIDE_PANE_INDEX, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, SIDE_PANE_INDEX, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
                 if (m_sidePaneIndex < -1 || m_sidePaneIndex > 1)
@@ -123,12 +129,15 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 {
                     if (m_children[1])
                     {
-                        cp = g_strdup_printf(
-                            _("Line %d: More than two children contained by "
-                              "the paned widget.\n"),
-                            grandChild->line);
-                        errors.push_back(cp);
-                        g_free(cp);
+                        if (errors)
+                        {
+                            cp = g_strdup_printf(
+                                _("Line %d: More than two children contained "
+                                  "by the paned widget.\n"),
+                                grandChild->line);
+                            errors->push_back(cp);
+                            g_free(cp);
+                        }
                         delete ch;
                     }
                     else if (m_children[0])
@@ -151,12 +160,16 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, CURRENT_CHILD_INDEX, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, CURRENT_CHILD_INDEX,
+                            exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -174,12 +187,16 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid real number \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                        child->line, value, CHILD1_SIZE_FRACTION, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid real number \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, CHILD1_SIZE_FRACTION,
+                            exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -197,12 +214,15 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid integer \"%s\" for element \"%s\". "
-                          "%s.\n"),
-                        child->line, value, SIDE_PANE_SIZE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid integer \"%s\" for element "
+                              "\"%s\". %s.\n"),
+                            child->line, value, SIDE_PANE_SIZE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -211,29 +231,38 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
 
     if (!containerSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, WIDGET_CONTAINER);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, WIDGET_CONTAINER);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     if (!m_children[0])
     {
-        cp = g_strdup_printf(
-            _("Line %d: No child contained by the paned widget.\n"),
-            node->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: No child contained by the paned widget.\n"),
+                node->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     if (!m_children[1])
     {
-        cp = g_strdup_printf(
-            _("Line %d: Only one child contained by the paned widget.\n"),
-            node->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Only one child contained by the paned widget.\n"),
+                node->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
 
@@ -245,7 +274,7 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
 }
 
 Paned::XmlElement *Paned::XmlElement::read(xmlNodePtr node,
-                                           std::list<std::string> &errors)
+                                           std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(node, errors))

@@ -90,7 +90,7 @@ public:
 
         virtual ~XmlElement();
         static XmlElement *read(xmlNodePtr node,
-                                std::list<std::string> &errors);
+                                std::list<std::string> *errors);
         virtual xmlNodePtr write() const;
         XmlElement(const Window &window);
         virtual Widget *restoreWidget();
@@ -101,7 +101,7 @@ public:
     protected:
         XmlElement(): m_child(NULL) {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
 
     private:
         Configuration m_configuration;

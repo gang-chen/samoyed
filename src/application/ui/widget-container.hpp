@@ -31,7 +31,7 @@ public:
 
     protected:
         XmlElement() {}
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
     };
 
     virtual void grabFocus();

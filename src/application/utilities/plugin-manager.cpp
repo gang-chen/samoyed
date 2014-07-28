@@ -615,4 +615,13 @@ void PluginManager::scanPlugins(const char *pluginsDirName)
     g_dir_close(dir);
 }
 
+void PluginManager::unregisterAllPlugins()
+{
+    for (Table::iterator it = m_table.begin(); it != m_table.end();)
+    {
+        Table::iterator i = it++;
+        unregisterPlugin(i->first);
+    }
+}
+
 }

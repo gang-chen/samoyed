@@ -27,7 +27,7 @@ public:
         static void registerReader();
 
         static XmlElement *read(xmlNodePtr node,
-                                std::list<std::string> &errors);
+                                std::list<std::string> *errors);
         virtual xmlNodePtr write() const;
         XmlElement(const TextEditor &editor);
         virtual Widget *restoreWidget();
@@ -42,7 +42,7 @@ public:
             m_cursorColumn(0)
         {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
 
     private:
         int m_cursorLine;

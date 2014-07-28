@@ -156,7 +156,7 @@ void ActionsExtensionPoint::registerAllExtensions(Window &window)
 
 bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                                               xmlNodePtr xmlNode,
-                                              std::list<std::string> &errors)
+                                              std::list<std::string> *errors)
 {
     // Parse the extension.
     ExtensionInfo *ext = new ExtensionInfo(extensionId);
@@ -178,12 +178,15 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                    child->line, value, TOGGLE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                        child->line, value, TOGGLE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -201,12 +204,15 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                    child->line, value, ALWAYS_SENSITIVE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                        child->line, value, ALWAYS_SENSITIVE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -224,12 +230,15 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                    child->line, value, ACTIVE_BY_DEFAULT, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                        child->line, value, ACTIVE_BY_DEFAULT, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -324,12 +333,15 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 }
                 catch (boost::bad_lexical_cast &exp)
                 {
-                    cp = g_strdup_printf(
-                        _("Line %d: Invalid Boolean value \"%s\" for element "
-                          "\"%s\". %s.\n"),
-                    child->line, value, SEPARATE, exp.what());
-                    errors.push_back(cp);
-                    g_free(cp);
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid Boolean value \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                        child->line, value, SEPARATE, exp.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
                 }
                 xmlFree(value);
             }
@@ -339,11 +351,14 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
         ext->path.empty() ||
         ext->label.empty())
     {
-        cp = g_strdup_printf(
-            _("Line %d: Incomplete action extension specification.\n"),
-            xmlNode->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Incomplete action extension specification.\n"),
+                xmlNode->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         delete ext;
         return false;
     }

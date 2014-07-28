@@ -25,7 +25,7 @@ public:
 
     virtual bool registerExtension(const char *extensionId,
                                    xmlNodePtr xmlNode,
-                                   std::list<std::string> &errors);
+                                   std::list<std::string> *errors);
 
     virtual void unregisterExtension(const char *extensionId);
 

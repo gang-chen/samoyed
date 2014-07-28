@@ -43,7 +43,7 @@ void SourceEditor::XmlElement::registerReader()
 }
 
 bool SourceEditor::XmlElement::readInternally(xmlNodePtr node,
-                                              std::list<std::string> &errors)
+                                              std::list<std::string> *errors)
 {
     char *cp;
     bool textEditorSeen = false;
@@ -56,11 +56,14 @@ bool SourceEditor::XmlElement::readInternally(xmlNodePtr node,
         {
             if (textEditorSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, TEXT_EDITOR);
-                errors.push_back(cp);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, TEXT_EDITOR);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!TextEditor::XmlElement::readInternally(child, errors))
@@ -71,29 +74,35 @@ bool SourceEditor::XmlElement::readInternally(xmlNodePtr node,
 
     if (!textEditorSeen)
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, TEXT_EDITOR);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, TEXT_EDITOR);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
 
     // Verify that the file is a C/C++ source file.
     if (!SourceFile::isSupportedType(fileMimeType()))
     {
-        cp = g_strdup_printf(
-            _("Line %d: File \"%s\" is not a C/C++ source file.\n"),
-            node->line, fileUri());
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: File \"%s\" is not a C/C++ source file.\n"),
+                node->line, fileUri());
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     return true;
 }
 
 SourceEditor::XmlElement *
-SourceEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> &errors)
+SourceEditor::XmlElement::read(xmlNodePtr node, std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement(SourceFile::defaultOptions());
     if (!element->readInternally(node, errors))

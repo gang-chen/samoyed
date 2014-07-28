@@ -46,7 +46,7 @@ public:
             m_fileOptions(defaultFileOptions)
         {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
 
         Editor *createEditor();
 

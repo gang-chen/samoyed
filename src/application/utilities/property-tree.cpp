@@ -4,7 +4,8 @@
 /*
 UNIT TEST BUILD
 g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0 libxml-2.0` -Werror -Wall -o property-tree
+ `pkg-config --cflags --libs gtk+-3.0 libxml-2.0` -I../../../libs -Werror -Wall\
+ -o property-tree
 */
 
 #ifdef HAVE_CONFIG_H
@@ -53,7 +54,7 @@ PropertyTree::PropertyTree(const PropertyTree &prop):
 
 bool PropertyTree::set(const boost::spirit::hold_any &value,
                        bool correct,
-                       std::list<std::string> &errors)
+                       std::list<std::string> *errors)
 {
     boost::spirit::hold_any save(m_value);
     m_value = value;
@@ -96,14 +97,14 @@ const boost::spirit::hold_any &PropertyTree::get(const char *path) const
 bool PropertyTree::set(const char *path,
                        const boost::spirit::hold_any &value,
                        bool correct,
-                       std::list<std::string> &errors)
+                       std::list<std::string> *errors)
 {
     return child(path).set(value, correct, errors);
 }
 
 bool PropertyTree::reset(const char *path,
                          bool correct,
-                         std::list<std::string> &errors)
+                         std::list<std::string> *errors)
 {
     return child(path).reset(correct, errors);
 }
@@ -112,7 +113,7 @@ bool PropertyTree::set(const std::list<std::pair<const char *,
                                                  boost::spirit::hold_any> >
                         &pathsValues,
                        bool correct,
-                       std::list<std::string> &errors)
+                       std::list<std::string> *errors)
 {
     std::vector<std::pair<PropertyTree *, boost::spirit::hold_any> > saved;
     saved.reserve(pathsValues.size());
@@ -187,7 +188,7 @@ bool PropertyTree::set(const std::list<std::pair<const char *,
 
 bool PropertyTree::reset(const std::list<const char *> &paths,
                          bool correct,
-                         std::list<std::string> &errors)
+                         std::list<std::string> *errors)
 {
     std::vector<std::pair<PropertyTree *, boost::spirit::hold_any> > saved;
     saved.reserve(paths.size());
@@ -313,6 +314,20 @@ PropertyTree::addChild(const char *path,
     return *newChild;
 }
 
+void PropertyTree::removeChild(const char *path)
+{
+    PropertyTree *ch = this, *parent = NULL;
+    char *p = strdup(path);
+    char *name, *t;
+    for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
+    {
+        parent = ch;
+        ch = ch->m_children.find(name)->second;
+    }
+    free(p);
+    parent->removeChild(*ch);
+}
+
 boost::signals2::connection
 PropertyTree::addObserver(const Changed::slot_type &observer)
 {
@@ -321,7 +336,7 @@ PropertyTree::addObserver(const Changed::slot_type &observer)
 }
 
 void PropertyTree::readXmlElement(xmlNodePtr xmlNode,
-                                  std::list<std::string> &errors)
+                                  std::list<std::string> *errors)
 {
     char *value;
     for (xmlNodePtr child = xmlNode->children; child; child = child->next)
@@ -410,7 +425,7 @@ int maxValue;
 
 bool validate(Samoyed::PropertyTree &prop,
               bool correct,
-              std::list<std::string> &errors)
+              std::list<std::string> *errors)
 {
     if (prop.get().type() != typeid(int))
     {
@@ -435,7 +450,6 @@ void onChanged(const Samoyed::PropertyTree &prop)
 
 int main()
 {
-    std::list<std::string> errors;
     Samoyed::PropertyTree *tree = new Samoyed::PropertyTree("l1");
     tree->addChild("l2").addChild("l3.1", 100);
     tree->child("l2").addChild("l3.2", 200);
@@ -456,17 +470,17 @@ int main()
     tree->child("l2/l3.2").addObserver(onChanged);
     tree->child("l2/l3.3").addObserver(onChanged);
 
-    tree->set("l2/l3.1", 200, false, errors);
-    tree->set("l2/l3.2", 2000, false, errors);
-    tree->set("l2/l3.3", 3000, true, errors);
-    tree->set("l2/l3.s", std::string("one two three"), false, errors);
+    tree->set("l2/l3.1", 200, false, NULL);
+    tree->set("l2/l3.2", 2000, false, NULL);
+    tree->set("l2/l3.3", 3000, true, NULL);
+    tree->set("l2/l3.s", std::string("one two three"), false, NULL);
 
     assert(tree->child("l2/l3.1").get<int>() == 200);
     assert(tree->child("l2/l3.2").get<int>() == 200);
     assert(tree->child("l2/l3.3").get<int>() == 1000);
     assert(tree->child("l2/l3.s").get<std::string>() == "one two three");
 
-    xmlNodePtr node = tree->writeXmlElement(true);
+    xmlNodePtr node = tree->writeXmlElement();
     xmlDocPtr doc = xmlNewDoc(reinterpret_cast<const xmlChar *>("1.0"));
     xmlDocSetRootElement(doc, node);
     xmlSaveFormatFile("property-tree-test.xml", doc, 1);
@@ -480,7 +494,7 @@ int main()
 
     doc = xmlParseFile("property-tree-test.xml");
     node = xmlDocGetRootElement(doc);
-    tree->readXmlElement(node, errors);
+    tree->readXmlElement(node, NULL);
     xmlFreeDoc(doc);
 
     assert(tree->child("l2/l3.1").get<int>() == 200);
@@ -494,7 +508,7 @@ int main()
 
     doc = xmlParseFile("property-tree-test.xml");
     node = xmlDocGetRootElement(doc);
-    tree->readXmlElement(node, errors);
+    tree->readXmlElement(node, NULL);
     xmlFreeDoc(doc);
     g_unlink("property-tree-test.xml");
 

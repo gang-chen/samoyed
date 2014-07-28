@@ -28,7 +28,7 @@ void View::XmlElement::registerReader()
 }
 
 bool View::XmlElement::readInternally(xmlNodePtr node,
-                                      std::list<std::string> &errors)
+                                      std::list<std::string> *errors)
 {
     char *value, *cp;
     bool widgetSeen = false;
@@ -41,10 +41,14 @@ bool View::XmlElement::readInternally(xmlNodePtr node,
         {
             if (widgetSeen)
             {
-                cp = g_strdup_printf(
-                    _("Line %d: More than one \"%s\" elements seen.\n"),
-                    child->line, WIDGET);
-                g_free(cp);
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, WIDGET);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
                 return false;
             }
             if (!Widget::XmlElement::readInternally(child, errors))
@@ -65,18 +69,21 @@ bool View::XmlElement::readInternally(xmlNodePtr node,
     }
     if (m_extensionId.empty())
     {
-        cp = g_strdup_printf(
-            _("Line %d: \"%s\" element missing.\n"),
-            node->line, EXTENSION_ID);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, EXTENSION_ID);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         return false;
     }
     return true;
 }
 
 View::XmlElement *View::XmlElement::read(xmlNodePtr node,
-                                         std::list<std::string> &errors)
+                                         std::list<std::string> *errors)
 {
     XmlElement *element = new XmlElement;
     if (!element->readInternally(node, errors))

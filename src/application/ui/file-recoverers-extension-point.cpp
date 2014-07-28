@@ -47,7 +47,7 @@ FileRecoverersExtensionPoint::~FileRecoverersExtensionPoint()
 
 bool FileRecoverersExtensionPoint::registerExtension(const char *extensionId,
                                                      xmlNodePtr xmlNode,
-                                                     std::list<std::string> &errors)
+                                                     std::list<std::string> *errors)
 {
     ExtensionInfo *ext = new ExtensionInfo(extensionId);
     char *value, *cp;
@@ -71,11 +71,15 @@ bool FileRecoverersExtensionPoint::registerExtension(const char *extensionId,
     }
     if (ext->type.empty())
     {
-        cp = g_strdup_printf(
-            _("Line %d: Incomplete file recoverer extension specification.\n"),
-            xmlNode->line);
-        errors.push_back(cp);
-        g_free(cp);
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Incomplete file recoverer extension "
+                  "specification.\n"),
+                xmlNode->line);
+            errors->push_back(cp);
+            g_free(cp);
+        }
         delete ext;
         return false;
     }

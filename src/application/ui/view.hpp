@@ -29,7 +29,7 @@ public:
         static void registerReader();
 
         static XmlElement *read(xmlNodePtr node,
-                                std::list<std::string> &errors);
+                                std::list<std::string> *errors);
         virtual xmlNodePtr write() const;
         XmlElement(const View &view);
         virtual Widget *restoreWidget();
@@ -39,7 +39,7 @@ public:
     protected:
         XmlElement() {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
 
     private:
         std::string m_extensionId;

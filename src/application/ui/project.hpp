@@ -36,7 +36,7 @@ public:
     {
     public:
         static XmlElement *read(xmlNodePtr node,
-                                std::list<std::string> &errors);
+                                std::list<std::string> *errors);
         xmlNodePtr write() const;
         XmlElement(const Project &project);
         Project *restoreProject();
@@ -46,7 +46,7 @@ public:
     private:
         XmlElement() {}
 
-        bool readInternally(xmlNodePtr node, std::list<std::string> &errors);
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
 
         std::string m_uri;
     };
