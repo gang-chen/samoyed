@@ -24,8 +24,6 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    virtual ~TextFinderBar();
-
     virtual Orientation orientation() const { return ORIENTATION_HORIZONTAL; }
 
     virtual void grabFocus();
