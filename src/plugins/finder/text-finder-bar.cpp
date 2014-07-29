@@ -26,11 +26,6 @@ TextFinderBar::TextFinderBar(TextEditor &editor):
     editor.getCursor(m_line, m_column);
 }
 
-TextFinderBar::~TextFinderBar()
-{
-    m_editor.setCurrent();
-}
-
 bool TextFinderBar::setup()
 {
     if (!Bar::setup(ID))
@@ -300,12 +295,16 @@ void TextFinderBar::onFindPrevious(GtkButton *button, TextFinderBar *bar)
 
 void TextFinderBar::onDone(GtkEntry *entry, TextFinderBar *bar)
 {
+    TextEditor &editor = bar->m_editor;
     bar->close();
+    editor.setCurrent();
 }
 
 void TextFinderBar::onClose(GtkButton *button, TextFinderBar *bar)
 {
+    TextEditor &editor = bar->m_editor;
     bar->close();
+    editor.setCurrent();
 }
 
 gboolean TextFinderBar::onKeyPress(GtkWidget *widget,
@@ -316,7 +315,9 @@ gboolean TextFinderBar::onKeyPress(GtkWidget *widget,
     {
         // Restore the initial cursor.
         bar->m_editor.setCursor(bar->m_line, bar->m_column);
+        TextEditor &editor = bar->m_editor;
         bar->close();
+        editor.setCurrent();
         return TRUE;
     }
     return FALSE;
