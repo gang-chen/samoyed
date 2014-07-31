@@ -174,7 +174,7 @@ protected:
     Table m_table;
 
     /**
-     * Used to assign unique identifiers to objects.
+     * Used to generate unique identifiers to objects.
      */
     unsigned long m_serialNumber;
 
