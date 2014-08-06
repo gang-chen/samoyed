@@ -42,6 +42,7 @@ public:
         std::string module;
         ExtensionInfo *extensions;
         xmlDocPtr xmlDoc;
+        bool enabled;
         bool cache;
     };
 
@@ -51,7 +52,11 @@ public:
                   const char *modulesDirName,
                   int cacheSize);
 
-    ~PluginManager();
+    /**
+     * Unregister all plugins and deactivate them.  Destroy the plugin manager
+     * after all plugins are destroyed.
+     */
+    void shutDown();
 
     /**
      * Read a plugin manifest file and register the plugin.  Register plugin
@@ -60,7 +65,7 @@ public:
     bool registerPlugin(const char *pluginManifestFileName);
 
     /**
-     * Unregister a plugin.  If the plugin is active, first deactivate it.
+     * Unregister a plugin.  If the plugin is active, deactivate it.
      */
     void unregisterPlugin(const char *pluginId);
 
@@ -96,12 +101,14 @@ public:
      */
     void scanPlugins(const char *pluignsDirName);
 
-    void unregisterAllPlugins();
-
 private:
     typedef std::map<ComparablePointer<const char>, Plugin *> Table;
 
     static gboolean destroyPluginDeferred(gpointer param);
+
+    // Make the destructor private.  To destroy a plugin manager, call
+    // shutDown().
+    ~PluginManager();
 
     void registerPluginExtensions(PluginInfo &pluginInfo);
     void unregisterPluginExtensions(PluginInfo &pluginInfo);
@@ -120,6 +127,8 @@ private:
     int m_nCachedPlugins;
     Plugin *m_lruCachedPlugin;
     Plugin *m_mruCachedPlugin;
+
+    bool m_shuttingDown;
 };
 
 }

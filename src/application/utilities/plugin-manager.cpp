@@ -47,6 +47,10 @@ gboolean PluginManager::destroyPluginDeferred(gpointer param)
         static_cast<std::pair<PluginManager *, Plugin *> *>(param);
     p->first->m_table.erase(p->second->id());
     p->second->destroy();
+    if (p->first->m_shuttingDown &&
+        static_cast<int>(p->first->m_table.size()) ==
+            p->first->m_nCachedPlugins)
+        delete p->first;
     delete p;
     return FALSE;
 }
@@ -59,7 +63,8 @@ PluginManager::PluginManager(ExtensionPointManager &extensionPointMgr,
     m_cacheSize(cacheSize),
     m_nCachedPlugins(0),
     m_lruCachedPlugin(NULL),
-    m_mruCachedPlugin(NULL)
+    m_mruCachedPlugin(NULL),
+    m_shuttingDown(false)
 {
 }
 
@@ -73,14 +78,18 @@ PluginManager::~PluginManager()
         m_table.erase(it2);
         plugin->destroy();
     }
-    for (Registry::iterator it = m_registry.begin(); it != m_registry.end();)
-    {
-        Registry::iterator it2 = it;
-        ++it;
-        PluginInfo *info = it2->second;
-        m_registry.erase(it2);
-        delete info;
-    }
+}
+
+void PluginManager::shutDown()
+{
+    // Unregister all plugins.
+    Registry::iterator it;
+    while ((it = m_registry.begin()) != m_registry.end())
+        unregisterPlugin(it->second->id.c_str());
+
+    m_shuttingDown = true;
+    if (static_cast<int>(m_table.size()) == m_nCachedPlugins)
+        delete this;
 }
 
 const PluginManager::PluginInfo *
@@ -205,6 +214,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
     g_free(dirName);
     info->extensions = NULL;
     info->xmlDoc = doc;
+    info->enabled = true;
     info->cache = true;
 
     char *value;
@@ -443,14 +453,7 @@ bool PluginManager::registerPlugin(const char *pluginManifestFileName)
 
 void PluginManager::unregisterPlugin(const char *pluginId)
 {
-    // Do not cache the plugin.
     PluginInfo *info = m_registry.find(pluginId)->second;
-    info->cache = false;
-
-    // If the plugin is active, deactivate it.
-    Table::const_iterator it = m_table.find(pluginId);
-    if (it != m_table.end())
-        it->second->deactivate();
 
     // Unregister the extensions.
     unregisterPluginExtensions(*info);
@@ -458,24 +461,40 @@ void PluginManager::unregisterPlugin(const char *pluginId)
     // Unregister the plugin.
     m_registry.erase(pluginId);
     delete info;
+
+    // Do not cache the plugin.
+    info->cache = false;
+
+    // If the plugin is active, deactivate it.
+    Table::const_iterator it = m_table.find(pluginId);
+    if (it != m_table.end())
+        it->second->deactivate();
 }
 
 void PluginManager::enablePlugin(const char *pluginId)
 {
     PluginInfo *info = m_registry.find(pluginId)->second;
-    registerPluginExtensions(*info);
+    if (!info->enabled)
+    {
+        info->enabled = true;
+        registerPluginExtensions(*info);
+    }
 }
 
 void PluginManager::disablePlugin(const char *pluginId)
 {
     PluginInfo *info = m_registry.find(pluginId)->second;
-    info->cache = false;
+    if (info->enabled)
+    {
+        info->enabled = false;
+        unregisterPluginExtensions(*info);
 
-    Table::const_iterator it = m_table.find(pluginId);
-    if (it != m_table.end())
-        it->second->deactivate();
+        info->cache = false;
 
-    unregisterPluginExtensions(*info);
+        Table::const_iterator it = m_table.find(pluginId);
+        if (it != m_table.end())
+            it->second->deactivate();
+    }
 }
 
 Extension *PluginManager::acquireExtension(const char *extensionId)
@@ -613,15 +632,6 @@ void PluginManager::scanPlugins(const char *pluginsDirName)
             registerPlugin(manifestFileName.c_str());
     }
     g_dir_close(dir);
-}
-
-void PluginManager::unregisterAllPlugins()
-{
-    for (Table::iterator it = m_table.begin(); it != m_table.end();)
-    {
-        Table::iterator i = it++;
-        unregisterPlugin(i->first);
-    }
 }
 
 }

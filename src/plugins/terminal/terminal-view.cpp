@@ -14,15 +14,19 @@
 #include <pwd.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
-#include <vte/vte.h>
+#ifndef G_OS_WIN32
+# include <vte/vte.h>
+#endif
 
 namespace
 {
 
+#ifndef G_OS_WIN32
 void closeTerminal(VteTerminal *term, Samoyed::Terminal::TerminalView *termView)
 {
     termView->close();
 }
+#endif
 
 }
 
@@ -34,6 +38,10 @@ namespace Terminal
 
 bool TerminalView::setupTerminal()
 {
+#ifdef G_OS_WIN32
+    m_terminal =
+        gtk_label_new(_("Terminal is not supported on Windows platform."));
+#else
     m_terminal = vte_terminal_new();
 
     struct passwd *pw;
@@ -78,6 +86,7 @@ bool TerminalView::setupTerminal()
     free(argv[0]);
     g_signal_connect(m_terminal, "child-exited",
                      G_CALLBACK(closeTerminal), this);
+#endif
 
     GtkWidget *sb = gtk_scrollbar_new(
         GTK_ORIENTATION_VERTICAL,

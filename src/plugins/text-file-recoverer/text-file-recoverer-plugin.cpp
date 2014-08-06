@@ -101,10 +101,18 @@ bool TextFileRecovererPlugin::completed() const
 
 void TextFileRecovererPlugin::deactivate()
 {
-    while (!m_savers.empty())
-        (*m_savers.begin())->deactivate();
-    while (!m_recoverers.empty())
-        (*m_recoverers.begin())->deactivate();
+    for (std::set<TextEditSaver *>::iterator it = m_savers.begin();
+            it != m_savers.end();)
+    {
+        std::set<TextEditSaver *>::iterator it2 = it++;
+        (*it2)->deactivate();
+    }
+    for (std::set<TextFileRecoverer *>::iterator it = m_recoverers.begin();
+            it != m_recoverers.end();)
+    {
+        std::set<TextFileRecoverer *>::iterator it2 = it++;
+        (*it2)->deactivate();
+    }
 }
 
 }

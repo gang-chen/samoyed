@@ -56,7 +56,9 @@ PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.0.0])
 PKG_CHECK_MODULES([GMODULE], [gmodule-2.0 >= 2.32.0])
 PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 PKG_CHECK_MODULES([GTKSOURCEVIEW], [gtksourceview-3.0 >= 3.0.0])
-PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
+if test "$os_win32" = "no"; then
+  PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
+fi
 
 SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
 AC_SUBST(SAMOYED_CPPFLAGS)

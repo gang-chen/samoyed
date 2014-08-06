@@ -54,7 +54,7 @@
 namespace
 {
 
-const int PLUGIN_CACHE_SIZE = 4;
+const int PLUGIN_CACHE_SIZE = 10;
 
 }
 
@@ -193,9 +193,6 @@ gboolean Application::startUp(gpointer app)
 
     // Create global managers.
     a->m_extensionPointManager = new ExtensionPointManager;
-    a->m_pluginManager = new PluginManager(a->extensionPointManager(),
-                                           pluginModsDirName.c_str(),
-                                           PLUGIN_CACHE_SIZE);
     a->m_fileSourceManager = new FileSourceManager;
     a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
     a->m_projectAstManager = new ProjectAstManager;
@@ -219,6 +216,9 @@ gboolean Application::startUp(gpointer app)
     TextFile::installHistories();
 
     // Register plugins.
+    a->m_pluginManager = new PluginManager(a->extensionPointManager(),
+                                           pluginModsDirName.c_str(),
+                                           PLUGIN_CACHE_SIZE);
     a->m_pluginManager->scanPlugins(pluginMfsDirName.c_str());
 
     a->startSession();
@@ -292,7 +292,7 @@ void Application::shutDown()
     assert(!m_sessionName);
     assert(!m_newSessionName);
 
-    m_pluginManager->unregisterAllPlugins();
+    m_pluginManager->shutDown();
     delete m_histories;
     delete m_preferences;
     delete m_actionsExtensionPoint;
@@ -305,7 +305,6 @@ void Application::shutDown()
     m_projectAstManager->destroy();
     m_projectConfigManager->destroy();
     m_fileSourceManager->destroy();
-    delete m_pluginManager;
     delete m_extensionPointManager;
     SourceEditor::destroySharedData();
 }
