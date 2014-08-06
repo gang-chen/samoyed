@@ -36,7 +36,7 @@ PKG_PROG_PKG_CONFIG([0.26])
 AC_CANONICAL_HOST
 os_win32=no
 case "$host_os" in
-  *-*-mingw*)
+  mingw*)
     os_win32=yes
     ;;
 esac
