@@ -105,7 +105,9 @@ LockFile::State LockFile::queryState()
     m_lockingProcessId = atoi(cp + 1);
 
     hostName[0] = '\0';
+#ifndef G_OS_WIN32
     gethostname(hostName, sizeof(hostName) - 1);
+#endif
     hostName[sizeof(hostName) - 1] = '\0';
 
     if (m_lockingHostName != hostName)
@@ -113,9 +115,11 @@ LockFile::State LockFile::queryState()
     if (m_lockingProcessId == getpid())
         return STATE_LOCKED_BY_THIS_PROCESS;
 
+#ifndef G_OS_WIN32
     // Check to see if the lock file is stale.
     if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
+#endif
 
     // Remove the stale lock file.
     if (g_unlink(m_fileName.c_str()))
@@ -138,7 +142,9 @@ LockFile::State LockFile::lock()
     m_lockingProcessId = -1;
 
     hostName[0] = '\0';
+#ifndef G_OS_WIN32
     gethostname(hostName, sizeof(hostName) - 1);
+#endif
     hostName[sizeof(hostName) - 1] = '\0';
 
 RETRY:
@@ -177,9 +183,11 @@ RETRY:
         if (m_lockingProcessId == getpid())
             return STATE_LOCKED_BY_THIS_PROCESS;
 
+#ifndef G_OS_WIN32
         // Check to see if the lock file is stale.
         if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
+#endif
 
         // Remove the stale lock file.
         if (g_unlink(m_fileName.c_str()))
@@ -199,7 +207,11 @@ RETRY:
     }
     m_locked = true;
     m_lockingHostName = hostName;
+#ifdef G_OS_WIN32
+    m_lockingProcessId = 0;
+#else
     m_lockingProcessId = getpid();
+#endif
     return STATE_LOCKED_BY_THIS_LOCK;
 }
 

@@ -14,11 +14,11 @@ g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST\
 #include "property-tree.hpp"
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 #include <utility>
 #include <set>
 #include <vector>
 #include <sstream>
+#include <glib.h>
 #ifdef SMYD_PROPERTY_TREE_UNIT_TEST
 # include <iostream>
 # include <glib/gstdio.h>
@@ -126,18 +126,17 @@ bool PropertyTree::set(const std::list<std::pair<const char *,
          ++it)
     {
         PropertyTree *ch = this;
-        char *p = strdup(it->first);
-        char *name, *t;
         std::list<std::set<PropertyTree *> >::iterator it2 = levels.begin();
-        for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
+        char **names = g_strsplit(it->first, "/", -1);
+        for (char **name = names; *name; ++name)
         {
-            ch = ch->m_children.find(name)->second;
+            ch = ch->m_children.find(*name)->second;
             if (it2 == levels.end())
                 it2 = levels.insert(it2, std::set<PropertyTree *>());
             it2->insert(ch);
             ++it2;
         }
-        free(p);
+        g_strfreev(names);
         saved.push_back(std::make_pair(ch, ch->m_value));
         ch->m_value = it->second;
     }
@@ -199,18 +198,17 @@ bool PropertyTree::reset(const std::list<const char *> &paths,
          ++it)
     {
         PropertyTree *ch = this;
-        char *p = strdup(*it);
-        char *name, *t;
         std::list<std::set<PropertyTree *> >::iterator it2 = levels.begin();
-        for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
+        char **names = g_strsplit(*it, "/", -1);
+        for (char **name = names; *name; ++name)
         {
-            ch = ch->m_children.find(name)->second;
+            ch = ch->m_children.find(*name)->second;
             if (it2 == levels.end())
                 it2 = levels.insert(it2, std::set<PropertyTree *>());
             it2->insert(ch);
             ++it2;
         }
-        free(p);
+        g_strfreev(names);
         saved.push_back(std::make_pair(ch, ch->m_value));
         ch->m_value = ch->m_defaultValue;
     }
@@ -262,22 +260,20 @@ bool PropertyTree::reset(const std::list<const char *> &paths,
 PropertyTree &PropertyTree::child(const char *path)
 {
     PropertyTree *ch = this;
-    char *p = strdup(path);
-    char *name, *t;
-    for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
-        ch = ch->m_children.find(name)->second;
-    free(p);
+    char **names = g_strsplit(path, "/", -1);
+    for (char **name = names; *name; ++name)
+        ch = ch->m_children.find(*name)->second;
+    g_strfreev(names);
     return *ch;
 }
 
 const PropertyTree &PropertyTree::child(const char *path) const
 {
     const PropertyTree *ch = this;
-    char *p = strdup(path);
-    char *name, *t;
-    for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
-        ch = ch->m_children.find(name)->second;
-    free(p);
+    char **names = g_strsplit(path, "/", -1);
+    for (char **name = names; *name; ++name)
+        ch = ch->m_children.find(*name)->second;
+    g_strfreev(names);
     return *ch;
 }
 
@@ -286,45 +282,38 @@ PropertyTree::addChild(const char *path,
                        const boost::spirit::hold_any &defaultValue)
 {
     PropertyTree *ch = this;
-    char *p = strdup(path);
-    char *last = strrchr(p, '/');
-    if (last)
+    char **names = g_strsplit(path, "/", -1);
+    char **name = names;
+    assert(*name);
+    while (*(name + 1))
     {
-        char *name, *t;
-        Table::iterator it;
-        *last = '\0';
-        ++last;
-        for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
+	Table::iterator it = ch->m_children.find(*name);
+        if (it == ch->m_children.end())
         {
-            it = ch->m_children.find(name);
-            if (it == ch->m_children.end())
-            {
-                PropertyTree *newChild = new PropertyTree(name);
-                ch->addChild(*newChild);
-                ch = newChild;
-            }
-            else
-                ch = it->second;
+            PropertyTree *newChild = new PropertyTree(*name);
+            ch->addChild(*newChild);
+            ch = newChild;
         }
+        else
+            ch = it->second;
+        ++name;
     }
-    else
-        last = p;
-    PropertyTree *newChild = new PropertyTree(last, defaultValue);
+    PropertyTree *newChild = new PropertyTree(*name, defaultValue);
     ch->addChild(*newChild);
+    g_strfreev(names);
     return *newChild;
 }
 
 void PropertyTree::removeChild(const char *path)
 {
     PropertyTree *ch = this, *parent = NULL;
-    char *p = strdup(path);
-    char *name, *t;
-    for (name = strtok_r(p, "/", &t); name; name = strtok_r(NULL, "/", &t))
+    char **names = g_strsplit(path, "/", -1);
+    for (char **name = names; *name; ++name)
     {
         parent = ch;
-        ch = ch->m_children.find(name)->second;
+        ch = ch->m_children.find(*name)->second;
     }
-    free(p);
+    g_strfreev(names);
     parent->removeChild(*ch);
 }
 

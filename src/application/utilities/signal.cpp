@@ -11,8 +11,9 @@ g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 #endif
 #include "signal.hpp"
 #include <list>
-#ifdef OS_WIN32
-# define _WIN32_WINNT 0x0500
+#include <glib.h>
+#ifdef G_OS_WIN32
+# define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #else
 # include <signal.h>
@@ -29,7 +30,7 @@ namespace
 std::list<Samoyed::Signal::SignalHandler> crashHandlers;
 std::list<Samoyed::Signal::SignalHandler> terminationHandlers;
 
-#ifndef OS_WIN32
+#ifndef G_OS_WIN32
 struct sigaction savedFpeSignalAction;
 struct sigaction savedIllSignalAction;
 struct sigaction savedSegvSignalAction;
@@ -42,8 +43,8 @@ volatile bool crashing = false;
 volatile bool terminating = false;
 #endif
 
-#ifdef OS_WIN32
-LONG WINAPI onCrashed(PEXCEPTION_POINTERS exceptionRecord)
+#ifdef G_OS_WIN32
+LONG CALLBACK onCrashed(PEXCEPTION_POINTERS exceptionPointers)
 {
     for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
             crashHandlers.begin();
@@ -91,7 +92,7 @@ void onCrashed(int signalNumber)
 }
 #endif
 
-#ifndef OS_WIN32
+#ifndef G_OS_WIN32
 void onTerminate(int signalNumber)
 {
     if (terminating)
@@ -116,7 +117,7 @@ void Signal::registerCrashHandler(SignalHandler handler)
 {
     if (crashHandlers.empty())
     {
-#ifdef OS_WIN32
+#ifdef G_OS_WIN32
         AddVectoredExceptionHandler(1, onCrashed);
 #else
         // Catch SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP and SIGSYS.
@@ -138,7 +139,7 @@ void Signal::registerCrashHandler(SignalHandler handler)
 
 void Signal::registerTerminationHandler(SignalHandler handler)
 {
-#ifndef OS_WIN32
+#ifndef G_OS_WIN32
     if (terminationHandlers.empty())
     {
         // Catch SIGTERM.
@@ -191,7 +192,7 @@ int main()
         scanf("%d", &a);
         if (a == 0)
             *p = 0;
-#ifndef OS_WIN32
+#ifndef G_OS_WIN32
         if (a == 1)
             kill(getpid(), SIGTERM);
 #endif
