@@ -6,7 +6,7 @@ samoyed_CPPFLAGS = \
     $(BOOST_CPPFLAGS) \
     $(GTK_CFLAGS)
 
-samoyed_CXXFLAGS = -Werror -Wall
+samoyed_CXXFLAGS = $(SAMOYED_CXXFLAGS)
 
 if OS_WIN32
     samoyed_LDFLAGS = -mwindows

@@ -9,12 +9,12 @@
 #include "ui/window.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #ifndef G_OS_WIN32
+# include <unistd.h>
+# include <sys/types.h>
+# include <pwd.h>
 # include <vte/vte.h>
 #endif
 
