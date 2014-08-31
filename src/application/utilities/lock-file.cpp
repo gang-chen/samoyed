@@ -115,8 +115,13 @@ LockFile::State LockFile::queryState()
     if (m_lockingProcessId == getpid())
         return STATE_LOCKED_BY_THIS_PROCESS;
 
-#ifndef G_OS_WIN32
     // Check to see if the lock file is stale.
+#ifdef G_OS_WIN32
+    HANDLE h = OpenProcess(PROCESS_ALL_ACCESS, FALSE, m_lockingProcessId);
+    if (!h)
+        return STATE_LOCKED_BY_ANOTHER_PROCESS;
+    CloseHandle(h);
+#else
     if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
 #endif
@@ -183,8 +188,13 @@ RETRY:
         if (m_lockingProcessId == getpid())
             return STATE_LOCKED_BY_THIS_PROCESS;
 
-#ifndef G_OS_WIN32
         // Check to see if the lock file is stale.
+#ifdef G_OS_WIN32
+        HANDLE h = OpenProcess(PROCESS_ALL_ACCESS, FALSE, m_lockingProcessId);
+        if (!h)
+            return STATE_LOCKED_BY_ANOTHER_PROCESS;
+        CloseHandle(h);
+#else
         if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
 #endif
@@ -208,7 +218,7 @@ RETRY:
     m_locked = true;
     m_lockingHostName = hostName;
 #ifdef G_OS_WIN32
-    m_lockingProcessId = 0;
+    m_lockingProcessId = GetCurrentProcessId();
 #else
     m_lockingProcessId = getpid();
 #endif

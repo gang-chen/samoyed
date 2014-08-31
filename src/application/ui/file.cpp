@@ -145,6 +145,10 @@ void File::registerType(const char *mimeType,
                         const OptionsDescriber &optDescriber)
 {
     char *type = g_content_type_from_mime_type(mimeType);
+    // This type has not been registered in the system but it should have been
+    // registered by the installer.
+    if (!type)
+        return;
     s_typeRegistry.push_back(TypeRecord(type,
                                         factory,
                                         optSetterFactory,

@@ -20,7 +20,7 @@ namespace Samoyed
 SplashScreen::SplashScreen(const char *title, const char *imageFileName)
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    GtkWidget *grid = gtk_grid_new();
     GtkWidget *image = gtk_image_new_from_file(imageFileName);
     m_progressBar = gtk_progress_bar_new();
     gtk_window_set_decorated(GTK_WINDOW(m_window), FALSE);
@@ -28,9 +28,9 @@ SplashScreen::SplashScreen(const char *title, const char *imageFileName)
     gtk_window_set_resizable(GTK_WINDOW(m_window), FALSE);
     gtk_window_set_title(GTK_WINDOW(m_window), title);
     gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(m_progressBar), TRUE);
-    gtk_container_add(GTK_CONTAINER(m_window), box);
-    gtk_box_pack_start(GTK_BOX(box), image, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(box), m_progressBar, FALSE, FALSE, 0);
+    gtk_container_add(GTK_CONTAINER(m_window), grid);
+    gtk_grid_attach(GTK_GRID(grid), image, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), m_progressBar, 0, 1, 1, 1);
     gtk_widget_show_all(m_window);
 }
 

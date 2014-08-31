@@ -6,7 +6,13 @@
 
 #include "miscellaneous.hpp"
 #include <string>
-#include <unistd.h>
+#include <glib.h>
+#ifdef G_OS_WIN32
+# define WIN32_LEAN_AND_MEAN
+# include <windows.h>
+#else
+# include <unistd.h>
+#endif
 
 namespace Samoyed
 {
@@ -37,7 +43,12 @@ public:
 
     const char *lockingHostName() const { return m_lockingHostName.c_str(); }
 
-    pid_t lockingProcessId() const { return m_lockingProcessId; }
+#ifdef G_OS_WIN32
+    DWORD
+#else
+    pid_t
+#endif
+    lockingProcessId() const { return m_lockingProcessId; }
 
 private:
     static void onCrashed(int signalNumber);
@@ -48,7 +59,12 @@ private:
 
     std::string m_lockingHostName;
 
-    pid_t m_lockingProcessId;
+#ifdef G_OS_WIN32
+    DWORD
+#else
+    pid_t
+#endif
+m_lockingProcessId;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(LockFile)
 };
