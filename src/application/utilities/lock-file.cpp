@@ -117,10 +117,16 @@ LockFile::State LockFile::queryState()
 
     // Check to see if the lock file is stale.
 #ifdef G_OS_WIN32
-    HANDLE h = OpenProcess(PROCESS_ALL_ACCESS, FALSE, m_lockingProcessId);
-    if (!h)
+    HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION,
+                           FALSE,
+                           m_lockingProcessId);
+    if (h)
+    {
+        CloseHandle(h);
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
-    CloseHandle(h);
+    }
+    if (GetLastError() == ERROR_ACCESS_DENIED)
+        return STATE_LOCKED_BY_ANOTHER_PROCESS;
 #else
     if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
@@ -190,10 +196,16 @@ RETRY:
 
         // Check to see if the lock file is stale.
 #ifdef G_OS_WIN32
-        HANDLE h = OpenProcess(PROCESS_ALL_ACCESS, FALSE, m_lockingProcessId);
-        if (!h)
+        HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION,
+                               FALSE,
+                               m_lockingProcessId);
+        if (h)
+        {
+            CloseHandle(h);
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
-        CloseHandle(h);
+        }
+        if (GetLastError() == ERROR_ACCESS_DENIED)
+            return STATE_LOCKED_BY_ANOTHER_PROCESS;
 #else
         if (!kill(m_lockingProcessId, 0) || errno != ESRCH)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
