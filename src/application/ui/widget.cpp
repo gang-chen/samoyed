@@ -101,14 +101,14 @@ bool Widget::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_visible = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, VISIBLE, exp.what());
+                            child->line, value, VISIBLE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }

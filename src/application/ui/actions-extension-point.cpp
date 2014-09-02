@@ -176,14 +176,14 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 {
                     ext->toggle = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                        child->line, value, TOGGLE, exp.what());
+                        child->line, value, TOGGLE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -202,14 +202,14 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 {
                     ext->alwaysSensitive = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                        child->line, value, ALWAYS_SENSITIVE, exp.what());
+                        child->line, value, ALWAYS_SENSITIVE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -228,14 +228,14 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 {
                     ext->activeByDefault = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                        child->line, value, ACTIVE_BY_DEFAULT, exp.what());
+                        child->line, value, ACTIVE_BY_DEFAULT, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -331,14 +331,14 @@ bool ActionsExtensionPoint::registerExtension(const char *extensionId,
                 {
                     ext->separate = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                        child->line, value, SEPARATE, exp.what());
+                        child->line, value, SEPARATE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }

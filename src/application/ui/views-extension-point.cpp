@@ -140,14 +140,14 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 {
                     ext->viewIndex = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, INDEX, exp.what());
+                            child->line, value, INDEX, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -166,14 +166,14 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                 {
                     ext->openByDefault = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, OPEN_BY_DEFAULT, exp.what());
+                            child->line, value, OPEN_BY_DEFAULT, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }

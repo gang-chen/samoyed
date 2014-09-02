@@ -189,14 +189,14 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     m_configuration.m_screenIndex =
                         boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, SCREEN_INDEX, exp.what());
+                            child->line, value, SCREEN_INDEX, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -215,14 +215,14 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_configuration.m_width = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, WIDTH, exp.what());
+                            child->line, value, WIDTH, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -241,14 +241,14 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_configuration.m_height = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, HEIGHT, exp.what());
+                            child->line, value, HEIGHT, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -268,14 +268,14 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     m_configuration.m_inFullScreen =
                         boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, IN_FULL_SCREEN, exp.what());
+                            child->line, value, IN_FULL_SCREEN, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -295,14 +295,14 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     m_configuration.m_maximized =
                         boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, MAXIMIZED, exp.what());
+                            child->line, value, MAXIMIZED, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -322,14 +322,14 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     m_configuration.m_toolbarVisible =
                         boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, TOOLBAR_VISIBLE, exp.what());
+                            child->line, value, TOOLBAR_VISIBLE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -349,14 +349,15 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     m_configuration.m_statusBarVisible =
                         boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, STATUS_BAR_VISIBLE, exp.what());
+                            child->line, value, STATUS_BAR_VISIBLE,
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -376,7 +377,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                     m_configuration.m_toolbarVisibleInFullScreen =
                         boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
@@ -384,7 +385,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
                             child->line, value, TOOLBAR_VISIBLE_IN_FULL_SCREEN,
-                            exp.what());
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -1947,7 +1948,7 @@ void Window::onCurrentTextEditorCursorInput(GtkEntry *entry, Window *window)
         {
             ln = boost::lexical_cast<int>(line);
         }
-        catch (boost::bad_lexical_cast &exp)
+        catch (boost::bad_lexical_cast &)
         {
             ln = -1;
         }
@@ -1955,7 +1956,7 @@ void Window::onCurrentTextEditorCursorInput(GtkEntry *entry, Window *window)
         {
             col = boost::lexical_cast<int>(column);
         }
-        catch (boost::bad_lexical_cast &exp)
+        catch (boost::bad_lexical_cast &)
         {
             col = -1;
         }

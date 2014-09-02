@@ -97,14 +97,14 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_sidePaneIndex = boost::lexical_cast<double>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, SIDE_PANE_INDEX, exp.what());
+                            child->line, value, SIDE_PANE_INDEX, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -158,7 +158,7 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_currentChildIndex = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
@@ -166,7 +166,7 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
                             child->line, value, CURRENT_CHILD_INDEX,
-                            exp.what());
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -185,7 +185,7 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_child1SizeFraction = boost::lexical_cast<double>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
@@ -193,7 +193,7 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid real number \"%s\" for element "
                               "\"%s\". %s.\n"),
                             child->line, value, CHILD1_SIZE_FRACTION,
-                            exp.what());
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -212,14 +212,14 @@ bool Paned::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_sidePaneSize = boost::lexical_cast<double>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, SIDE_PANE_SIZE, exp.what());
+                            child->line, value, SIDE_PANE_SIZE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }

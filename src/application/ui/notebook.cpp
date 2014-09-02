@@ -85,7 +85,7 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_createCloseButtons = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
@@ -93,7 +93,7 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
                             child->line, value, CREATE_CLOSE_BUTTONS,
-                            exp.what());
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -112,14 +112,15 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_canDragChildren = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, CAN_DRAG_CHILDREN, exp.what());
+                            child->line, value, CAN_DRAG_CHILDREN,
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -138,14 +139,14 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_useUnderline = boost::lexical_cast<bool>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
-                            child->line, value, USE_UNDERLINE, exp.what());
+                            child->line, value, USE_UNDERLINE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -179,7 +180,7 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_currentChildIndex = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
@@ -187,7 +188,7 @@ bool Notebook::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
                             child->line, value, CURRENT_CHILD_INDEX,
-                            exp.what());
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }

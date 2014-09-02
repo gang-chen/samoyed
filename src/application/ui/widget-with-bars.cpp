@@ -146,7 +146,7 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_currentChildIndex = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
@@ -154,7 +154,7 @@ bool WidgetWithBars::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
                             child->line, value, CURRENT_CHILD_INDEX,
-                            exp.what());
+                            error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }

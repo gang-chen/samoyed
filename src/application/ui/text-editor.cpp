@@ -233,14 +233,14 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_cursorLine = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, CURSOR_LINE, exp.what());
+                            child->line, value, CURSOR_LINE, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
@@ -259,14 +259,14 @@ bool TextEditor::XmlElement::readInternally(xmlNodePtr node,
                 {
                     m_cursorColumn = boost::lexical_cast<int>(value);
                 }
-                catch (boost::bad_lexical_cast &exp)
+                catch (boost::bad_lexical_cast &error)
                 {
                     if (errors)
                     {
                         cp = g_strdup_printf(
                             _("Line %d: Invalid integer \"%s\" for element "
                               "\"%s\". %s.\n"),
-                            child->line, value, CURSOR_COLUMN, exp.what());
+                            child->line, value, CURSOR_COLUMN, error.what());
                         errors->push_back(cp);
                         g_free(cp);
                     }
