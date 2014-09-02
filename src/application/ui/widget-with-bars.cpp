@@ -34,12 +34,15 @@ gboolean closeBar(gpointer bar)
 
 gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, Samoyed::Bar *bar)
 {
-    g_idle_add(closeBar, bar);
+    if (!bar->closing())
+        g_idle_add(closeBar, bar);
     return FALSE;
 }
 
 void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, Samoyed::Bar *bar)
 {
+    if (bar->closing())
+        return;
     GtkWidget *barWidget = bar->gtkWidget();
     for (GtkWidget *p = widget; p; p = gtk_widget_get_parent(p))
     {

@@ -20,6 +20,14 @@ namespace Samoyed
 class LockFile
 {
 public:
+    typedef
+#ifdef G_OS_WIN32
+        DWORD
+#else
+        pid_t
+#endif
+        ProcessId;
+
     enum State
     {
         STATE_FAILED,
@@ -43,12 +51,7 @@ public:
 
     const char *lockingHostName() const { return m_lockingHostName.c_str(); }
 
-#ifdef G_OS_WIN32
-    DWORD
-#else
-    pid_t
-#endif
-    lockingProcessId() const { return m_lockingProcessId; }
+    ProcessId lockingProcessId() const { return m_lockingProcessId; }
 
 private:
     static void onCrashed(int signalNumber);
@@ -59,12 +62,7 @@ private:
 
     std::string m_lockingHostName;
 
-#ifdef G_OS_WIN32
-    DWORD
-#else
-    pid_t
-#endif
-m_lockingProcessId;
+    ProcessId m_lockingProcessId;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(LockFile)
 };

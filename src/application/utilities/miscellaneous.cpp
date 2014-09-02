@@ -13,19 +13,20 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include "miscellaneous.hpp"
 #ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # include <assert.h>
-# include <stdlib.h>
-# include <string.h>
 # include <set>
 #endif
 #include <errno.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <string>
 #include <glib.h>
 #ifdef G_OS_WIN32
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
+# include <winsock2.h>
 #else
 # include <unistd.h>
 #endif
@@ -42,6 +43,8 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 
 namespace
 {
+
+char *hostNameBuffer = NULL;
 
 const char *charEncodings[] =
 {
@@ -115,6 +118,38 @@ int numberOfProcessors()
     long nProcs = sysconf(_SC_NPROCESSORS_ONLN);
     return (nProcs < 1L ? 1 : nProcs);
 #endif
+}
+
+const char *hostName()
+{
+    if (hostNameBuffer)
+        return hostNameBuffer;
+#ifdef G_OS_WIN32
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+    size_t n = 256;
+    hostNameBuffer = static_cast<char *>(malloc(sizeof(char) * n));
+    for (;;)
+    {
+        int error = gethostname(hostNameBuffer, n - 1);
+        if (!error)
+            break;
+#ifdef G_OS_WIN32
+        if (error != WSAEFAULT)
+        {
+            strcpy(hostNameBuffer, "localhost");
+            break;
+        }
+#endif
+        n = n * 2;
+        hostNameBuffer = static_cast<char *>(realloc(hostNameBuffer,
+                                                     sizeof(char) * n));
+    }
+#ifdef G_OS_WIN32
+    WSACleanup();
+#endif
+    return hostNameBuffer;
 }
 
 bool isValidFileName(const char *fileName)
@@ -271,6 +306,7 @@ int main(int argc, char *argv[])
 
     gtk_init(&argc, &argv);
 
+    printf("Host name: %s\n", Samoyed::hostName());
     printf("Number of processors: %d\n", Samoyed::numberOfProcessors());
     assert(Samoyed::isValidFileName("file-name_123.txt"));
     assert(!Samoyed::isValidFileName(" "));

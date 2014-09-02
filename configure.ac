@@ -1,10 +1,10 @@
 AC_PREREQ([2.63])
 
-m4_define(samoyed_major_version, 0)
-m4_define(samoyed_minor_version, 0)
-m4_define(samoyed_micro_version, 0)
-m4_define(samoyed_version,
-          samoyed_major_version.samoyed_minor_version.samoyed_micro_version)
+m4_define([samoyed_major_version], [0])
+m4_define([samoyed_minor_version], [0])
+m4_define([samoyed_micro_version], [0])
+m4_define([samoyed_version],
+          [samoyed_major_version.samoyed_minor_version.samoyed_micro_version])
 
 AC_INIT([Samoyed], [samoyed_version])
 
@@ -12,12 +12,12 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([src/launcher/main.cpp])
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_DEFINE(SAMOYED_MAJOR_VERSION, samoyed_major_version, [Samoyed major version])
-AC_SUBST(SAMOYED_MAJOR_VERSION, samoyed_major_version)
-AC_DEFINE(SAMOYED_MINOR_VERSION, samoyed_minor_version, [Samoyed minor version])
-AC_SUBST(SAMOYED_MINOR_VERSION, samoyed_minor_version)
-AC_DEFINE(SAMOYED_MICRO_VERSION, samoyed_micro_version, [Samoyed micro version])
-AC_SUBST(SAMOYED_MICRO_VERSION, samoyed_micro_version)
+AC_DEFINE([SAMOYED_MAJOR_VERSION], [samoyed_major_version], [Samoyed major version])
+AC_SUBST([SAMOYED_MAJOR_VERSION], [samoyed_major_version])
+AC_DEFINE([SAMOYED_MINOR_VERSION], [samoyed_minor_version], [Samoyed minor version])
+AC_SUBST([SAMOYED_MINOR_VERSION], [samoyed_minor_version])
+AC_DEFINE([SAMOYED_MICRO_VERSION], [samoyed_micro_version], [Samoyed micro version])
+AC_SUBST([SAMOYED_MICRO_VERSION], [samoyed_micro_version])
 
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -40,7 +40,7 @@ case "$host_os" in
     os_win32=yes
     ;;
 esac
-AM_CONDITIONAL(OS_WIN32, test "x$os_win32" = "xyes")
+AM_CONDITIONAL([OS_WIN32], [test "x$os_win32" = "xyes"])
 
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION([0.18])
@@ -61,7 +61,7 @@ if test "x$os_win32" = "xno"; then
 fi
 
 SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
-AC_SUBST(SAMOYED_CPPFLAGS)
+AC_SUBST([SAMOYED_CPPFLAGS])
 
 if test "x$os_win32" = "xyes"; then
   SAMOYED_CXXFLAGS=""
@@ -71,19 +71,22 @@ fi
 AC_SUBST(SAMOYED_CXXFLAGS)
 
 SAMOYED_LIBS="$BOOST_THREAD_LIB $BOOST_REGEX_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS"
-AC_SUBST(SAMOYED_LIBS)
+if test "x$os_win32" = "xyes"; then
+  SAMOYED_LIBS="$SAMOYED_LIBS -lws2_32"
+fi
+AC_SUBST([SAMOYED_LIBS])
 
 SAMOYED_LDFLAGS="$BOOST_LDFLAGS -no-undefined"
-AC_SUBST(SAMOYED_LDFLAGS)
+AC_SUBST([SAMOYED_LDFLAGS])
 
 SAMOYED_LIBSAMOYED="\$(top_builddir)/src/application/libsamoyed.la"
-AC_SUBST(SAMOYED_LIBSAMOYED)
+AC_SUBST([SAMOYED_LIBSAMOYED])
 
 SAMOYED_PLUGIN_LIBS="$SAMOYED_LIBSAMOYED $SAMOYED_LIBS"
-AC_SUBST(SAMOYED_PLUGIN_LIBS)
+AC_SUBST([SAMOYED_PLUGIN_LIBS])
 
 SAMOYED_PLUGIN_LDFLAGS="$SAMOYED_LDFLAGS -module -avoid-version"
-AC_SUBST(SAMOYED_PLUGIN_LDFLAGS)
+AC_SUBST([SAMOYED_PLUGIN_LDFLAGS])
 
 AC_CONFIG_FILES([
 Makefile

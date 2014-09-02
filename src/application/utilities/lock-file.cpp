@@ -3,14 +3,16 @@
 
 /*
 UNIT TEST BUILD
-g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST\
- `pkg-config --cflags --libs glib-2.0` -Werror -Wall -o lock-file
+g++ lock-file.cpp miscellaneous.cpp signal.cpp -DSMYD_UNIT_TEST\
+ -DSMYD_LOCK_FILE_UNIT_TEST `pkg-config --cflags --libs glib-2.0`\
+ -Werror -Wall -o lock-file
 */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "lock-file.hpp"
+#include "miscellaneous.hpp"
 #include "signal.hpp"
 #include <assert.h>
 #include <errno.h>
@@ -30,11 +32,24 @@ g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST\
 namespace
 {
 
-const int MAX_HOST_NAME_LENGTH = 500, MAX_PROCESS_ID_LENGTH = 500;
-
 bool crashHandlerRegistered = false;
 
 Samoyed::LockFile *first = NULL, *last = NULL;
+
+#ifdef G_OS_WIN32
+# define PROCESS_ID_FORMAT_STR "%ld"
+#else
+# define PROCESS_ID_FORMAT_STR "%d"
+#endif
+
+Samoyed::LockFile::ProcessId processId()
+{
+#ifdef G_OS_WIN32
+    return GetCurrentProcessId();
+#else
+    return getpid();
+#endif
+}
 
 }
 
@@ -72,10 +87,9 @@ LockFile::~LockFile()
 
 LockFile::State LockFile::queryState()
 {
-    int fd, l;
-    char buffer[MAX_HOST_NAME_LENGTH + MAX_PROCESS_ID_LENGTH];
+    int fd, l, m = 0, n = 256;
+    char *buffer;
     char *cp;
-    char hostName[MAX_HOST_NAME_LENGTH];
 
     if (m_locked)
         return STATE_LOCKED_BY_THIS_LOCK;
@@ -91,28 +105,41 @@ LockFile::State LockFile::queryState()
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
     }
 
-    l = read(fd, buffer, sizeof(buffer) - 1);
+    buffer = static_cast<char *>(malloc(sizeof(char) * n));
+    for (;;)
+    {
+        l = read(fd, buffer + m, n - m - 1);
+        if (l == -1)
+        {
+            free(buffer);
+            close(fd);
+            return STATE_LOCKED_BY_ANOTHER_PROCESS;
+        }
+        if (l == 0)
+            break;
+        m += l;
+        if (n - m - 1 == 0)
+        {
+            n = n * 2;
+            buffer = static_cast<char *>(realloc(buffer, sizeof(char) * n));
+        }
+    }
     close(fd);
-
-    if (l == -1)
-        return STATE_LOCKED_BY_ANOTHER_PROCESS;
-    buffer[l] = '\0';
+    buffer[m] = '\0';
     cp = strchr(buffer, ' ');
     if (cp == NULL)
+    {
+        free(buffer);
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
+    }
     *cp = '\0';
     m_lockingHostName = buffer;
     m_lockingProcessId = atoi(cp + 1);
+    free(buffer);
 
-    hostName[0] = '\0';
-#ifndef G_OS_WIN32
-    gethostname(hostName, sizeof(hostName) - 1);
-#endif
-    hostName[sizeof(hostName) - 1] = '\0';
-
-    if (m_lockingHostName != hostName)
+    if (m_lockingHostName != hostName())
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
-    if (m_lockingProcessId == getpid())
+    if (m_lockingProcessId == processId())
         return STATE_LOCKED_BY_THIS_PROCESS;
 
     // Check to see if the lock file is stale.
@@ -143,20 +170,16 @@ LockFile::State LockFile::queryState()
 
 LockFile::State LockFile::lock()
 {
-    char hostName[MAX_HOST_NAME_LENGTH];
-    int fd, l;
-    char buffer[MAX_HOST_NAME_LENGTH + MAX_PROCESS_ID_LENGTH];
+    int fd, l, m = 0, n = 256;
+    char *buffer;
     char *cp;
 
     assert(!m_locked);
     m_lockingHostName.clear();
     m_lockingProcessId = -1;
 
-    hostName[0] = '\0';
-#ifndef G_OS_WIN32
-    gethostname(hostName, sizeof(hostName) - 1);
-#endif
-    hostName[sizeof(hostName) - 1] = '\0';
+    const char *thisHostName = hostName();
+    ProcessId thisProcessId = processId();
 
 RETRY:
     fd = g_open(m_fileName.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
@@ -178,20 +201,45 @@ RETRY:
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
         }
 
-        l = read(fd, buffer, sizeof(buffer) - 1);
-        if (close(fd) || l == -1)
+        buffer = static_cast<char *>(malloc(sizeof(char) * n));
+        for (;;)
+        {
+            l = read(fd, buffer + m, n - m - 1);
+            if (l == -1)
+            {
+                close(fd);
+                free(buffer);
+                return STATE_LOCKED_BY_ANOTHER_PROCESS;
+            }
+            if (l == 0)
+                break;
+            m += l;
+            if (n - m - 1 == 0)
+            {
+                n = n * 2;
+                buffer = static_cast<char *>(realloc(buffer, sizeof(char) * n));
+            }
+        }
+        if (close(fd))
+        {
+            free(buffer);
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
-        buffer[l] = '\0';
+        }
+        buffer[m] = '\0';
         cp = strchr(buffer, ' ');
         if (cp == NULL)
+        {
+            free(buffer);
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
+        }
         *cp = '\0';
         m_lockingHostName = buffer;
         m_lockingProcessId = atoi(cp + 1);
+        free(buffer);
 
-        if (m_lockingHostName != hostName)
+        if (m_lockingHostName != thisHostName)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
-        if (m_lockingProcessId == getpid())
+        if (m_lockingProcessId == thisProcessId)
             return STATE_LOCKED_BY_THIS_PROCESS;
 
         // Check to see if the lock file is stale.
@@ -220,20 +268,19 @@ RETRY:
     }
 
     // Write our host name and process ID.
-    l = snprintf(buffer, sizeof(buffer), "%s %d", hostName, getpid());
-    l = write(fd, buffer, l);
+    buffer = g_strdup_printf("%s " PROCESS_ID_FORMAT_STR,
+                             thisHostName, thisProcessId);
+    l = write(fd, buffer, strlen(buffer));
     if (close(fd) || l == -1)
     {
         g_unlink(m_fileName.c_str());
+        g_free(buffer);
         return STATE_FAILED;
     }
+    g_free(buffer);
     m_locked = true;
-    m_lockingHostName = hostName;
-#ifdef G_OS_WIN32
-    m_lockingProcessId = GetCurrentProcessId();
-#else
-    m_lockingProcessId = getpid();
-#endif
+    m_lockingHostName = thisHostName;
+    m_lockingProcessId = thisProcessId;
     return STATE_LOCKED_BY_THIS_LOCK;
 }
 
@@ -252,51 +299,54 @@ void LockFile::unlock(bool force)
 int main()
 {
     const char *fileName = "lock-file-unit-test";
-    char hostName[MAX_HOST_NAME_LENGTH];
-    char buffer[MAX_HOST_NAME_LENGTH + MAX_PROCESS_ID_LENGTH];
-
-    hostName[0] = '\0';
-    gethostname(hostName, sizeof(hostName) - 1);
-    hostName[sizeof(hostName) - 1] = '\0';
+    const char *thisHostName = Samoyed::hostName();
+    Samoyed::LockFile::ProcessId thisProcessId = processId();
+    char *buffer;
 
     {
         Samoyed::LockFile l(fileName);
         assert(l.queryState() == Samoyed::LockFile::STATE_UNLOCKED);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_THIS_LOCK);
-        assert(strcmp(l.lockingHostName(), hostName) == 0);
-        assert(l.lockingProcessId() == getpid());
+        assert(strcmp(l.lockingHostName(), thisHostName) == 0);
+        assert(l.lockingProcessId() == thisProcessId);
     }
 
-    snprintf(buffer, sizeof(buffer), "%s %d", hostName, getpid());
+    buffer = g_strdup_printf("%s " PROCESS_ID_FORMAT_STR,
+                             thisHostName, thisProcessId);
     if (g_file_set_contents(fileName, buffer, -1, NULL))
     {
+        g_free(buffer);
         Samoyed::LockFile l(fileName);
         assert(l.queryState() ==
                Samoyed::LockFile::STATE_LOCKED_BY_THIS_PROCESS);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_THIS_PROCESS);
-        assert(strcmp(l.lockingHostName(), hostName) == 0);
-        assert(l.lockingProcessId() == getpid());
+        assert(strcmp(l.lockingHostName(), thisHostName) == 0);
+        assert(l.lockingProcessId() == thisProcessId);
     }
 
-    snprintf(buffer, sizeof(buffer), "%s 0", hostName);
+#ifndef G_OS_WIN32
+    buffer = g_strdup_printf("%s 0", thisHostName);
     if (g_file_set_contents(fileName, buffer, -1, NULL))
     {
+        g_free(buffer);
         Samoyed::LockFile l(fileName);
         assert(l.queryState() ==
                Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS);
-        assert(strcmp(l.lockingHostName(), hostName) == 0);
+        assert(strcmp(l.lockingHostName(), thisHostName) == 0);
         assert(l.lockingProcessId() == 0);
     }
+#endif
 
-    snprintf(buffer, sizeof(buffer), "%s 1000000", hostName);
+    buffer = g_strdup_printf("%s 1000000", thisHostName);
     if (g_file_set_contents(fileName, buffer, -1, NULL))
     {
+        g_free(buffer);
         Samoyed::LockFile l(fileName);
         assert(l.queryState() == Samoyed::LockFile::STATE_UNLOCKED);
         assert(l.lock() == Samoyed::LockFile::STATE_LOCKED_BY_THIS_LOCK);
-        assert(strcmp(l.lockingHostName(), hostName) == 0);
-        assert(l.lockingProcessId() == getpid());
+        assert(strcmp(l.lockingHostName(), thisHostName) == 0);
+        assert(l.lockingProcessId() == thisProcessId);
     }
 
     return 0;
