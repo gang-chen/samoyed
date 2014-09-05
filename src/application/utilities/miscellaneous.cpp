@@ -44,8 +44,6 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 namespace
 {
 
-char *hostNameBuffer = NULL;
-
 const char *charEncodings[] =
 {
     N_("Unicode (UTF-8)"),
@@ -118,38 +116,6 @@ int numberOfProcessors()
     long nProcs = sysconf(_SC_NPROCESSORS_ONLN);
     return (nProcs < 1L ? 1 : nProcs);
 #endif
-}
-
-const char *hostName()
-{
-    if (hostNameBuffer)
-        return hostNameBuffer;
-#ifdef G_OS_WIN32
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-    size_t n = 256;
-    hostNameBuffer = static_cast<char *>(malloc(sizeof(char) * n));
-    for (;;)
-    {
-        int error = gethostname(hostNameBuffer, n - 1);
-        if (!error)
-            break;
-#ifdef G_OS_WIN32
-        if (error != WSAEFAULT)
-        {
-            strcpy(hostNameBuffer, "localhost");
-            break;
-        }
-#endif
-        n = n * 2;
-        hostNameBuffer = static_cast<char *>(realloc(hostNameBuffer,
-                                                     sizeof(char) * n));
-    }
-#ifdef G_OS_WIN32
-    WSACleanup();
-#endif
-    return hostNameBuffer;
 }
 
 bool isValidFileName(const char *fileName)

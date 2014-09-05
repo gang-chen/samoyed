@@ -20,13 +20,11 @@ namespace Samoyed
 class LockFile
 {
 public:
-    typedef
 #ifdef G_OS_WIN32
-        DWORD
+    typedef DWORD ProcessId;
 #else
-        pid_t
+    typedef pid_t ProcessId;
 #endif
-        ProcessId;
 
     enum State
     {

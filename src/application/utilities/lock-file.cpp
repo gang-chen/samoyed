@@ -4,7 +4,7 @@
 /*
 UNIT TEST BUILD
 g++ lock-file.cpp miscellaneous.cpp signal.cpp -DSMYD_UNIT_TEST\
- -DSMYD_LOCK_FILE_UNIT_TEST `pkg-config --cflags --libs glib-2.0`\
+ -DSMYD_LOCK_FILE_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
  -Werror -Wall -o lock-file
 */
 
@@ -137,7 +137,7 @@ LockFile::State LockFile::queryState()
     m_lockingProcessId = atoi(cp + 1);
     free(buffer);
 
-    if (m_lockingHostName != hostName())
+    if (m_lockingHostName != g_get_host_name())
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
     if (m_lockingProcessId == processId())
         return STATE_LOCKED_BY_THIS_PROCESS;
@@ -178,7 +178,7 @@ LockFile::State LockFile::lock()
     m_lockingHostName.clear();
     m_lockingProcessId = -1;
 
-    const char *thisHostName = hostName();
+    const char *thisHostName = g_get_host_name();
     ProcessId thisProcessId = processId();
 
 RETRY:
@@ -299,7 +299,7 @@ void LockFile::unlock(bool force)
 int main()
 {
     const char *fileName = "lock-file-unit-test";
-    const char *thisHostName = Samoyed::hostName();
+    const char *thisHostName = g_get_host_name();
     Samoyed::LockFile::ProcessId thisProcessId = processId();
     char *buffer;
 
