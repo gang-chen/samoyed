@@ -83,6 +83,7 @@ Makefile
 *.la
 *.so
 *.so.*
+*.exe
 /src/launcher/samoyed
 
 # plugin.xml generated from plugin.xml.in.
