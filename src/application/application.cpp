@@ -221,6 +221,7 @@ gboolean Application::startUp(gpointer app)
                                            PLUGIN_CACHE_SIZE);
     a->m_pluginManager->scanPlugins(pluginMfsDirName.c_str());
 
+    gtk_window_set_auto_startup_notification(TRUE);
     a->startSession();
 
     // All the background initialization is done.  Close the splash screen.
@@ -376,7 +377,7 @@ int Application::run(int argc, char *argv[])
     g_type_init();
 
     // Setup directory paths.
-#ifdef OS_WIN32
+#ifdef G_OS_WIN32
     char *instDir = g_win32_get_package_installation_directory_of_module(NULL);
     m_dataDirName = std::string(instDir) +
         G_DIR_SEPARATOR_S "share" G_DIR_SEPARATOR_S "samoyed";
@@ -488,6 +489,9 @@ int Application::run(int argc, char *argv[])
         g_print(PACKAGE_STRING);
         return m_exitStatus;
     }
+
+    gtk_window_set_default_icon_name("samoyed");
+    gtk_window_set_auto_startup_notification(FALSE);
 
     // Show the splash screen.
     {
