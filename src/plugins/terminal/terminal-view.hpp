@@ -5,6 +5,7 @@
 #define SMYD_TERM_TERMINAL_VIEW_HPP
 
 #include "ui/view.hpp"
+#include "terminal.hpp"
 
 namespace Samoyed
 {
@@ -24,7 +25,7 @@ public:
     virtual void grabFocus();
 
 protected:
-    TerminalView(const char *extensionId): View(extensionId), m_terminal(NULL)
+    TerminalView(const char *extensionId): View(extensionId), m_terminal(*this)
     {}
 
     bool setupTerminal();
@@ -33,7 +34,7 @@ protected:
 
     bool restore(XmlElement &xmlElement);
 
-    GtkWidget *m_terminal;
+    Terminal m_terminal;
 };
 
 }

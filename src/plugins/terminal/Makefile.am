@@ -3,9 +3,11 @@ pluginlibdir = $(pkglibdir)/plugins
 pluginlib_LTLIBRARIES = libterminal.la
 
 libterminal_la_SOURCES = \
+    terminal.cpp \
     terminal-plugin.cpp \
     terminal-view.cpp \
     terminal-view-extension.cpp \
+    terminal.hpp \
     terminal-plugin.hpp \
     terminal-view.hpp \
     terminal-view-extension.hpp
