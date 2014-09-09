@@ -6,8 +6,7 @@
 
 #include "miscellaneous.hpp"
 #include <string>
-#include <glib.h>
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #else
@@ -20,7 +19,7 @@ namespace Samoyed
 class LockFile
 {
 public:
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
     typedef DWORD ProcessId;
 #else
     typedef pid_t ProcessId;

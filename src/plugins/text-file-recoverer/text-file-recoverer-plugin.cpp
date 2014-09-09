@@ -7,7 +7,7 @@
 #include "text-file-recoverer-plugin.hpp"
 #include "text-file-observer-extension.hpp"
 #include "text-file-recoverer-extension.hpp"
-#include "preferences-extension.hpp"
+#include "text-file-recoverer-preferences-extension.hpp"
 #include "text-edit-saver.hpp"
 #include "text-file-recoverer.hpp"
 #include "application.hpp"
@@ -66,7 +66,7 @@ Extension *TextFileRecovererPlugin::createExtension(const char *extensionId)
     if (strcmp(extensionId, "text-file-recoverer/file-observer") == 0)
         return new TextFileObserverExtension(extensionId, *this);
     if (strcmp(extensionId, "text-file-recoverer/preferences") == 0)
-        return new PreferencesExtension(extensionId, *this);
+        return new TextFileRecovererPreferencesExtension(extensionId, *this);
     return NULL;
 }
 

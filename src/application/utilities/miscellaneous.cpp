@@ -22,14 +22,14 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <glib.h>
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 # include <winsock2.h>
 #else
 # include <unistd.h>
 #endif
+#include <glib.h>
 #ifdef SMYD_UNIT_TEST
 # define _(T) T
 # define N_(T) T
@@ -108,7 +108,7 @@ namespace Samoyed
 
 int numberOfProcessors()
 {
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
     SYSTEM_INFO info;
     GetSystemInfo(&info);
     return info.dwNumberOfProcessors;

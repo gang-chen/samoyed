@@ -184,7 +184,9 @@ public:
                                 Actions::ActionIndex index)
     {}
 
-    virtual bool isActionSensitive(Window &window, GtkAction *action)
+    virtual bool isActionSensitive(Window &window,
+                                   GtkAction *action,
+                                   Actions::ActionIndex index)
     { return false; }
 
 protected:

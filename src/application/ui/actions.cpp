@@ -506,30 +506,36 @@ gboolean Actions::updateSensitivity(gpointer)
         }
 
         Widget &current = window->current();
-        if (current.isActionSensitive(*window, actions.action(ACTION_UNDO)))
-            gtk_action_set_sensitive(actions.action(ACTION_UNDO), TRUE);
-        else
-            gtk_action_set_sensitive(actions.action(ACTION_UNDO), FALSE);
-        if (current.isActionSensitive(*window, actions.action(ACTION_REDO)))
-            gtk_action_set_sensitive(actions.action(ACTION_REDO), TRUE);
-        else
-            gtk_action_set_sensitive(actions.action(ACTION_REDO), FALSE);
-        if (current.isActionSensitive(*window, actions.action(ACTION_CUT)))
-            gtk_action_set_sensitive(actions.action(ACTION_CUT), TRUE);
-        else
-            gtk_action_set_sensitive(actions.action(ACTION_CUT), FALSE);
-        if (current.isActionSensitive(*window, actions.action(ACTION_COPY)))
-            gtk_action_set_sensitive(actions.action(ACTION_COPY), TRUE);
-        else
-            gtk_action_set_sensitive(actions.action(ACTION_COPY), FALSE);
-        if (current.isActionSensitive(*window, actions.action(ACTION_PASTE)))
-            gtk_action_set_sensitive(actions.action(ACTION_PASTE), TRUE);
-        else
-            gtk_action_set_sensitive(actions.action(ACTION_PASTE), FALSE);
-        if (current.isActionSensitive(*window, actions.action(ACTION_DELETE)))
-            gtk_action_set_sensitive(actions.action(ACTION_DELETE), TRUE);
-        else
-            gtk_action_set_sensitive(actions.action(ACTION_DELETE), FALSE);
+        gtk_action_set_sensitive(
+            actions.action(ACTION_UNDO),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_UNDO),
+                                      ACTION_UNDO));
+        gtk_action_set_sensitive(
+            actions.action(ACTION_REDO),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_REDO),
+                                      ACTION_REDO));
+        gtk_action_set_sensitive(
+            actions.action(ACTION_CUT),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_CUT),
+                                      ACTION_CUT));
+        gtk_action_set_sensitive(
+            actions.action(ACTION_COPY),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_COPY),
+                                      ACTION_COPY));
+        gtk_action_set_sensitive(
+            actions.action(ACTION_PASTE),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_PASTE),
+                                      ACTION_PASTE));
+        gtk_action_set_sensitive(
+            actions.action(ACTION_DELETE),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_DELETE),
+                                      ACTION_DELETE));
 
         window->updateActionsSensitivity();
     }

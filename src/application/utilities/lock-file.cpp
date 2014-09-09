@@ -36,7 +36,7 @@ bool crashHandlerRegistered = false;
 
 Samoyed::LockFile *first = NULL, *last = NULL;
 
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
 # define PROCESS_ID_FORMAT_STR "%ld"
 #else
 # define PROCESS_ID_FORMAT_STR "%d"
@@ -44,7 +44,7 @@ Samoyed::LockFile *first = NULL, *last = NULL;
 
 Samoyed::LockFile::ProcessId processId()
 {
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
     return GetCurrentProcessId();
 #else
     return getpid();
@@ -143,7 +143,7 @@ LockFile::State LockFile::queryState()
         return STATE_LOCKED_BY_THIS_PROCESS;
 
     // Check to see if the lock file is stale.
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
     HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION,
                            FALSE,
                            m_lockingProcessId);
@@ -243,7 +243,7 @@ RETRY:
             return STATE_LOCKED_BY_THIS_PROCESS;
 
         // Check to see if the lock file is stale.
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
         HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION,
                                FALSE,
                                m_lockingProcessId);
@@ -324,7 +324,7 @@ int main()
         assert(l.lockingProcessId() == thisProcessId);
     }
 
-#ifndef G_OS_WIN32
+#ifndef OS_WINDOWS
     buffer = g_strdup_printf("%s 0", thisHostName);
     if (g_file_set_contents(fileName, buffer, -1, NULL))
     {

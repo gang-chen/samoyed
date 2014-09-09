@@ -377,7 +377,7 @@ int Application::run(int argc, char *argv[])
     g_type_init();
 
     // Setup directory paths.
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
     char *instDir = g_win32_get_package_installation_directory_of_module(NULL);
     m_dataDirName = std::string(instDir) +
         G_DIR_SEPARATOR_S "share" G_DIR_SEPARATOR_S "samoyed";

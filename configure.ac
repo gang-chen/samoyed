@@ -34,13 +34,16 @@ AC_PROG_INSTALL
 PKG_PROG_PKG_CONFIG([0.26])
 
 AC_CANONICAL_HOST
-os_win32=no
+os_windows=no
 case "$host_os" in
   mingw*)
-    os_win32=yes
+    os_windows=yes
     ;;
 esac
-AM_CONDITIONAL([OS_WIN32], [test "x$os_win32" = "xyes"])
+if test "x$os_windows" = "xyes"; then
+  AC_DEFINE([OS_WINDOWS], [], [Define if the host OS is Windows.])
+fi
+AM_CONDITIONAL([OS_WINDOWS], [test "x$os_windows" = "xyes"])
 
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION([0.18])
@@ -56,14 +59,14 @@ PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.0.0])
 PKG_CHECK_MODULES([GMODULE], [gmodule-2.0 >= 2.32.0])
 PKG_CHECK_MODULES([XML], [libxml-2.0 >= 2.6.0])
 PKG_CHECK_MODULES([GTKSOURCEVIEW], [gtksourceview-3.0 >= 3.0.0])
-if test "x$os_win32" = "xno"; then
+if test "x$os_windows" = "xno"; then
   PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
 fi
 
 SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
 AC_SUBST([SAMOYED_CPPFLAGS])
 
-if test "x$os_win32" = "xyes"; then
+if test "x$os_windows" = "xyes"; then
   SAMOYED_CXXFLAGS=""
 else
   SAMOYED_CXXFLAGS="-Werror -Wall"

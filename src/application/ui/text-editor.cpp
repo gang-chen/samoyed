@@ -753,7 +753,9 @@ void TextEditor::activateAction(Window &window,
                               NULL);
 }
 
-bool TextEditor::isActionSensitive(Window &window, GtkAction *action)
+bool TextEditor::isActionSensitive(Window &window,
+                                   GtkAction *action,
+                                   Actions::ActionIndex index)
 {
     return true;
 }

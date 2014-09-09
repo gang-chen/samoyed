@@ -5,11 +5,11 @@
 #define SMYD_TERM_TERMINAL_HPP
 
 #include <boost/utility.hpp>
-#include <gtk/gtk.h>
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #endif
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
@@ -24,8 +24,13 @@ class Terminal: public boost::noncopyable
 public:
     Terminal(TerminalView &view):
         m_view(view)
-#ifdef G_OS_WIN32
-        , m_process(INVALID_HANDLE_VALUE)
+#ifdef OS_WINDOWS
+        ,
+        m_process(INVALID_HANDLE_VALUE),
+        m_outputRead(INVALID_HANDLE_VALUE),
+        m_inputWrite(INVALID_HANDLE_VALUE),
+        m_outputReader(NULL),
+        m_inputWriter(NULL)
 #endif
     {}
 
@@ -42,8 +47,12 @@ private:
 
     GtkWidget *m_terminal;
 
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
     HANDLE m_process;
+    HANDLE m_outputRead;
+    HANDLE m_inputWrite;
+    boost::thread *m_outputReader;
+    boost::thread *m_inputWriter;
 #endif
 };
 

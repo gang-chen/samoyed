@@ -1,10 +1,10 @@
-// Extension: preferences.
+// Extension: text file recoverer preferences.
 // Copyright (C) 2014 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "preferences-extension.hpp"
+#include "text-file-recoverer-preferences-extension.hpp"
 #include "application.hpp"
 #include "utilities/property-tree.hpp"
 #include <gtk/gtk.h>
@@ -26,20 +26,21 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
-void PreferencesExtension::installPreferences()
+void TextFileRecovererPreferencesExtension::installPreferences()
 {
     Application::instance().preferences().child(TEXT_EDITOR).
         addChild(TEXT_EDIT_SAVE_INTERVAL, DEFAULT_TEXT_EDIT_SAVE_INTERVAL);
 }
 
-void PreferencesExtension::uninstallPreferences()
+void TextFileRecovererPreferencesExtension::uninstallPreferences()
 {
     Application::instance().preferences().child(TEXT_EDITOR).
         removeChild(TEXT_EDIT_SAVE_INTERVAL);
 }
 
-void PreferencesExtension::setupPreferencesEditor(const char *category,
-                                                  GtkGrid *grid)
+void TextFileRecovererPreferencesExtension::setupPreferencesEditor(
+    const char *category,
+    GtkGrid *grid)
 {
     GtkWidget *g = gtk_grid_new();
     GtkWidget *label1 = gtk_label_new(_("Auto save files every"));

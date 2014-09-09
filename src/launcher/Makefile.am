@@ -8,7 +8,7 @@ samoyed_CPPFLAGS = \
 
 samoyed_CXXFLAGS = $(SAMOYED_CXXFLAGS)
 
-if OS_WIN32
+if OS_WINDOWS
     samoyed_LDFLAGS = -mwindows
 endif
 

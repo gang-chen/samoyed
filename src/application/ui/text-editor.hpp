@@ -100,7 +100,9 @@ public:
                                 GtkAction *action,
                                 Actions::ActionIndex index);
 
-    virtual bool isActionSensitive(Window &window, GtkAction *action);
+    virtual bool isActionSensitive(Window &window,
+                                   GtkAction *action,
+                                   Actions::ActionIndex index);
 
 protected:
     TextEditor(TextFile &file, Project *project);

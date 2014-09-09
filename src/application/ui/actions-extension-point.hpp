@@ -82,12 +82,12 @@ private:
                                GtkAction *action);
 
     static void onActionToggled(const ExtensionInfo &extInfo,
-                                 Window &window,
-                                 GtkToggleAction *);
+                                Window &window,
+                                GtkToggleAction *action);
 
     static bool isActionSensitive(const ExtensionInfo &extInfo,
-                                   Window &window,
-                                   GtkAction *action);
+                                  Window &window,
+                                  GtkAction *action);
 
     void registerExtensionInternally(Window &window, const ExtensionInfo &ext);
 

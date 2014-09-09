@@ -11,8 +11,7 @@ g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 #endif
 #include "signal.hpp"
 #include <list>
-#include <glib.h>
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #else
@@ -30,7 +29,8 @@ namespace
 std::list<Samoyed::Signal::SignalHandler> crashHandlers;
 std::list<Samoyed::Signal::SignalHandler> terminationHandlers;
 
-#ifndef G_OS_WIN32
+#ifndef OS_WINDOWS
+
 struct sigaction savedFpeSignalAction;
 struct sigaction savedIllSignalAction;
 struct sigaction savedSegvSignalAction;
@@ -41,9 +41,11 @@ struct sigaction savedSysSignalAction;
 struct sigaction savedTermSignalAction;
 volatile bool crashing = false;
 volatile bool terminating = false;
+
 #endif
 
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
+
 LONG CALLBACK onCrashed(PEXCEPTION_POINTERS exceptionPointers)
 {
     for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
@@ -53,7 +55,9 @@ LONG CALLBACK onCrashed(PEXCEPTION_POINTERS exceptionPointers)
         (*i)(exceptionPointers->ExceptionRecord->ExceptionCode);
     return EXCEPTION_CONTINUE_SEARCH;
 }
+
 #else
+
 void onCrashed(int signalNumber)
 {
     if (crashing)
@@ -90,9 +94,7 @@ void onCrashed(int signalNumber)
         (*i)(signalNumber);
     raise(signalNumber);
 }
-#endif
 
-#ifndef G_OS_WIN32
 void onTerminate(int signalNumber)
 {
     if (terminating)
@@ -106,6 +108,7 @@ void onTerminate(int signalNumber)
         (*i)(signalNumber);
     raise(signalNumber);
 }
+
 #endif
 
 }
@@ -117,7 +120,7 @@ void Signal::registerCrashHandler(SignalHandler handler)
 {
     if (crashHandlers.empty())
     {
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
         AddVectoredExceptionHandler(1, onCrashed);
 #else
         // Catch SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP and SIGSYS.
@@ -139,7 +142,7 @@ void Signal::registerCrashHandler(SignalHandler handler)
 
 void Signal::registerTerminationHandler(SignalHandler handler)
 {
-#ifndef G_OS_WIN32
+#ifndef OS_WINDOWS
     if (terminationHandlers.empty())
     {
         // Catch SIGTERM.
@@ -192,7 +195,7 @@ int main()
         scanf("%d", &a);
         if (a == 0)
             *p = 0;
-#ifndef G_OS_WIN32
+#ifndef OS_WINDOWS
         if (a == 1)
             kill(getpid(), SIGTERM);
 #endif
