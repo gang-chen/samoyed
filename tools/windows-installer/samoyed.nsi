@@ -9,6 +9,10 @@
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
+!define PREINSTDIR "D:\gtk"
+
+!define MIME_REG_KEY "MIME\Database\Content Type"
+
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
 
@@ -20,13 +24,13 @@
 ; Welcome page
 !insertmacro MUI_PAGE_WELCOME
 ; License page
-!insertmacro MUI_PAGE_LICENSE "D:\cygwin64\home\gangchen\samoyed\COPYING"
+!insertmacro MUI_PAGE_LICENSE "..\..\COPYING"
 ; Directory page
 !insertmacro MUI_PAGE_DIRECTORY
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
-!define MUI_FINISHPAGE_RUN "$INSTDIR\samoyed.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\bin\samoyed.exe"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
@@ -47,23 +51,41 @@ ShowUnInstDetails show
 Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
-  ; Add files.
-  File "..\..\src\launcher\.libs\samoyed.exe"
+  File /r "${PREINSTDIR}\"
   CreateDirectory "$SMPROGRAMS\Samoyed"
   CreateShortCut "$SMPROGRAMS\Samoyed\Samoyed.lnk" "$INSTDIR\bin\samoyed.exe"
   CreateShortCut "$DESKTOP\Samoyed.lnk" "$INSTDIR\bin\samoyed.exe"
 SectionEnd
 
 Section -AdditionalIcons
-  WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
-  CreateShortCut "$SMPROGRAMS\Samoyed\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
-  CreateShortCut "$SMPROGRAMS\Samoyed\Uninstall.lnk" "$INSTDIR\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\Samoyed\Uninstall.lnk" "$INSTDIR\bin\uninst.exe"
 SectionEnd
 
 Section -Post
-  ; Fix file types.
-  WriteUninstaller "$INSTDIR\uninst.exe"
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\samoyed.exe"
+  ; Register file types.
+  WriteRegStr HKCR ".c" "" "cfile"
+  WriteRegStr HKCR "cfile" "" "C Source File"
+  WriteRegStr HKCR ".c" "Content Type" "text/x-csrc"
+  WriteRegStr HKCR ".c" "PerceivedType" ".txt"
+  WriteRegStr HKCR ".h" "" "hfile"
+  WriteRegStr HKCR "hfile" "" "C Header File"
+  WriteRegStr HKCR ".h" "Content Type" "text/x-chdr"
+  WriteRegStr HKCR ".h" "PerceivedType" ".c"
+  WriteRegStr HKCR ".cpp" "" "cppfile"
+  WriteRegStr HKCR "cppfile" "" "C++ Source File"
+  WriteRegStr HKCR ".cpp" "Content Type" "text/x-c++src"
+  WriteRegStr HKCR ".cpp" "PerceivedType" ".c"
+  WriteRegStr HKCR ".hpp" "" "hppfile"
+  WriteRegStr HKCR "hppfile" "" "C++ Header File"
+  WriteRegStr HKCR ".hpp" "Content Type" "text/x-c++hdr"
+  WriteRegStr HKCR ".hpp" "PerceivedType" ".h"
+  WriteRegStr HKCR "{MIME_REG_KEY}\text/x-csrc" "Extension" ".c"
+  WriteRegStr HKCR "{MIME_REG_KEY}\text/x-chdr" "Extension" ".h"
+  WriteRegStr HKCR "{MIME_REG_KEY}\text/x-c++src" "Extension" ".cpp"
+  WriteRegStr HKCR "{MIME_REG_KEY}\text/x-c++hdr" "Extension" ".hpp"
+
+  WriteUninstaller "$INSTDIR\bin\uninst.exe"
+  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\bin\samoyed.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "$(^Name)"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\samoyed.exe"
@@ -84,17 +106,13 @@ Function un.onInit
 FunctionEnd
 
 Section Uninstall
-  Delete "$INSTDIR\${PRODUCT_NAME}.url"
-  Delete "$INSTDIR\uninst.exe"
-  Delete "$INSTDIR\samoyed.exe"
-
   Delete "$SMPROGRAMS\Samoyed\Uninstall.lnk"
   Delete "$SMPROGRAMS\Samoyed\Website.lnk"
   Delete "$DESKTOP\Samoyed.lnk"
   Delete "$SMPROGRAMS\Samoyed\Samoyed.lnk"
 
   RMDir "$SMPROGRAMS\Samoyed"
-  RMDir "$INSTDIR"
+  RMDir /r "$INSTDIR"
 
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"

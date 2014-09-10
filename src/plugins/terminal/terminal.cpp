@@ -128,9 +128,7 @@ GtkWidget *Terminal::setup()
     }
 
     m_terminal = gtk_text_view_new();
-    setFont(m_terminal,
-            Application::instance().preferences().
-            get<std::string>("text-editor/font").c_str());
+    setFont(m_terminal, "Monospace");
     sw = gtk_scrolled_window_new(NULL, NULL);
     gtk_container_add(GTK_CONTAINER(sw), m_terminal);
 
