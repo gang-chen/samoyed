@@ -26,16 +26,9 @@
 namespace
 {
 
-gboolean closeBar(gpointer bar)
-{
-    static_cast<Samoyed::Bar *>(bar)->close();
-    return FALSE;
-}
-
 gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, Samoyed::Bar *bar)
 {
-    if (!bar->closing())
-        g_idle_add(closeBar, bar);
+    bar->close();
     return FALSE;
 }
 
@@ -49,7 +42,7 @@ void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, Samoyed::Bar *bar)
         if (p == barWidget)
             return;
     }
-    g_idle_add(closeBar, bar);
+    bar->close();
 }
 
 }

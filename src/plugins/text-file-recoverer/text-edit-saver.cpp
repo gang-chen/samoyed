@@ -36,7 +36,12 @@ bool TextEditSaver::ReplayFileCreation::execute(TextEditSaver &saver)
 {
     if (saver.m_replayFile)
         fclose(saver.m_replayFile);
-    saver.m_replayFile = g_fopen(m_fileName, "w");
+    saver.m_replayFile = g_fopen(m_fileName,
+#ifdef OS_WINDOWS
+                                 "wb");
+#else
+                                 "w");
+#endif
     return saver.m_replayFile;
 }
 

@@ -9,10 +9,14 @@
 #include "application.hpp"
 #include "ui/window.hpp"
 #include "utilities/miscellaneous.hpp"
+#include <stdio.h>
 #include <string.h>
+#include <utility>
+#include <string>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #ifdef OS_WINDOWS
+# include <boost/thread.hpp>
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #else
@@ -26,6 +30,98 @@ namespace
 {
 
 #ifdef OS_WINDOWS
+FILE *fff;
+const char *DEFAULT_FONT = "Monospace 10";
+const char *DEFAULT_COLOR = "white";
+const char *DEFAULT_BACKGROUND_COLOR = "black";
+const unsigned int DEFAULT_OUTPUT_READ_INTERVAL_SECONDS = 1;
+
+class OutputReader
+{
+public:
+    OutputReader(Samoyed::Terminal::Terminal &term): m_terminal(term) {}
+
+    void operator()();
+
+private:
+    Samoyed::Terminal::Terminal &m_terminal;
+};
+
+void OutputReader::operator()()
+{
+    char *error = NULL;
+    char buffer[BUFSIZ];
+    DWORD length;
+    for (;;)
+    {
+        if (!ReadFile(m_terminal.outputReadHandle(),
+                      buffer, sizeof(buffer), &length, NULL))
+        {
+            if (GetLastError() == ERROR_BROKEN_PIPE)
+            {fprintf(fff,"read output done\n");fflush(fff);
+                break;
+                }
+            error = g_win32_error_message(GetLastError());
+            fprintf(fff,"read output error %s\n", error);fflush(fff);
+            break;
+        }
+        if (length)
+        {fprintf(fff,"read some output %s\n", buffer);fflush(fff);
+            m_terminal.onOutput(buffer, length);
+            }
+        boost::xtime xt;
+        boost::xtime_get(&xt, boost::TIME_UTC);
+        xt.sec += DEFAULT_OUTPUT_READ_INTERVAL_SECONDS;
+        boost::thread::sleep(xt);
+    }
+    m_terminal.onOutputDone(error);
+}
+
+class InputWriter
+{
+public:
+    InputWriter(Samoyed::Terminal::Terminal &term, char *content, int length):
+        m_terminal(term),
+        m_length(length)
+    {
+        m_content = new char[length];
+        memcpy(m_content, content, sizeof(char) * length);
+    }
+
+    ~InputWriter()
+    {
+        delete[] m_content;
+    }
+
+    void operator()();
+
+private:
+    Samoyed::Terminal::Terminal &m_terminal;
+    char *m_content;
+    int m_length;
+};
+
+void InputWriter::operator()()
+{
+    char *error = NULL;
+    DWORD length;
+        fprintf(fff,"to write input %s (%d)\n", m_content, m_length);fflush(fff);
+    for (int lengthWritten = 0;
+         lengthWritten < m_length;
+         lengthWritten += length)
+    {
+        if (!WriteFile(m_terminal.inputWriteHandle(),
+                       m_content + lengthWritten, m_length - lengthWritten,
+                       &length, NULL))
+        {
+            error = g_win32_error_message(GetLastError());
+            fprintf(fff,"write input error %s\n", error);fflush(fff);
+            break;
+        }
+        fprintf(fff,"write input %s (%d)\n", m_content + lengthWritten, length);fflush(fff);
+    }
+    m_terminal.onInputDone(error);
+}
 
 void setFont(GtkWidget *view, const char *font)
 {
@@ -51,15 +147,120 @@ namespace Samoyed
 namespace Terminal
 {
 
+#ifdef OS_WINDOWS
+
+gboolean Terminal::onOutputInMainThread(gpointer param)
+{
+    std::pair<Terminal *, std::string> *p =
+        static_cast<std::pair<Terminal *, std::string> *>(param);
+    p->first->m_outputting = true;
+    gtk_text_buffer_insert_at_cursor(
+        gtk_text_view_get_buffer(GTK_TEXT_VIEW(p->first->m_terminal)),
+        p->second.c_str(), p->second.length());
+    p->first->m_outputting = false;
+    delete p;
+    return FALSE;
+}
+
+void Terminal::onOutput(char *content, int length)
+{
+    g_idle_add(onOutputInMainThread,
+               new std::pair<Terminal *, std::string>
+                (this, std::string(content, length)));
+}
+
+gboolean Terminal::onOutputDoneInMainThread(gpointer param)
+{
+    std::pair<Terminal *, char *> *p =
+        static_cast<std::pair<Terminal *, char *> *>(param);
+    delete p->first->m_outputReader;
+    p->first->m_outputReader = NULL;
+    if (p->second)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to receive output from the shell."));
+        gtkMessageDialogAddDetails(dialog, p->second);
+        g_free(p->second);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+    }
+    p->first->view().close();
+    delete p;
+    return FALSE;
+}
+
+void Terminal::onOutputDone(char *error)
+{
+    g_idle_add(onOutputDoneInMainThread,
+               new std::pair<Terminal *, char *>(this, error));
+}
+
+gboolean Terminal::onInputDoneInMainThread(gpointer param)
+{
+    std::pair<Terminal *, char *> *p =
+        static_cast<std::pair<Terminal *, char *> *>(param);
+    delete p->first->m_inputWriter;
+    p->first->m_inputWriter = NULL;
+    if (p->second)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to send commands to the shell."));
+        gtkMessageDialogAddDetails(dialog, p->second);
+        g_free(p->second);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        p->first->view().close();
+    }
+    delete p;
+    return FALSE;
+}
+
+void Terminal::onInputDone(char *error)
+{
+    g_idle_add(onInputDoneInMainThread,
+               new std::pair<Terminal *, char *>(this, error));
+}
+
+void Terminal::onInsertText(GtkTextBuffer *buffer, GtkTextIter *location,
+                            char *text, int length,
+                            Terminal *term)
+{
+    if (term->m_outputting)
+        return;
+    bool entered = false;
+    for (int i = 0; i < length; i++)
+        if (text[i] == '\n')
+        {
+            entered = true;
+            break;
+        }
+    if (!entered)
+        return;
+    //term->m_inputWriter = new boost::thread(InputWriter(*term, text, length));
+InputWriter x(*term,text,length);
+x();
+}
+
+#endif
+
 GtkWidget *Terminal::setup()
 {
 #ifdef OS_WINDOWS
-
+fff=fopen("testmsg.txt","w");
     GtkWidget *sw;
+    std::string error;
 
-    HANDLE outputWrite = INVALID_HANDLE_VALUE;
-    HANDLE inputRead = INVALID_HANDLE_VALUE;
-    HANDLE errorWrite = INVALID_HANDLE_VALUE;
+    HANDLE outputWriteHandle = INVALID_HANDLE_VALUE;
+    HANDLE inputReadHandle = INVALID_HANDLE_VALUE;
+    HANDLE errorWriteHandle = INVALID_HANDLE_VALUE;
 
     SECURITY_ATTRIBUTES sa;
     STARTUPINFO si;
@@ -70,103 +271,112 @@ GtkWidget *Terminal::setup()
     sa.lpSecurityDescriptor = NULL;
     sa.bInheritHandle = TRUE;
 
-    if (!CreatePipe(&m_outputRead, &outputWrite, &sa, 0))
+    if (!CreatePipe(&m_outputReadHandle, &outputWriteHandle, &sa, 0))
+    {
+        error = _("Samoyed failed to create a pipe.");
         goto ERROR_OUT;
-    if (!DuplicateHandle(GetCurrentProcess(), outputWrite,
-                         GetCurrentProcess(), &errorWrite,
+    }
+    if (!DuplicateHandle(GetCurrentProcess(), outputWriteHandle,
+                         GetCurrentProcess(), &errorWriteHandle,
                          0, TRUE, DUPLICATE_SAME_ACCESS))
+    {
+        error = _("Samoyed failed to duplicate a handle.");
         goto ERROR_OUT;
-    if (!CreatePipe(&inputRead, &m_inputWrite, &sa, 0))
+    }
+    if (!CreatePipe(&inputReadHandle, &m_inputWriteHandle, &sa, 0))
+    {
+        error = _("Samoyed failed to create a pipe.");
         goto ERROR_OUT;
-    if (!SetHandleInformation(m_outputRead, HANDLE_FLAG_INHERIT, 0))
+    }
+    if (!SetHandleInformation(m_outputReadHandle, HANDLE_FLAG_INHERIT, 0))
+    {
+        error = _("Samoyed failed to make a handle noninheritable.");
         goto ERROR_OUT;
-    if (!SetHandleInformation(m_inputWrite, HANDLE_FLAG_INHERIT, 0))
+    }
+    if (!SetHandleInformation(m_inputWriteHandle, HANDLE_FLAG_INHERIT, 0))
+    {
+        error = _("Samoyed failed to make a handle noninheritable.");
         goto ERROR_OUT;
+    }
 
     ZeroMemory(&si, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
     si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdOutput = outputWrite;
-    si.hStdInput = inputRead;
-    si.hStdError = errorWrite;
+    si.hStdOutput = outputWriteHandle;
+    si.hStdInput = inputReadHandle;
+    si.hStdError = errorWriteHandle;
 
     if (!CreateProcess(TEXT("C:\\Windows\\System32\\cmd.exe"), NULL,
                        NULL, NULL, TRUE,
                        CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
     {
-        GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to setup a terminal emulator."));
-        gtkMessageDialogAddDetails(
-            dialog,
-            _("Samoyed failed to start shell "
-              "\"C:\\Windows\\System32\\cmd.exe\"."));
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
+        error = _("Samoyed failed to start shell "
+                  "\"C:\\Windows\\System32\\cmd.exe\".");
         goto ERROR_OUT;
     }
     m_process = pi.hProcess;
     if (!CloseHandle(pi.hThread))
-        goto ERROR_OUT;
-    if (!CloseHandle(outputWrite))
     {
-        outputWrite = INVALID_HANDLE_VALUE;
+        error = _("Samoyed failed to close a handle.");
         goto ERROR_OUT;
     }
-    if (!CloseHandle(inputRead))
+    if (!CloseHandle(outputWriteHandle))
     {
-        inputRead = INVALID_HANDLE_VALUE;
+        error = _("Samoyed failed to close a handle.");
+        outputWriteHandle = INVALID_HANDLE_VALUE;
         goto ERROR_OUT;
     }
-    if (!CloseHandle(errorWrite))
+    if (!CloseHandle(inputReadHandle))
     {
-        errorWrite = INVALID_HANDLE_VALUE;
+        error = _("Samoyed failed to close a handle.");
+        inputReadHandle = INVALID_HANDLE_VALUE;
+        goto ERROR_OUT;
+    }
+    if (!CloseHandle(errorWriteHandle))
+    {
+        error = _("Samoyed failed to close a handle.");
+        errorWriteHandle = INVALID_HANDLE_VALUE;
         goto ERROR_OUT;
     }
 
     m_terminal = gtk_text_view_new();
-    setFont(m_terminal, "Monospace");
+    setFont(m_terminal, DEFAULT_FONT);
+    GdkRGBA color;
+    gdk_rgba_parse(&color, DEFAULT_COLOR);
+    gtk_widget_override_color(m_terminal, GTK_STATE_FLAG_NORMAL, &color);
+    gdk_rgba_parse(&color, DEFAULT_BACKGROUND_COLOR);
+    gtk_widget_override_background_color(m_terminal,
+                                         GTK_STATE_FLAG_NORMAL,
+                                         &color);
+    g_signal_connect(gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_terminal)),
+                     "insert-text",
+                     G_CALLBACK(onInsertText), this);
     sw = gtk_scrolled_window_new(NULL, NULL);
     gtk_container_add(GTK_CONTAINER(sw), m_terminal);
 
-    m_outputReader = new boost::thread();
-// TESTING
-{
-    DWORD nBytesWritten;
-    WriteFile(hInputWrite, "dir\r\n", strlen("dir\r\n"), &nBytesWritten, NULL);
-    char buffer[256];
-    DWORD nBytesRead;
-    bool exit;
-    for (int i = 0; i < 10; i++)
-    {
-        if (!ReadFile(hOutputRead, buffer, sizeof(buffer), &nBytesRead, NULL))
-        {
-            if (GetLastError() == ERROR_BROKEN_PIPE)
-                break;
-        }
-        gtk_text_buffer_insert_at_cursor(
-            gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_terminal)),
-            buffer, nBytesRead);
-        if (!exit)
-        {
-        WriteFile(hInputWrite, "exit\r\n", strlen("exit\r\n"), &nBytesWritten, NULL);
-        exit = true;
-        }
-    }
-}
+    m_outputReader = new boost::thread(OutputReader(*this));
 
     return sw;
 
 ERROR_OUT:
-    if (outputWrite != INVALID_HANDLE_VALUE)
-        CloseHandle(outputWrite);
-    if (inputRead != INVALID_HANDLE_VALUE)
-        CloseHandle(inputRead);
-    if (errorWrite != INVALID_HANDLE_VALUE)
-        CloseHandle(errorWrite);
+    char *sysMsg = g_win32_error_message(GetLastError());
+    GtkWidget *dialog = gtk_message_dialog_new(
+        GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+        GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_ERROR,
+        GTK_BUTTONS_CLOSE,
+        _("Samoyed failed to setup a terminal emulator."));
+    gtkMessageDialogAddDetails(dialog, "%s %s", error.c_str(), sysMsg);
+    g_free(sysMsg);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+
+    if (outputWriteHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(outputWriteHandle);
+    if (inputReadHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(inputReadHandle);
+    if (errorWriteHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(errorWriteHandle);
     return NULL;
 
 #else
@@ -235,10 +445,10 @@ Terminal::~Terminal()
 #ifdef OS_WINDOWS
     if (m_process != INVALID_HANDLE_VALUE)
         CloseHandle(m_process);
-    if (m_outputRead != INVALID_HANDLE_VALUE)
-        CloseHandle(m_outputRead);
-    if (m_inputWrite != INVALID_HANDLE_VALUE)
-        CloseHandle(m_inputWrite);
+    if (m_outputReadHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(m_outputReadHandle);
+    if (m_inputWriteHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(m_inputWriteHandle);
 #endif
 }
 
