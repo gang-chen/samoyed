@@ -326,19 +326,39 @@ XmlElementSession *parseSessionFile(const char *fileName,
         if (errors.empty())
             Samoyed::gtkMessageDialogAddDetails(
                 dialog,
-                _("Samoyed failed to construct session \"%s\" from session "
-                  "file \"%s\"."),
-                sessionName, fileName);
+                _("Samoyed found errors in session file \"%s\"."),
+                fileName);
         else
         {
             std::string e =
                 std::accumulate(errors.begin(), errors.end(), std::string());
             Samoyed::gtkMessageDialogAddDetails(
                 dialog,
-                _("Samoyed failed to construct session \"%s\" from session "
-                  "file \"%s\". Errors:\n%s"),
-                sessionName, fileName, e.c_str());
+                _("Errors found in session file \"%s\":\n%s"),
+                fileName, e.c_str());
         }
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+    }
+    else if (!errors.empty())
+    {
+        GtkWidget *dialog;
+        dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_WARNING,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed encountered errors when restoring session \"%s\". The "
+              "session may be restored incompletely."),
+            sessionName);
+        std::string e =
+            std::accumulate(errors.begin(), errors.end(), std::string());
+        Samoyed::gtkMessageDialogAddDetails(
+            dialog,
+            _("Errors found in session file \"%s\":\n%s"),
+            fileName, e.c_str());
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
