@@ -182,8 +182,12 @@ gboolean Terminal::onOutputDoneInMainThread(gpointer param)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to receive output from the shell."));
-        gtkMessageDialogAddDetails(dialog, p->second);
+            _("Samoyed terminal emulator encountered a fatal error. It will be "
+              "shut down."));
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to receive output from the shell. %s"),
+            p->second);
         g_free(p->second);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -212,8 +216,12 @@ gboolean Terminal::onInputDoneInMainThread(gpointer param)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to send commands to the shell."));
-        gtkMessageDialogAddDetails(dialog, p->second);
+            _("Samoyed terminal emulator encountered a fatal error. It will be "
+              "shut down."));
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to send commands to the shell. %s"),
+            p->second);
         g_free(p->second);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
