@@ -34,7 +34,7 @@ FILE *fff;
 const char *DEFAULT_FONT = "Monospace 10";
 const char *DEFAULT_COLOR = "white";
 const char *DEFAULT_BACKGROUND_COLOR = "black";
-const unsigned int DEFAULT_OUTPUT_READ_INTERVAL_SECONDS = 1;
+const int DEFAULT_OUTPUT_READ_INTERVAL = 100000000;
 
 class OutputReader
 {
@@ -71,7 +71,7 @@ void OutputReader::operator()()
             }
         boost::xtime xt;
         boost::xtime_get(&xt, boost::TIME_UTC);
-        xt.sec += DEFAULT_OUTPUT_READ_INTERVAL_SECONDS;
+        xt.nsec += DEFAULT_OUTPUT_READ_INTERVAL;
         boost::thread::sleep(xt);
     }
     m_terminal.onOutputDone(error);
