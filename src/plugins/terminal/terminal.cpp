@@ -10,12 +10,14 @@
 #include "ui/window.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <utility>
 #include <string>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #ifdef OS_WINDOWS
+# include <boost/noncopyable.hpp>
 # include <boost/thread.hpp>
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
@@ -30,7 +32,6 @@ namespace
 {
 
 #ifdef OS_WINDOWS
-FILE *fff;
 const char *DEFAULT_FONT = "Monospace 10";
 const char *DEFAULT_COLOR = "white";
 const char *DEFAULT_BACKGROUND_COLOR = "black";
@@ -58,17 +59,12 @@ void OutputReader::operator()()
                       buffer, sizeof(buffer), &length, NULL))
         {
             if (GetLastError() == ERROR_BROKEN_PIPE)
-            {fprintf(fff,"read output done\n");fflush(fff);
                 break;
-                }
             error = g_win32_error_message(GetLastError());
-            fprintf(fff,"read output error %s\n", error);fflush(fff);
             break;
         }
         if (length)
-        {fprintf(fff,"read some output %s\n", buffer);fflush(fff);
             m_terminal.onOutput(buffer, length);
-            }
         boost::xtime xt;
         boost::xtime_get(&xt, boost::TIME_UTC);
         xt.nsec += DEFAULT_OUTPUT_READ_INTERVAL;
@@ -80,22 +76,34 @@ void OutputReader::operator()()
 class InputWriter
 {
 public:
-    InputWriter(Samoyed::Terminal::Terminal &term, char *content, int length):
+    InputWriter(Samoyed::Terminal::Terminal &term,
+                const char *content,
+                int length):
         m_terminal(term),
         m_length(length)
     {
-        m_content = new char[length];
-        memcpy(m_content, content, sizeof(char) * length);
+        m_content = static_cast<char *>(malloc(sizeof(char) * m_length));
+        memcpy(m_content, content, sizeof(char) * m_length);
+    }
+
+    InputWriter(const InputWriter &i):
+        m_terminal(i.m_terminal),
+        m_length(i.m_length)
+    {
+        m_content = static_cast<char *>(malloc(sizeof(char) * m_length));
+        memcpy(m_content, i.m_content, sizeof(char) * m_length);
     }
 
     ~InputWriter()
     {
-        delete[] m_content;
+        free(m_content);
     }
 
     void operator()();
 
 private:
+    const InputWriter &operator=(const InputWriter &rhs);
+
     Samoyed::Terminal::Terminal &m_terminal;
     char *m_content;
     int m_length;
@@ -105,7 +113,6 @@ void InputWriter::operator()()
 {
     char *error = NULL;
     DWORD length;
-        fprintf(fff,"to write input %s (%d)\n", m_content, m_length);fflush(fff);
     for (int lengthWritten = 0;
          lengthWritten < m_length;
          lengthWritten += length)
@@ -115,12 +122,40 @@ void InputWriter::operator()()
                        &length, NULL))
         {
             error = g_win32_error_message(GetLastError());
-            fprintf(fff,"write input error %s\n", error);fflush(fff);
             break;
         }
-        fprintf(fff,"write input %s (%d)\n", m_content + lengthWritten, length);fflush(fff);
     }
     m_terminal.onInputDone(error);
+}
+
+class OutputParam: public boost::noncopyable
+{
+public:
+    OutputParam(Samoyed::Terminal::Terminal &term,
+                const char *content,
+                int length):
+        m_terminal(term),
+        m_length(length)
+    {
+        m_content = static_cast<char *>(malloc(sizeof(char) * m_length));
+        memcpy(m_content, content, sizeof(char) * m_length);
+    }
+    ~OutputParam()
+    {
+        free(m_content);
+    }
+
+    Samoyed::Terminal::Terminal &m_terminal;
+    char *m_content;
+    int m_length;
+};
+
+void output(GtkTextView *term, const char *content, int length)
+{
+    // TODO: Process escape sequences.
+    gtk_text_buffer_insert_at_cursor(
+        gtk_text_view_get_buffer(term),
+        content, length);
 }
 
 void setFont(GtkWidget *view, const char *font)
@@ -151,22 +186,18 @@ namespace Terminal
 
 gboolean Terminal::onOutputInMainThread(gpointer param)
 {
-    std::pair<Terminal *, std::string> *p =
-        static_cast<std::pair<Terminal *, std::string> *>(param);
-    p->first->m_outputting = true;
-    gtk_text_buffer_insert_at_cursor(
-        gtk_text_view_get_buffer(GTK_TEXT_VIEW(p->first->m_terminal)),
-        p->second.c_str(), p->second.length());
-    p->first->m_outputting = false;
+    OutputParam *p = static_cast<OutputParam *>(param);
+    if (!p->m_terminal.m_destroying)
+        output(GTK_TEXT_VIEW(p->m_terminal.m_terminal),
+               p->m_content, p->m_length);
     delete p;
     return FALSE;
 }
 
-void Terminal::onOutput(char *content, int length)
+void Terminal::onOutput(const char *content, int length)
 {
     g_idle_add(onOutputInMainThread,
-               new std::pair<Terminal *, std::string>
-                (this, std::string(content, length)));
+               new OutputParam(*this, content, length));
 }
 
 gboolean Terminal::onOutputDoneInMainThread(gpointer param)
@@ -175,7 +206,7 @@ gboolean Terminal::onOutputDoneInMainThread(gpointer param)
         static_cast<std::pair<Terminal *, char *> *>(param);
     delete p->first->m_outputReader;
     p->first->m_outputReader = NULL;
-    if (p->second)
+    if (!p->first->m_destroying && p->second)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -188,11 +219,17 @@ gboolean Terminal::onOutputDoneInMainThread(gpointer param)
             dialog,
             _("Samoyed failed to receive output from the shell. %s"),
             p->second);
-        g_free(p->second);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
     }
-    p->first->view().close();
+    if (p->first->m_destroying)
+    {
+        if (!p->first->m_inputWriter)
+            delete p->first;
+    }
+    else
+        p->first->view().close();
+    g_free(p->second);
     delete p;
     return FALSE;
 }
@@ -209,7 +246,7 @@ gboolean Terminal::onInputDoneInMainThread(gpointer param)
         static_cast<std::pair<Terminal *, char *> *>(param);
     delete p->first->m_inputWriter;
     p->first->m_inputWriter = NULL;
-    if (p->second)
+    if (!p->first->m_destroying && p->second)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -222,11 +259,27 @@ gboolean Terminal::onInputDoneInMainThread(gpointer param)
             dialog,
             _("Samoyed failed to send commands to the shell. %s"),
             p->second);
-        g_free(p->second);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        p->first->view().close();
     }
+    if (p->first->m_destroying)
+    {
+        if (!p->first->m_outputReader)
+            delete p->first;
+    }
+    else if (p->second)
+        p->first->view().close();
+    else if (p->first->m_queuedInput)
+    {
+        p->first->m_inputWriter =
+            new boost::thread(InputWriter(*p->first,
+                                          p->first->m_queuedInput,
+                                          p->first->m_queuedInputLength));
+        free(p->first->m_queuedInput);
+        p->first->m_queuedInput = NULL;
+        p->first->m_queuedInputLength = 0;
+    }
+    g_free(p->second);
     delete p;
     return FALSE;
 }
@@ -237,24 +290,43 @@ void Terminal::onInputDone(char *error)
                new std::pair<Terminal *, char *>(this, error));
 }
 
-void Terminal::onInsertText(GtkTextBuffer *buffer, GtkTextIter *location,
-                            char *text, int length,
-                            Terminal *term)
+gboolean Terminal::onKeyPress(GtkWidget *widget,
+                              GdkEventKey *event,
+                              Terminal *term)
 {
-    if (term->m_outputting)
-        return;
-    bool entered = false;
-    for (int i = 0; i < length; i++)
-        if (text[i] == '\n')
+    char buffer[20];
+    int length;
+    guint32 key;
+    switch (event->keyval)
+    {
+    case GDK_KEY_Return:
+        buffer[0] = '\r';
+        buffer[1] = '\n';
+        length = 2;
+        break;
+    default:
+        key = gdk_keyval_to_unicode(event->keyval);
+        if (key == 0)
+            length = 0;
+        else
+            length = g_unichar_to_utf8(key, buffer);
+    }
+    if (length > 0)
+    {
+        if (term->m_inputWriter)
         {
-            entered = true;
-            break;
+            term->m_queuedInput = static_cast<char *>(
+            realloc(term->m_queuedInput, term->m_queuedInputLength + length));
+            memcpy(term->m_queuedInput + term->m_queuedInputLength,
+                   buffer,
+                   sizeof(char) * length);
+            term->m_queuedInputLength += length;
         }
-    if (!entered)
-        return;
-    //term->m_inputWriter = new boost::thread(InputWriter(*term, text, length));
-InputWriter x(*term,text,length);
-x();
+        else
+            term->m_inputWriter =
+                new boost::thread(InputWriter(*term, buffer, length));
+    }
+    return TRUE;
 }
 
 #endif
@@ -262,7 +334,6 @@ x();
 GtkWidget *Terminal::setup()
 {
 #ifdef OS_WINDOWS
-fff=fopen("testmsg.txt","w");
     GtkWidget *sw;
     std::string error;
 
@@ -316,13 +387,15 @@ fff=fopen("testmsg.txt","w");
 
     if (!CreateProcess(TEXT("C:\\Windows\\System32\\cmd.exe"), NULL,
                        NULL, NULL, TRUE,
-                       CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+                       CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP,
+                       NULL, NULL, &si, &pi))
     {
         error = _("Samoyed failed to start shell "
                   "\"C:\\Windows\\System32\\cmd.exe\".");
         goto ERROR_OUT;
     }
     m_process = pi.hProcess;
+    m_processId = pi.dwProcessId;
     if (!CloseHandle(pi.hThread))
     {
         error = _("Samoyed failed to close a handle.");
@@ -356,9 +429,8 @@ fff=fopen("testmsg.txt","w");
     gtk_widget_override_background_color(m_terminal,
                                          GTK_STATE_FLAG_NORMAL,
                                          &color);
-    g_signal_connect(gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_terminal)),
-                     "insert-text",
-                     G_CALLBACK(onInsertText), this);
+    g_signal_connect(m_terminal, "key-press-event",
+                     G_CALLBACK(onKeyPress), this);
     sw = gtk_scrolled_window_new(NULL, NULL);
     gtk_container_add(GTK_CONTAINER(sw), m_terminal);
 
@@ -448,6 +520,37 @@ ERROR_OUT:
 #endif
 }
 
+void Terminal::destroy()
+{
+#ifdef OS_WINDOWS
+    if (!m_outputReader && !m_inputWriter)
+    {
+        delete this;
+        return;
+    }
+    m_destroying = true;
+    GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_processId);
+#else
+    delete this;
+#endif
+}
+
+Terminal::Terminal(TerminalView &view):
+    m_view(view)
+#ifdef OS_WINDOWS
+    ,
+    m_process(INVALID_HANDLE_VALUE),
+    m_outputReadHandle(INVALID_HANDLE_VALUE),
+    m_inputWriteHandle(INVALID_HANDLE_VALUE),
+    m_outputReader(NULL),
+    m_inputWriter(NULL),
+    m_queuedInput(NULL),
+    m_queuedInputLength(0),
+    m_destroying(false)
+#endif
+{
+}
+
 Terminal::~Terminal()
 {
 #ifdef OS_WINDOWS
@@ -457,6 +560,7 @@ Terminal::~Terminal()
         CloseHandle(m_outputReadHandle);
     if (m_inputWriteHandle != INVALID_HANDLE_VALUE)
         CloseHandle(m_inputWriteHandle);
+    free(m_queuedInput);
 #endif
 }
 

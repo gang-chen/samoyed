@@ -23,8 +23,41 @@
 namespace
 {
 
-const char *mimeTypes[] =
-{ "text/x-csrc", "text/x-chdr", "text/x-c++src", "text/x-c++hdr", NULL };
+struct MimeType
+{
+    const char *mimeType;
+    const char *description;
+};
+
+const MimeType mimeTypes[] =
+{
+    { "text/x-csrc",    N_("C Source Files") },
+    { "text/x-chdr",    N_("C Header Files") },
+    { "text/x-c++src",  N_("C++ Source Files") },
+    { "text/x-c++hdr",  N_("C++ Header Files") },
+    { NULL,             NULL }
+};
+
+struct MimeTypeSet
+{
+    const char *mimeTypeSet;
+    const char *masterMimeType;
+    const char *description;
+};
+
+const MimeTypeSet mimeTypeSets[] =
+{
+    {
+        "text/x-csrc text/x-chdr text/x-c++src text/x-c++hdr",
+        "text/x-csrc",
+        N_("C/C++ Source and Header Files")
+    },
+    {
+        NULL,
+        NULL,
+        NULL
+    }
+};
 
 }
 
@@ -101,9 +134,11 @@ bool SourceFile::isSupportedType(const char *mimeType)
 {
     bool supported = false;
     char *type = g_content_type_from_mime_type(mimeType);
-    for (const char **mimeType2 = mimeTypes; *mimeType2; ++mimeType2)
+    for (const MimeType *mimeType2 = mimeTypes;
+         mimeType2->mimeType;
+         ++mimeType2)
     {
-        char *type2 = g_content_type_from_mime_type(*mimeType2);
+        char *type2 = g_content_type_from_mime_type(mimeType2->mimeType);
         supported = g_content_type_is_a(type, type2);
         g_free(type2);
         if (supported)
@@ -115,13 +150,20 @@ bool SourceFile::isSupportedType(const char *mimeType)
 
 void SourceFile::registerType()
 {
-    for (const char **mimeType = mimeTypes; *mimeType; ++mimeType)
-        File::registerType(*mimeType,
+    for (const MimeType *mimeType = mimeTypes; mimeType->mimeType; ++mimeType)
+        File::registerType(mimeType->mimeType,
                            create,
                            createOptionsSetter,
                            defaultOptions,
                            optionsEqual,
-                           describeOptions);
+                           describeOptions,
+                           gettext(mimeType->description));
+    for (const MimeTypeSet *mimeTypeSet = mimeTypeSets;
+         mimeTypeSet->mimeTypeSet;
+         ++mimeTypeSet)
+        File::registerTypeSet(mimeTypeSet->mimeTypeSet,
+                              mimeTypeSet->masterMimeType,
+                              gettext(mimeTypeSet->description));
 }
 
 SourceFile::~SourceFile()

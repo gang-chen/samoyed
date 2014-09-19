@@ -5,13 +5,14 @@
 #define SMYD_TERM_TERMINAL_VIEW_HPP
 
 #include "ui/view.hpp"
-#include "terminal.hpp"
 
 namespace Samoyed
 {
 
 namespace Terminal
 {
+
+class Terminal;
 
 class TerminalView: public View
 {
@@ -25,8 +26,9 @@ public:
     virtual void grabFocus();
 
 protected:
-    TerminalView(const char *extensionId): View(extensionId), m_terminal(*this)
-    {}
+    TerminalView(const char *extensionId);
+
+    virtual ~TerminalView();
 
     bool setupTerminal();
 
@@ -34,7 +36,7 @@ protected:
 
     bool restore(XmlElement &xmlElement);
 
-    Terminal m_terminal;
+    Terminal *m_terminal;
 };
 
 }

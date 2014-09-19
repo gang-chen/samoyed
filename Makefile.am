@@ -1,3 +1,3 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
-SUBDIRS = data src po
+SUBDIRS = data po libs src tools

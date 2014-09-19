@@ -13,9 +13,20 @@ namespace Samoyed
 namespace Terminal
 {
 
+TerminalView::TerminalView(const char *extensionId):
+    View(extensionId),
+    m_terminal(new Terminal(*this))
+{
+}
+
+TerminalView::~TerminalView()
+{
+    m_terminal->destroy();
+}
+
 bool TerminalView::setupTerminal()
 {
-    GtkWidget *widget = m_terminal.setup();
+    GtkWidget *widget = m_terminal->setup();
     if (!widget)
         return false;
     setGtkWidget(widget);
@@ -70,7 +81,7 @@ TerminalView *TerminalView::restore(XmlElement &xmlElement,
 
 void TerminalView::grabFocus()
 {
-    m_terminal.grabFocus();
+    m_terminal->grabFocus();
 }
 
 }

@@ -1834,6 +1834,8 @@ gboolean Window::onWorkerBegunInMainThread(gpointer param)
          window;
          window = window->next())
     {
+        if (!window->m_workersStatus)
+            continue;
         for (int i = 0; i < window->m_workerCount; ++i)
         {
             const char *d =
@@ -1857,6 +1859,8 @@ gboolean Window::onWorkerEndedInMainThread(gpointer param)
          window;
          window = window->next())
     {
+        if (!window->m_workersStatus)
+            continue;
         for (int i = 0; i < window->m_workerCount; ++i)
         {
             const char *d =

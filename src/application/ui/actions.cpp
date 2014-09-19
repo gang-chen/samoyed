@@ -121,10 +121,13 @@ void closeFile(GtkAction *action, Samoyed::Window *window)
 
 void closeAllFiles(GtkAction *action, Samoyed::Window *window)
 {
-    for (Samoyed::File *file = Samoyed::Application::instance().files();
+    for (Samoyed::File *file = Samoyed::Application::instance().files(), *next;
          file;
-         file = file->next())
+         file = next)
+    {
+        next = file->next();
         file->close();
+    }
 }
 
 void undo(GtkAction *action, Samoyed::Window *window)

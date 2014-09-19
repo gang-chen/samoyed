@@ -364,7 +364,12 @@ protected:
                              const OptionsSetterFactory &optSetterFactory,
                              const OptionsGetter &defOptGetter,
                              const OptionsEqual &optEqual,
-                             const OptionsDescriber &optDescriber);
+                             const OptionsDescriber &optDescriber,
+                             const char *description);
+
+    static void registerTypeSet(const char *mimeTypeSet,
+                                const char *masterMimeType,
+                                const char *description);
 
     File(const char *uri, const char *mimeType, const PropertyTree &options);
 
@@ -401,19 +406,29 @@ private:
         OptionsGetter m_defOptGetter;
         OptionsEqual m_optEqual;
         OptionsDescriber m_optDescriber;
+        std::string m_description;
         TypeRecord(const char *type,
                    const Factory &factory,
                    const OptionsSetterFactory &optSetterFactory,
                    const OptionsGetter &defOptGetter,
                    const OptionsEqual &optEqual,
-                   const OptionsDescriber &optDescriber):
+                   const OptionsDescriber &optDescriber,
+                   const char *description):
             m_type(type),
             m_factory(factory),
             m_optSetterFactory(optSetterFactory),
             m_defOptGetter(defOptGetter),
             m_optEqual(optEqual),
-            m_optDescriber(optDescriber)
+            m_optDescriber(optDescriber),
+            m_description(description)
         {}
+    };
+
+    struct TypeSet
+    {
+        std::list<std::string> m_mimeTypes;
+        const TypeRecord *m_masterType;
+        std::string m_description;
     };
 
     static const TypeRecord *findTypeRecord(const char *type);
@@ -439,6 +454,8 @@ private:
     void onSavedWrapper(Worker &worker);
 
     static std::list<TypeRecord> s_typeRegistry;
+
+    static std::list<TypeSet> s_typeSetRegistry;
 
     static PropertyTree s_defaultOptions;
 

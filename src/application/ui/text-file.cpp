@@ -289,7 +289,8 @@ void TextFile::registerType()
                        createOptionsSetter,
                        defaultOptions,
                        optionsEqual,
-                       describeOptions);
+                       describeOptions,
+                       _("Text Files"));
 }
 
 PropertyTree *TextFile::options() const
