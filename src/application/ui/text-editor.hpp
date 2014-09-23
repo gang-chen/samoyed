@@ -127,6 +127,15 @@ private:
     static void setupPreferencesEditor(GtkGrid *grid);
 
     static void onFontSet(GtkFontButton *button, gpointer data);
+    static void onTabWidthChanged(GtkSpinButton *spin, gpointer data);
+    static void onInsertSpacesInsteadOfTabsToggled(GtkToggleButton *toggle,
+                                                   gpointer data);
+    static void onShowLineNumbersToggled(GtkToggleButton *toggle,
+                                         gpointer data);
+    static void onHighlightSyntaxToggled(GtkToggleButton *toggle,
+                                         gpointer data);
+    static void onIndentWidthChanged(GtkSpinButton *spin, gpointer data);
+    static void onIndentToggled(GtkToggleButton *toggle, gpointer data);
 
     bool m_bypassEdit;
     bool m_selfEdit;

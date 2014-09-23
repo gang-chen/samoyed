@@ -115,6 +115,16 @@ void TextFileRecovererPlugin::deactivate()
     }
 }
 
+void TextFileRecovererPlugin::deactivateTextEditSavers()
+{
+    for (std::set<TextEditSaver *>::iterator it = m_savers.begin();
+            it != m_savers.end();)
+    {
+        std::set<TextEditSaver *>::iterator it2 = it++;
+        (*it2)->deactivate();
+    }
+}
+
 }
 
 }

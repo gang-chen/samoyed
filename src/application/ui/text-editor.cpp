@@ -33,7 +33,7 @@
 #define CURSOR_COLUMN "cursor-column"
 #define FONT "font"
 #define TAB_WIDTH "tab-width"
-#define REPLACE_TABS_WITH_SPACES "replace-tabs-with-spaces"
+#define INSERT_SPACES_INSTEAD_OF_TABS "insert-spaces-instead-of-tabs"
 #define SHOW_LINE_NUMBERS "show-line-numbers"
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define INDENT "indent"
@@ -44,13 +44,17 @@ namespace
 
 const double SCROLL_MARGIN = 0.02;
 
-const char *DEFAULT_FONT = "Monospace 10";
+const std::string DEFAULT_FONT("Monospace 10");
 
 const int DEFAULT_TAB_WIDTH = 8;
 
-const bool DEFAULT_REPLACE_TABS_WITH_SPACES = true;
+const bool DEFAULT_INSERT_SPACES_INSTEAD_OF_TABS = true;
 
 const bool DEFAULT_SHOW_LINE_NUMBERS = true;
+
+const bool DEFAULT_HIGHLIGHT_SYNTAX = true;
+
+const bool DEFAULT_INDENT = true;
 
 const int DEFAULT_INDENT_WIDTH = 4;
 
@@ -388,7 +392,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
                                   prefs.get<int>(TAB_WIDTH));
     gtk_source_view_set_insert_spaces_instead_of_tabs(
         GTK_SOURCE_VIEW(view),
-        prefs.get<bool>(REPLACE_TABS_WITH_SPACES));
+        prefs.get<bool>(INSERT_SPACES_INSTEAD_OF_TABS));
     gtk_source_view_set_show_line_numbers(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(SHOW_LINE_NUMBERS));
@@ -699,12 +703,13 @@ void TextEditor::installPreferences()
 {
     PropertyTree &prefs = Application::instance().preferences().
         addChild(TEXT_EDITOR);
-    prefs.addChild(FONT, std::string(DEFAULT_FONT));
+    prefs.addChild(FONT, DEFAULT_FONT);
     prefs.addChild(TAB_WIDTH, DEFAULT_TAB_WIDTH);
-    prefs.addChild(REPLACE_TABS_WITH_SPACES, DEFAULT_REPLACE_TABS_WITH_SPACES);
+    prefs.addChild(INSERT_SPACES_INSTEAD_OF_TABS,
+                   DEFAULT_INSERT_SPACES_INSTEAD_OF_TABS);
     prefs.addChild(SHOW_LINE_NUMBERS, DEFAULT_SHOW_LINE_NUMBERS);
-    prefs.addChild(HIGHLIGHT_SYNTAX, true);
-    prefs.addChild(INDENT, true);
+    prefs.addChild(HIGHLIGHT_SYNTAX, DEFAULT_HIGHLIGHT_SYNTAX);
+    prefs.addChild(INDENT, DEFAULT_INDENT);
     prefs.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
 
     PreferencesEditor::addCategory(TEXT_EDITOR, _("_Text Editor"));
@@ -785,10 +790,166 @@ void TextEditor::onFontSet(GtkFontButton *button, gpointer data)
     }
 }
 
+void TextEditor::onTabWidthChanged(GtkSpinButton *spin, gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(TAB_WIDTH,
+              static_cast<int>(gtk_spin_button_get_value_as_int(spin)),
+              false,
+              NULL);
+    int tabWidth = prefs.get<int>(TAB_WIDTH);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_view_set_tab_width(
+                    static_cast<TextEditor *>(editor)->gtkSourceView(),
+                    tabWidth);
+        }
+    }
+}
+
+void TextEditor::onInsertSpacesInsteadOfTabsToggled(GtkToggleButton *toggle,
+                                                    gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(INSERT_SPACES_INSTEAD_OF_TABS,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+    bool spaces = prefs.get<bool>(INSERT_SPACES_INSTEAD_OF_TABS);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_view_set_insert_spaces_instead_of_tabs(
+                    static_cast<TextEditor *>(editor)->gtkSourceView(),
+                    spaces);
+        }
+    }
+}
+
+void TextEditor::onShowLineNumbersToggled(GtkToggleButton *toggle,
+                                          gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(SHOW_LINE_NUMBERS,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+    bool show = prefs.get<bool>(SHOW_LINE_NUMBERS);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_view_set_show_line_numbers(
+                    static_cast<TextEditor *>(editor)->gtkSourceView(),
+                    show);
+        }
+    }
+}
+
+void TextEditor::onHighlightSyntaxToggled(GtkToggleButton *toggle,
+                                          gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(HIGHLIGHT_SYNTAX,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+    bool highlight = prefs.get<bool>(HIGHLIGHT_SYNTAX);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_buffer_set_highlight_syntax(
+                    GTK_SOURCE_BUFFER(gtk_text_view_get_buffer(
+                        GTK_TEXT_VIEW(static_cast<TextEditor *>(editor)->
+                        gtkSourceView()))),
+                    highlight);
+        }
+    }
+}
+
+void TextEditor::onIndentWidthChanged(GtkSpinButton *spin, gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(INDENT_WIDTH,
+              static_cast<bool>(gtk_spin_button_get_value_as_int(spin)),
+              false,
+              NULL);
+    int indentWidth = prefs.get<int>(INDENT_WIDTH);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_view_set_indent_width(
+                    static_cast<TextEditor *>(editor)->gtkSourceView(),
+                    indentWidth);
+        }
+    }
+}
+
+void TextEditor::onIndentToggled(GtkToggleButton *toggle, gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(INDENT,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+    bool indent = prefs.get<bool>(INDENT);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (TextFile::isSupportedType(file->mimeType()))
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_view_set_auto_indent(
+                    static_cast<TextEditor *>(editor)->gtkSourceView(),
+                    indent);
+        }
+    }
+}
+
 void TextEditor::setupPreferencesEditor(GtkGrid *grid)
 {
     const PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
+
     GtkWidget *fontLine = gtk_grid_new();
     GtkWidget *fontLabel = gtk_label_new_with_mnemonic(_("_Font:"));
     GtkWidget *fontButton = gtk_font_button_new();
@@ -801,6 +962,80 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_grid_set_column_spacing(GTK_GRID(fontLine), CONTAINER_SPACING);
     gtk_grid_attach_next_to(grid, fontLine, NULL, GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(fontLine);
+
+    GtkWidget *tabWidthLine = gtk_grid_new();
+    GtkWidget *tabWidthLabel1 = gtk_label_new_with_mnemonic(_("_Tab width:"));
+    GtkAdjustment *tabWidthAdjust = gtk_adjustment_new(
+        prefs.get<int>(TAB_WIDTH),
+        1.0, 100.0, 1.0, 4.0, 0.0);
+    GtkWidget *tabWidthSpin = gtk_spin_button_new(tabWidthAdjust, 1.0, 0);
+    g_signal_connect(tabWidthSpin, "value-changed",
+                     G_CALLBACK(onTabWidthChanged), NULL);
+    gtk_label_set_mnemonic_widget(GTK_LABEL(tabWidthLabel1), tabWidthSpin);
+    GtkWidget *tabWidthLabel2 = gtk_label_new(_("spaces"));
+    gtk_grid_attach(GTK_GRID(tabWidthLine), tabWidthLabel1, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(tabWidthLine), tabWidthSpin, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(tabWidthLine), tabWidthLabel2, 2, 0, 1, 1);
+    gtk_grid_set_column_spacing(GTK_GRID(tabWidthLine), CONTAINER_SPACING);
+    gtk_grid_attach_next_to(grid, tabWidthLine, fontLine,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(tabWidthLine);
+
+    GtkWidget *spaces = gtk_check_button_new_with_mnemonic(
+        _("Insert s_paces instead of tabs"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(spaces),
+        prefs.get<bool>(INSERT_SPACES_INSTEAD_OF_TABS));
+    g_signal_connect(spaces, "toggled",
+                     G_CALLBACK(onInsertSpacesInsteadOfTabsToggled), NULL);
+    gtk_grid_attach_next_to(grid, spaces, tabWidthLine,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(spaces);
+
+    GtkWidget *lineNumbers = gtk_check_button_new_with_mnemonic(
+        _("Show _line numbers"));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(lineNumbers),
+                                 prefs.get<bool>(SHOW_LINE_NUMBERS));
+    g_signal_connect(lineNumbers, "toggled",
+                     G_CALLBACK(onShowLineNumbersToggled), NULL);
+    gtk_grid_attach_next_to(grid, lineNumbers, spaces,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(lineNumbers);
+
+    GtkWidget *highlight = gtk_check_button_new_with_mnemonic(
+        _("_Highlight syntax"));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(highlight),
+                                 prefs.get<bool>(SHOW_LINE_NUMBERS));
+    g_signal_connect(highlight, "toggled",
+                     G_CALLBACK(onHighlightSyntaxToggled), NULL);
+    gtk_grid_attach_next_to(grid, highlight, lineNumbers,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(highlight);
+
+    GtkWidget *indentLine = gtk_grid_new();
+    GtkWidget *indentLabel1 = gtk_label_new_with_mnemonic(
+        _("_Indent new lines by"));
+    GtkAdjustment *indentWidthAdjust = gtk_adjustment_new(
+        prefs.get<int>(INDENT_WIDTH),
+        1.0, 100.0, 1.0, 4.0, 0.0);
+    GtkWidget *indentWidthSpin =
+        gtk_spin_button_new(indentWidthAdjust, 1.0, 0);
+    g_signal_connect(indentWidthSpin, "value-changed",
+                     G_CALLBACK(onIndentWidthChanged), NULL);
+    GtkWidget *indentWidthLabel2 = gtk_label_new(_("spaces"));
+    gtk_grid_attach(GTK_GRID(indentLine), indentLabel1, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(indentLine), indentWidthSpin, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(indentLine), indentWidthLabel2, 2, 0, 1, 1);
+    gtk_grid_set_column_spacing(GTK_GRID(indentLine), CONTAINER_SPACING);
+    GtkWidget *indentCheck = gtk_check_button_new();
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indentCheck),
+                                 prefs.get<bool>(INDENT));
+    g_signal_connect(indentCheck, "toggled",
+                     G_CALLBACK(onIndentToggled), NULL);
+    gtk_container_add(GTK_CONTAINER(indentCheck), indentLine);
+    gtk_grid_attach_next_to(grid, indentCheck, highlight,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(indentCheck);
 }
 
 }

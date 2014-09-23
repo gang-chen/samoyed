@@ -34,6 +34,8 @@
 namespace
 {
 
+const char *DEFAULT_FILTER = "C/C++ Source and Header Files";
+
 struct LoadedParam
 {
     LoadedParam(Samoyed::File &file, Samoyed::FileLoader &loader):
@@ -136,7 +138,7 @@ void File::installHistories()
     PropertyTree &prop = Application::instance().histories().
         addChild(FILE_OPEN);
     prop.addChild(DIRECTORY, std::string());
-    prop.addChild(FILTER, std::string());
+    prop.addChild(FILTER, std::string(gettext(DEFAULT_FILTER)));
 }
 
 void File::registerType(const char *mimeType,
@@ -588,7 +590,7 @@ bool File::closeEditor(Editor &editor)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
-            _("File \"%s\" was edited but not saved. Save the file before "
+            _("File \"%s\" was changed but not saved. Save the file before "
               "closing it?"),
             uri());
         gtk_dialog_add_buttons(
@@ -604,7 +606,7 @@ bool File::closeEditor(Editor &editor)
         gtk_widget_set_tooltip_text(
             gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
                                                GTK_RESPONSE_NO),
-            _("Discard the edits and close the file"));
+            _("Discard the changes and close the file"));
         gtk_widget_set_tooltip_text(
             gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
                                                GTK_RESPONSE_CANCEL),

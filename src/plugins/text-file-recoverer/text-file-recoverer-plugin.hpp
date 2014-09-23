@@ -30,6 +30,8 @@ public:
 
     virtual void deactivate();
 
+    void deactivateTextEditSavers();
+
     void onTextEditSaverCreated(TextEditSaver &saver);
     void onTextEditSaverDestroyed(TextEditSaver &saver);
 

@@ -80,6 +80,7 @@ bool PropertyTree::set(const boost::spirit::hold_any &value,
 void PropertyTree::addChild(PropertyTree &child)
 {
     child.addToList(m_firstChild, m_lastChild);
+    child.m_parent = this;
     m_children.insert(std::make_pair(child.name(), &child));
 }
 

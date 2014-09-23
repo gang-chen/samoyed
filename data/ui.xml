@@ -55,10 +55,10 @@
       <menuitem name="new-editor" action="create-editor"/>
       <menuitem name="move-editor-down" action="move-editor-down"/>
       <menuitem name="move-editor-right" action="move-editor-right"/>
-      <menuitem name="split-editor-vertically"
-                action="split-editor-vertically"/>
       <menuitem name="split-editor-horizontally"
                 action="split-editor-horizontally"/>
+      <menuitem name="split-editor-vertically"
+                action="split-editor-vertically"/>
       <separator/>
       <menuitem name="toolbar" action="show-hide-toolbar"/>
       <menuitem name="status-bar" action="show-hide-status-bar"/>

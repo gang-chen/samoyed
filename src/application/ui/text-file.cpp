@@ -25,12 +25,13 @@
 #define ENCODING "encoding"
 #define FILE_OPEN "file-open"
 #define TEXT_FILE "text-file"
-#define DEFAULT_ENCODING "UTF-8"
 
 namespace
 {
 
 const int TEXT_FILE_INSERTION_MERGE_LENGTH_THRESHOLD = 100;
+
+const std::string DEFAULT_ENCODING("UTF-8");
 
 }
 
@@ -248,7 +249,7 @@ void TextFile::installHistories()
 {
     PropertyTree &prop = Application::instance().histories().child(FILE_OPEN).
         addChild(TEXT_FILE);
-    prop.addChild(ENCODING, std::string(DEFAULT_ENCODING));
+    prop.addChild(ENCODING, DEFAULT_ENCODING);
 }
 
 TextFile::TextFile(const char *uri,

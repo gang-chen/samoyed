@@ -103,7 +103,7 @@ TextEditSaver::TextEditSaver(TextFile &file):
     m_schedulerId = g_timeout_add_full(
         G_PRIORITY_DEFAULT_IDLE,
         Application::instance().preferences().
-            get<int>(TEXT_EDITOR "/" TEXT_EDIT_SAVE_INTERVAL),
+            get<int>(TEXT_EDITOR "/" TEXT_EDIT_SAVE_INTERVAL) * 60000,
         scheduleReplayFileOperationExecutor,
         this,
         NULL);

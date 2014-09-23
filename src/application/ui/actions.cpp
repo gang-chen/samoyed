@@ -243,7 +243,7 @@ void moveEditorRight(GtkAction *action, Samoyed::Window *window)
     }
 }
 
-void splitEditorVertically(GtkAction *action, Samoyed::Window *window)
+void splitEditorHorizontally(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
     if (editorGroup.childCount() > 0)
@@ -259,7 +259,7 @@ void splitEditorVertically(GtkAction *action, Samoyed::Window *window)
     }
 }
 
-void splitEditorHorizontally(GtkAction *action, Samoyed::Window *window)
+void splitEditorVertically(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Notebook &editorGroup = window->currentEditorGroup();
     if (editorGroup.childCount() > 0)
@@ -390,12 +390,12 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Move the current editor to a new editor group, or a new editor group "
          "if none, to the right of the current one"),
       G_CALLBACK(moveEditorRight) },
-    { "split-editor-vertically", NULL, N_("Split Editor _Vertically"), NULL,
-      N_("Split the current editor vertically"),
-      G_CALLBACK(splitEditorVertically) },
     { "split-editor-horizontally", NULL, N_("Split Editor _Horizontally"), NULL,
       N_("Split the current editor horizontally"),
       G_CALLBACK(splitEditorHorizontally) },
+    { "split-editor-vertically", NULL, N_("Split Editor _Vertically"), NULL,
+      N_("Split the current editor vertically"),
+      G_CALLBACK(splitEditorVertically) },
 
     // Help menu.
     { "show-manual", "help-contents", N_("_Manual"), "F1",
@@ -457,10 +457,10 @@ gboolean Actions::updateSensitivity(gpointer)
             gtk_action_set_sensitive(actions.action(ACTION_MOVE_EDITOR_RIGHT),
                                      FALSE);
             gtk_action_set_sensitive(
-                actions.action(ACTION_SPLIT_EDITOR_VERTICALLY),
+                actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
                 FALSE);
             gtk_action_set_sensitive(
-                actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
+                actions.action(ACTION_SPLIT_EDITOR_VERTICALLY),
                 FALSE);
         }
         else
@@ -501,10 +501,10 @@ gboolean Actions::updateSensitivity(gpointer)
                     FALSE);
             }
             gtk_action_set_sensitive(
-                actions.action(ACTION_SPLIT_EDITOR_VERTICALLY),
+                actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
                 TRUE);
             gtk_action_set_sensitive(
-                actions.action(ACTION_SPLIT_EDITOR_HORIZONTALLY),
+                actions.action(ACTION_SPLIT_EDITOR_VERTICALLY),
                 TRUE);
         }
 
