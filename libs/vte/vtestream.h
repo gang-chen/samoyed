@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001,2002,2003,2009,2010 Red Hat, Inc.
+ * Copyright (C) 2009,2010 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,20 +14,32 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * Red Hat Author(s): Behdad Esfahbod
  */
 
-#ifndef __VTE_VTE_H__
-#define __VTE_VTE_H__
+#ifndef vtestream_h_included
+#define vtestream_h_included
 
-#include <glib.h>
+#include <glib-object.h>
+#include <gio/gio.h>
 
-#define __VTE_VTE_H_INSIDE__ 1
+G_BEGIN_DECLS
 
-#include "vteenums.h"
-#include "vteglobals.h"
-#include "vteterminal.h"
-#include "vtetypebuiltins.h"
+typedef struct _VteStream VteStream;
 
-#undef __VTE_VTE_H_INSIDE__
+void _vte_stream_reset (VteStream *stream, gsize offset);
+void _vte_stream_append (VteStream *stream, const char *data, gsize len);
+gboolean _vte_stream_read (VteStream *stream, gsize offset, char *data, gsize len);
+void _vte_stream_truncate (VteStream *stream, gsize offset);
+void _vte_stream_advance_tail (VteStream *stream, gsize offset);
+gsize _vte_stream_head (VteStream *stream);
 
-#endif /* __VTE_VTE_H__ */
+/* Various streams */
+
+VteStream *
+_vte_file_stream_new (void);
+
+G_END_DECLS
+
+#endif

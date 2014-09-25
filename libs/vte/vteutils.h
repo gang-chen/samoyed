@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001,2002,2003,2009,2010 Red Hat, Inc.
+ * Copyright © 2013 Christian Persch
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,18 +16,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __VTE_VTE_H__
-#define __VTE_VTE_H__
+#ifndef __VTE_UTILS_H__
+#define __VTE_UTILS_H__
 
 #include <glib.h>
 
-#define __VTE_VTE_H_INSIDE__ 1
+G_BEGIN_DECLS
 
-#include "vteenums.h"
-#include "vteglobals.h"
-#include "vteterminal.h"
-#include "vtetypebuiltins.h"
+int _vte_mkstemp (void);
 
-#undef __VTE_VTE_H_INSIDE__
+G_END_DECLS
 
-#endif /* __VTE_VTE_H__ */
+#endif /* __VTE_UTILS_H__ */

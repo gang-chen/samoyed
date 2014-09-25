@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001,2002,2003,2009,2010 Red Hat, Inc.
+ * Copyright © 2014 Christian Persch
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,18 +16,23 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __VTE_VTE_H__
-#define __VTE_VTE_H__
+#ifndef __VTE_VTE_MACROS_H__
+#define __VTE_VTE_MACROS_H__
 
-#include <glib.h>
+#if !defined (__VTE_VTE_H_INSIDE__) && !defined (VTE_COMPILATION)
+#error "Only <vte/vte.h> can be included directly."
+#endif
 
-#define __VTE_VTE_H_INSIDE__ 1
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 6)
+#define _VTE_GNUC_PACKED __attribute__((__packed__))
+#else
+#define _VTE_GNUC_PACKED
+#endif  /* !__GNUC__ */
 
-#include "vteenums.h"
-#include "vteglobals.h"
-#include "vteterminal.h"
-#include "vtetypebuiltins.h"
+#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 2)
+#define _VTE_GNUC_NONNULL(position) __attribute__((__nonnull__(position)))
+#else
+#define _VTE_GNUC_NONNULL(position)
+#endif
 
-#undef __VTE_VTE_H_INSIDE__
-
-#endif /* __VTE_VTE_H__ */
+#endif /* __VTE_VTE_MACROS_H__ */
