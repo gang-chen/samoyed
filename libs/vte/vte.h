@@ -25,8 +25,16 @@
 
 #include "vteenums.h"
 #include "vteglobals.h"
+#ifdef OS_WINDOWS
+# include "../winpty/include/winpty.h"
+#else
+# include "vtepty.h"
+#endif
 #include "vteterminal.h"
 #include "vtetypebuiltins.h"
+#ifndef OS_WINDOWS
+# include "vteversion.h"
+#endif
 
 #undef __VTE_VTE_H_INSIDE__
 

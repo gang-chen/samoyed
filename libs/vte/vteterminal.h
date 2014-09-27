@@ -30,6 +30,11 @@
 
 #include "vteenums.h"
 #include "vtemacros.h"
+#ifdef OS_WINDOWS
+# include "../winpty/include/winpty.h"
+#else
+# include "vtepty.h"
+#endif
 
 G_BEGIN_DECLS
 

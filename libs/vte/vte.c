@@ -49,11 +49,19 @@
 #include <pango/pango.h>
 #include "iso2022.h"
 #include "keymap.h"
-#include "marshal.h"
+#ifndef OS_WINDOWS
+# include "marshal.h"
+#endif
 #include "matcher.h"
 #include "vteaccess.h"
 #include "vteint.h"
-#include "../winpty/include/winpty.h"
+#ifdef OS_WINDOWS
+# include "../winpty/include/winpty.h"
+# include <windows.h>
+#else
+# include "vtepty.h"
+# include "vtepty-private.h"
+#endif
 
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
@@ -185,15 +193,25 @@ static GTimer *process_timer;
 static const GtkBorder default_padding = { 1, 1, 1, 1 };
 
 /* process incoming data without copying */
-static struct _vte_incoming_chunk *free_chunks;
+static struct _vte_incoming_chunk *free_chunks = NULL;
+#ifdef OS_WINDOWS
+static int free_chunks_ref = 0;
+static CRITICAL_SECTION free_chunks_lock;
+#endif
 static struct _vte_incoming_chunk *
 get_chunk (void)
 {
 	struct _vte_incoming_chunk *chunk = NULL;
+#ifdef OS_WINDOWS
+	EnterCriticalSection(&free_chunks_lock);
+#endif
 	if (free_chunks) {
 		chunk = free_chunks;
 		free_chunks = free_chunks->next;
 	}
+#ifdef OS_WINDOWS
+	LeaveCriticalSection(&free_chunks_lock);
+#endif
 	if (chunk == NULL) {
 		chunk = g_new (struct _vte_incoming_chunk, 1);
 	}
@@ -204,14 +222,23 @@ get_chunk (void)
 static void
 release_chunk (struct _vte_incoming_chunk *chunk)
 {
+#ifdef OS_WINDOWS
+	EnterCriticalSection(&free_chunks_lock);
+#endif
 	chunk->next = free_chunks;
 	chunk->len = free_chunks ? free_chunks->len + 1 : 0;
 	free_chunks = chunk;
+#ifdef OS_WINDOWS
+	LeaveCriticalSection(&free_chunks_lock);
+#endif
 }
 static void
 prune_chunks (guint len)
 {
 	struct _vte_incoming_chunk *chunk = NULL;
+#ifdef OS_WINDOWS
+	EnterCriticalSection(&free_chunks_lock);
+#endif
 	if (len && free_chunks != NULL) {
 	    if (free_chunks->len > len) {
 		struct _vte_incoming_chunk *last;
@@ -226,6 +253,9 @@ prune_chunks (guint len)
 	    chunk = free_chunks;
 	    free_chunks = NULL;
 	}
+#ifdef OS_WINDOWS
+	LeaveCriticalSection(&free_chunks_lock);
+#endif
 	while (chunk != NULL) {
 		struct _vte_incoming_chunk *next = chunk->next;
 		g_free (chunk);
@@ -3246,6 +3276,9 @@ vte_terminal_child_watch_cb(GPid pid,
 		}
 
 		terminal->pvt->child_watch_source = 0;
+#ifdef OS_WINDOWS
+		CloseHandle(terminal->pvt->pty_pid);
+#endif
 		terminal->pvt->pty_pid = -1;
 
 		/* Close out the PTY. */
@@ -4050,6 +4083,44 @@ _vte_terminal_feed_chunks (VteTerminal *terminal, struct _vte_incoming_chunk *ch
 	last->next = terminal->pvt->incoming;
 	terminal->pvt->incoming = chunks;
 }
+
+#ifdef OS_WINDOWS
+
+static DWORD
+vte_terminal_io_read(void *param)
+{
+	VteTerminal *terminal = (VteTerminal *) param;
+	HANDLE event;
+	struct _vte_incoming_chunk *chunk;
+	DWORD amount;
+	OVERLAPPED over;
+	event = CreateEvent(NULL, TRUE, FALSE, NULL);
+	for (;;)
+	{
+		chunk = get_chunk();
+		memset(&over, 0, sizeof(over));
+		over.hEvent = event;
+		BOOL ret = ReadFile(terminal->pty_pipe,
+				    chunk->data,
+				    sizeof(chunk->data),
+				    &read,
+				    &over);
+		if (!ret && GetLastError() == ERROR_IO_PENDING)
+			ret = GetOverlappedResult(terminal->pty_pipe, &over, &read, TRUE);
+		if (!ret)
+		{
+			if (GetLastError() == ERROR_HANDLE_EOF)
+			break;
+		}
+		chunk->len = read;
+		_vte_terminal_feed_chunks(terminal, chunk);
+	}
+	CloseHandle(event);
+	return 0;
+}
+
+#else
+
 /* Read and handle data from the child. */
 static gboolean
 vte_terminal_io_read(GIOChannel *channel,
@@ -4188,6 +4259,8 @@ out:
 	return again;
 }
 
+#endif
+
 /**
  * vte_terminal_feed:
  * @terminal: a #VteTerminal
@@ -4234,6 +4307,51 @@ vte_terminal_feed(VteTerminal *terminal, const char *data, gssize length)
 	}
 }
 
+#ifdef OS_WINDOWS
+
+static DWORD
+vte_terminal_io_write(void *param)
+{
+	VteTerminal *terminal = (VteTerminal *) param;
+	HANDLE event;
+	char buffer[BUFSIZ];
+	int amount;
+	DWORD written;
+	OVERLAPPED over;
+	event = CreateEvent(NULL, TRUE, FALSE, NULL);
+	for (;;)
+	{
+		memset(&over, 0, sizeof(over));
+		over.hEvent = event;
+		EnterCriticalSection(&terminal->outgoing_lock);
+		while (_vte_byte_array_length(terminal->outgoing) == 0)
+			SleepConditionVariableCS(&terminal->outgoing_not_empty,
+						 &terminal->outgoing_lock,
+						 INFINITE);
+		amount = _vte_byte_array_length(terminal->outgoing);
+		if (amount > BUFSIZ)
+			amount = BUFSIZ;
+		memcpy(buffer, terminal->outgoing->data, amount);
+		LeaveCriticalSection(&terminal->outgoing_lock);
+		BOOL ret = WriteFile(terminal->pty_pipe,
+				     buffer,
+				     amount,
+				     &written,
+				     &over);
+		if (!ret && GetLastError() == ERROR_IO_PENDING)
+			ret = GetOverlappedResult(terminal->pipe, &over, &written, TRUE);
+		if (!ret)
+			break;
+		EnterCriticalSection(&terminal->outgoing_lock);
+		_vte_byte_array_consume(p->data, written);
+		EnterCriticalSection(&terminal->outgoing_lock);
+	}
+	CloseHandle(event);
+	return 0;
+}
+
+#else
+
 /* Send locally-encoded characters to the child. */
 static gboolean
 vte_terminal_io_write(GIOChannel *channel,
@@ -4271,6 +4389,8 @@ vte_terminal_io_write(GIOChannel *channel,
 
 	return leave_open;
 }
+
+#endif
 
 /* Convert some arbitrarily-encoded data to send to the child. */
 static void
@@ -7950,6 +8070,12 @@ vte_terminal_init(VteTerminal *terminal)
 	GtkStyleContext *context;
 	int i;
 
+#ifdef OS_WINDOWS
+	if (free_chunks_ref == 0)
+		InitializeCriticalSectionAndSpinCount(&free_chunks_lock, 0x00000400);
+	free_chunks_ref++;
+#endif
+
 	_vte_debug_print(VTE_DEBUG_LIFECYCLE, "vte_terminal_init()\n");
 
 	/* Initialize private data. */
@@ -8010,6 +8136,11 @@ vte_terminal_init(VteTerminal *terminal)
 	pvt->max_input_bytes = VTE_MAX_INPUT_READ;
 	pvt->cursor_blink_tag = 0;
 	pvt->outgoing = _vte_byte_array_new();
+#ifdef OS_WINDOWS
+	InitializeCriticalSectionAndSpinCount(&pvt->incoming_lock, 0x00000400);
+	InitializeCriticalSectionAndSpinCount(&pvt->outgoing_lock, 0x00000400);
+	InitializeConditionVariable(&pvt->outgoing_not_empty);
+#endif
 	pvt->outgoing_conv = VTE_INVALID_CONV;
 	pvt->conv_buffer = _vte_byte_array_new();
 	vte_terminal_set_encoding(terminal, NULL /* UTF-8 */, NULL);
@@ -8463,9 +8594,16 @@ vte_terminal_finalize(GObject *object)
 	_vte_byte_array_free(terminal->pvt->outgoing);
 	g_array_free(terminal->pvt->pending, TRUE);
 	_vte_byte_array_free(terminal->pvt->conv_buffer);
+#ifdef OS_WINDOWS
+	DeleteCriticalSection(&terminal->incoming_lock);
+	DeleteCriticalSection(&terminal->outgoing_lock);
+#endif
 
 	/* Stop the child and stop watching for input from the child. */
 	if (terminal->pvt->pty_pid != -1) {
+#ifdef OS_WINDOWS
+		GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(terminal->pvt->pty_pid));
+#else
 #ifdef HAVE_GETPGID
 		pid_t pgrp;
 		pgrp = getpgid(terminal->pvt->pty_pid);
@@ -8474,15 +8612,22 @@ vte_terminal_finalize(GObject *object)
 		}
 #endif
 		kill(terminal->pvt->pty_pid, SIGHUP);
+#endif
 	}
 	_vte_terminal_disconnect_pty_read(terminal);
 	_vte_terminal_disconnect_pty_write(terminal);
+#ifdef OS_WINDOWS
 	if (terminal->pvt->pty_channel != NULL) {
 		g_io_channel_unref (terminal->pvt->pty_channel);
 	}
+#endif
 	if (terminal->pvt->pty != NULL) {
+#ifdef OS_WINDOWS
+		winpty_close(terminal->pvt->pty);
+#else
                 vte_pty_close(terminal->pvt->pty);
                 g_object_unref(terminal->pvt->pty);
+#endif
 	}
 
 	/* Remove hash tables. */
@@ -8519,6 +8664,15 @@ vte_terminal_finalize(GObject *object)
 
 	/* Call the inherited finalize() method. */
 	G_OBJECT_CLASS(vte_terminal_parent_class)->finalize(object);
+
+#ifdef OS_WINDOWS
+	free_chunks_ref--;
+	if (free_chunks_ref == 0)
+	{
+		prune_chunks(0);
+		DeleteCriticalSection(&free_chunks_lock);
+	}
+#endif
 }
 
 /* Handle realizing the widget.  Most of this is copy-paste from GGAD. */

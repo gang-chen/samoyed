@@ -238,7 +238,7 @@ static void startAgentProcess(const BackgroundDesktop &desktop,
                             &cmdline[0],
                             NULL, NULL,
                             /*bInheritHandles=*/FALSE,
-                            /*dwCreationFlags=*/CREATE_NEW_CONSOLE,
+                            /*dwCreationFlags=*/CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP,
                             NULL, NULL,
                             &sui, &pi);
     if (!success) {

@@ -40,6 +40,9 @@
 #endif
 #include <unistd.h>
 #include <glib/gi18n-lib.h>
+#ifdef OS_WINDOWS
+# include <windows.h>
+#endif
 
 #include "vte.h"
 #include "buffer.h"
@@ -180,11 +183,16 @@ struct _VteTerminalPrivate {
 	GHashTable *dec_saved;
 
 	/* PTY handling data. */
+#ifdef OS_WINDOWS
+	winpty_t *pty;
+	HANDLE pty_pipe;
+#else
 	VtePty *pty;
 	GIOChannel *pty_channel;	/* master channel */
 	guint pty_input_source;
 	guint pty_output_source;
 	gboolean pty_input_active;
+#endif
 	GPid pty_pid;			/* pid of child using pty slave */
 	guint child_watch_source;
 
@@ -201,12 +209,20 @@ struct _VteTerminalPrivate {
 	GArray *pending;		/* pending characters */
 	GSList *update_regions;
 	gboolean invalidated_all;	/* pending refresh of entire terminal */
+#ifdef OS_WINDOWS
+	CRITICAL_SECTION incoming_lock;
+#else
 	GList *active;                  /* is the terminal processing data */
 	glong input_bytes;
 	glong max_input_bytes;
+#endif
 
 	/* Output data queue. */
 	VteByteArray *outgoing;	/* pending input characters */
+#ifdef OS_WINDOWS
+	CRITICAL_SECTION outgoing_lock;
+	CONDITION_VARIABLE outgoing_not_empty;
+#endif
 	VteConv outgoing_conv;
 
 	/* IConv buffer. */
