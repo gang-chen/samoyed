@@ -9,6 +9,7 @@ libvte_la_SOURCES = \
     ring.c \
     table.c \
     vte.c \
+    vteaccess.c \
     vteconv.c \
     vtedraw.c \
     vterowdata.c \
@@ -27,6 +28,7 @@ libvte_la_SOURCES = \
     table.h \
     vte.h \
     vte-private.h \
+    vteaccess.h \
     vteconv.h \
     vtedraw.h \
     vteenums.h \
@@ -40,15 +42,20 @@ libvte_la_SOURCES = \
     vteterminal.h \
     vtetree.h \
     vteunistr.h \
-    vteutils.h
+    vteutils.h \
+    vteversion.h
 
 nodist_libvte_la_SOURCES = \
     box_drawing.h \
+    marshal.c \
+    marshal.h \
     vtetypebuiltins.c \
     vtetypebuiltins.h
 
 BUILT_SOURCES = \
     box_drawing.h \
+    marshal.c \
+    marshal.h \
     vtetypebuiltins.c \
     vtetypebuiltins.h \
     vteseq-n.c \
@@ -57,6 +64,7 @@ BUILT_SOURCES = \
 EXTRA_DIST = \
     box_drawing_generate.sh \
     box_drawing.txt \
+    marshal.list \
     mkunitables.sh \
     unitable.CNS11643 \
     unitable.CP437 \
@@ -78,17 +86,25 @@ MAINTAINERCLEANFILES = \
 
 CLEANFILES = \
     box_drawing.h \
+    marshal.c \
+    marshal.h \
     vtetypebuiltins.c \
     vtetypebuiltins.h \
     stamp-vtetypebuiltins.h
 
 libvte_la_CPPFLAGS = \
-    $(GTK_CFLAGS)
+    $(GTK_CFLAGS) \
     -DGLIB_DISABLE_DEPRECATION_WARNINGS \
     -DVTE_COMPILATION
 
 box_drawing.h: box_drawing.txt
 	$(AM_V_GEN) $(srcdir)/box_drawing_generate.sh < $< > $@
+
+marshal.c: marshal.list
+	$(AM_V_GEN) $(GLIB_GENMARSHAL) --prefix=_vte_marshal --header --body --internal $< > $@
+
+marshal.h: marshal.list
+	$(AM_V_GEN) $(GLIB_GENMARSHAL) --prefix=_vte_marshal --header --internal $< > $@
 
 vtetypebuiltins.h: stamp-vtetypebuiltins.h
 	@true

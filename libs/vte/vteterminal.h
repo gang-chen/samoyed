@@ -30,7 +30,7 @@
 
 #include "vteenums.h"
 #include "vtemacros.h"
-#ifdef OS_WINDOWS
+#ifdef G_OS_WIN32
 # include "../winpty/include/winpty.h"
 #else
 # include "vtepty.h"
@@ -133,10 +133,17 @@ GType vte_terminal_get_type(void);
 
 GtkWidget *vte_terminal_new(void);
 
+#ifdef G_OS_WIN32
+winpty_t *vte_terminal_pty_new_sync (VteTerminal *terminal,
+                                     VtePtyFlags flags,
+                                     GCancellable *cancellable,
+                                     GError **error) _VTE_GNUC_NONNULL(1);
+#else
 VtePty *vte_terminal_pty_new_sync (VteTerminal *terminal,
                                    VtePtyFlags flags,
                                    GCancellable *cancellable,
                                    GError **error) _VTE_GNUC_NONNULL(1);
+#endif
 
 void vte_terminal_watch_child (VteTerminal *terminal,
                                GPid child_pid) _VTE_GNUC_NONNULL(1);
@@ -332,9 +339,15 @@ void vte_terminal_set_cjk_ambiguous_width(VteTerminal *terminal,
                                           int width) _VTE_GNUC_NONNULL(1);
 int vte_terminal_get_cjk_ambiguous_width(VteTerminal *terminal) _VTE_GNUC_NONNULL(1);
 
+#ifdef G_OS_WIN32
+void vte_terminal_set_pty(VteTerminal *terminal,
+                          winpty_t *pty) _VTE_GNUC_NONNULL(1);
+winpty_t *vte_terminal_get_pty(VteTerminal *terminal) _VTE_GNUC_NONNULL(1);
+#else
 void vte_terminal_set_pty(VteTerminal *terminal,
                           VtePty *pty) _VTE_GNUC_NONNULL(1);
 VtePty *vte_terminal_get_pty(VteTerminal *terminal) _VTE_GNUC_NONNULL(1);
+#endif
 
 /* Accessors for bindings. */
 glong vte_terminal_get_char_width(VteTerminal *terminal) _VTE_GNUC_NONNULL(1);

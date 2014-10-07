@@ -131,6 +131,9 @@
  */
 #define MAX_RUN_LENGTH 100
 
+#ifndef howmany
+#define howmany(x, y) (((x) + ((y) - 1)) / (y))
+#endif
 
 enum unistr_coverage {
 	/* in increasing order of speed */
@@ -946,6 +949,9 @@ _vte_draw_text_internal (struct _vte_draw *draw,
 	int n_cr_glyphs = 0;
 	cairo_glyph_t cr_glyphs[MAX_RUN_LENGTH];
 	struct font_info *font = draw->fonts[style];
+#ifdef G_OS_WIN32
+	int last_y = -1;
+#endif
 
 	g_return_if_fail (font != NULL);
 
@@ -977,7 +983,11 @@ _vte_draw_text_internal (struct _vte_draw *draw,
 						       ufi->using_pango_glyph_string.glyph_string);
 			break;
 		case COVERAGE_USE_CAIRO_GLYPH:
+#ifdef G_OS_WIN32
+			if (last_scaled_font != ufi->using_cairo_glyph.scaled_font || last_y != y || n_cr_glyphs == MAX_RUN_LENGTH) {
+#else
 			if (last_scaled_font != ufi->using_cairo_glyph.scaled_font || n_cr_glyphs == MAX_RUN_LENGTH) {
+#endif
 				if (n_cr_glyphs) {
 					cairo_set_scaled_font (draw->cr, last_scaled_font);
 					cairo_show_glyphs (draw->cr,
@@ -986,6 +996,9 @@ _vte_draw_text_internal (struct _vte_draw *draw,
 					n_cr_glyphs = 0;
 				}
 				last_scaled_font = ufi->using_cairo_glyph.scaled_font;
+#ifdef G_OS_WIN32
+				last_y = y;
+#endif
 			}
 			cr_glyphs[n_cr_glyphs].index = ufi->using_cairo_glyph.glyph_index;
 			cr_glyphs[n_cr_glyphs].x = x;

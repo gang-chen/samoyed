@@ -48,4 +48,5 @@ int main(int argc, char *argv[])
                 atoi(argv[3]),
                 atoi(argv[4]));
     agent.run();
+    return 0;
 }

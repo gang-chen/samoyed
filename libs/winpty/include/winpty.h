@@ -26,10 +26,13 @@
 #include <stdlib.h>
 #include <windows.h>
 
+#define WINPTY_API
+#if 0
 #ifdef WINPTY
 #define WINPTY_API __declspec(dllexport)
 #else
 #define WINPTY_API __declspec(dllimport)
+#endif
 #endif
 
 #ifdef __cplusplus

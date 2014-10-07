@@ -19,7 +19,9 @@
 #ifndef vte_vte_private_h_included
 #define vte_vte_private_h_included
 
-#include <sys/ioctl.h>
+#ifndef G_OS_WIN32
+# include <sys/ioctl.h>
+#endif
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -30,7 +32,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
-#include <pwd.h>
+#ifndef G_OS_WIN32
+# include <pwd.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,9 +44,6 @@
 #endif
 #include <unistd.h>
 #include <glib/gi18n-lib.h>
-#ifdef OS_WINDOWS
-# include <windows.h>
-#endif
 
 #include "vte.h"
 #include "buffer.h"
@@ -183,16 +184,17 @@ struct _VteTerminalPrivate {
 	GHashTable *dec_saved;
 
 	/* PTY handling data. */
-#ifdef OS_WINDOWS
+#ifdef G_OS_WIN32
 	winpty_t *pty;
-	HANDLE pty_pipe;
+	GIOChannel *pty_read_channel;
+	GIOChannel *pty_write_channel;
 #else
 	VtePty *pty;
 	GIOChannel *pty_channel;	/* master channel */
+#endif
 	guint pty_input_source;
 	guint pty_output_source;
 	gboolean pty_input_active;
-#endif
 	GPid pty_pid;			/* pid of child using pty slave */
 	guint child_watch_source;
 
@@ -209,20 +211,12 @@ struct _VteTerminalPrivate {
 	GArray *pending;		/* pending characters */
 	GSList *update_regions;
 	gboolean invalidated_all;	/* pending refresh of entire terminal */
-#ifdef OS_WINDOWS
-	CRITICAL_SECTION incoming_lock;
-#else
 	GList *active;                  /* is the terminal processing data */
 	glong input_bytes;
 	glong max_input_bytes;
-#endif
 
 	/* Output data queue. */
 	VteByteArray *outgoing;	/* pending input characters */
-#ifdef OS_WINDOWS
-	CRITICAL_SECTION outgoing_lock;
-	CONDITION_VARIABLE outgoing_not_empty;
-#endif
 	VteConv outgoing_conv;
 
 	/* IConv buffer. */

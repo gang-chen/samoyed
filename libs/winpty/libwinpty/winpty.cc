@@ -292,7 +292,7 @@ WINPTY_API winpty_t *winpty_open(int cols, int rows)
         delete pc;
         return NULL;
     }
-    success = connectNamedPipe(pc->dataPipe, true);
+    success = connectNamedPipe(pc->dataPipe, false);
     if (!success) {
         delete pc;
         return NULL;

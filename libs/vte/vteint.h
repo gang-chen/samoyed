@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001,2002,2003,2009,2010 Red Hat, Inc.
+ * Copyright (C) 2003 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,24 +16,21 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __VTE_VTE_H__
-#define __VTE_VTE_H__
+#ifndef vte_vteint_h_included
+#define vte_vteint_h_included
 
-#include <glib.h>
 
-#define __VTE_VTE_H_INSIDE__ 1
+#include "vte.h"
 
-#include "vteenums.h"
-#include "vteglobals.h"
-#ifdef G_OS_WIN32
-# include "../winpty/include/winpty.h"
-#else
-# include "vtepty.h"
+G_BEGIN_DECLS
+
+void _vte_terminal_accessible_ref(VteTerminal *terminal);
+char* _vte_terminal_get_selection(VteTerminal *terminal);
+void _vte_terminal_get_start_selection(VteTerminal *terminal, long *x, long *y);
+void _vte_terminal_get_end_selection(VteTerminal *terminal, long *x, long *y);
+void _vte_terminal_select_text(VteTerminal *terminal, long start_x, long start_y, long end_x, long end_y, int start_offset, int end_offset);
+void _vte_terminal_remove_selection(VteTerminal *terminal);
+
+G_END_DECLS
+
 #endif
-#include "vteterminal.h"
-#include "vtetypebuiltins.h"
-#include "vteversion.h"
-
-#undef __VTE_VTE_H_INSIDE__
-
-#endif /* __VTE_VTE_H__ */

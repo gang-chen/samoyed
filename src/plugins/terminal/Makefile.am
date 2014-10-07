@@ -19,9 +19,17 @@ endif
 
 libterminal_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)
 
-libterminal_la_LIBADD = $(SAMOYED_PLUGIN_LIBS)
-if !OS_WINDOWS
-    libterminal_la_LIBADD += $(VTE_LIBS)
+if OS_WINDOWS
+    libterminal_la_LIBADD = \
+        ../../../libs/vte/libvte.la \
+        ../../../libs/winpty/libwinpty/libwinpty.la \
+        ../../../libs/winpty/shared/libshared.la \
+        -lkernel32 \
+        $(SAMOYED_PLUGIN_LIBS)
+else
+    libterminal_la_LIBADD = \
+        $(VTE_LIBS) \
+        $(SAMOYED_PLUGIN_LIBS)
 endif
 
 libterminal_la_LDFLAGS = $(SAMOYED_PLUGIN_LDFLAGS)

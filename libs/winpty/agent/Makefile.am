@@ -1,4 +1,6 @@
-bin_PROGRAMS = winpty-agent
+pluginlibdir = $(pkglibdir)/plugins
+
+pluginlib_PROGRAMS = winpty-agent
 
 winpty_agent_SOURCES = \
     Agent.cc \

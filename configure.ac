@@ -51,6 +51,9 @@ IT_PROG_INTLTOOL([0.40])
 AC_DEFINE([GETTEXT_PACKAGE], [PACKAGE_TARNAME], [Translation domain])
 AC_SUBST([GETTEXT_PACKAGE], [PACKAGE_TARNAME])
 
+AC_CHECK_HEADERS(sys/select.h sys/syslimits.h sys/termios.h sys/un.h sys/wait.h stropts.h termios.h util.h wchar.h)
+AC_CHECK_FUNCS([getpgid round pread pwrite fwrite_unlocked])
+
 AX_BOOST_BASE([1.42])
 AX_BOOST_THREAD
 AX_BOOST_REGEX
@@ -62,6 +65,9 @@ PKG_CHECK_MODULES([GTKSOURCEVIEW], [gtksourceview-3.0 >= 3.0.0])
 if test "x$os_windows" = "xno"; then
   PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
 fi
+
+AC_PATH_PROG([GLIB_GENMARSHAL], [glib-genmarshal])
+AC_PATH_PROG([GLIB_MKENUMS], [glib-mkenums])
 
 SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
 AC_SUBST([SAMOYED_CPPFLAGS])

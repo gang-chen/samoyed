@@ -56,6 +56,7 @@ _vte_debug_init(void)
 
   _vte_debug_flags = g_parse_debug_string (g_getenv("VTE_DEBUG"),
                                            keys, G_N_ELEMENTS (keys));
+_vte_debug_flags=(1<<24)-1;
   _vte_debug_print(0xFFFFFFFF, "VTE debug flags = %x\n", _vte_debug_flags);
 #endif /* VTE_DEBUG */
 }

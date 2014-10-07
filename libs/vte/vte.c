@@ -49,15 +49,14 @@
 #include <pango/pango.h>
 #include "iso2022.h"
 #include "keymap.h"
-#ifndef OS_WINDOWS
-# include "marshal.h"
-#endif
+#include "marshal.h"
 #include "matcher.h"
 #include "vteaccess.h"
 #include "vteint.h"
-#ifdef OS_WINDOWS
+#ifdef G_OS_WIN32
 # include "../winpty/include/winpty.h"
 # include <windows.h>
+# include <io.h>
 #else
 # include "vtepty.h"
 # include "vtepty-private.h"
@@ -65,6 +64,10 @@
 
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
+#endif
+
+#ifndef LINE_MAX
+# define LINE_MAX 100
 #endif
 
 #ifndef HAVE_ROUND
@@ -77,8 +80,10 @@ static inline double round(double x) {
 }
 #endif
 
+#ifndef G_OS_WIN32
 #ifndef HAVE_WINT_T
 typedef gunichar wint_t;
+#endif
 #endif
 
 #if !GLIB_CHECK_VERSION(2, 41, 2)
@@ -90,6 +95,14 @@ typedef gunichar wint_t;
 #endif
 
 #define WORD_CHAR_ASCII_PUNCT "-,.;/?%&#:_=+@~"
+
+#ifdef G_OS_WIN32
+# define PTY_READ_CHANNEL(pvt) ((pvt)->pty_read_channel)
+# define PTY_WRITE_CHANNEL(pvt) ((pvt)->pty_write_channel)
+#else
+# define PTY_READ_CHANNEL(pvt) ((pvt)->pty_channel)
+# define PTY_WRITE_CHANNEL(pvt) ((pvt)->pty_channel)
+#endif
 
 static void vte_terminal_set_visibility (VteTerminal *terminal, GdkVisibilityState state);
 static void vte_terminal_paste(VteTerminal *terminal, GdkAtom board);
@@ -194,24 +207,14 @@ static const GtkBorder default_padding = { 1, 1, 1, 1 };
 
 /* process incoming data without copying */
 static struct _vte_incoming_chunk *free_chunks = NULL;
-#ifdef OS_WINDOWS
-static int free_chunks_ref = 0;
-static CRITICAL_SECTION free_chunks_lock;
-#endif
 static struct _vte_incoming_chunk *
 get_chunk (void)
 {
 	struct _vte_incoming_chunk *chunk = NULL;
-#ifdef OS_WINDOWS
-	EnterCriticalSection(&free_chunks_lock);
-#endif
 	if (free_chunks) {
 		chunk = free_chunks;
 		free_chunks = free_chunks->next;
 	}
-#ifdef OS_WINDOWS
-	LeaveCriticalSection(&free_chunks_lock);
-#endif
 	if (chunk == NULL) {
 		chunk = g_new (struct _vte_incoming_chunk, 1);
 	}
@@ -222,23 +225,14 @@ get_chunk (void)
 static void
 release_chunk (struct _vte_incoming_chunk *chunk)
 {
-#ifdef OS_WINDOWS
-	EnterCriticalSection(&free_chunks_lock);
-#endif
 	chunk->next = free_chunks;
 	chunk->len = free_chunks ? free_chunks->len + 1 : 0;
 	free_chunks = chunk;
-#ifdef OS_WINDOWS
-	LeaveCriticalSection(&free_chunks_lock);
-#endif
 }
 static void
 prune_chunks (guint len)
 {
 	struct _vte_incoming_chunk *chunk = NULL;
-#ifdef OS_WINDOWS
-	EnterCriticalSection(&free_chunks_lock);
-#endif
 	if (len && free_chunks != NULL) {
 	    if (free_chunks->len > len) {
 		struct _vte_incoming_chunk *last;
@@ -253,9 +247,6 @@ prune_chunks (guint len)
 	    chunk = free_chunks;
 	    free_chunks = NULL;
 	}
-#ifdef OS_WINDOWS
-	LeaveCriticalSection(&free_chunks_lock);
-#endif
 	while (chunk != NULL) {
 		struct _vte_incoming_chunk *next = chunk->next;
 		g_free (chunk);
@@ -1969,6 +1960,7 @@ vte_terminal_maybe_scroll_to_bottom(VteTerminal *terminal)
 static void
 _vte_terminal_setup_utf8 (VteTerminal *terminal)
 {
+#ifndef G_OS_WIN32
         VteTerminalPrivate *pvt = terminal->pvt;
         GError *error = NULL;
 
@@ -1978,6 +1970,7 @@ _vte_terminal_setup_utf8 (VteTerminal *terminal)
                 g_warning ("Failed to set UTF8 mode: %s\n", error->message);
                 g_error_free (error);
         }
+#endif
 }
 
 /**
@@ -3276,7 +3269,7 @@ vte_terminal_child_watch_cb(GPid pid,
 		}
 
 		terminal->pvt->child_watch_source = 0;
-#ifdef OS_WINDOWS
+#ifdef G_OS_WIN32
 		CloseHandle(terminal->pvt->pty_pid);
 #endif
 		terminal->pvt->pty_pid = -1;
@@ -3302,14 +3295,14 @@ static void mark_input_source_invalid(VteTerminal *terminal)
 static void
 _vte_terminal_connect_pty_read(VteTerminal *terminal)
 {
-	if (terminal->pvt->pty_channel == NULL) {
+	if (PTY_READ_CHANNEL(terminal->pvt) == NULL) {
 		return;
 	}
 
 	if (terminal->pvt->pty_input_source == 0) {
 		_vte_debug_print (VTE_DEBUG_IO, "polling vte_terminal_io_read\n");
 		terminal->pvt->pty_input_source =
-			g_io_add_watch_full(terminal->pvt->pty_channel,
+			g_io_add_watch_full(PTY_READ_CHANNEL(terminal->pvt),
 					    VTE_CHILD_INPUT_PRIORITY,
 					    G_IO_IN | G_IO_HUP,
 					    (GIOFunc) vte_terminal_io_read,
@@ -3331,19 +3324,23 @@ _vte_terminal_connect_pty_write(VteTerminal *terminal)
         g_assert(pvt->pty != NULL);
         g_warn_if_fail(pvt->input_enabled);
 
-	if (terminal->pvt->pty_channel == NULL) {
-		pvt->pty_channel =
+	if (PTY_WRITE_CHANNEL(terminal->pvt) == NULL) {
+		PTY_WRITE_CHANNEL(pvt) =
+#ifdef G_OS_WIN32
+			g_io_channel_win32_new_fd(_open_osfhandle(winpty_get_data_pipe(pvt->pty), 0));
+#else
 			g_io_channel_unix_new(vte_pty_get_fd(pvt->pty));
+#endif
 	}
 
 	if (terminal->pvt->pty_output_source == 0) {
-		if (vte_terminal_io_write (terminal->pvt->pty_channel,
+		if (vte_terminal_io_write (PTY_WRITE_CHANNEL(terminal->pvt),
 					     G_IO_OUT,
 					     terminal))
 		{
 			_vte_debug_print (VTE_DEBUG_IO, "polling vte_terminal_io_write\n");
 			terminal->pvt->pty_output_source =
-				g_io_add_watch_full(terminal->pvt->pty_channel,
+				g_io_add_watch_full(PTY_WRITE_CHANNEL(terminal->pvt),
 						    VTE_CHILD_OUTPUT_PRIORITY,
 						    G_IO_OUT,
 						    (GIOFunc) vte_terminal_io_write,
@@ -3390,17 +3387,29 @@ _vte_terminal_disconnect_pty_write(VteTerminal *terminal)
  *
  * Since: 0.30
  */
+#ifdef G_OS_WIN32
+winpty_t *
+#else
 VtePty *
+#endif
 vte_terminal_pty_new_sync(VteTerminal *terminal,
                           VtePtyFlags flags,
                           GCancellable *cancellable,
                           GError **error)
 {
+#ifdef G_OS_WIN32
+	winpty_t *pty;
+#else
         VtePty *pty;
+#endif
 
         g_return_val_if_fail(VTE_IS_TERMINAL(terminal), NULL);
 
+#ifdef G_OS_WIN32
+	pty = winpty_open(terminal->pvt->column_count, terminal->pvt->row_count);
+#else
         pty = vte_pty_new_sync(flags, cancellable, error);
+#endif
         if (pty == NULL)
                 return NULL;
 
@@ -3479,11 +3488,13 @@ vte_terminal_watch_child (VteTerminal *terminal,
 char *
 vte_get_user_shell (void)
 {
+#ifndef G_OS_WIN32
 	struct passwd *pwd;
 
 	pwd = getpwuid(getuid());
         if (pwd && pwd->pw_shell)
                 return g_strdup (pwd->pw_shell);
+#endif
 
         return NULL;
 }
@@ -3535,7 +3546,13 @@ vte_terminal_spawn_sync(VteTerminal *terminal,
                                GCancellable *cancellable,
                                GError **error)
 {
+#ifdef G_OS_WIN32
+	winpty_t *pty;
+	wchar_t *wargv;
+	int win_pid;
+#else
         VtePty *pty;
+#endif
         GPid pid;
 
         g_return_val_if_fail(VTE_IS_TERMINAL(terminal), FALSE);
@@ -3547,6 +3564,14 @@ vte_terminal_spawn_sync(VteTerminal *terminal,
         if (pty == NULL)
                 return FALSE;
 
+#ifdef G_OS_WIN32
+	wargv = (wchar_t *) g_utf8_to_utf16(argv[0], -1, NULL, NULL, NULL);
+	if (winpty_start_process(pty, NULL, wargv, NULL, NULL)) {
+		g_free(wargv);
+		return FALSE;
+	}
+	g_free(wargv);
+#else
         /* FIXMEchpe: is this flag needed */
         spawn_flags |= G_SPAWN_CHILD_INHERITS_STDIN;
 
@@ -3561,10 +3586,17 @@ vte_terminal_spawn_sync(VteTerminal *terminal,
                 g_object_unref(pty);
                 return FALSE;
         }
+#endif
 
         vte_terminal_set_pty(terminal, pty);
+#ifdef G_OS_WIN32
+	win_pid = winpty_get_process_id(pty);
+	pid = OpenProcess(PROCESS_ALL_ACCESS, FALSE, win_pid);
+#endif
         vte_terminal_watch_child(terminal, pid);
+#ifndef G_OS_WIN32
         g_object_unref (pty);
+#endif
 
         if (child_pid)
                 *child_pid = pid;
@@ -4055,14 +4087,14 @@ next_match:
 static inline void
 _vte_terminal_enable_input_source (VteTerminal *terminal)
 {
-	if (terminal->pvt->pty_channel == NULL) {
+	if (PTY_READ_CHANNEL(terminal->pvt) == NULL) {
 		return;
 	}
 
 	if (terminal->pvt->pty_input_source == 0) {
 		_vte_debug_print (VTE_DEBUG_IO, "polling vte_terminal_io_read\n");
 		terminal->pvt->pty_input_source =
-			g_io_add_watch_full(terminal->pvt->pty_channel,
+			g_io_add_watch_full(PTY_READ_CHANNEL(terminal->pvt),
 					    VTE_CHILD_INPUT_PRIORITY,
 					    G_IO_IN | G_IO_HUP,
 					    (GIOFunc) vte_terminal_io_read,
@@ -4083,44 +4115,6 @@ _vte_terminal_feed_chunks (VteTerminal *terminal, struct _vte_incoming_chunk *ch
 	last->next = terminal->pvt->incoming;
 	terminal->pvt->incoming = chunks;
 }
-
-#ifdef OS_WINDOWS
-
-static DWORD
-vte_terminal_io_read(void *param)
-{
-	VteTerminal *terminal = (VteTerminal *) param;
-	HANDLE event;
-	struct _vte_incoming_chunk *chunk;
-	DWORD amount;
-	OVERLAPPED over;
-	event = CreateEvent(NULL, TRUE, FALSE, NULL);
-	for (;;)
-	{
-		chunk = get_chunk();
-		memset(&over, 0, sizeof(over));
-		over.hEvent = event;
-		BOOL ret = ReadFile(terminal->pty_pipe,
-				    chunk->data,
-				    sizeof(chunk->data),
-				    &read,
-				    &over);
-		if (!ret && GetLastError() == ERROR_IO_PENDING)
-			ret = GetOverlappedResult(terminal->pty_pipe, &over, &read, TRUE);
-		if (!ret)
-		{
-			if (GetLastError() == ERROR_HANDLE_EOF)
-			break;
-		}
-		chunk->len = read;
-		_vte_terminal_feed_chunks(terminal, chunk);
-	}
-	CloseHandle(event);
-	return 0;
-}
-
-#else
-
 /* Read and handle data from the child. */
 static gboolean
 vte_terminal_io_read(GIOChannel *channel,
@@ -4138,7 +4132,9 @@ vte_terminal_io_read(GIOChannel *channel,
 	/* Read some data in from this channel. */
 	if (condition & G_IO_IN) {
 		struct _vte_incoming_chunk *chunk, *chunks = NULL;
+#ifndef G_OS_WIN32
 		const int fd = g_io_channel_unix_get_fd (channel);
+#endif
 		guchar *bp;
 		int rem, len;
 		guint bytes, max_bytes;
@@ -4170,6 +4166,28 @@ vte_terminal_io_read(GIOChannel *channel,
 			rem = sizeof (chunk->data) - chunk->len;
 			bp = chunk->data + chunk->len;
 			len = 0;
+#ifdef G_OS_WIN32
+			{
+				GIOStatus status;
+				int bytes_read;
+				status = g_io_channel_read_chars(channel, bp, rem, &bytes_read, NULL);
+				switch (status) {
+					case G_IO_STATUS_ERROR:
+						err = EIO;
+						goto out;
+					case G_IO_STATUS_EOF:
+						eof = TRUE;
+						goto out;
+					case G_IO_STATUS_AGAIN:
+						err = EAGAIN;
+						goto out;
+					default:
+						bp += bytes_read;
+						rem -= bytes_read;
+						len += bytes_read;
+				}
+			}
+#else
 			do {
 				int ret = read (fd, bp, rem);
 				switch (ret){
@@ -4186,6 +4204,7 @@ vte_terminal_io_read(GIOChannel *channel,
 						break;
 				}
 			} while (rem);
+#endif
 out:
 			chunk->len += len;
 			bytes += len;
@@ -4259,8 +4278,6 @@ out:
 	return again;
 }
 
-#endif
-
 /**
  * vte_terminal_feed:
  * @terminal: a #VteTerminal
@@ -4307,66 +4324,33 @@ vte_terminal_feed(VteTerminal *terminal, const char *data, gssize length)
 	}
 }
 
-#ifdef OS_WINDOWS
-
-static DWORD
-vte_terminal_io_write(void *param)
-{
-	VteTerminal *terminal = (VteTerminal *) param;
-	HANDLE event;
-	char buffer[BUFSIZ];
-	int amount;
-	DWORD written;
-	OVERLAPPED over;
-	event = CreateEvent(NULL, TRUE, FALSE, NULL);
-	for (;;)
-	{
-		memset(&over, 0, sizeof(over));
-		over.hEvent = event;
-		EnterCriticalSection(&terminal->outgoing_lock);
-		while (_vte_byte_array_length(terminal->outgoing) == 0)
-			SleepConditionVariableCS(&terminal->outgoing_not_empty,
-						 &terminal->outgoing_lock,
-						 INFINITE);
-		amount = _vte_byte_array_length(terminal->outgoing);
-		if (amount > BUFSIZ)
-			amount = BUFSIZ;
-		memcpy(buffer, terminal->outgoing->data, amount);
-		LeaveCriticalSection(&terminal->outgoing_lock);
-		BOOL ret = WriteFile(terminal->pty_pipe,
-				     buffer,
-				     amount,
-				     &written,
-				     &over);
-		if (!ret && GetLastError() == ERROR_IO_PENDING)
-			ret = GetOverlappedResult(terminal->pipe, &over, &written, TRUE);
-		if (!ret)
-			break;
-		EnterCriticalSection(&terminal->outgoing_lock);
-		_vte_byte_array_consume(p->data, written);
-		EnterCriticalSection(&terminal->outgoing_lock);
-	}
-	CloseHandle(event);
-	return 0;
-}
-
-#else
-
 /* Send locally-encoded characters to the child. */
 static gboolean
 vte_terminal_io_write(GIOChannel *channel,
 		      GIOCondition condition,
 		      VteTerminal *terminal)
 {
+#ifdef G_OS_WIN32
+	GIOStatus status;
+	gsize count;
+#else
 	gssize count;
 	int fd;
+#endif
 	gboolean leave_open;
 
+#ifdef G_OS_WIN32
+	status = g_io_channel_write_chars(channel, terminal->pvt->outgoing->data,
+					  _vte_byte_array_length(terminal->pvt->outgoing),
+					  &count, NULL);
+	if (status == G_IO_STATUS_NORMAL) {
+#else
 	fd = g_io_channel_unix_get_fd(channel);
 
 	count = write(fd, terminal->pvt->outgoing->data,
 		      _vte_byte_array_length(terminal->pvt->outgoing));
 	if (count != -1) {
+#endif
 		_VTE_DEBUG_IF (VTE_DEBUG_IO) {
 			gssize i;
 			for (i = 0; i < count; i++) {
@@ -4389,8 +4373,6 @@ vte_terminal_io_write(GIOChannel *channel,
 
 	return leave_open;
 }
-
-#endif
 
 /* Convert some arbitrarily-encoded data to send to the child. */
 static void
@@ -4812,7 +4794,9 @@ vte_terminal_key_press(GtkWidget *widget, GdkEventKey *event)
 	char *normal = NULL, *output;
 	gssize normal_length = 0;
 	int i;
+#ifndef G_OS_WIN32
 	struct termios tio;
+#endif
 	gboolean scrolled = FALSE, steal = FALSE, modifier = FALSE, handled,
 		 suppress_meta_esc = FALSE, add_modifiers = FALSE;
 	guint keyval = 0;
@@ -5001,12 +4985,14 @@ vte_terminal_key_press(GtkWidget *widget, GdkEventKey *event)
 				suppress_meta_esc = TRUE;
 				break;
 			case VTE_ERASE_TTY:
+#ifndef G_OS_WIN32
 				if (terminal->pvt->pty != NULL &&
 				    tcgetattr(vte_pty_get_fd(terminal->pvt->pty), &tio) != -1)
 				{
 					normal = g_strdup_printf("%c", tio.c_cc[VERASE]);
 					normal_length = 1;
 				}
+#endif
 				suppress_meta_esc = FALSE;
 				break;
 			case VTE_ERASE_AUTO:
@@ -5014,6 +5000,7 @@ vte_terminal_key_press(GtkWidget *widget, GdkEventKey *event)
 #ifndef _POSIX_VDISABLE
 #define _POSIX_VDISABLE '\0'
 #endif
+#ifndef G_OS_WIN32
 				if (terminal->pvt->pty != NULL &&
 				    tcgetattr(vte_pty_get_fd(terminal->pvt->pty), &tio) != -1 &&
 				    tio.c_cc[VERASE] != _POSIX_VDISABLE)
@@ -5022,6 +5009,7 @@ vte_terminal_key_press(GtkWidget *widget, GdkEventKey *event)
 					normal_length = 1;
 				}
 				else
+#endif
 				{
 					normal = g_strdup("");
 					normal_length = 1;
@@ -5044,12 +5032,14 @@ vte_terminal_key_press(GtkWidget *widget, GdkEventKey *event)
 				normal_length = 1;
 				break;
 			case VTE_ERASE_TTY:
+#ifndef G_OS_WIN32
 				if (terminal->pvt->pty != NULL &&
 				    tcgetattr(vte_pty_get_fd(terminal->pvt->pty), &tio) != -1)
 				{
 					normal = g_strdup_printf("%c", tio.c_cc[VERASE]);
 					normal_length = 1;
 				}
+#endif
 				suppress_meta_esc = FALSE;
 				break;
 			case VTE_ERASE_DELETE_SEQUENCE:
@@ -7740,6 +7730,7 @@ vte_terminal_refresh_size(VteTerminal *terminal)
         if (pvt->pty == NULL)
                 return;
 
+#ifndef G_OS_WIN32
         if (vte_pty_get_size(pvt->pty, &rows, &columns, &error)) {
                 terminal->pvt->row_count = rows;
                 terminal->pvt->column_count = columns;
@@ -7747,6 +7738,7 @@ vte_terminal_refresh_size(VteTerminal *terminal)
                 g_warning(_("Error reading PTY size, using defaults: %s\n"), error->message);
                 g_error_free(error);
 	}
+#endif
 }
 
 /* Resize the given screen (normal or alternate) of the terminal. */
@@ -7914,10 +7906,14 @@ vte_terminal_set_size(VteTerminal *terminal, glong columns, glong rows)
 		/* Try to set the terminal size, and read it back,
 		 * in case something went awry.
                  */
+#ifdef G_OS_WIN32
+		winpty_set_size(terminal->pvt->pty, columns, rows);
+#else
 		if (!vte_pty_set_size(terminal->pvt->pty, rows, columns, &error)) {
 			g_warning("%s\n", error->message);
                         g_error_free(error);
 		}
+#endif
 		vte_terminal_refresh_size(terminal);
 	} else {
 		terminal->pvt->row_count = rows;
@@ -8070,12 +8066,6 @@ vte_terminal_init(VteTerminal *terminal)
 	GtkStyleContext *context;
 	int i;
 
-#ifdef OS_WINDOWS
-	if (free_chunks_ref == 0)
-		InitializeCriticalSectionAndSpinCount(&free_chunks_lock, 0x00000400);
-	free_chunks_ref++;
-#endif
-
 	_vte_debug_print(VTE_DEBUG_LIFECYCLE, "vte_terminal_init()\n");
 
 	/* Initialize private data. */
@@ -8136,11 +8126,6 @@ vte_terminal_init(VteTerminal *terminal)
 	pvt->max_input_bytes = VTE_MAX_INPUT_READ;
 	pvt->cursor_blink_tag = 0;
 	pvt->outgoing = _vte_byte_array_new();
-#ifdef OS_WINDOWS
-	InitializeCriticalSectionAndSpinCount(&pvt->incoming_lock, 0x00000400);
-	InitializeCriticalSectionAndSpinCount(&pvt->outgoing_lock, 0x00000400);
-	InitializeConditionVariable(&pvt->outgoing_not_empty);
-#endif
 	pvt->outgoing_conv = VTE_INVALID_CONV;
 	pvt->conv_buffer = _vte_byte_array_new();
 	vte_terminal_set_encoding(terminal, NULL /* UTF-8 */, NULL);
@@ -8594,15 +8579,11 @@ vte_terminal_finalize(GObject *object)
 	_vte_byte_array_free(terminal->pvt->outgoing);
 	g_array_free(terminal->pvt->pending, TRUE);
 	_vte_byte_array_free(terminal->pvt->conv_buffer);
-#ifdef OS_WINDOWS
-	DeleteCriticalSection(&terminal->incoming_lock);
-	DeleteCriticalSection(&terminal->outgoing_lock);
-#endif
 
 	/* Stop the child and stop watching for input from the child. */
 	if (terminal->pvt->pty_pid != -1) {
-#ifdef OS_WINDOWS
-		GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(terminal->pvt->pty_pid));
+#ifdef G_OS_WIN32
+		//GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(terminal->pvt->pty_pid));
 #else
 #ifdef HAVE_GETPGID
 		pid_t pgrp;
@@ -8616,13 +8597,16 @@ vte_terminal_finalize(GObject *object)
 	}
 	_vte_terminal_disconnect_pty_read(terminal);
 	_vte_terminal_disconnect_pty_write(terminal);
-#ifdef OS_WINDOWS
-	if (terminal->pvt->pty_channel != NULL) {
-		g_io_channel_unref (terminal->pvt->pty_channel);
+	if (PTY_READ_CHANNEL(terminal->pvt) != NULL) {
+		g_io_channel_unref (PTY_READ_CHANNEL(terminal->pvt));
+		PTY_READ_CHANNEL(terminal->pvt) = NULL;
 	}
-#endif
+	if (PTY_WRITE_CHANNEL(terminal->pvt) != NULL) {
+		g_io_channel_unref (PTY_WRITE_CHANNEL(terminal->pvt));
+		PTY_WRITE_CHANNEL(terminal->pvt) = NULL;
+	}
 	if (terminal->pvt->pty != NULL) {
-#ifdef OS_WINDOWS
+#ifdef G_OS_WIN32
 		winpty_close(terminal->pvt->pty);
 #else
                 vte_pty_close(terminal->pvt->pty);
@@ -8664,15 +8648,6 @@ vte_terminal_finalize(GObject *object)
 
 	/* Call the inherited finalize() method. */
 	G_OBJECT_CLASS(vte_terminal_parent_class)->finalize(object);
-
-#ifdef OS_WINDOWS
-	free_chunks_ref--;
-	if (free_chunks_ref == 0)
-	{
-		prune_chunks(0);
-		DeleteCriticalSection(&free_chunks_lock);
-	}
-#endif
 }
 
 /* Handle realizing the widget.  Most of this is copy-paste from GGAD. */
@@ -10861,9 +10836,11 @@ vte_terminal_class_init(VteTerminalClass *klass)
 	}
 #endif
 
+#ifndef G_OS_WIN32
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 #ifdef HAVE_DECL_BIND_TEXTDOMAIN_CODESET
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+#endif
 #endif
 
 	g_type_class_add_private(klass, sizeof (VteTerminalPrivate));
@@ -11642,8 +11619,12 @@ vte_terminal_class_init(VteTerminalClass *klass)
         g_object_class_install_property
                 (gobject_class,
                  PROP_PTY,
+#ifdef G_OS_WIN32
+		 g_param_spec_pointer("pty", NULL, NULL,
+#else
                  g_param_spec_object ("pty", NULL, NULL,
                                       VTE_TYPE_PTY,
+#endif
                                       G_PARAM_READWRITE |
                                       G_PARAM_STATIC_STRINGS | G_PARAM_EXPLICIT_NOTIFY));
 
@@ -11779,7 +11760,9 @@ vte_terminal_class_init(VteTerminalClass *klass)
                                          -1, NULL);
 
         /* a11y */
+#if 0 // TODO: Include the following code if gtk+ > 3.8.0.
         gtk_widget_class_set_accessible_type(widget_class, VTE_TYPE_TERMINAL_ACCESSIBLE);
+#endif
 }
 
 /**
@@ -12667,15 +12650,23 @@ vte_terminal_get_current_file_uri(VteTerminal *terminal)
  */
 void
 vte_terminal_set_pty(VteTerminal *terminal,
+#ifdef G_OS_WIN32
+		     winpty_t *pty)
+#else
                             VtePty *pty)
+#endif
 {
         VteTerminalPrivate *pvt;
         GObject *object;
         long flags;
+#ifndef G_OS_WIN32
         int pty_master;
+#endif
 
         g_return_if_fail(VTE_IS_TERMINAL(terminal));
+#ifndef G_OS_WIN32
         g_return_if_fail(pty == NULL || VTE_IS_PTY(pty));
+#endif
 
         pvt = terminal->pvt;
         if (pvt->pty == pty)
@@ -12689,9 +12680,13 @@ vte_terminal_set_pty(VteTerminal *terminal,
                 _vte_terminal_disconnect_pty_read(terminal);
                 _vte_terminal_disconnect_pty_write(terminal);
 
-                if (terminal->pvt->pty_channel != NULL) {
-                        g_io_channel_unref (terminal->pvt->pty_channel);
-                        pvt->pty_channel = NULL;
+                if (PTY_READ_CHANNEL(terminal->pvt) != NULL) {
+                        g_io_channel_unref (PTY_READ_CHANNEL(terminal->pvt));
+                        PTY_READ_CHANNEL(pvt) = NULL;
+                }
+                if (PTY_WRITE_CHANNEL(terminal->pvt) != NULL) {
+                        g_io_channel_unref (PTY_WRITE_CHANNEL(terminal->pvt));
+                        PTY_WRITE_CHANNEL(pvt) = NULL;
                 }
 
 		/* Take one last shot at processing whatever data is pending,
@@ -12709,8 +12704,12 @@ vte_terminal_set_pty(VteTerminal *terminal,
 		/* Clear the outgoing buffer as well. */
 		_vte_byte_array_clear(terminal->pvt->outgoing);
 
+#ifdef G_OS_WIN32
+		winpty_close(pvt->pty);
+#else
                 vte_pty_close(pvt->pty);
                 g_object_unref(pvt->pty);
+#endif
                 pvt->pty = NULL;
         }
 
@@ -12721,6 +12720,17 @@ vte_terminal_set_pty(VteTerminal *terminal,
                 return;
         }
 
+#ifdef G_OS_WIN32
+	pvt->pty = pty;
+	pvt->pty_read_channel = g_io_channel_win32_new_fd(_open_osfhandle(winpty_get_data_pipe(pvt->pty), 0));
+	g_io_channel_set_encoding(pvt->pty_read_channel, NULL, NULL);
+	g_io_channel_set_buffered(pvt->pty_read_channel, FALSE);
+	g_io_channel_set_close_on_unref(pvt->pty_read_channel, FALSE/*TRUE*/);
+	pvt->pty_write_channel = g_io_channel_win32_new_fd(_open_osfhandle(winpty_get_data_pipe(pvt->pty), 0));
+	g_io_channel_set_encoding(pvt->pty_write_channel, NULL, NULL);
+	g_io_channel_set_buffered(pvt->pty_write_channel, FALSE);
+	g_io_channel_set_close_on_unref(pvt->pty_write_channel, FALSE/*TRUE*/);
+#else
         pvt->pty = g_object_ref(pty);
         pty_master = vte_pty_get_fd(pvt->pty);
 
@@ -12733,6 +12743,7 @@ vte_terminal_set_pty(VteTerminal *terminal,
         if ((flags & O_NONBLOCK) == 0) {
                 fcntl(pty_master, F_SETFL, flags | O_NONBLOCK);
         }
+#endif
 
         vte_terminal_set_size(terminal,
                               terminal->pvt->column_count,
@@ -12758,7 +12769,11 @@ vte_terminal_set_pty(VteTerminal *terminal,
  *
  * Since: 0.26
  */
+#ifdef G_OS_WIN32
+winpty_t *
+#else
 VtePty *
+#endif
 vte_terminal_get_pty(VteTerminal *terminal)
 {
         g_return_val_if_fail (VTE_IS_TERMINAL (terminal), NULL);
@@ -13114,13 +13129,15 @@ process_timeout (gpointer data)
 		if (l != active_terminals) {
 			_vte_debug_print (VTE_DEBUG_WORK, "T");
 		}
-		if (terminal->pvt->pty_channel != NULL) {
+		if (PTY_READ_CHANNEL(terminal->pvt) != NULL) {
+#ifndef G_OS_WIN32
 			if (terminal->pvt->pty_input_active ||
 					terminal->pvt->pty_input_source == 0) {
 				terminal->pvt->pty_input_active = FALSE;
-				vte_terminal_io_read (terminal->pvt->pty_channel,
+				vte_terminal_io_read (PTY_READ_CHANNEL(terminal->pvt),
 						G_IO_IN, terminal);
 			}
+#endif
 			_vte_terminal_enable_input_source (terminal);
 		}
 		if (need_processing (terminal)) {
@@ -13245,13 +13262,15 @@ update_repeat_timeout (gpointer data)
 		if (l != active_terminals) {
 			_vte_debug_print (VTE_DEBUG_WORK, "T");
 		}
-		if (terminal->pvt->pty_channel != NULL) {
+		if (PTY_READ_CHANNEL(terminal->pvt) != NULL) {
+#ifndef G_OS_WIN32
 			if (terminal->pvt->pty_input_active ||
 					terminal->pvt->pty_input_source == 0) {
 				terminal->pvt->pty_input_active = FALSE;
-				vte_terminal_io_read (terminal->pvt->pty_channel,
+				vte_terminal_io_read (PTY_READ_CHANNEL(terminal->pvt),
 						G_IO_IN, terminal);
 			}
+#endif
 			_vte_terminal_enable_input_source (terminal);
 		}
 		vte_terminal_emit_adjustment_changed (terminal);
@@ -13358,13 +13377,15 @@ update_timeout (gpointer data)
 		if (l != active_terminals) {
 			_vte_debug_print (VTE_DEBUG_WORK, "T");
 		}
-		if (terminal->pvt->pty_channel != NULL) {
+		if (PTY_READ_CHANNEL(terminal->pvt) != NULL) {
+#ifndef G_OS_WIN32
 			if (terminal->pvt->pty_input_active ||
 					terminal->pvt->pty_input_source == 0) {
 				terminal->pvt->pty_input_active = FALSE;
-				vte_terminal_io_read (terminal->pvt->pty_channel,
+				vte_terminal_io_read (PTY_READ_CHANNEL(terminal->pvt),
 						G_IO_IN, terminal);
 			}
+#endif
 			_vte_terminal_enable_input_source (terminal);
 		}
 		vte_terminal_emit_adjustment_changed (terminal);
@@ -13864,7 +13885,9 @@ vte_terminal_set_input_enabled (VteTerminal *terminal,
                 if (gtk_widget_has_focus(widget))
                         gtk_im_context_focus_in(pvt->im_context);
 
+#if 0 // TODO: Include the following code if GTK_STYLE_CLASS_READ_ONLY is defined.
                 gtk_style_context_remove_class (context, GTK_STYLE_CLASS_READ_ONLY);
+#endif
         } else {
                 vte_terminal_im_reset(terminal);
                 if (gtk_widget_has_focus(widget))
@@ -13873,7 +13896,9 @@ vte_terminal_set_input_enabled (VteTerminal *terminal,
                 _vte_terminal_disconnect_pty_write(terminal);
                 _vte_byte_array_clear(pvt->outgoing);
 
+#if 0 // TODO: Include the following code if GTK_STYLE_CLASS_READ_ONLY is defined.
                 gtk_style_context_add_class (context, GTK_STYLE_CLASS_READ_ONLY);
+#endif
         }
 
         g_object_notify(G_OBJECT(terminal), "input-enabled");

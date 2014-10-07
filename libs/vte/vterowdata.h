@@ -79,24 +79,53 @@ G_STATIC_ASSERT (sizeof (VteCellAttr) == sizeof (VteIntCellAttr));
 /*
  * VteCell: A single cell's data
  */
-
 typedef struct _VTE_GNUC_PACKED _VteCell {
+#ifdef G_OS_WIN32
+	VteCellAttr attr;
+	vteunistr c;
+#else
 	vteunistr c;
 	VteCellAttr attr;
+#endif
 } VteCell;
 G_STATIC_ASSERT (sizeof (VteCell) == 12);
 
 typedef union _VteIntCell {
 	VteCell cell;
 	struct _VTE_GNUC_PACKED {
+#ifdef G_OS_WIN32
+		guint64 attr;
+		guint32 c;
+#else
 		guint32 c;
 		guint64 attr;
+#endif
 	} i;
 } VteIntCell;
 G_STATIC_ASSERT (sizeof (VteCell) == sizeof (VteIntCell));
 
 static const VteIntCell basic_cell = {
 	{
+#ifdef G_OS_WIN32
+		{
+			0, /* fragment */
+			1, /* columns */
+			0, /* bold */
+			0, /* italic */
+			VTE_DEFAULT_FG, /* fore */
+			VTE_DEFAULT_BG, /* back */
+
+			0, /* underline */
+			0, /* strikethrough */
+
+			0, /* reverse */
+			0, /* blink */
+			0, /* half */
+
+			0  /* invisible */
+		},
+		0
+#else
 		0,
 		{
 			0, /* fragment */
@@ -115,6 +144,7 @@ static const VteIntCell basic_cell = {
 
 			0  /* invisible */
 		}
+#endif
 	}
 };
 
