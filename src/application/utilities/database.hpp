@@ -30,6 +30,11 @@ public:
     public:
         class Iterator
         {
+        public:
+            void get(Record &record);
+            void set(const Record &record);
+            void append(const Record &record);
+            void delete();
         };
 
         /**
@@ -38,15 +43,16 @@ public:
          */
         bool get(const char *path, Record *record);
 
-        /**
-         * @return False iff aborted due to the existence of the record.
-         */
         enum ActionIfExisting
         {
             ABORT_IF_EXISTING,
             APPEND_IF_EXISTING,
             REPLACE_IF_EXISTING
         };
+
+        /**
+         * @return False iff aborted due to the existence of the record.
+         */
         bool set(const char *path, const Record &record, ActionIfExisting action);
 
         /**
@@ -69,17 +75,27 @@ public:
     Table *root();
 
 private:
-    struct FreeBlockList
-    {
-    };
-
     struct HeaderBlock
     {
         Configuration config;
+        int rootBlock;
+        int firstFreeBlock;
     };
 
-    struct Block
+    struct IndexBlock
     {
+        int parent;
+        int next;
+        int next;
+    };
+
+    struct DataBlock
+    {
+    };
+
+    struct FreeBlock
+    {
+        int next;
     };
 
     Database(const char *fileName):
