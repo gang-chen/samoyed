@@ -123,6 +123,7 @@ static void writePacket(winpty_t *pc, const WriteBuffer &packet)
     assert(success && actual == sizeof(int32_t));
     success = WriteFile(pc->controlPipe, payload.c_str(), payloadSize, &actual, NULL);
     assert(success && (int32_t)actual == payloadSize);
+    trace("writePacket: %d bytes: %s", payloadSize, payload.c_str());
 }
 
 static int32_t readInt32(winpty_t *pc)
@@ -131,6 +132,7 @@ static int32_t readInt32(winpty_t *pc)
     DWORD actual;
     BOOL success = ReadFile(pc->controlPipe, &result, sizeof(int32_t), &actual, NULL);
     assert(success && actual == sizeof(int32_t));
+    trace("readInt32: %d", result);
     return result;
 }
 
@@ -292,7 +294,7 @@ WINPTY_API winpty_t *winpty_open(int cols, int rows)
         delete pc;
         return NULL;
     }
-    success = connectNamedPipe(pc->dataPipe, false);
+    success = connectNamedPipe(pc->dataPipe, true);
     if (!success) {
         delete pc;
         return NULL;
@@ -418,6 +420,7 @@ WINPTY_API void winpty_close(winpty_t *pc)
 {
     CloseHandle(pc->controlPipe);
     CloseHandle(pc->dataPipe);
+    trace("winpty_close");
     delete pc;
 }
 

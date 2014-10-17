@@ -3,6 +3,7 @@ noinst_LTLIBRARIES = libvte.la
 libvte_la_SOURCES = \
     caps.c \
     debug.c \
+    giowin32pipe.c \
     iso2022.c \
     keymap.c \
     matcher.c \
@@ -21,6 +22,7 @@ libvte_la_SOURCES = \
     buffer.h \
     caps.h \
     debug.h \
+    giowin32pipe.h \
     iso2022.h \
     keymap.h \
     matcher.h \
@@ -95,7 +97,8 @@ CLEANFILES = \
 libvte_la_CPPFLAGS = \
     $(GTK_CFLAGS) \
     -DGLIB_DISABLE_DEPRECATION_WARNINGS \
-    -DVTE_COMPILATION
+    -DVTE_COMPILATION \
+    -D_WIN32_WINNT=0x0501
 
 box_drawing.h: box_drawing.txt
 	$(AM_V_GEN) $(srcdir)/box_drawing_generate.sh < $< > $@

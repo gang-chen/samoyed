@@ -163,7 +163,6 @@ void Terminal::sendLine(int line, CHAR_INFO *lineData, int width)
         }
     }
 
-if (length)
     m_output->write(termLine.data(), length);
 }
 

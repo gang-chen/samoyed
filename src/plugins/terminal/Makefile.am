@@ -24,7 +24,6 @@ if OS_WINDOWS
         ../../../libs/vte/libvte.la \
         ../../../libs/winpty/libwinpty/libwinpty.la \
         ../../../libs/winpty/shared/libshared.la \
-        -lkernel32 \
         $(SAMOYED_PLUGIN_LIBS)
 else
     libterminal_la_LIBADD = \

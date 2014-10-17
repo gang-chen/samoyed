@@ -20,9 +20,11 @@
 #define vte_vteaccess_h_included
 
 
-#if 0 // TODO: Include the following code if gtk+ > 3.8.0.
 #include <glib.h>
 #include <gtk/gtk.h>
+
+#if GTK_CHECK_VERSION(3, 8, 0)
+
 #include <gtk/gtk-a11y.h>
 #include "vte.h"
 

@@ -26,7 +26,9 @@
 namespace
 {
 
-void closeTerminal(VteTerminal *realTerm, Samoyed::Terminal::Terminal *term)
+void closeTerminal(VteTerminal *realTerm,
+		   int status,
+		   Samoyed::Terminal::Terminal *term)
 {
     term->view().close();
 }
@@ -100,14 +102,21 @@ GtkWidget *Terminal::setup()
     g_signal_connect(m_terminal, "child-exited",
                      G_CALLBACK(closeTerminal), this);
 
-    GtkWidget *sb = gtk_scrollbar_new(
-        GTK_ORIENTATION_VERTICAL,
-        gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(m_terminal)));
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_attach_next_to(GTK_GRID(grid), m_terminal, NULL,
                             GTK_POS_RIGHT, 1, 1);
-    gtk_grid_attach_next_to(GTK_GRID(grid), sb, m_terminal,
+    GtkWidget *vertScrollBar = gtk_scrollbar_new(
+        GTK_ORIENTATION_VERTICAL,
+        gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(m_terminal)));
+    gtk_grid_attach_next_to(GTK_GRID(grid), vertScrollBar, m_terminal,
                             GTK_POS_RIGHT, 1, 1);
+#ifdef G_OS_WIN32
+    GtkWidget *horiScrollBar = gtk_scrollbar_new(
+        GTK_ORIENTATION_HORIZONTAL,
+        gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(m_terminal)));
+    gtk_grid_attach_next_to(GTK_GRID(grid), horiScrollBar, m_terminal,
+                            GTK_POS_BOTTOM, 1, 1);
+#endif
     return grid;
 }
 
@@ -115,26 +124,10 @@ void Terminal::destroy()
 {
     delete this;
 }
-GtkTextBuffer *bbb;
-void printerror(const gchar *x)
-{
-gtk_text_buffer_insert_at_cursor(bbb, x, -1);
-}
 
 Terminal::Terminal(TerminalView &view):
     m_view(view)
 {
-if (!bbb)
-{
-GtkWidget *w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-GtkWidget *t = gtk_text_view_new();
-GtkWidget *s = gtk_scrolled_window_new(NULL, NULL);
-bbb = gtk_text_view_get_buffer(GTK_TEXT_VIEW(t));
-gtk_container_add(GTK_CONTAINER(s), t);
-gtk_container_add(GTK_CONTAINER(w), s);
-gtk_widget_show_all(w);
-g_set_printerr_handler(printerror);
-}
 }
 
 Terminal::~Terminal()

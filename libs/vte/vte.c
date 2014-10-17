@@ -56,7 +56,7 @@
 #ifdef G_OS_WIN32
 # include "../winpty/include/winpty.h"
 # include <windows.h>
-# include <io.h>
+# include "giowin32pipe.h"
 #else
 # include "vtepty.h"
 # include "vtepty-private.h"
@@ -3327,16 +3327,20 @@ _vte_terminal_connect_pty_write(VteTerminal *terminal)
 	if (PTY_WRITE_CHANNEL(terminal->pvt) == NULL) {
 		PTY_WRITE_CHANNEL(pvt) =
 #ifdef G_OS_WIN32
-			g_io_channel_win32_new_fd(_open_osfhandle(winpty_get_data_pipe(pvt->pty), 0));
+			g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
+		g_io_channel_set_encoding(PTY_WRITE_CHANNEL(pvt), NULL, NULL);
+		g_io_channel_set_buffered(PTY_WRITE_CHANNEL(pvt), FALSE);
 #else
 			g_io_channel_unix_new(vte_pty_get_fd(pvt->pty));
 #endif
 	}
 
 	if (terminal->pvt->pty_output_source == 0) {
+#ifndef G_OS_WIN32
 		if (vte_terminal_io_write (PTY_WRITE_CHANNEL(terminal->pvt),
 					     G_IO_OUT,
 					     terminal))
+#endif
 		{
 			_vte_debug_print (VTE_DEBUG_IO, "polling vte_terminal_io_write\n");
 			terminal->pvt->pty_output_source =
@@ -8583,7 +8587,7 @@ vte_terminal_finalize(GObject *object)
 	/* Stop the child and stop watching for input from the child. */
 	if (terminal->pvt->pty_pid != -1) {
 #ifdef G_OS_WIN32
-		//GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(terminal->pvt->pty_pid));
+		GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(terminal->pvt->pty_pid));
 #else
 #ifdef HAVE_GETPGID
 		pid_t pgrp;
@@ -11760,7 +11764,7 @@ vte_terminal_class_init(VteTerminalClass *klass)
                                          -1, NULL);
 
         /* a11y */
-#if 0 // TODO: Include the following code if gtk+ > 3.8.0.
+#if GTK_CHECK_VERSION(3, 8, 0)
         gtk_widget_class_set_accessible_type(widget_class, VTE_TYPE_TERMINAL_ACCESSIBLE);
 #endif
 }
@@ -12722,14 +12726,12 @@ vte_terminal_set_pty(VteTerminal *terminal,
 
 #ifdef G_OS_WIN32
 	pvt->pty = pty;
-	pvt->pty_read_channel = g_io_channel_win32_new_fd(_open_osfhandle(winpty_get_data_pipe(pvt->pty), 0));
+	pvt->pty_read_channel = g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
 	g_io_channel_set_encoding(pvt->pty_read_channel, NULL, NULL);
 	g_io_channel_set_buffered(pvt->pty_read_channel, FALSE);
-	g_io_channel_set_close_on_unref(pvt->pty_read_channel, FALSE/*TRUE*/);
-	pvt->pty_write_channel = g_io_channel_win32_new_fd(_open_osfhandle(winpty_get_data_pipe(pvt->pty), 0));
+	pvt->pty_write_channel = g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
 	g_io_channel_set_encoding(pvt->pty_write_channel, NULL, NULL);
 	g_io_channel_set_buffered(pvt->pty_write_channel, FALSE);
-	g_io_channel_set_close_on_unref(pvt->pty_write_channel, FALSE/*TRUE*/);
 #else
         pvt->pty = g_object_ref(pty);
         pty_master = vte_pty_get_fd(pvt->pty);
@@ -13885,7 +13887,7 @@ vte_terminal_set_input_enabled (VteTerminal *terminal,
                 if (gtk_widget_has_focus(widget))
                         gtk_im_context_focus_in(pvt->im_context);
 
-#if 0 // TODO: Include the following code if GTK_STYLE_CLASS_READ_ONLY is defined.
+#if GTK_CHECK_VERSION(3, 10, 0)
                 gtk_style_context_remove_class (context, GTK_STYLE_CLASS_READ_ONLY);
 #endif
         } else {
@@ -13896,7 +13898,7 @@ vte_terminal_set_input_enabled (VteTerminal *terminal,
                 _vte_terminal_disconnect_pty_write(terminal);
                 _vte_byte_array_clear(pvt->outgoing);
 
-#if 0 // TODO: Include the following code if GTK_STYLE_CLASS_READ_ONLY is defined.
+#if GTK_CHECK_VERSION(3, 10, 0)
                 gtk_style_context_add_class (context, GTK_STYLE_CLASS_READ_ONLY);
 #endif
         }

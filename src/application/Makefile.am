@@ -15,8 +15,7 @@ libsamoyed_la_CPPFLAGS = \
 libsamoyed_la_CXXFLAGS = $(SAMOYED_CXXFLAGS)
 
 libsamoyed_la_LDFLAGS = \
-    $(SAMOYED_LDFLAGS) \
-    -avoid-version
+    $(SAMOYED_LDFLAGS)
 
 libsamoyed_la_LIBADD = \
     resources/libresources.la \

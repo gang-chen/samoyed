@@ -16,7 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#if 0 // TODO: Include the following code if gtk+ > 3.8.0.
 /*
  * SECTION: vte-access
  * @short_description: Accessibility peer of #VteTerminal
@@ -29,7 +28,10 @@
 
 #include <atk/atk.h>
 #include <gtk/gtk.h>
-//#include <gtk/gtk-a11y.h>
+
+#if GTK_CHECK_VERSION(3, 8, 0)
+
+#include <gtk/gtk-a11y.h>
 #include <string.h>
 #include "debug.h"
 #include "vte.h"
@@ -1707,4 +1709,5 @@ _vte_terminal_accessible_class_init(VteTerminalAccessibleClass *klass)
 
 	class->initialize = vte_terminal_accessible_initialize;
 }
+
 #endif

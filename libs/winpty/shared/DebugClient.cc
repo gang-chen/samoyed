@@ -24,10 +24,17 @@
 #include <string.h>
 #include "c99_snprintf.h"
 
-char *tracingConfig;
+char *tracingConfig = "d:\\winptydbg";
 
 static void sendToDebugServer(const char *message)
 {
+    FILE *tracingFile;
+    tracingFile = fopen(tracingConfig, "at");
+    if (tracingFile) {
+        fputs(message, tracingFile);
+        fclose(tracingFile);
+    }
+#if 0
     char response[16];
     DWORD responseSize;
     CallNamedPipeA(
@@ -35,6 +42,7 @@ static void sendToDebugServer(const char *message)
         (void*)message, strlen(message),
         response, sizeof(response), &responseSize,
         NMPWAIT_WAIT_FOREVER);
+#endif
 }
 
 // Get the current UTC time as milliseconds from the epoch (ignoring leap
@@ -92,7 +100,7 @@ void trace(const char *format, ...)
 
     char fullMessage[1024];
     c99_snprintf(fullMessage, sizeof(fullMessage),
-             "[%05d.%03d %s,p%04d,t%04d]: %s",
+             "[%05d.%03d %s,p%04d,t%04d]: %s\n",
              currentTime / 1000, currentTime % 1000,
              baseName, (int)GetCurrentProcessId(), (int)GetCurrentThreadId(),
              message);
