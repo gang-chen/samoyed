@@ -91,18 +91,28 @@ Makefile
 plugin.xml
 
 # Unit test builds.
-src/application/ui/dialogs/session-chooser-dialog
-src/application/ui/splash-screen
-src/application/utilities/buffer
-src/application/utilities/lock-file
-src/application/utilities/manager
-src/application/utilities/miscellaneous
-src/application/utilities/property-tree
-src/application/utilities/range
-src/application/utilities/revision
-src/application/utilities/signal
-src/application/utilities/text-buffer
-src/application/utilities/utf8
-src/application/utilities/worker
-src/application/utilities/text-file-loader
-src/application/utilities/text-file-saver
+/src/application/ui/dialogs/session-chooser-dialog
+/src/application/ui/splash-screen
+/src/application/utilities/buffer
+/src/application/utilities/lock-file
+/src/application/utilities/manager
+/src/application/utilities/miscellaneous
+/src/application/utilities/property-tree
+/src/application/utilities/range
+/src/application/utilities/revision
+/src/application/utilities/signal
+/src/application/utilities/text-buffer
+/src/application/utilities/utf8
+/src/application/utilities/worker
+/src/application/utilities/text-file-loader
+/src/application/utilities/text-file-saver
+
+# Generated files in VTE.
+/libs/vte/vteseq-n.c
+/libs/vte/vteseq-n.c
+/libs/vte/box_drawing.h
+/libs/vte/marshal.c
+/libs/vte/marshal.h
+/libs/vte/vtetypebuiltins.c
+/libs/vte/vtetypebuiltins.h
+/libs/vte/stamp-vtetypebuiltins.h
