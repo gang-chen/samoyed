@@ -789,7 +789,7 @@ g_io_win32_finalize (GSource *source)
   g_io_channel_unref (watch->channel);
 }
 
-GSourceFuncs g_io_watch_funcs = {
+GSourceFuncs g_io_win32_watch_funcs = {
   g_io_win32_prepare,
   g_io_win32_check,
   g_io_win32_dispatch,
@@ -978,7 +978,7 @@ g_io_win32_pipe_create_watch (GIOChannel    *channel,
 			      GIOCondition   condition)
 {
   GIOWin32Channel *win32_channel = (GIOWin32Channel *)channel;
-  GSource *source = g_source_new (&g_io_watch_funcs, sizeof (GIOWin32Watch));
+  GSource *source = g_source_new (&g_io_win32_watch_funcs, sizeof (GIOWin32Watch));
   GIOWin32Watch *watch = (GIOWin32Watch *)source;
 
   watch->channel = channel;

@@ -7912,6 +7912,8 @@ vte_terminal_set_size(VteTerminal *terminal, glong columns, glong rows)
                  */
 #ifdef G_OS_WIN32
 		winpty_set_size(terminal->pvt->pty, columns, rows);
+		terminal->pvt->row_count = rows;
+		terminal->pvt->column_count = columns;
 #else
 		if (!vte_pty_set_size(terminal->pvt->pty, rows, columns, &error)) {
 			g_warning("%s\n", error->message);

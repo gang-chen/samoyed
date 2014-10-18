@@ -111,11 +111,8 @@ GtkWidget *Terminal::setup()
     gtk_grid_attach_next_to(GTK_GRID(grid), vertScrollBar, m_terminal,
                             GTK_POS_RIGHT, 1, 1);
 #ifdef G_OS_WIN32
-    GtkWidget *horiScrollBar = gtk_scrollbar_new(
-        GTK_ORIENTATION_HORIZONTAL,
-        gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(m_terminal)));
-    gtk_grid_attach_next_to(GTK_GRID(grid), horiScrollBar, m_terminal,
-                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_set_hexpand(m_terminal, TRUE);
+    gtk_widget_set_vexpand(m_terminal, TRUE);
 #endif
     return grid;
 }

@@ -109,7 +109,7 @@ plugin.xml
 
 # Generated files in VTE.
 /libs/vte/vteseq-n.c
-/libs/vte/vteseq-n.c
+/libs/vte/vteseq-list.h
 /libs/vte/box_drawing.h
 /libs/vte/marshal.c
 /libs/vte/marshal.h
