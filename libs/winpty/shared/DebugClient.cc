@@ -24,7 +24,7 @@
 #include <string.h>
 #include "c99_snprintf.h"
 
-char *tracingConfig = "d:\\winptydbg";
+char *tracingConfig = NULL;
 
 static void sendToDebugServer(const char *message)
 {

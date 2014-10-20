@@ -37,7 +37,7 @@
  * making changes to _file_t semantics or implementation.
  */
 
-#if 0
+#ifdef G_OS_WIN32 // The stdio based implementation is buggy.
 
 
 /*

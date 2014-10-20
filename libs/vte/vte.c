@@ -7897,6 +7897,10 @@ vte_terminal_set_size(VteTerminal *terminal, glong columns, glong rows)
 
 	g_return_if_fail(VTE_IS_TERMINAL(terminal));
 
+#ifdef G_OS_WIN32 // Fix columns because column change is buggy.
+	columns = VTE_COLUMNS;
+#endif
+
 	_vte_debug_print(VTE_DEBUG_RESIZE,
 			"Setting PTY size to %ldx%ld.\n",
 			columns, rows);

@@ -110,7 +110,8 @@ GtkWidget *Terminal::setup()
         gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(m_terminal)));
     gtk_grid_attach_next_to(GTK_GRID(grid), vertScrollBar, m_terminal,
                             GTK_POS_RIGHT, 1, 1);
-#ifdef G_OS_WIN32
+#ifdef OS_WINDOWS
+    vte_terminal_set_rewrap_on_resize(VTE_TERMINAL(m_terminal), FALSE);
     gtk_widget_set_hexpand(m_terminal, TRUE);
     gtk_widget_set_vexpand(m_terminal, TRUE);
 #endif

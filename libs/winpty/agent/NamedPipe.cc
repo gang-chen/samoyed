@@ -196,6 +196,7 @@ int NamedPipe::bytesToSend()
 void NamedPipe::write(const void *data, int size)
 {
     m_outQueue.append((const char*)data, size);
+    trace("NamedPipe::write(): %d bytes %s", size, (const char *) data);
 }
 
 void NamedPipe::write(const char *text)
