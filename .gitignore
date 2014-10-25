@@ -107,6 +107,13 @@ plugin.xml
 /src/application/utilities/text-file-loader
 /src/application/utilities/text-file-saver
 
+# Generated files in gedit-file-browser.
+/libs/gedit-file-browser/gedit-file-browser-enum-types.h
+/libs/gedit-file-browser/gedit-file-browser-enum-types.c
+/libs/gedit-file-browser/gedit-file-browser-marshal.h
+/libs/gedit-file-browser/gedit-file-browser-marshal.c
+/libs/gedit-file-browser/gedit-file-browser-resources.c
+
 # Generated files in VTE.
 /libs/vte/vteseq-n.c
 /libs/vte/vteseq-list.h

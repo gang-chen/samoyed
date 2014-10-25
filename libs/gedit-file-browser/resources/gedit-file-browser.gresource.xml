@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/gnome/gedit/plugins/file-browser">
+    <file preprocess="xml-stripblanks">ui/gedit-file-browser-menus.ui</file>
+    <file preprocess="xml-stripblanks">ui/gedit-file-browser-widget.ui</file>
+  </gresource>
+</gresources>

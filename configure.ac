@@ -55,8 +55,9 @@ AC_CHECK_HEADERS(sys/select.h sys/syslimits.h sys/termios.h sys/un.h sys/wait.h 
 AC_CHECK_FUNCS([getpgid round pread pwrite fwrite_unlocked])
 
 AX_BOOST_BASE([1.42])
-AX_BOOST_THREAD
 AX_BOOST_REGEX
+AX_BOOST_SYSTEM
+AX_BOOST_THREAD
 
 PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.0.0])
 PKG_CHECK_MODULES([GMODULE], [gmodule-2.0 >= 2.32.0])
@@ -66,6 +67,7 @@ if test "x$os_windows" = "xno"; then
   PKG_CHECK_MODULES([VTE], [vte-2.90 >= 0.32.0])
 fi
 
+AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
 AC_PATH_PROG([GLIB_GENMARSHAL], [glib-genmarshal])
 AC_PATH_PROG([GLIB_MKENUMS], [glib-mkenums])
 
@@ -79,7 +81,7 @@ else
 fi
 AC_SUBST(SAMOYED_CXXFLAGS)
 
-SAMOYED_LIBS="$BOOST_THREAD_LIB $BOOST_REGEX_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS"
+SAMOYED_LIBS="$BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS"
 AC_SUBST([SAMOYED_LIBS])
 
 SAMOYED_LDFLAGS="$BOOST_LDFLAGS -no-undefined -avoid-version"
@@ -105,6 +107,7 @@ data/icons/32x32/apps/Makefile
 data/icons/48x48/Makefile
 data/icons/48x48/apps/Makefile
 data/plugins/Makefile
+data/plugins/file-browser/Makefile
 data/plugins/finder/Makefile
 data/plugins/terminal/Makefile
 data/plugins/text-file-recoverer/Makefile
@@ -116,6 +119,7 @@ libs/boost/spirit/home/support/Makefile
 libs/boost/spirit/home/support/detail/Makefile
 libs/boost/threadpool/Makefile
 libs/boost/threadpool/detail/Makefile
+libs/gedit-file-browser/Makefile
 libs/vte/Makefile
 libs/winpty/Makefile
 libs/winpty/agent/Makefile
@@ -132,6 +136,7 @@ src/application/ui/dialogs/Makefile
 src/application/utilities/Makefile
 src/launcher/Makefile
 src/plugins/Makefile
+src/plugins/file-browser/Makefile
 src/plugins/finder/Makefile
 src/plugins/terminal/Makefile
 src/plugins/text-file-recoverer/Makefile

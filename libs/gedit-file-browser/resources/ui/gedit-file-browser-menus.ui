@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<interface>
+  <!-- interface-requires gtk+ 3.0 -->
+  <menu id="dir-menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Open</attribute>
+        <attribute name="action">browser.open</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Set Root to Active Document</attribute>
+        <attribute name="action">browser.set_active_root</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_New Folder</attribute>
+        <attribute name="action">browser.new_folder</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">New F_ile</attribute>
+        <attribute name="action">browser.new_file</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Rename...</attribute>
+        <attribute name="action">browser.rename</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Move to Trash</attribute>
+        <attribute name="action">browser.move_to_trash</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Delete</attribute>
+        <attribute name="action">browser.delete</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Re_fresh View</attribute>
+        <attribute name="action">browser.refresh_view</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_View Folder</attribute>
+        <attribute name="action">browser.view_folder</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Open in Terminal</attribute>
+        <attribute name="action">browser.open_in_terminal</attribute>
+      </item>
+    </section>
+    <submenu>
+      <attribute name="label" translatable="yes">_Filter</attribute>
+      <section>
+        <item>
+          <attribute name="label" translatable="yes">Show _Hidden</attribute>
+          <attribute name="action">browser.show_hidden</attribute>
+        </item>
+        <item>
+          <attribute name="label" translatable="yes">Show _Binary</attribute>
+          <attribute name="action">browser.show_binary</attribute>
+        </item>
+        <item>
+          <attribute name="label" translatable="yes">Match Filename</attribute>
+          <attribute name="action">browser.show_match_filename</attribute>
+        </item>
+      </section>
+    </submenu>
+    <section>
+      <attribute name="id">extension-section</attribute>
+    </section>
+  </menu>
+  <menu id="bookmarks-menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Set Root to Active Document</attribute>
+        <attribute name="action">browser.set_active_root</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

@@ -25,6 +25,7 @@
 #include <gtksourceview/gtksourceview.h>
 #include <gtksourceview/gtksourcelanguage.h>
 #include <gtksourceview/gtksourcelanguagemanager.h>
+#include <gtksourceview/gtksourceundomanager.h>
 #include <libxml/tree.h>
 
 #define EDITOR "editor"

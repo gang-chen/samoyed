@@ -2515,7 +2515,8 @@ void Buffer<Unit, AtomTraits, BLOCK_SIZE, UNIFORM_ATOM_LENGTH,
 {
     assert(block->end() == block->gapEnd());
 
-    appendedLength = std::min(block->end() - block->gapBegin(), length);
+    appendedLength =
+        std::min(static_cast<int>(block->end() - block->gapBegin()), length);
 
     if (UNIFORM_ATOM_LENGTH != -1 && !TERTIARY_INDEXING)
     {

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+  <id>file-browser</id>
+  <_name>File Browser</_name>
+  <_description>This plugin integrates a file browser.</_description>
+  <module>filebrowser</module>
+  <extension>
+    <id>view</id>
+    <point>views</point>
+    <detail>
+      <category>navigator</category>
+      <index>1</index>
+      <open-by-default>0</open-by-default>
+      <view>
+        <id>file-browser</id>
+        <_title>_File Browser</_title>
+      </view>
+      <menu-item>
+        <_label>_File Browser</_label>
+      </menu-item>
+    </detail>
+  </extension>
+</plugin>

@@ -3328,8 +3328,8 @@ _vte_terminal_connect_pty_write(VteTerminal *terminal)
 		PTY_WRITE_CHANNEL(pvt) =
 #ifdef G_OS_WIN32
 			g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
-		g_io_channel_set_encoding(PTY_WRITE_CHANNEL(pvt), NULL, NULL);
-		g_io_channel_set_buffered(PTY_WRITE_CHANNEL(pvt), FALSE);
+			g_io_channel_set_encoding(PTY_WRITE_CHANNEL(pvt), NULL, NULL);
+			g_io_channel_set_buffered(PTY_WRITE_CHANNEL(pvt), FALSE);
 #else
 			g_io_channel_unix_new(vte_pty_get_fd(pvt->pty));
 #endif
