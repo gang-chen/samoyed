@@ -653,9 +653,12 @@ bool File::close()
         gtk_widget_destroy(dialog);
         return false;
     }
-    for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
+    for (Editor *editor = m_firstEditor, *next; editor; editor = next)
+    {
+        next = editor->nextInFile();
         if (!editor->close())
             return false;
+    }
     return true;
 }
 
