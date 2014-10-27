@@ -1,8 +1,8 @@
 // File recoverer extension: text file recoverer.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TXTR_TEXT_FILE_RECOVERER_EXTENSION_HPP
-#define SMYD_TXTR_TEXT_FILE_RECOVERER_EXTENSION_HPP
+#ifndef SMYD_TXRC_TEXT_FILE_RECOVERER_EXTENSION_HPP
+#define SMYD_TXRC_TEXT_FILE_RECOVERER_EXTENSION_HPP
 
 #include "ui/file-recoverer-extension.hpp"
 

@@ -114,6 +114,14 @@ private:
                               GtkWidget *child,
                               WidgetWithBars *widget);
 
+    static gboolean onWindowFocusOut(GtkWidget *widget,
+                                     GdkEvent *event,
+                                     Bar *bar);
+
+    static void onWindowSetFocus(GtkWindow *window,
+                                 GtkWidget *widget,
+                                 Bar *bar);
+
     GtkWidget *m_horizontalGrid;
 
     Widget *m_mainChild;
@@ -123,6 +131,8 @@ private:
     int m_currentChildIndex;
 
     std::map<Bar *, std::pair<unsigned, unsigned> > m_barHandlers;
+
+    std::map<Bar *, unsigned> m_closeBarHandlers;
 };
 
 }

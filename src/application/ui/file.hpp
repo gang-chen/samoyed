@@ -200,7 +200,7 @@ public:
     static std::pair<File *, Editor *>
     open(const char *uri, Project *project,
          const char *mimeType,
-         const PropertyTree &options,
+         const PropertyTree *options,
          bool newEditor);
 
     /**

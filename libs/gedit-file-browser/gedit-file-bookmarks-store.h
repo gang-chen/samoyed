@@ -82,8 +82,6 @@ GFile			*gedit_file_bookmarks_store_get_location	(GeditFileBookmarksStore *model
 									 GtkTreeIter             *iter);
 void			 gedit_file_bookmarks_store_refresh		(GeditFileBookmarksStore *model);
 
-void			 _gedit_file_bookmarks_store_register_type	(GTypeModule             *type_module);
-
 G_END_DECLS
 
 #endif /* __GEDIT_FILE_BOOKMARKS_STORE_H__ */

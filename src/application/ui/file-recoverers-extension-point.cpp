@@ -114,7 +114,8 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
             if (ext)
             {
                 std::pair<File *, Editor *> fileEditor =
-                    File::open(fileUri, NULL, fileMimeType, fileOptions, false);
+                    File::open(fileUri, NULL,
+                               fileMimeType, &fileOptions, false);
                 if (fileEditor.first)
                 {
                     if (!fileEditor.second->parent())

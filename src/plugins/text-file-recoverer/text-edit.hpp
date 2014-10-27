@@ -1,8 +1,8 @@
 // Various text edits.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TXTR_TEXT_EDIT_HPP
-#define SMYD_TXTR_TEXT_EDIT_HPP
+#ifndef SMYD_TXRC_TEXT_EDIT_HPP
+#define SMYD_TXRC_TEXT_EDIT_HPP
 
 #include <stdio.h>
 #include <string.h>

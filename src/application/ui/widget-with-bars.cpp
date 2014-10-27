@@ -26,23 +26,11 @@
 namespace
 {
 
-gboolean onWindowFocusOut(GtkWidget *widget, GdkEvent *event, Samoyed::Bar *bar)
+gboolean closeBar(gpointer bar)
 {
-    bar->close();
-    return FALSE;
-}
-
-void onWindowSetFocus(GtkWindow *window, GtkWidget *widget, Samoyed::Bar *bar)
-{
-    if (bar->closing())
-        return;
-    GtkWidget *barWidget = bar->gtkWidget();
-    for (GtkWidget *p = widget; p; p = gtk_widget_get_parent(p))
-    {
-        if (p == barWidget)
-            return;
-    }
-    bar->close();
+    static_cast<Samoyed::Bar *>(bar)->close();
+    // The container should remove this callback.
+    return TRUE;
 }
 
 }
@@ -448,6 +436,13 @@ void WidgetWithBars::removeBar(Bar &bar)
         g_signal_handler_disconnect(window, it->second.second);
         m_barHandlers.erase(it);
     }
+    std::map<Bar *, unsigned>::iterator it2 =
+        m_closeBarHandlers.find(&bar);
+    if (it2 != m_closeBarHandlers.end())
+    {
+        g_source_remove(it2->second);
+        m_closeBarHandlers.erase(it2);
+    }
 }
 
 void WidgetWithBars::removeChild(Widget &child)
@@ -494,6 +489,39 @@ void WidgetWithBars::setFocusChild(GtkWidget *container,
             widget->setCurrentChildIndex(i + 1);
             return;
         }
+}
+
+gboolean WidgetWithBars::onWindowFocusOut(GtkWidget *widget,
+                                          GdkEvent *event,
+                                          Bar *bar)
+{
+    if (bar->closing())
+        return FALSE;
+    WidgetWithBars *parent = static_cast<WidgetWithBars *>(bar->parent());
+    if (parent->m_closeBarHandlers.find(bar) !=
+        parent->m_closeBarHandlers.end())
+        return FALSE;
+    parent->m_closeBarHandlers[bar] = g_idle_add(closeBar, bar);
+    return FALSE;
+}
+
+void WidgetWithBars::onWindowSetFocus(GtkWindow *window,
+                                      GtkWidget *widget,
+                                      Bar *bar)
+{
+    if (bar->closing())
+        return;
+    WidgetWithBars *parent = static_cast<WidgetWithBars *>(bar->parent());
+    if (parent->m_closeBarHandlers.find(bar) !=
+        parent->m_closeBarHandlers.end())
+        return;
+    GtkWidget *barWidget = bar->gtkWidget();
+    for (GtkWidget *p = widget; p; p = gtk_widget_get_parent(p))
+    {
+        if (p == barWidget)
+            return;
+    }
+    parent->m_closeBarHandlers[bar] = g_idle_add(closeBar, bar);
 }
 
 }

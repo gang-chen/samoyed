@@ -177,7 +177,7 @@ Editor *Editor::XmlElement::createEditor()
             m_projectUri.clear();
     }
     Editor *editor =
-        File::open(fileUri(), project, fileMimeType(), fileOptions(), true).
+        File::open(fileUri(), project, fileMimeType(), &fileOptions(), true).
         second;
     return editor;
 }

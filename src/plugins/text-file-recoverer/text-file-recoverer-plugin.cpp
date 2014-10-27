@@ -18,7 +18,7 @@
 namespace
 {
 
-const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txtr.";
+const char *TEXT_REPLAY_FILE_PREFIX = ".smyd.txrc.";
 
 }
 
@@ -132,6 +132,7 @@ void TextFileRecovererPlugin::deactivateTextEditSavers()
 extern "C"
 {
 
+G_MODULE_EXPORT
 Samoyed::Plugin *createPlugin(Samoyed::PluginManager *manager,
                               const char *id,
                               GModule *module,

@@ -83,14 +83,14 @@ static const GtkTargetEntry drag_source_targets[] = {
 	{ "text/uri-list", 0, 0 }
 };
 
-G_DEFINE_DYNAMIC_TYPE_EXTENDED (GeditFileBrowserView,
-				gedit_file_browser_view,
-				GTK_TYPE_TREE_VIEW,
-				0,
+G_DEFINE_TYPE_EXTENDED (GeditFileBrowserView,
+			gedit_file_browser_view,
+			GTK_TYPE_TREE_VIEW,
+			0,
 #if GLIB_CHECK_VERSION(2, 38, 0)
-				G_ADD_PRIVATE_DYNAMIC (GeditFileBrowserView))
+			G_ADD_PRIVATE (GeditFileBrowserView))
 #else
-				{})
+			{})
 #endif
 
 static void on_cell_edited 		(GtkCellRendererText    *cell,
@@ -969,7 +969,7 @@ gedit_file_browser_view_class_init (GeditFileBrowserViewClass *klass)
 			  g_cclosure_marshal_VOID__BOXED,
 			  G_TYPE_NONE, 1, GTK_TYPE_TREE_ITER);
 
-#if GLIB_CHECK_VERSION(2, 38, 0)
+#if !GLIB_CHECK_VERSION(2, 38, 0)
 	g_type_class_add_private (object_class, sizeof (GeditFileBrowserViewPrivate));
 #endif
 }
@@ -1366,12 +1366,6 @@ on_row_inserted (GeditFileBrowserStore *model,
 	}
 
 	gtk_tree_path_free (copy);
-}
-
-void
-_gedit_file_browser_view_register_type (GTypeModule *type_module)
-{
-	gedit_file_browser_view_register_type (type_module);
 }
 
 /* ex:set ts=8 noet: */

@@ -117,8 +117,6 @@ void		 gedit_file_browser_widget_refresh		(GeditFileBrowserWidget *obj);
 void		 gedit_file_browser_widget_history_back		(GeditFileBrowserWidget *obj);
 void		 gedit_file_browser_widget_history_forward	(GeditFileBrowserWidget *obj);
 
-void		 _gedit_file_browser_widget_register_type      (GTypeModule            *type_module);
-
 G_END_DECLS
 
 #endif /* __GEDIT_FILE_BROWSER_WIDGET_H__ */

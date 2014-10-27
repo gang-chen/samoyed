@@ -75,9 +75,6 @@ void		 gedit_file_browser_view_set_click_policy		(GeditFileBrowserView          
 							 		 GeditFileBrowserViewClickPolicy  policy);
 void		 gedit_file_browser_view_set_restore_expand_state	(GeditFileBrowserView            *tree_view,
 									 gboolean                         restore_expand_state);
-
-void		 _gedit_file_browser_view_register_type			(GTypeModule                     *type_module);
-
 G_END_DECLS
 
 #endif /* __GEDIT_FILE_BROWSER_VIEW_H__ */

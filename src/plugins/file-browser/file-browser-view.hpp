@@ -24,6 +24,8 @@ public:
 protected:
     FileBrowserView(const char *extensionId): View(extensionId) {}
 
+    bool setupFileBrowser();
+
     bool setup(const char *id, const char *title);
 
     bool restore(XmlElement &xmlElement);

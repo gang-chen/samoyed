@@ -265,14 +265,14 @@ static void set_active_root_activated          (GSimpleAction          *action,
                                                 GVariant               *parameter,
                                                 gpointer                user_data);
 
-G_DEFINE_DYNAMIC_TYPE_EXTENDED (GeditFileBrowserWidget,
-				gedit_file_browser_widget,
-				GTK_TYPE_GRID,
-				0,
+G_DEFINE_TYPE_EXTENDED (GeditFileBrowserWidget,
+			gedit_file_browser_widget,
+			GTK_TYPE_GRID,
+			0,
 #if GLIB_CHECK_VERSION(2, 38, 0)
-				G_ADD_PRIVATE_DYNAMIC (GeditFileBrowserWidget))
+			G_ADD_PRIVATE (GeditFileBrowserWidget))
 #else
-				{})
+			{})
 #endif
 
 static void
@@ -561,6 +561,15 @@ gedit_file_browser_widget_class_init (GeditFileBrowserWidgetClass *klass)
 	                  0);
 
 	/* Bind class to template */
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_ERROR);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_STORE_COLUMN);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_STORE_FLAG);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_STORE_RESULT);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_STORE_FILTER_MODE);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_VIEW_CLICK_POLICY);
+	g_type_ensure (GEDIT_TYPE_FILE_BOOKMARKS_STORE);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_STORE);
+	g_type_ensure (GEDIT_TYPE_FILE_BROWSER_VIEW);
 	gtk_widget_class_set_template_from_resource (widget_class,
 	                                             "/org/gnome/gedit/plugins/file-browser/ui/gedit-file-browser-widget.ui");
 	gtk_widget_class_bind_template_child_private (widget_class, GeditFileBrowserWidget, previous_button);
@@ -574,7 +583,7 @@ gedit_file_browser_widget_class_init (GeditFileBrowserWidgetClass *klass)
 	gtk_widget_class_bind_template_child_private (widget_class, GeditFileBrowserWidget, location_previous_menu);
 	gtk_widget_class_bind_template_child_private (widget_class, GeditFileBrowserWidget, location_next_menu);
 
-#if GLIB_CHECK_VERSION(2, 38, 0)
+#if !GLIB_CHECK_VERSION(2, 38, 0)
 	g_type_class_add_private (object_class, sizeof (GeditFileBrowserWidgetPrivate));
 #endif
 }
@@ -3429,12 +3438,6 @@ set_active_root_activated (GSimpleAction *action,
 	GeditFileBrowserWidget *widget = GEDIT_FILE_BROWSER_WIDGET (user_data);
 
 	g_signal_emit (widget, signals[SET_ACTIVE_ROOT], 0);
-}
-
-void
-_gedit_file_browser_widget_register_type (GTypeModule *type_module)
-{
-	gedit_file_browser_widget_register_type (type_module);
 }
 
 /* ex:set ts=8 noet: */

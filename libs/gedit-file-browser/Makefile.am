@@ -38,7 +38,6 @@ gedit-file-browser-resources.c: $(geditfilebrowser_resources_deps)
 	$(GRESGEN)
 
 geditfilebrowser_enum_c_template = gedit-file-browser-enum-types.c.template
-geditfilebrowser_enum_register_c_template = gedit-file-browser-enum-register.c.template
 geditfilebrowser_enum_h_template = gedit-file-browser-enum-types.h.template
 
 gedit-file-browser-enum-types.h: $(geditfilebrowser_enum_h_template) $(libgeditfilebrowser_la_NOINST_H_FILES) $(GLIB_MKENUMS)
@@ -47,14 +46,11 @@ gedit-file-browser-enum-types.h: $(geditfilebrowser_enum_h_template) $(libgeditf
 		--template $(geditfilebrowser_enum_h_template)			\
 		$(libgeditfilebrowser_la_NOINST_H_FILES)) > $@
 
-gedit-file-browser-enum-types.c: $(geditfilebrowser_enum_c_template) $(geditfilebrowser_enum_register_c_template) $(libgeditfilebrowser_la_NOINST_H_FILES) $(GLIB_MKENUMS)
+gedit-file-browser-enum-types.c: $(geditfilebrowser_enum_c_template) $(libgeditfilebrowser_la_NOINST_H_FILES) $(GLIB_MKENUMS)
 	$(AM_V_GEN) 								\
 	(cd $(srcdir) &&							\
 	 $(GLIB_MKENUMS)							\
 		--template $(geditfilebrowser_enum_c_template) 			\
-		$(libgeditfilebrowser_la_NOINST_H_FILES) &&	\
-	 $(GLIB_MKENUMS)							\
-		--template $(geditfilebrowser_enum_register_c_template)		\
 		$(libgeditfilebrowser_la_NOINST_H_FILES)) > $@
 
 gedit-file-browser-marshal.h: gedit-file-browser-marshal.list $(GLIB_GENMARSHAL)
@@ -70,7 +66,6 @@ EXTRA_DIST = \
     $(geditfilebrowser_resources_deps) \
     gedit-file-browser-enum-types.h.template \
     gedit-file-browser-enum-types.c.template \
-    gedit-file-browser-enum-register.c.template \
     gedit-file-browser-marshal.list
 
 CLEANFILES = $(geditfilebrowser_BUILTSOURCES)

@@ -50,14 +50,14 @@ static gboolean find_with_flags       (GtkTreeModel            *model,
                                        guint                    flags,
                                        guint                    notflags);
 
-G_DEFINE_DYNAMIC_TYPE_EXTENDED (GeditFileBookmarksStore,
-				gedit_file_bookmarks_store,
-				GTK_TYPE_TREE_STORE,
-				0,
+G_DEFINE_TYPE_EXTENDED (GeditFileBookmarksStore,
+			gedit_file_bookmarks_store,
+			GTK_TYPE_TREE_STORE,
+			0,
 #if GLIB_CHECK_VERSION(2, 38, 0)
-				G_ADD_PRIVATE_DYNAMIC (GeditFileBookmarksStore))
+			G_ADD_PRIVATE (GeditFileBookmarksStore))
 #else
-				{})
+			{})
 #endif
 
 static void
@@ -87,7 +87,7 @@ gedit_file_bookmarks_store_class_init (GeditFileBookmarksStoreClass *klass)
 
 	object_class->dispose = gedit_file_bookmarks_store_dispose;
 
-#if GLIB_CHECK_VERSION(2, 38, 0)
+#if !GLIB_CHECK_VERSION(2, 38, 0)
 	g_type_class_add_private (object_class, sizeof (GeditFileBookmarksStorePrivate));
 #endif
 }
@@ -943,12 +943,6 @@ on_bookmarks_file_changed (GFileMonitor            *monitor,
 		default:
 			break;
 	}
-}
-
-void
-_gedit_file_bookmarks_store_register_type (GTypeModule *type_module)
-{
-	gedit_file_bookmarks_store_register_type (type_module);
 }
 
 /* ex:set ts=8 noet: */

@@ -241,7 +241,7 @@ const PropertyTree *File::defaultOptionsForType(const char *mimeType)
 std::pair<File *, Editor *>
 File::open(const char *uri, Project *project,
            const char *mimeType,
-           const PropertyTree &options,
+           const PropertyTree *options,
            bool newEditor)
 {
     char *type;
@@ -306,14 +306,17 @@ File::open(const char *uri, Project *project,
     }
     g_free(type);
 
+    if (!options)
+        options = &rec->m_defOptGetter();
+
     file = Application::instance().findFile(uri);
     if (file)
     {
         PropertyTree *existOpt = file->options();
-        if (!rec->m_optEqual(options, *existOpt))
+        if (!rec->m_optEqual(*options, *existOpt))
         {
             std::string optDesc, existOptDesc;
-            rec->m_optDescriber(options, optDesc);
+            rec->m_optDescriber(*options, optDesc);
             rec->m_optDescriber(*existOpt, existOptDesc);
             delete existOpt;
             GtkWidget *dialog = gtk_message_dialog_new(
@@ -342,7 +345,7 @@ File::open(const char *uri, Project *project,
     }
 
     char *matchedMimeType = g_content_type_get_mime_type(rec->m_type.c_str());
-    file = rec->m_factory(uri, matchedMimeType, options);
+    file = rec->m_factory(uri, matchedMimeType, *options);
     g_free(matchedMimeType);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
@@ -466,7 +469,7 @@ void File::openByDialog(Project *project,
         {
             std::pair<File *, Editor *> fileEditor =
                 open(static_cast<const char *>(uri->data), project,
-                     mimeType, *options, true);
+                     mimeType, options, true);
             if (fileEditor.first)
             {
                 opened.push_back(fileEditor);

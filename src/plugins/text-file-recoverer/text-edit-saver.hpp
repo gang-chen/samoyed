@@ -1,8 +1,8 @@
 // Text edit saver.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TXTR_TEXT_EDIT_SAVER_HPP
-#define SMYD_TXTR_TEXT_EDIT_SAVER_HPP
+#ifndef SMYD_TXRC_TEXT_EDIT_SAVER_HPP
+#define SMYD_TXRC_TEXT_EDIT_SAVER_HPP
 
 #include "ui/file-observer.hpp"
 #include "utilities/worker.hpp"

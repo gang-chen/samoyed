@@ -62,6 +62,7 @@ void FinderPlugin::deactivate()
 extern "C"
 {
 
+G_MODULE_EXPORT
 Samoyed::Plugin *createPlugin(Samoyed::PluginManager *manager,
                               const char *id,
                               GModule *module,

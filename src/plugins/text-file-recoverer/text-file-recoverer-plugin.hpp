@@ -1,8 +1,8 @@
 // Plugin: text file recoverer.
 // Copyright (C) 2013 Gang Chen.
 
-#ifndef SMYD_TXTR_TEXT_FILE_RECOVERER_PLUGIN_HPP
-#define SMYD_TXTR_TEXT_FILE_RECOVERER_PLUGIN_HPP
+#ifndef SMYD_TXRC_TEXT_FILE_RECOVERER_PLUGIN_HPP
+#define SMYD_TXRC_TEXT_FILE_RECOVERER_PLUGIN_HPP
 
 #include "utilities/plugin.hpp"
 #include <set>

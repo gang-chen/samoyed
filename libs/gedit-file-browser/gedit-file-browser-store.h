@@ -200,8 +200,6 @@ gboolean	 gedit_file_browser_store_new_directory		(GeditFileBrowserStore        
 void
 gedit_file_browser_store_cancel_mount_operation			(GeditFileBrowserStore            *store);
 
-void		 _gedit_file_browser_store_register_type	(GTypeModule                      *type_module);
-
 G_END_DECLS
 
 #endif /* __GEDIT_FILE_BROWSER_STORE_H__ */
