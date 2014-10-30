@@ -5,12 +5,12 @@
 #define SMYD_PROPERTY_TREE_HPP
 
 #include "miscellaneous.hpp"
-#include "boost/spirit/home/support/detail/hold_any.hpp"
 #include <list>
 #include <map>
 #include <string>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
+#include <boost/spirit/home/support/detail/hold_any.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -57,11 +57,17 @@ public:
         m_correcting(false)
     {}
 
-    ~PropertyTree();
-
     template<class T> PropertyTree(const char *name, const T &defaultValue):
-        PropertyTree(name, boost::spirit::hold_any(defaultValue))
+        m_name(name),
+        m_defaultValue(defaultValue),
+        m_value(defaultValue),
+        m_firstChild(NULL),
+        m_lastChild(NULL),
+        m_parent(NULL),
+        m_correcting(false)
     {}
+
+    ~PropertyTree();
 
     PropertyTree(const PropertyTree &prop);
 

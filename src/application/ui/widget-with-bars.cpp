@@ -28,8 +28,9 @@ namespace
 
 gboolean closeBar(gpointer bar)
 {
+    // The container should remove this callback when the bar is closed.
+    // Therefore, this callback returns true.
     static_cast<Samoyed::Bar *>(bar)->close();
-    // The container should remove this callback.
     return TRUE;
 }
 

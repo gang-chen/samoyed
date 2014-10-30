@@ -19,8 +19,8 @@ class ProjectConfiguration;
 
 /**
  * A project abstract syntax tree, actually, is a collection of abstract syntax
- * tree representations the source files in the project and the look-up table of
- * the global symbols in the project.  These abstract syntax trees and the
+ * tree representations of the source files in the project and the look-up table
+ * of the global symbols in the project.  These abstract syntax trees and the
  * symbol table, combined with the project configuration, can construct a
  * complete and useful abstract syntax tree representation of the project.
  * Individual abstract syntax trees and the symbol table can be retrieved and

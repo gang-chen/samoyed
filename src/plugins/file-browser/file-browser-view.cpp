@@ -195,6 +195,26 @@ void openInTerminal(GeditFileBrowserWidget *widget,
 {
 }
 
+void setActiveRoot(GeditFileBrowserWidget *widget,
+                   Samoyed::FileBrowser::FileBrowserView *fileBrowser)
+{
+    Samoyed::Widget *w;
+    for (w = fileBrowser; w->parent(); w = w->parent())
+        ;
+    Samoyed::Window &window = static_cast<Samoyed::Window &>(*w);
+    Samoyed::Notebook &editorGroup = window.currentEditorGroup();
+    if (editorGroup.childCount() > 0)
+    {
+        Samoyed::File &file =
+            static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file();
+        GFile *location = g_file_new_for_uri(file.uri());
+        GFile *parent = g_file_get_parent(location);
+        gedit_file_browser_widget_set_root(widget, parent, TRUE);
+        g_object_unref(location);
+        g_object_unref(parent);
+    }
+}
+
 }
 
 namespace Samoyed
@@ -218,9 +238,9 @@ bool FileBrowserView::setupFileBrowser()
                      G_CALLBACK(confirmNoTrash), NULL);
     g_signal_connect(widget, "open-in-terminal",
                      G_CALLBACK(openInTerminal), NULL);
-    gedit_file_browser_widget_set_active_root_enabled(
-        GEDIT_FILE_BROWSER_WIDGET(widget),
-        FALSE);
+    g_signal_connect(widget, "set-active-root",
+                     G_CALLBACK(setActiveRoot), this);
+
     setGtkWidget(widget);
     return true;
 }
