@@ -62,6 +62,7 @@ namespace boost { namespace spirit
         struct fxn_ptr_table
         {
             boost::detail::sp_typeinfo const& (*get_type)();
+            bool (*empty)();
             void (*static_delete)(void**);
             void (*destruct)(void**);
             void (*clone)(void* const*, void**);
@@ -69,6 +70,9 @@ namespace boost { namespace spirit
             std::basic_istream<Char>& (*stream_in)(std::basic_istream<Char>&, void**);
             std::basic_ostream<Char>& (*stream_out)(std::basic_ostream<Char>&, void* const*);
         };
+
+        ///////////////////////////////////////////////////////////////////////
+        struct empty {};
 
         // static functions for small value-types
         template <typename Small>
@@ -83,6 +87,10 @@ namespace boost { namespace spirit
                 static boost::detail::sp_typeinfo const& get_type()
                 {
                     return BOOST_SP_TYPEID(T);
+                }
+                static bool is_empty()
+                {
+                    return false;
                 }
                 static void static_delete(void** x)
                 {
@@ -114,6 +122,47 @@ namespace boost { namespace spirit
                     return o;
                 }
             };
+            template<typename Char>
+            struct type<empty, Char>
+            {
+                static boost::detail::sp_typeinfo const& get_type()
+                {
+                    return BOOST_SP_TYPEID(empty);
+                }
+                static bool is_empty()
+                {
+                    return true;
+                }
+                static void static_delete(void** x)
+                {
+                    reinterpret_cast<empty*>(x)->~empty();
+                }
+                static void destruct(void** x)
+                {
+                    reinterpret_cast<empty*>(x)->~empty();
+                }
+                static void clone(void* const* src, void** dest)
+                {
+                    new (dest) empty(*reinterpret_cast<empty const*>(src));
+                }
+                static void move(void* const* src, void** dest)
+                {
+                    *reinterpret_cast<empty*>(dest) =
+                        *reinterpret_cast<empty const*>(src);
+                }
+                static std::basic_istream<Char>& 
+                stream_in (std::basic_istream<Char>& i, void** obj)
+                {
+                    i >> *reinterpret_cast<empty*>(obj);
+                    return i;
+                }
+                static std::basic_ostream<Char>& 
+                stream_out(std::basic_ostream<Char>& o, void* const* obj)
+                {
+                    o << *reinterpret_cast<empty const*>(obj);
+                    return o;
+                }
+            };
         };
 
         // static functions for big value-types (bigger than a void*)
@@ -126,6 +175,10 @@ namespace boost { namespace spirit
                 static boost::detail::sp_typeinfo const& get_type()
                 {
                     return BOOST_SP_TYPEID(T);
+                }
+                static bool is_empty()
+                {
+                    return false;
                 }
                 static void static_delete(void** x)
                 {
@@ -172,6 +225,7 @@ namespace boost { namespace spirit
                 static fxn_ptr_table<Char> static_table =
                 {
                     fxns<is_small>::template type<T, Char>::get_type,
+                    fxns<is_small>::template type<T, Char>::is_empty,
                     fxns<is_small>::template type<T, Char>::static_delete,
                     fxns<is_small>::template type<T, Char>::destruct,
                     fxns<is_small>::template type<T, Char>::clone,
@@ -182,9 +236,6 @@ namespace boost { namespace spirit
                 return &static_table;
             }
         };
-
-        ///////////////////////////////////////////////////////////////////////
-        struct empty {};
 
         template <typename Char>
         inline std::basic_istream<Char>&
@@ -342,7 +393,7 @@ namespace boost { namespace spirit
 
         bool empty() const
         {
-            return table == spirit::detail::get_table<spirit::detail::empty>::template get<Char>();
+            return table->empty();
         }
 
         void reset()

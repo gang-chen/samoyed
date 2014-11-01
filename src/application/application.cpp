@@ -198,14 +198,6 @@ gboolean Application::startUp(gpointer app)
     a->m_projectAstManager = new ProjectAstManager;
     a->m_scheduler = new Scheduler(numberOfProcessors());
 
-    // Create builtin extension points.
-    a->m_actionsExtensionPoint = new ActionsExtensionPoint;
-    a->m_fileObExtensionPoint = new FileObserversExtensionPoint;
-    a->m_fileRecExtensionPoint = new FileRecoverersExtensionPoint;
-    a->m_historiesExtensionPoint = new HistoriesExtensionPoint;
-    a->m_preferencesExtensionPoint = new PreferencesExtensionPoint;
-    a->m_viewsExtensionPoint = new ViewsExtensionPoint;
-
     // Initialize the preferences with the default values.
     a->m_preferences = new PropertyTree(PREFERENCES);
     TextEditor::installPreferences();
@@ -215,10 +207,20 @@ gboolean Application::startUp(gpointer app)
     File::installHistories();
     TextFile::installHistories();
 
-    // Register plugins.
+    // Create the plugin manager.
     a->m_pluginManager = new PluginManager(a->extensionPointManager(),
                                            pluginModsDirName.c_str(),
                                            PLUGIN_CACHE_SIZE);
+
+    // Create builtin extension points.
+    a->m_actionsExtensionPoint = new ActionsExtensionPoint;
+    a->m_fileObExtensionPoint = new FileObserversExtensionPoint;
+    a->m_fileRecExtensionPoint = new FileRecoverersExtensionPoint;
+    a->m_historiesExtensionPoint = new HistoriesExtensionPoint;
+    a->m_preferencesExtensionPoint = new PreferencesExtensionPoint;
+    a->m_viewsExtensionPoint = new ViewsExtensionPoint;
+
+    // Register plugins.
     a->m_pluginManager->scanPlugins(pluginMfsDirName.c_str());
 
     gtk_window_set_auto_startup_notification(TRUE);
@@ -293,15 +295,15 @@ void Application::shutDown()
     assert(!m_sessionName);
     assert(!m_newSessionName);
 
-    m_pluginManager->shutDown();
-    delete m_histories;
-    delete m_preferences;
     delete m_actionsExtensionPoint;
     delete m_fileObExtensionPoint;
     delete m_fileRecExtensionPoint;
     delete m_historiesExtensionPoint;
     delete m_preferencesExtensionPoint;
     delete m_viewsExtensionPoint;
+    m_pluginManager->shutDown();
+    delete m_histories;
+    delete m_preferences;
     delete m_scheduler;
     m_projectAstManager->destroy();
     m_projectConfigManager->destroy();

@@ -18,4 +18,9 @@
       <separate>1</separate>
     </detail>
   </extension>
+  <extension>
+    <id>histories</id>
+    <point>histories</point>
+    <detail/>
+  </extension>
 </plugin>

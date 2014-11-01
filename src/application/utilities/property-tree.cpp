@@ -391,7 +391,7 @@ xmlNodePtr PropertyTree::writeXmlElement() const
     {
         std::ostringstream stream;
         stream << m_value;
-        xmlNodeSetContent(
+        xmlNodeAddContent(
             node,
             reinterpret_cast<const xmlChar *>(stream.str().c_str()));
     }

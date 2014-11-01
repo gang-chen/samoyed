@@ -18,6 +18,8 @@ public:
     {}
 
     virtual void installHistories() = 0;
+
+    virtual void uninstallHistories() = 0;
 };
 
 }

@@ -5,12 +5,12 @@
 #define SMYD_PROPERTY_TREE_HPP
 
 #include "miscellaneous.hpp"
+#include "boost/spirit/home/support/detail/hold_any.hpp"
 #include <list>
 #include <map>
 #include <string>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
-#include <boost/spirit/home/support/detail/hold_any.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed

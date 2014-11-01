@@ -1679,6 +1679,10 @@ void Window::createStatusBar()
     m_currentLine = gtk_entry_new();
     gtk_entry_set_width_chars(GTK_ENTRY(m_currentLine),
                               LINE_NUMBER_WIDTH);
+#if GTK_CHECK_VERSION(3, 12, 0)
+    gtk_entry_set_max_width_chars(GTK_ENTRY(m_currentLine),
+                                  LINE_NUMBER_WIDTH);
+#endif
     gtk_widget_set_tooltip_text(
         m_currentLine,
         _("Input the line number to go"));
@@ -1692,6 +1696,10 @@ void Window::createStatusBar()
     m_currentColumn = gtk_entry_new();
     gtk_entry_set_width_chars(GTK_ENTRY(m_currentColumn),
                               COLUMN_NUMBER_WIDTH);
+#if GTK_CHECK_VERSION(3, 12, 0)
+    gtk_entry_set_max_width_chars(GTK_ENTRY(m_currentColumn),
+                                  COLUMN_NUMBER_WIDTH);
+#endif
     gtk_widget_set_tooltip_text(
         m_currentColumn,
         _("Input the column number to go"));

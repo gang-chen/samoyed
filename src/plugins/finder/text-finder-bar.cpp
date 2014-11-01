@@ -6,9 +6,87 @@
 #endif
 #include "text-finder-bar.hpp"
 #include "ui/text-editor.hpp"
+#include "application.hpp"
+#include "utilities/property-tree.hpp"
+#include <string>
 #include <glib/gi18n.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
+
+#define TEXT_SEARCH "text-search"
+#define PATTERNS "patterns"
+#define MATCH_CASE "match-case"
+
+namespace
+{
+
+const int MAX_COMPLETIONS = 10;
+
+GtkListStore *createCompletionModel()
+{
+    GtkListStore *store = gtk_list_store_new(1, G_TYPE_STRING);
+    GtkTreeIter iter;
+    const std::string &patterns = Samoyed::Application::instance().histories().
+        get<std::string>(TEXT_SEARCH "/" PATTERNS);
+    char **ptns = g_strsplit(patterns.c_str(), "\t", -1);
+    for (char **ptn = ptns; *ptn; ++ptn)
+    {
+        gtk_list_store_prepend(store, &iter);
+        gtk_list_store_set(store, &iter, 0, *ptn, -1);
+    }
+    g_strfreev(ptns);
+    return store;
+}
+
+void saveCompletion(GtkListStore *store, const char *text)
+{
+    GtkTreeIter iter;
+
+    // If the text is already in the list, do not save it.
+    if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter))
+    {
+        do
+        {
+            char *comp;
+            gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+                               0, &comp, -1);
+            if (g_ascii_strcasecmp(comp, text) == 0)
+            {
+                g_free(comp);
+                return;
+            }
+            g_free(comp);
+        }
+        while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
+    }
+
+    std::string patterns = Samoyed::Application::instance().histories().
+        get<std::string>(TEXT_SEARCH "/" PATTERNS);
+    if (gtk_tree_model_iter_n_children(GTK_TREE_MODEL(store), NULL) >=
+        MAX_COMPLETIONS)
+    {
+        while (gtk_tree_model_iter_nth_child(GTK_TREE_MODEL(store), &iter,
+                                             NULL, MAX_COMPLETIONS - 1))
+        {
+            gtk_list_store_remove(store, &iter);
+            patterns.erase(0, patterns.find('\t') + 1);
+        }
+    }
+    gtk_list_store_prepend(store, &iter);
+    gtk_list_store_set(store, &iter, 0, text, -1);
+    if (patterns.empty())
+        patterns = text;
+    else
+    {
+        patterns.append("\t");
+        patterns.append(text);
+    }
+    Samoyed::Application::instance().histories().set(TEXT_SEARCH "/" PATTERNS,
+                                                     patterns,
+                                                     false, NULL);
+}
+
+}
 
 namespace Samoyed
 {
@@ -44,7 +122,19 @@ bool TextFinderBar::setup()
     g_signal_connect(m_text, "activate",
                      G_CALLBACK(onDone), this);
 
+    GtkEntryCompletion *comp = gtk_entry_completion_new();
+    gtk_entry_set_completion(GTK_ENTRY(m_text), comp);
+    g_object_unref(comp);
+    m_store = createCompletionModel();
+    gtk_entry_completion_set_model(comp, GTK_TREE_MODEL(m_store));
+    g_object_unref(m_store);
+    gtk_entry_completion_set_text_column(comp, 0);
+
     m_matchCase = gtk_check_button_new_with_mnemonic(_("Match _case"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(m_matchCase),
+        Application::instance().histories().
+            get<bool>(TEXT_SEARCH "/" MATCH_CASE));
     gtk_grid_attach_next_to(GTK_GRID(grid), m_matchCase, m_text,
                             GTK_POS_RIGHT, 1, 1);
     g_signal_connect(m_matchCase, "toggled",
@@ -269,6 +359,11 @@ void TextFinderBar::onTextChanged(GtkEditable *edit, TextFinderBar *bar)
 void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
                                        TextFinderBar *bar)
 {
+    Application::instance().histories().set(
+        TEXT_SEARCH "/" MATCH_CASE,
+        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(bar->m_matchCase)) ?
+        true : false,
+        false, NULL);
     // Always start from the initial cursor.
     bar->m_editor.setCursor(bar->m_line, bar->m_column);
     bar->m_endReached = false;
@@ -278,6 +373,8 @@ void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
 
 void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
 {
+    saveCompletion(bar->m_store,
+                   gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
     // Move the cursor to the end of the found text.
     int line, column, line2, column2;
     bar->m_editor.getSelectedRange(line, column, line2, column2);
@@ -289,12 +386,16 @@ void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
 
 void TextFinderBar::onFindPrevious(GtkButton *button, TextFinderBar *bar)
 {
+    saveCompletion(bar->m_store,
+                   gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
     bar->m_endReached = false;
     bar->search(false);
 }
 
 void TextFinderBar::onDone(GtkEntry *entry, TextFinderBar *bar)
 {
+    saveCompletion(bar->m_store,
+                   gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
     TextEditor &editor = bar->m_editor;
     bar->close();
     editor.setCurrent();

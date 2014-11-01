@@ -29,17 +29,22 @@ void onLocationActivated(GeditFileBrowserWidget *widget,
     char *uri = g_file_get_uri(location);
     std::pair<Samoyed::File *, Samoyed::Editor *> fileEditor =
         Samoyed::File::open(uri, NULL, NULL, NULL, false);
-    if (fileEditor.second && !fileEditor.second->parent())
+    if (fileEditor.second)
     {
-        Samoyed::Widget *widget;
-        for (widget = fileBrowser; widget->parent(); widget = widget->parent())
-            ;
-        Samoyed::Window &window = static_cast<Samoyed::Window &>(*widget);
-        Samoyed::Notebook &editorGroup = window.currentEditorGroup();
-        window.addEditorToEditorGroup(
-            *fileEditor.second,
-            editorGroup,
-            editorGroup.currentChildIndex() + 1);
+        if (!fileEditor.second->parent())
+        {
+            Samoyed::Widget *widget;
+            for (widget = fileBrowser;
+                 widget->parent();
+                 widget = widget->parent())
+                ;
+            Samoyed::Window &window = static_cast<Samoyed::Window &>(*widget);
+            Samoyed::Notebook &editorGroup = window.currentEditorGroup();
+            window.addEditorToEditorGroup(
+                *fileEditor.second,
+                editorGroup,
+                editorGroup.currentChildIndex() + 1);
+        }
         fileEditor.second->setCurrent();
     }
     g_free(uri);

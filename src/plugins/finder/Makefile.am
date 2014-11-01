@@ -4,9 +4,11 @@ pluginlib_LTLIBRARIES = libfinder.la
 
 libfinder_la_SOURCES = \
     find-text-action-extension.cpp \
+    finder-histories-extension.cpp \
     finder-plugin.cpp \
     text-finder-bar.cpp \
     find-text-action-extension.hpp \
+    finder-histories-extension.hpp \
     finder-plugin.hpp \
     text-finder-bar.hpp
 

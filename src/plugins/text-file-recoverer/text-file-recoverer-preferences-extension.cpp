@@ -62,8 +62,14 @@ void TextFileRecovererPreferencesExtension::installPreferences()
 
 void TextFileRecovererPreferencesExtension::uninstallPreferences()
 {
-    Application::instance().preferences().child(TEXT_EDITOR).
-        removeChild(TEXT_EDIT_SAVE_INTERVAL);
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    PropertyTree &saveTextEdits = prefs.child(SAVE_TEXT_EDITS);
+    prefs.removeChild(saveTextEdits);
+    delete &saveTextEdits;
+    PropertyTree &saveInterval = prefs.child(TEXT_EDIT_SAVE_INTERVAL);
+    prefs.removeChild(saveInterval);
+    delete &saveInterval;
 }
 
 void TextFileRecovererPreferencesExtension::setupPreferencesEditor(
