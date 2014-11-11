@@ -12,7 +12,6 @@ g++ signal.cpp -DSMYD_SIGNAL_UNIT_TEST -Werror -Wall -o signal
 #include "signal.hpp"
 #include <list>
 #ifdef OS_WINDOWS
-# define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #else
 # include <signal.h>

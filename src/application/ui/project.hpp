@@ -51,7 +51,17 @@ public:
         std::string m_uri;
     };
 
+    static Project *create(const char *uri);
+
     static Project *open(const char *uri);
+
+    static void remove(const char *uri);
+
+    static Project *createByDialog(const char *uri);
+
+    static Project *openByDialog(const char *uri);
+
+    static void removeByDialog(const char *uri);
 
     /**
      * This function can be called by the application instance only.

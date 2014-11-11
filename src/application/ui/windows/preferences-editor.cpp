@@ -5,7 +5,7 @@
 # include <config.h>
 #endif
 #include "preferences-editor.hpp"
-#include "preferences-extension-point.hpp"
+#include "ui/preferences-extension-point.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/miscellaneous.hpp"
@@ -22,14 +22,6 @@ namespace
 {
 
 const double DEFAULT_SIZE_RATIO = 0.5;
-
-gboolean onDeleteEvent(GtkWidget *widget,
-                       GdkEvent *event,
-                       Samoyed::PreferencesEditor *editor)
-{
-    editor->close();
-    return TRUE;
-}
 
 }
 
@@ -129,8 +121,7 @@ PreferencesEditor::PreferencesEditor()
     int height = gdk_screen_get_height(screen) * DEFAULT_SIZE_RATIO;
     gtk_window_set_default_size(GTK_WINDOW(m_window), width, height);
     gtk_window_set_title(GTK_WINDOW(m_window), _("Preferences"));
-    g_signal_connect(m_window, "delete-event",
-                     G_CALLBACK(onDeleteEvent), this);
+    gtk_widget_hide_on_delete(m_window);
     gtk_widget_show_all(notebook);
 }
 
@@ -147,12 +138,6 @@ void PreferencesEditor::show()
 void PreferencesEditor::hide()
 {
     gtk_widget_hide(m_window);
-}
-
-void PreferencesEditor::close()
-{
-    gtk_widget_destroy(m_window);
-    Application::instance().onPreferencesEditorClosed();
 }
 
 }

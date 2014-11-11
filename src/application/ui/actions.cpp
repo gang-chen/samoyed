@@ -9,7 +9,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "notebook.hpp"
-#include "preferences-editor.hpp"
+#include "windows/preferences-editor.hpp"
 #include "application.hpp"
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>

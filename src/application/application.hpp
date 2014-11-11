@@ -160,7 +160,6 @@ public:
     { return m_userDirName.c_str(); }
 
     PreferencesEditor &preferencesEditor();
-    void onPreferencesEditorClosed();
 
 private:
     typedef std::map<ComparablePointer<const char>, Project *> ProjectTable;

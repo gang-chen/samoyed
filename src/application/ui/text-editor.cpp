@@ -8,7 +8,7 @@
 #include "text-file.hpp"
 #include "widget-container.hpp"
 #include "window.hpp"
-#include "preferences-editor.hpp"
+#include "windows/preferences-editor.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/property-tree.hpp"
 #include "application.hpp"

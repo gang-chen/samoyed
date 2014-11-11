@@ -6,13 +6,14 @@
 
 #include <string>
 #include <vector>
+#include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
 
-class PreferencesEditor
+class PreferencesEditor: public boost::noncopyable
 {
 public:
     typedef boost::function<void (GtkGrid *grid)> Setup;
@@ -28,8 +29,6 @@ public:
 
     void show();
     void hide();
-
-    void close();
 
 private:
     struct Category

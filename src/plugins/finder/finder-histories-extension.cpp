@@ -28,7 +28,6 @@ namespace Finder
 
 void FinderHistoriesExtension::installHistories()
 {
-	g_message("install finder histories\n");
     PropertyTree &hist =
         Application::instance().histories().addChild(TEXT_SEARCH);
     hist.addChild(PATTERNS, std::string());

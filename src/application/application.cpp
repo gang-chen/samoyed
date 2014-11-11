@@ -31,7 +31,7 @@
 #include "ui/histories-extension-point.hpp"
 #include "ui/preferences-extension-point.hpp"
 #include "ui/views-extension-point.hpp"
-#include "ui/preferences-editor.hpp"
+#include "ui/windows/preferences-editor.hpp"
 #include "resources/file-source-manager.hpp"
 #include "resources/project-configuration.hpp"
 #include "resources/project-ast-manager.hpp"
@@ -336,7 +336,7 @@ bool Application::quit()
     m_quitting = true;
 
     if (m_preferencesEditor)
-        m_preferencesEditor->close();
+        delete m_preferencesEditor;
 
     // Close all projects.
     for (Project *project = m_firstProject, *next; project; project = next)
@@ -676,11 +676,6 @@ PreferencesEditor &Application::preferencesEditor()
     if (!m_preferencesEditor)
         m_preferencesEditor = new PreferencesEditor;
     return *m_preferencesEditor;
-}
-
-void Application::onPreferencesEditorClosed()
-{
-    m_preferencesEditor = NULL;
 }
 
 }

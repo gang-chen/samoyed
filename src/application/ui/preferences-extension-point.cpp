@@ -6,7 +6,7 @@
 #endif
 #include "preferences-extension-point.hpp"
 #include "preferences-extension.hpp"
-#include "preferences-editor.hpp"
+#include "windows/preferences-editor.hpp"
 #include "application.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"

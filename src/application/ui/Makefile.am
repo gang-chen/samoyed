@@ -1,4 +1,4 @@
-SUBDIRS = bars dialogs
+SUBDIRS = bars dialogs windows
 
 noinst_LTLIBRARIES = libui.la
 
@@ -13,7 +13,6 @@ libui_la_SOURCES = \
     histories-extension-point.cpp \
     notebook.cpp \
     paned.cpp \
-    preferences-editor.cpp \
     preferences-extension-point.cpp \
     project.cpp \
     session.cpp \
@@ -43,7 +42,6 @@ libui_la_SOURCES = \
     histories-extension-point.hpp \
     notebook.hpp \
     paned.hpp \
-    preferences-editor.hpp \
     preferences-extension.hpp \
     preferences-extension-point.hpp \
     project.hpp \

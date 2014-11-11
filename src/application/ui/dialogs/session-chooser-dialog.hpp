@@ -21,8 +21,7 @@ public:
         ACTION_RESTORE
     };
 
-    SessionChooserDialog(Action action, GtkWindow *parent):
-        m_action(action),
+    SessionChooserDialog(Action action, GtkWindow *parent 
         m_parent(parent)
     {}
 
