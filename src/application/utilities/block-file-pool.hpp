@@ -10,27 +10,39 @@
 namespace Samoyed
 {
 
-class BlockFilePool
+/**
+ * A pool of block files.  Block sizes vary from 1K to 256K bytes.
+ */
+class BlockFilePool: public boost::noncopyable
 {
 public:
-    BlockFilePool(const char *fileName);
+    static const BlockFile::Offset MIN_BLOCK_SIZE = 1024;
+
+    static const int N_DIFFERENT_BLOCK_SIZES = 9;
+
+    static const BlockFile::Offset MAX_BLOCK_SIZE =
+        MIN_BLOCK_SIZE << (N_DIFFERENT_BLOCK_SIZES - 1);
+
+    BlockFilePool(const char *fileNameBase);
 
     ~BlockFilePool();
 
     bool close();
 
-    Index allocateBlock(BlockFile::Offset blockSize);
+    void *allocateBlock(BlockFile::Offset blockSize, BlockFile::Index &index);
 
-    void freeBlock(Index index);
+    void freeBlock(BlockFile::Offset blockSize, BlockFile::Index index);
 
-    void *refBlock(Index index);
+    void *refBlock(BlockFile::Offset blockSize, BlockFile::Index index);
 
-    void unrefBlock(Index index);
+    void unrefBlock(BlockFile::Offset blockSize, BlockFile::Index index);
+
+    bool clean();
 
 private:
-    std::string m_fileName;
+    std::string m_fileNameBase;
 
-    BlockFile *m_files[4];
+    BlockFile *m_files[N_DIFFERENT_BLOCK_SIZES];
 };
 
 }

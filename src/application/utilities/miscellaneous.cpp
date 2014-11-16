@@ -16,7 +16,6 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 # include <set>
 #endif
 #include <errno.h>
-#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,20 +114,6 @@ int numberOfProcessors()
     long nProcs = sysconf(_SC_NPROCESSORS_ONLN);
     return (nProcs < 1L ? 1 : nProcs);
 #endif
-}
-
-bool isValidFileName(const char *fileName)
-{
-    for (; *fileName; ++fileName)
-    {
-        if (!isalnum(*fileName) &&
-            *fileName != '_' &&
-            *fileName != '-' &&
-            *fileName != '+' &&
-            *fileName != '.')
-            return false;
-    }
-    return true;
 }
 
 bool removeFileOrDirectory(const char *name, GError **error)
@@ -273,9 +258,6 @@ int main(int argc, char *argv[])
 
     printf("Host name: %s\n", Samoyed::hostName());
     printf("Number of processors: %d\n", Samoyed::numberOfProcessors());
-    assert(Samoyed::isValidFileName("file-name_123.txt"));
-    assert(!Samoyed::isValidFileName(" "));
-    assert(!Samoyed::isValidFileName("*"));
 
     if (!g_mkdir("misc-test-dir", 0755) &&
         g_file_set_contents("misc-test-dir/file", "hello", -1, NULL))

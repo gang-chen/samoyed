@@ -6,6 +6,7 @@
 
 #include "miscellaneous.hpp"
 #include <string>
+#include <boost/utility.hpp>
 #ifdef OS_WINDOWS
 # include <windows.h>
 #else
@@ -15,7 +16,7 @@
 namespace Samoyed
 {
 
-class LockFile
+class LockFile: public boost::noncopyable
 {
 public:
 #ifdef OS_WINDOWS

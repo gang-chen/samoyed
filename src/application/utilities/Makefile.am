@@ -1,6 +1,8 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
+    block-file.cpp \
+    block-file-pool.cpp \
     extension.cpp \
     extension-point-manager.cpp \
     lock-file.cpp \
@@ -15,6 +17,8 @@ libutilities_la_SOURCES = \
     text-file-saver.cpp \
     utf8.cpp \
     worker.cpp \
+    block-file.hpp \
+    block-file-pool.hpp \
     buffer.hpp \
     change-hint.hpp \
     extension.hpp \

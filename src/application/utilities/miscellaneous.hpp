@@ -160,8 +160,6 @@ public:
 
 int numberOfProcessors();
 
-bool isValidFileName(const char *fileName);
-
 bool removeFileOrDirectory(const char *name, GError **error);
 
 const char **characterEncodings();

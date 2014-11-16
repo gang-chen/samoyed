@@ -20,20 +20,28 @@ public:
     ~SessionManagementWindow();
 
     void show();
+
     void hide();
 
 private:
     static void onDeleteSession(GtkButton *button,
                                 SessionManagementWindow *window);
+
     static void onRenameSession(GtkButton *button,
                                 SessionManagementWindow *window);
 
-    const char *sessionName() const;
+    static void onSessionRenamed(GtkCellRendererText *renderer,
+                                 char *path,
+                                 char *newName,
+                                 SessionManagementWindow *window);
+
+    static void onDestroyInternally(GtkWidget *widget,
+                                    SessionManagementWindow *window);
 
     GtkWidget *m_window;
-    GtkWidget *m_sessions;
+    GtkWidget *m_sessionList;
 
-    boost::function<void (SessionManagementWindow &)> &m_onClose;
+    boost::function<void (SessionManagementWindow &)> m_onDestroy;
 };
 
 }

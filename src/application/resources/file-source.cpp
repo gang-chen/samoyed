@@ -5,7 +5,6 @@
 # include <config.h>
 #endif
 #include "file-source.hpp"
-#include "project-ast-manager.hpp"
 #include "application.hpp"
 #include "ui/source-file.hpp"
 #include "utilities/range.hpp"
@@ -233,9 +232,6 @@ void FileSource::endWrite(const Revision &revision,
         // Notify the observers first because the abstract syntax tree updating
         // will lead to long-time parsing in this thread.
         m_changed(*this, ChangeHint(oldRev, revision, range));
-        Application::instance().projectAstManager().
-            onFileSourceChanged(*this,
-                                ChangeHint(oldRev, revision, range));
     }
     m_observerMutex.unlock();
 }

@@ -49,8 +49,6 @@ private:
     GtkWidget *m_matchCase;
     GtkWidget *m_message;
 
-    GtkListStore *m_store;
-
     TextEditor &m_editor;
     int m_line;
     int m_column;

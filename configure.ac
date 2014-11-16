@@ -133,6 +133,7 @@ src/application/resources/Makefile
 src/application/ui/Makefile
 src/application/ui/bars/Makefile
 src/application/ui/dialogs/Makefile
+src/application/ui/windows/Makefile
 src/application/utilities/Makefile
 src/launcher/Makefile
 src/plugins/Makefile

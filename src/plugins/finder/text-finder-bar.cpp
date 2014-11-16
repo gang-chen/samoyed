@@ -125,9 +125,9 @@ bool TextFinderBar::setup()
     GtkEntryCompletion *comp = gtk_entry_completion_new();
     gtk_entry_set_completion(GTK_ENTRY(m_text), comp);
     g_object_unref(comp);
-    m_store = createCompletionModel();
-    gtk_entry_completion_set_model(comp, GTK_TREE_MODEL(m_store));
-    g_object_unref(m_store);
+    GtkListStore *store = createCompletionModel();
+    gtk_entry_completion_set_model(comp, GTK_TREE_MODEL(store));
+    g_object_unref(store);
     gtk_entry_completion_set_text_column(comp, 0);
 
     m_matchCase = gtk_check_button_new_with_mnemonic(_("Match _case"));
@@ -177,6 +177,18 @@ bool TextFinderBar::setup()
     gtk_widget_set_margin_right(grid, CONTAINER_SPACING);
     setGtkWidget(grid);
     gtk_widget_show_all(grid);
+
+    // Set the pattern as the last pattern.
+    GtkTreeIter iter;
+    if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter))
+    {
+        char *pattern;
+        gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+                           0, &pattern, -1);
+        gtk_entry_set_text(GTK_ENTRY(m_text), pattern);
+        gtk_editable_select_region(GTK_EDITABLE(m_text), 0, -1);
+        g_free(pattern);
+    }
 
     return true;
 }
@@ -364,6 +376,7 @@ void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(bar->m_matchCase)) ?
         true : false,
         false, NULL);
+
     // Always start from the initial cursor.
     bar->m_editor.setCursor(bar->m_line, bar->m_column);
     bar->m_endReached = false;
@@ -373,8 +386,10 @@ void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
 
 void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
 {
-    saveCompletion(bar->m_store,
+    saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
+                   gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
                    gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
+
     // Move the cursor to the end of the found text.
     int line, column, line2, column2;
     bar->m_editor.getSelectedRange(line, column, line2, column2);
@@ -386,16 +401,20 @@ void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
 
 void TextFinderBar::onFindPrevious(GtkButton *button, TextFinderBar *bar)
 {
-    saveCompletion(bar->m_store,
+    saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
+                   gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
                    gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
+
     bar->m_endReached = false;
     bar->search(false);
 }
 
 void TextFinderBar::onDone(GtkEntry *entry, TextFinderBar *bar)
 {
-    saveCompletion(bar->m_store,
+    saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
+                   gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
                    gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
+
     TextEditor &editor = bar->m_editor;
     bar->close();
     editor.setCurrent();

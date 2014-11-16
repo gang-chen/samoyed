@@ -9,6 +9,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "notebook.hpp"
+#include "windows/session-management-window.hpp"
 #include "windows/preferences-editor.hpp"
 #include "application.hpp"
 #include <gtk/gtk.h>
@@ -29,6 +30,11 @@ void switchSession(GtkAction *action, Samoyed::Window *window)
 
 void manageSessions(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::SessionManagementWindow *manWindow =
+        new Samoyed::SessionManagementWindow(
+            GTK_WINDOW(window->gtkWidget()),
+            boost::function<void (SessionManagementWindow &)>());
+    manWindow->show();
 }
 
 void quitSession(GtkAction *action, Samoyed::Window *window)

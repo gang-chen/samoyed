@@ -2,11 +2,11 @@ noinst_LTLIBRARIES = libresources.la
 
 libresources_la_SOURCES = \
     file-source.cpp \
-    project-persistent-ast.cpp \
+    project-persistent-symbol-table.cpp \
     file-ast.hpp \
     file-source.hpp \
     project-configuration.hpp \
-    project-persistent-ast.hpp
+    project-persistent-symbol-table.hpp
 
 libresources_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
