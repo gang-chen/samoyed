@@ -3,7 +3,7 @@
 
 /*
 UNIT TEST BUILD
-g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
+g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST\
  `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o miscellaneous
 */
 
@@ -28,7 +28,7 @@ g++ miscellaneous.cpp -DSMYD_UNIT_TEST -DSMYD_MISCELLANEOUS_UNIT_TEST\
 # include <unistd.h>
 #endif
 #include <glib.h>
-#ifdef SMYD_UNIT_TEST
+#ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # define _(T) T
 # define N_(T) T
 # define gettext(T) T

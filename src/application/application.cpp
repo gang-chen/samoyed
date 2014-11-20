@@ -32,9 +32,8 @@
 #include "ui/preferences-extension-point.hpp"
 #include "ui/views-extension-point.hpp"
 #include "ui/windows/preferences-editor.hpp"
-#include "resources/file-source-manager.hpp"
+#include "resources/file-source.hpp"
 #include "resources/project-configuration.hpp"
-#include "resources/project-ast-manager.hpp"
 #include <assert.h>
 #include <utility>
 #include <string>
@@ -56,6 +55,10 @@ namespace
 
 const int PLUGIN_CACHE_SIZE = 10;
 
+const int FILE_SOURCE_CACHE_SIZE = 20;
+
+const int PROJECT_CONFIG_CACHE_SIZE = 0;
+
 }
 
 namespace Samoyed
@@ -70,7 +73,6 @@ Application::Application():
     m_pluginManager(NULL),
     m_fileSourceManager(NULL),
     m_projectConfigManager(NULL),
-    m_projectAstManager(NULL),
     m_scheduler(NULL),
     m_actionsExtensionPoint(NULL),
     m_fileObExtensionPoint(NULL),
@@ -193,9 +195,10 @@ gboolean Application::startUp(gpointer app)
 
     // Create global managers.
     a->m_extensionPointManager = new ExtensionPointManager;
-    a->m_fileSourceManager = new FileSourceManager;
-    a->m_projectConfigManager = new Manager<ProjectConfiguration>(0);
-    a->m_projectAstManager = new ProjectAstManager;
+    a->m_fileSourceManager =
+        new Manager<FileSource>(FILE_SOURCE_CACHE_SIZE);
+    a->m_projectConfigManager =
+        new Manager<ProjectConfiguration>(PROJECT_CONFIG_CACHE_SIZE);
     a->m_scheduler = new Scheduler(numberOfProcessors());
 
     // Initialize the preferences with the default values.
@@ -305,7 +308,6 @@ void Application::shutDown()
     delete m_histories;
     delete m_preferences;
     delete m_scheduler;
-    m_projectAstManager->destroy();
     m_projectConfigManager->destroy();
     m_fileSourceManager->destroy();
     delete m_extensionPointManager;

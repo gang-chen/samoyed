@@ -3,9 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ lock-file.cpp miscellaneous.cpp signal.cpp -DSMYD_UNIT_TEST\
- -DSMYD_LOCK_FILE_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
- -Werror -Wall -o lock-file
+g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST\
+ `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o lock-file
 */
 
 #ifdef HAVE_CONFIG_H

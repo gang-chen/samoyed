@@ -74,11 +74,11 @@ gboolean PreferencesEditor::setupCategoryPage(gpointer param)
          it != s_categories[i].m_preferences.end();
          ++it)
         (*it)(GTK_GRID(p->second));
-    delete p;
     static_cast<PreferencesExtensionPoint &>(Application::instance().
         extensionPointManager().extensionPoint(PREFERENCES)).
         setupPreferencesEditor(s_categories[i].m_id.c_str(),
                                GTK_GRID(p->second));
+    delete p;
     return FALSE;
 }
 
@@ -121,7 +121,8 @@ PreferencesEditor::PreferencesEditor()
     int height = gdk_screen_get_height(screen) * DEFAULT_SIZE_RATIO;
     gtk_window_set_default_size(GTK_WINDOW(m_window), width, height);
     gtk_window_set_title(GTK_WINDOW(m_window), _("Preferences"));
-    gtk_widget_hide_on_delete(m_window);
+    g_signal_connect(m_window, "delete-event",
+                     G_CALLBACK(gtk_widget_hide_on_delete), NULL);
     gtk_widget_show_all(notebook);
 }
 

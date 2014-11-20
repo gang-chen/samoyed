@@ -9,6 +9,8 @@
 #include <vector>
 #include <boost/utility.hpp>
 #ifdef OS_WINDOWS
+# define UNICODE
+# define _UNICODE
 # include <windows.h>
 #endif
 
@@ -143,11 +145,11 @@ private:
         if (blockSize() < physicalBlockGranularity())
         {
             unsigned size = blockSize() * (blockIndex + 1);
-            return std::pair<Index, Index>(
+            return std::pair<Index, Offset>(
                     size / physicalBlockGranularity() - 1,
                     size % physicalBlockGranularity());
         }
-        return std::pair<Index, Index>(blockIndex, 0);
+        return std::pair<Index, Offset>(blockIndex, 0);
     }
 
     static Offset s_physicalBlockGranularity;

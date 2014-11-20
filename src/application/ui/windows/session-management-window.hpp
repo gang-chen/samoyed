@@ -24,6 +24,8 @@ public:
     void hide();
 
 private:
+    void deleteSelectedSession(bool confirm);
+
     static void onDeleteSession(GtkButton *button,
                                 SessionManagementWindow *window);
 
@@ -34,6 +36,10 @@ private:
                                  char *path,
                                  char *newName,
                                  SessionManagementWindow *window);
+
+    static gboolean onKeyPress(GtkWidget *widget,
+                               GdkEventKey *event,
+                               SessionManagementWindow *window);
 
     static void onDestroyInternally(GtkWidget *widget,
                                     SessionManagementWindow *window);

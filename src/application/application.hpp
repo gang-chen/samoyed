@@ -16,10 +16,9 @@ namespace Samoyed
 
 class ExtensionPointManager;
 class PluginManager;
-class FileSourceManager;
+class FileSource;
 class ProjectConfiguration;
 template<class> class Manager;
-class ProjectAstManager;
 class Scheduler;
 class ActionsExtensionPoint;
 class FileObserversExtensionPoint;
@@ -99,14 +98,11 @@ public:
 
     PluginManager &pluginManager() const { return *m_pluginManager; }
 
-    FileSourceManager &fileSourceManager() const
+    Manager<FileSource> &fileSourceManager() const
     { return *m_fileSourceManager; }
 
     Manager<ProjectConfiguration> &projectConfigurationManager() const
     { return *m_projectConfigManager; }
-
-    ProjectAstManager &projectAstManager() const
-    { return *m_projectAstManager; }
 
     Scheduler &scheduler() const { return *m_scheduler; }
 
@@ -196,9 +192,8 @@ private:
     // Global managers.
     ExtensionPointManager *m_extensionPointManager;
     PluginManager *m_pluginManager;
-    FileSourceManager *m_fileSourceManager;
+    Manager<FileSource> *m_fileSourceManager;
     Manager<ProjectConfiguration> *m_projectConfigManager;
-    ProjectAstManager *m_projectAstManager;
     Scheduler *m_scheduler;
 
     // Builtin extension points.

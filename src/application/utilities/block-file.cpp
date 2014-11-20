@@ -17,8 +17,10 @@ g++ block-file.cpp -DSMYD_BLOCK_FILE_UNIT_TEST\
 # include <windows.h>
 #else
 # include <errno.h>
-# include <sys/stat.h>
+# include <fcntl.h>
 # include <sys/mman.h>
+# include <sys/stat.h>
+# include <sys/types.h>
 # include <unistd.h>
 #endif
 #include <glib.h>
@@ -121,9 +123,8 @@ BlockFile *BlockFile::open(const char *fileName, Offset blockSize)
 
     // Create the file.
     file->m_fd = g_open(fileName,
-                        O_RDWR | O_CREATE | O_EXCL,
-                        S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH |
-                        S_IWOTH);
+                        O_RDWR | O_CREAT | O_EXCL,
+                        S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
     if (file->m_fd == -1)
     {
         if (errno == EEXIST)
@@ -154,12 +155,13 @@ BlockFile *BlockFile::open(const char *fileName, Offset blockSize)
     }
 
     // Map block0.
-    file->m_block0 = mmap(NULL,
-                          physicalBlockGranularity(),
-                          PROT_READ | PROT_WRITE,
-                          MAP_SHARED,
-                          file->m_fd,
-                          0);
+    file->m_block0 = reinterpret_cast<Block0 *>(
+        mmap(NULL,
+             physicalBlockGranularity(),
+             PROT_READ | PROT_WRITE,
+             MAP_SHARED,
+             file->m_fd,
+             0);
     if (!file->m_block0)
         goto ERROR_OUT;
 
@@ -238,7 +240,7 @@ bool BlockFile::close()
 
 #else
 
-    if (close(m_fd))
+    if (::close(m_fd))
         successful = false;
     m_fd = -1;
 
@@ -251,7 +253,7 @@ void *BlockFile::refBlock(Index index)
 {
     assert(opened() && m_block0 && index < totalBlockCount());
 
-    std::pair<Index, Index> pbi = blockIndex2PhysicalBlockIndex(index);
+    std::pair<Index, Offset> pbi = blockIndex2PhysicalBlockIndex(index);
 
     // If the block is in block0, it should have been mapped.
     if (pbi.first == INVALID_INDEX)
@@ -293,7 +295,7 @@ void BlockFile::unrefBlock(Index index)
 {
     assert(opened() && m_block0 && index < totalBlockCount());
 
-    std::pair<Index, Index> pbi = blockIndex2PhysicalBlockIndex(index);
+    std::pair<Index, Offset> pbi = blockIndex2PhysicalBlockIndex(index);
 
     if (pbi.first == INVALID_INDEX)
         return;
@@ -330,7 +332,7 @@ void *BlockFile::allocateBlock(Index &index)
     // Need to allocate a new block.
     assert(blockCount() == totalBlockCount());
     index = blockCount();
-    std::pair<Index, Index> pbi = blockIndex2PhysicalBlockIndex(index);
+    std::pair<Index, Offset> pbi = blockIndex2PhysicalBlockIndex(index);
 
     // Expand the file if needed.
     if (pbi.first == m_physicalBlocks.size())
@@ -370,7 +372,7 @@ void *BlockFile::allocateBlock(Index &index)
 void BlockFile::freeBlock(Index index)
 {
     assert(opened() && m_block0 && index < totalBlockCount());
-    std::pair<Index, Index> pbi = blockIndex2PhysicalBlockIndex(index);
+    std::pair<Index, Offset> pbi = blockIndex2PhysicalBlockIndex(index);
     void *block;
     if (pbi.first == INVALID_INDEX)
         block = reinterpret_cast<void *>(

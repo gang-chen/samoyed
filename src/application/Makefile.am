@@ -22,5 +22,6 @@ libsamoyed_la_LIBADD = \
     ui/libui.la \
     ui/bars/libbars.la \
     ui/dialogs/libdialogs.la \
+    ui/windows/libwindows.la \
     utilities/libutilities.la \
     $(SAMOYED_LIBS)

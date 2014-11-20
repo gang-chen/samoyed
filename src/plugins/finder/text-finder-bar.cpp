@@ -20,7 +20,7 @@
 namespace
 {
 
-const int MAX_COMPLETIONS = 10;
+const int MAX_COMPLETION_COUNT = 10;
 
 GtkListStore *createCompletionModel()
 {
@@ -31,7 +31,7 @@ GtkListStore *createCompletionModel()
     char **ptns = g_strsplit(patterns.c_str(), "\t", -1);
     for (char **ptn = ptns; *ptn; ++ptn)
     {
-        gtk_list_store_prepend(store, &iter);
+        gtk_list_store_append(store, &iter);
         gtk_list_store_set(store, &iter, 0, *ptn, -1);
     }
     g_strfreev(ptns);
@@ -42,7 +42,8 @@ void saveCompletion(GtkListStore *store, const char *text)
 {
     GtkTreeIter iter;
 
-    // If the text is already in the list, do not save it.
+    // If the text is already in the list, remove it because we will prepend it
+    // to the list later.
     if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter))
     {
         do
@@ -53,33 +54,46 @@ void saveCompletion(GtkListStore *store, const char *text)
             if (g_ascii_strcasecmp(comp, text) == 0)
             {
                 g_free(comp);
-                return;
+                gtk_list_store_remove(store, &iter);
+                break;
             }
             g_free(comp);
         }
         while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
     }
 
-    std::string patterns = Samoyed::Application::instance().histories().
-        get<std::string>(TEXT_SEARCH "/" PATTERNS);
+    // Remove extra completions if there are too many.
     if (gtk_tree_model_iter_n_children(GTK_TREE_MODEL(store), NULL) >=
-        MAX_COMPLETIONS)
+        MAX_COMPLETION_COUNT)
     {
         while (gtk_tree_model_iter_nth_child(GTK_TREE_MODEL(store), &iter,
-                                             NULL, MAX_COMPLETIONS - 1))
-        {
+                                             NULL, MAX_COMPLETION_COUNT - 1))
             gtk_list_store_remove(store, &iter);
-            patterns.erase(0, patterns.find('\t') + 1);
-        }
     }
+
+    // Prepend the new one.
     gtk_list_store_prepend(store, &iter);
     gtk_list_store_set(store, &iter, 0, text, -1);
-    if (patterns.empty())
-        patterns = text;
-    else
+
+    // Save the history.
+    std::string patterns;
+    if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter))
     {
-        patterns.append("\t");
-        patterns.append(text);
+        do
+        {
+            char *comp;
+            gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+                               0, &comp, -1);
+            if (patterns.empty())
+                patterns = comp;
+            else
+            {
+                patterns += '\t';
+                patterns += comp;
+            }
+            g_free(comp);
+        }
+        while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
     }
     Samoyed::Application::instance().histories().set(TEXT_SEARCH "/" PATTERNS,
                                                      patterns,

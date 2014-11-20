@@ -303,6 +303,7 @@ RestoreSessionDialog::RestoreSessionDialog(GtkWindow *parent):
                                                       NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW(m_sessionList), column);
     gtk_widget_set_hexpand(m_sessionList, TRUE);
+    gtk_widget_set_vexpand(m_sessionList, TRUE);
 
     // Make the dialog.
     GtkWidget *label = gtk_label_new_with_mnemonic(_("Choose a _session:"));

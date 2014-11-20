@@ -31,9 +31,8 @@ void switchSession(GtkAction *action, Samoyed::Window *window)
 void manageSessions(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::SessionManagementWindow *manWindow =
-        new Samoyed::SessionManagementWindow(
-            GTK_WINDOW(window->gtkWidget()),
-            boost::function<void (SessionManagementWindow &)>());
+        new Samoyed::SessionManagementWindow(GTK_WINDOW(window->gtkWidget()),
+                                             NULL);
     manWindow->show();
 }
 

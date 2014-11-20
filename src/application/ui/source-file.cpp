@@ -8,7 +8,6 @@
 #include "source-editor.hpp"
 #include "project.hpp"
 #include "application.hpp"
-#include "resources/file-source-manager.hpp"
 #include "resources/file-source.hpp"
 #include "utilities/text-file-loader.hpp"
 #include "utilities/property-tree.hpp"

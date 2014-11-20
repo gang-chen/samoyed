@@ -4,8 +4,8 @@
 #ifndef SMYD_MANAGED_HPP
 #define SMYD_MANAGED_HPP
 
-#include <boost/utility.hpp>
 #include <assert.h>
+#include <boost/utility.hpp>
 
 namespace Samoyed
 {
