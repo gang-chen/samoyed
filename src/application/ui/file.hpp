@@ -1,11 +1,10 @@
-// Opened file.
+// Open file.
 // Copyright (C) 2012 Gang Chen.
 
 #ifndef SMYD_FILE_HPP
 #define SMYD_FILE_HPP
 
 #include "utilities/miscellaneous.hpp"
-#include "utilities/revision.hpp"
 #include "utilities/worker.hpp"
 #include "utilities/property-tree.hpp"
 #include <utility>
@@ -15,7 +14,6 @@
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/signal.hpp>
-#include <glib.h>
 
 namespace Samoyed
 {
@@ -26,10 +24,10 @@ class FileLoader;
 class FileSaver;
 
 /**
- * A file represents an opened file.  It is the in-memory buffer for a file
- * being edited by the user.  Each opened physical file has one and only one
- * file instance.  A file has one or more editors.  The file accepts each user
- * edit from an editor, and broadcasts the edit to the other editors.
+ * A file represents an open file.  It is the in-memory buffer for a file being
+ * edited by the user.  Each open physical file has one and only one file
+ * instance.  A file has one or more editors.  The file accepts each user edit
+ * from an editor, and broadcasts the edit to the other editors.
  *
  * Files are user interface objects that can be accessed in the main thread
  * only.
@@ -77,107 +75,7 @@ public:
                                           const Change &change,
                                           bool loading)> Changed;
 
-    class EditPrimitive;
-
-    class Edit
-    {
-    public:
-        virtual ~Edit() {}
-
-        /**
-         * @return The reverse edit.
-         */
-        virtual Edit *execute(File &file) const = 0;
-
-        /**
-         * Merge this edit with the edit that will be executed immediately
-         * before this edit.
-         * @return True iff the given edit is merged.
-         */
-        virtual bool merge(const EditPrimitive *edit) { return false; }
-    };
-
-    /**
-     * An edit primitive.  Derived classes should define their concrete edit
-     * primitives.
-     */
-    class EditPrimitive: public Edit {};
-
-    /**
-     * A stack of edits.
-     */
-    class EditStack: public Edit
-    {
-    public:
-        virtual ~EditStack() { clear(); }
-
-        virtual Edit *execute(File &file) const;
-
-        bool empty() const { return m_edits.empty(); }
-
-        Edit *top() const { return m_edits.back(); }
-
-        /**
-         * @param edit The edit to be pushed.  It will be owned by the stack
-         * after pushed.
-         */
-        void push(Edit *edit) { m_edits.push_back(edit); }
-
-        /**
-         * @param edit The edit to be merged or pushed.  It will be owned by the
-         * stack after merged or pushed.
-         * @return True iff the given edit is merged.
-         */
-        bool mergePush(EditPrimitive *edit);
-
-        void pop() { m_edits.pop_back(); }
-
-        void clear();
-
-    private:
-        std::list<Edit *> m_edits;
-    };
-
-    class OptionsSetter
-    {
-    public:
-        virtual ~OptionsSetter() {}
-        virtual GtkWidget *gtkWidget() { return NULL; }
-        /**
-         * @return The options, which must be deleted by the caller.
-         */
-        virtual PropertyTree *options() const;
-    };
-
-    typedef boost::function<OptionsSetter *()> OptionsSetterFactory;
-    typedef boost::function<const PropertyTree &()> OptionsGetter;
-    typedef boost::function<bool (const PropertyTree &, const PropertyTree &)>
-        OptionsEqual;
-    typedef boost::function<void (const PropertyTree &, std::string &)>
-        OptionsDescriber;
-
     static void installHistories();
-
-    static File::OptionsSetter *createOptionsSetter();
-
-    /**
-     * Get the default options for general files.  These default options are a
-     * part of the default options for derived types of files.
-     */
-    static const PropertyTree &defaultOptions() { return s_defaultOptions; }
-
-    static bool optionsEqual(const PropertyTree &options1,
-                             const PropertyTree &options2)
-    { return true; }
-
-    /**
-     * Describe the options in text.
-     * @param options The options.
-     * @param desc The text description of the options.
-     */
-    static void describeOptions(const PropertyTree &options,
-                                std::string &desc)
-    {}
 
     /**
      * Get the default options for a specific type of files.  These default
@@ -188,14 +86,20 @@ public:
     static const PropertyTree *defaultOptionsForType(const char *mimeType);
 
     /**
+     * Get the default options for general files.  These default options are a
+     * part of the default options for derived types of files.
+     */
+    static const PropertyTree &defaultOptions() { return s_defaultOptions; }
+
+    /**
      * Open a file in an editor.
      * @param uri The URI of the file.
      * @param project The project context, or NULL if none.
      * @param mimeType The type of the file, or NULL if unknown.
      * @param options Additional file-type-specific options specifying how to
-     * open the file.
+     * open the file, or NULL if none.
      * @param newEditor True to create a new editor even if the file is already
-     * opened.
+     * open.
      */
     static std::pair<File *, Editor *>
     open(const char *uri, Project *project,
@@ -237,15 +141,13 @@ public:
 
     const char *mimeType() const { return m_mimeType.c_str(); }
 
+    const Time &modifiedTime() const { return m_modifiedTime; }
+
     /**
      * @return The options, which must be deleted by the caller.
      */
     virtual PropertyTree *options() const
     { return new PropertyTree(defaultOptions()); }
-
-    const Revision &revision() const { return m_revision; }
-
-    const GError *ioError() const { return m_ioError; }
 
     /**
      * @return True iff the file is being closed.
@@ -333,6 +235,7 @@ public:
     void unfreeze();
 
     void addEditor(Editor &editor);
+
     void removeEditor(Editor &editor);
 
     Editor *editors() { return m_firstEditor; }
@@ -359,6 +262,100 @@ public:
     { return m_changed.connect(callback); }
 
 protected:
+    class EditPrimitive;
+
+    class Edit
+    {
+    public:
+        virtual ~Edit() {}
+
+        /**
+         * @return The reverse edit.
+         */
+        virtual Edit *execute(File &file) const = 0;
+
+        /**
+         * Merge this edit with the edit that will be executed immediately
+         * before this edit.
+         * @return True iff the given edit is merged.
+         */
+        virtual bool merge(const EditPrimitive *edit) { return false; }
+    };
+
+    /**
+     * An edit primitive.  Derived classes should define their concrete edit
+     * primitives.
+     */
+    class EditPrimitive: public Edit {};
+
+    /**
+     * A stack of edits.
+     */
+    class EditStack: public Edit
+    {
+    public:
+        virtual ~EditStack() { clear(); }
+
+        virtual Edit *execute(File &file) const;
+
+        bool empty() const { return m_edits.empty(); }
+
+        Edit *top() const { return m_edits.back(); }
+
+        /**
+         * @param edit The edit to be pushed.  It will be owned by the stack
+         * after pushed.
+         */
+        void push(Edit *edit) { m_edits.push_back(edit); }
+
+        /**
+         * @param edit The edit to be merged or pushed.  It will be owned by the
+         * stack after merged or pushed.
+         * @return True iff the given edit is merged.
+         */
+        bool mergePush(EditPrimitive *edit);
+
+        void pop() { m_edits.pop_back(); }
+
+        void clear();
+
+    private:
+        std::list<Edit *> m_edits;
+    };
+
+    class OptionsSetter
+    {
+    public:
+        virtual ~OptionsSetter() {}
+        virtual GtkWidget *gtkWidget() { return NULL; }
+        /**
+         * @return The options, which must be deleted by the caller.
+         */
+        virtual PropertyTree *options() const;
+    };
+
+    typedef boost::function<OptionsSetter *()> OptionsSetterFactory;
+    typedef boost::function<const PropertyTree &()> OptionsGetter;
+    typedef boost::function<bool (const PropertyTree &, const PropertyTree &)>
+        OptionsEqual;
+    typedef boost::function<void (const PropertyTree &, std::string &)>
+        OptionsDescriber;
+
+    static File::OptionsSetter *createOptionsSetter();
+
+    static bool optionsEqual(const PropertyTree &options1,
+                             const PropertyTree &options2)
+    { return true; }
+
+    /**
+     * Describe the options in text.
+     * @param options The options.
+     * @param desc The text description of the options.
+     */
+    static void describeOptions(const PropertyTree &options,
+                                std::string &desc)
+    {}
+
     static void registerType(const char *mimeType,
                              const Factory &factory,
                              const OptionsSetterFactory &optSetterFactory,
@@ -431,9 +428,16 @@ private:
         std::string m_description;
     };
 
+    struct FilterChangedParam
+    {
+        std::map<GtkFileFilter *, const OptionsSetterFactory *> filter2Factory;
+        OptionsSetter *optSetter;
+        FilterChangedParam(): optSetter(NULL) {}
+    };
+
     static const TypeRecord *findTypeRecord(const char *type);
 
-    void continueClosing();
+    void finishClosing();
 
     void freezeInternally();
 
@@ -453,6 +457,10 @@ private:
 
     void onSavedWrapper(Worker &worker);
 
+    static void onFileChooserFilterChanged(GtkFileChooser *dialog,
+                                           GParamSpec *spec,
+                                           FilterChangedParam *param);
+
     static std::list<TypeRecord> s_typeRegistry;
 
     static std::list<TypeSet> s_typeSetRegistry;
@@ -471,9 +479,7 @@ private:
 
     bool m_saving;
 
-    Revision m_revision;
-
-    GError *m_ioError;
+    Time m_modifiedTime;
 
     EditStack m_undoHistory;
 

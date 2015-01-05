@@ -110,6 +110,13 @@ public:
             gtk_orientable_get_orientation(GTK_ORIENTABLE(gtkWidget())));
     }
 
+    void setOrientation(Orientation orientation)
+    {
+        gtk_orientable_set_orientation(
+            GTK_ORIENTABLE(gtkWidget()),
+            static_cast<GtkOrientation>(orientation));
+    }
+
     int sidePaneIndex() const { return m_sidePaneIndex; }
 
     double child1SizeFraction() const;

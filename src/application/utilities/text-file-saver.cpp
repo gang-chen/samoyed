@@ -3,16 +3,15 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-saver.cpp worker.cpp revision.cpp\
- -DSMYD_TEXT_FILE_SAVER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
- -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-saver
+g++ text-file-saver.cpp worker.cpp -DSMYD_TEXT_FILE_SAVER_UNIT_TEST \
+`pkg-config --cflags --libs gtk+-3.0` -I../../../libs -lboost_thread -pthread \
+-Werror -Wall -o text-file-saver
 */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "text-file-saver.hpp"
-#include "revision.hpp"
 #include "scheduler.hpp"
 #ifdef SMYD_TEXT_FILE_SAVER_UNIT_TEST
 # include <stdio.h>
@@ -97,10 +96,32 @@ bool TextFileSaver::step()
     if (m_error)
         goto CLEAN_UP;
 
-    // Get the revision.
-    m_revision.synchronize(file, &m_error);
+    // Get the time when the file was last modified.
+    GFileInfo *fileInfo;
+    fileInfo =
+        g_file_query_info(file,
+                          G_FILE_ATTRIBUTE_TIME_MODIFIED,
+                          G_FILE_QUERY_INFO_NONE,
+                          NULL,
+                          &m_error);
     if (m_error)
         goto CLEAN_UP;
+    m_modifiedTime.seconds = g_file_info_get_attribute_uint64(
+        fileInfo,
+        G_FILE_ATTRIBUTE_TIME_MODIFIED);
+    g_object_unref(fileInfo);
+    fileInfo =
+        g_file_query_info(file,
+                          G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC,
+                          G_FILE_QUERY_INFO_NONE,
+                          NULL,
+                          &m_error);
+    if (m_error)
+        goto CLEAN_UP;
+    m_modifiedTime.microSeconds = g_file_info_get_attribute_uint32(
+        fileInfo,
+        G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC);
+    g_object_unref(fileInfo);
 
 CLEAN_UP:
     if (converterStream)

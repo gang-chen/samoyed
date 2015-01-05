@@ -5,7 +5,6 @@
 #define SMYD_PROJECT_HPP
 
 #include "utilities/miscellaneous.hpp"
-#include "utilities/manager.hpp"
 #include <list>
 #include <map>
 #include <string>
@@ -16,18 +15,14 @@ namespace Samoyed
 {
 
 class Editor;
-class ProjectConfiguration;
 
 /**
- * A project represents an opened Samoyed project, which is a collection of well
- * organized resources.  Each opened physical project has one and only one
+ * A project represents an open Samoyed project, which is a collection of well
+ * organized resources.  Each open physical project has one and only one
  * project instance.
  *
  * Projects are user interface objects that can be accessed in the main thread
  * only.
- *
- * The contents of a project are a project configuration.  The project is the
- * only writer of the project configuration.
  */
 class Project: public boost::noncopyable
 {
@@ -86,6 +81,12 @@ public:
     Editor *editors() { return m_firstEditor; }
     const Editor *editors() const { return m_firstEditor; }
 
+    const char *authors() const { return m_authors.c_str(); }
+    void setAuthors(const char *authors) { m_authors = authors; }
+
+    const char *description() const { return m_description.c_str(); }
+    void setDescription(const char *desc) { m_description = desc; }
+
 protected:
     Project(const char *uri);
 
@@ -99,9 +100,10 @@ private:
 
     const std::string m_name;
 
-    bool m_closing;
+    std::string m_authors;
+    std::string m_description;
 
-    ReferencePointer<ProjectConfiguration> m_config;
+    bool m_closing;
 
     /**
      * The editors in the context of this project.

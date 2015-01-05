@@ -79,15 +79,24 @@ public:
         N_TOGGLE_ACTIONS
     };
 
+    enum RadioActionGroupIndex
+    {
+        RADIO_ACTION_GROUP_WINDOW_LAYOUT,
+
+        N_RADIO_ACTION_GROUPS
+    };
+
     static void invalidateSensitivity();
 
     Actions(Window *window);
-
+    void createStatefulActions();
     ~Actions();
 
     GtkAction *action(ActionIndex index) const { return m_actions[index]; }
     GtkToggleAction *toggleAction(ToggleActionIndex index) const
     { return m_toggleActions[index]; }
+    GtkRadioAction *radioActionGroup(RadioActionGroupIndex index) const
+    { return m_radioActionGroups[index]; }
 
     GtkActionGroup *actionGroup() const { return m_actionGroup; }
 
@@ -104,6 +113,7 @@ private:
 
     GtkAction *m_actions[N_ACTIONS];
     GtkToggleAction *m_toggleActions[N_TOGGLE_ACTIONS];
+    GtkRadioAction *m_radioActionGroups[N_RADIO_ACTION_GROUPS];
 
     GtkActionGroup *m_actionGroup;
 };

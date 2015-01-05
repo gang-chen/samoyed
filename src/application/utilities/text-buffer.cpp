@@ -3,8 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o text-buffer
+g++ text-buffer.cpp utf8.cpp -DSMYD_TEXT_BUFFER_UNIT_TEST \
+`pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o text-buffer
 */
 
 #ifdef HAVE_CONFIG_H

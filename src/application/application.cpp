@@ -11,7 +11,6 @@
 #include "ui/window.hpp"
 #include "ui/splash-screen.hpp"
 #include "utilities/miscellaneous.hpp"
-#include "utilities/manager.hpp"
 #include "utilities/extension-point-manager.hpp"
 #include "utilities/plugin-manager.hpp"
 #include "utilities/scheduler.hpp"
@@ -32,8 +31,6 @@
 #include "ui/preferences-extension-point.hpp"
 #include "ui/views-extension-point.hpp"
 #include "ui/windows/preferences-editor.hpp"
-#include "resources/file-source.hpp"
-#include "resources/project-configuration.hpp"
 #include <assert.h>
 #include <utility>
 #include <string>
@@ -55,10 +52,6 @@ namespace
 
 const int PLUGIN_CACHE_SIZE = 10;
 
-const int FILE_SOURCE_CACHE_SIZE = 20;
-
-const int PROJECT_CONFIG_CACHE_SIZE = 0;
-
 }
 
 namespace Samoyed
@@ -71,8 +64,6 @@ Application::Application():
     m_mainThreadId(boost::this_thread::get_id()),
     m_extensionPointManager(NULL),
     m_pluginManager(NULL),
-    m_fileSourceManager(NULL),
-    m_projectConfigManager(NULL),
     m_scheduler(NULL),
     m_actionsExtensionPoint(NULL),
     m_fileObExtensionPoint(NULL),
@@ -190,15 +181,10 @@ gboolean Application::startUp(gpointer app)
     Window::XmlElement::registerReader();
     TextEditor::XmlElement::registerReader();
     SourceEditor::XmlElement::registerReader();
-    Window::registerDefaultSidePanes();
     SourceEditor::createSharedData();
 
     // Create global managers.
     a->m_extensionPointManager = new ExtensionPointManager;
-    a->m_fileSourceManager =
-        new Manager<FileSource>(FILE_SOURCE_CACHE_SIZE);
-    a->m_projectConfigManager =
-        new Manager<ProjectConfiguration>(PROJECT_CONFIG_CACHE_SIZE);
     a->m_scheduler = new Scheduler(numberOfProcessors());
 
     // Initialize the preferences with the default values.
@@ -251,7 +237,7 @@ CLEAN_UP:
     return FALSE;
 }
 
-void Application::continueQuitting()
+void Application::finishQuitting()
 {
     assert(!m_firstProject);
     assert(!m_lastProject);
@@ -308,8 +294,6 @@ void Application::shutDown()
     delete m_histories;
     delete m_preferences;
     delete m_scheduler;
-    m_projectConfigManager->destroy();
-    m_fileSourceManager->destroy();
     delete m_extensionPointManager;
     SourceEditor::destroySharedData();
 }
@@ -585,7 +569,7 @@ void Application::destroyProject(Project &project)
 {
     delete &project;
     if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
-        continueQuitting();
+        finishQuitting();
 }
 
 File *Application::findFile(const char *uri)
@@ -620,7 +604,7 @@ void Application::destroyFile(File &file)
 {
     delete &file;
     if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
-        continueQuitting();
+        finishQuitting();
 }
 
 void Application::addWindow(Window &window)
@@ -641,7 +625,7 @@ void Application::destroyWindow(Window& window)
 {
     delete &window;
     if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
-        continueQuitting();
+        finishQuitting();
 }
 
 bool Application::makeUserDirectory()

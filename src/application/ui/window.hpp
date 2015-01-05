@@ -61,6 +61,12 @@ public:
         SIDE_BOTTOM
     };
 
+    enum Layout
+    {
+        LAYOUT_TOOLS_PANE_RIGHT,
+        LAYOUT_TOOLS_PANE_BOTTOM
+    };
+
     struct Configuration
     {
         int m_screenIndex;
@@ -71,6 +77,7 @@ public:
         bool m_toolbarVisible;
         bool m_statusBarVisible;
         bool m_toolbarVisibleInFullScreen;
+        Layout m_layout;
         Configuration():
             m_screenIndex(-1),
             m_width(-1),
@@ -79,7 +86,8 @@ public:
             m_maximized(true),
             m_toolbarVisible(true),
             m_statusBarVisible(true),
-            m_toolbarVisibleInFullScreen(false)
+            m_toolbarVisibleInFullScreen(false),
+            m_layout(LAYOUT_TOOLS_PANE_RIGHT)
         {}
     };
 
@@ -136,12 +144,6 @@ public:
     addToolsPaneCreatedCallback(const SidePaneCreated::slot_type &callback)
     { return s_toolsPaneCreated.connect(callback); }
 
-    /**
-     * Register default side panes, which are the navigation pane and tools
-     * pane.
-     */
-    static void registerDefaultSidePanes();
-
     static Window *create(const Configuration &config);
 
     /**
@@ -193,7 +195,7 @@ public:
                                const char *menuTitle);
 
     /**
-     * Unregister a child of a side pane.  If the child is opened, close it
+     * Unregister a child of a side pane.  If the child is open, close it
      * first.  Remove the menu item.
      * @param paneId The identifier of the side pane.
      * @param id The identifier of the child. 
@@ -279,6 +281,8 @@ public:
     void enterFullScreen();
     void leaveFullScreen();
 
+    void changeLayout(Layout layout);
+
     Actions &actions() { return *m_actions; }
 
     static void onFileOpened(const char *uri);
@@ -288,8 +292,8 @@ public:
 
     void onCurrentTextEditorCursorChanged(int line, int column);
 
-    static void onWorkerBegun(const char *desc);
-    static void onWorkerEnded(const char *desc);
+    static void addMessage(const char *message);
+    static void removeMessage(const char *message);
 
 protected:
     Window();
@@ -379,9 +383,8 @@ private:
                                             const SidePaneData *data);
     static void openCloseSidePaneChild(GtkToggleAction *action, Window *window);
 
-    static void createNavigationPane(Window &window);
-    static void createToolsPane(Window &window);
-    static void createProjectExplorer(Widget &pane);
+    void createNavigationPane(Layout layout);
+    void createToolsPane(Layout layout);
 
     bool build(const Configuration &config);
 
@@ -398,8 +401,8 @@ private:
                         guint &mergeIdSeparator,
                         bool separate);
 
-    static gboolean onWorkerBegunInMainThread(gpointer param);
-    static gboolean onWorkerEndedInMainThread(gpointer param);
+    static gboolean addMessageInMainThread(gpointer param);
+    static gboolean removeMessageInMainThread(gpointer param);
 
     static void onCurrentFileInput(GtkComboBox *combo, Window *window);
     static void onCurrentTextEditorCursorInput(GtkEntry *entry,
@@ -422,8 +425,7 @@ private:
     std::vector<FileTitleUri> m_fileTitlesUris;
     GtkWidget *m_currentLine;
     GtkWidget *m_currentColumn;
-    int m_workerCount;
-    GtkWidget **m_workersStatus;
+    GtkWidget *m_message;
 
     bool m_bypassCurrentFileChange;
     bool m_bypassCurrentFileInput;

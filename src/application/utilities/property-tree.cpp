@@ -3,9 +3,9 @@
 
 /*
 UNIT TEST BUILD
-g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0 libxml-2.0` -I../../../libs -Werror -Wall\
- -o property-tree
+g++ property-tree.cpp -DSMYD_PROPERTY_TREE_UNIT_TEST \
+`pkg-config --cflags --libs gtk+-3.0 libxml-2.0` -I../../../libs -Werror -Wall \
+-o property-tree
 */
 
 #ifdef HAVE_CONFIG_H

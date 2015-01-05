@@ -1,4 +1,4 @@
-// Opened text file.
+// Open text file.
 // Copyright (C) 2013 Gang Chen.
 
 #ifndef SMYD_TEXT_FILE_HPP
@@ -12,6 +12,8 @@ namespace Samoyed
 {
 
 /**
+ * A text file represents an open text file.
+ *
  * A text file does not contain any data memorizing its contents.  The
  * associated text editors contain data memorizing the file contents.  Accesses
  * to the file contents are redirected to the text editors.
@@ -67,6 +69,67 @@ public:
         }
     };
 
+    static void installHistories();
+
+    static bool isSupportedType(const char *type);
+
+    static void registerType();
+
+    static const PropertyTree &defaultOptions();
+
+    virtual PropertyTree *options() const;
+
+    const char *encoding() const { return m_encoding.c_str(); }
+
+    int characterCount() const;
+
+    int lineCount() const;
+
+    int maxColumnInLine(int line) const;
+
+    /**
+     * @param beginLine The line number of the first character to be returned,
+     * starting from 0.
+     * @param beginColumn The column number of the first character to be
+     * returned, the character index, starting from 0.
+     * @param endLine The line number of the exclusive last character to be
+     * retrieved, starting from 0; or -1 to retrieve the text until the last
+     * line.
+     * @param endColumn The column number of the exclusive last character to be
+     * retrieved, the character index, starting from 0; or -1 to retrieve the
+     * text until the last column.
+     * @return The text contents, in a memory chunk allocated by GTK+.
+     */
+    char *text(int beginLine, int beginColumn,
+               int endLine, int endColumn) const;
+
+    /**
+     * @param line The line number of the insertion position, starting from 0;
+     * or -1 to append.
+     * @param column The column number of the insertion position, the
+     * character index, starting from 0; or -1 to append.
+     * @param text The text to be inserted.
+     * @param length The number of the bytes to be inserted, or -1 to insert the
+     * text until '\0'.
+     * @return True iff inserted successfully.
+     */
+    bool insert(int line, int column, const char *text, int length);
+
+    /**
+     * @param beginLine The line number of the first character to be removed,
+     * starting from 0.
+     * @param beginColumn The column number of the first character to be
+     * removed, the character index, starting from 0.
+     * @param endLine The line number of the exclusive last character to be
+     * removed, starting from 0; or -1 to remove the text until the last line.
+     * @param endColumn The column number of the exclusive last character to be
+     * removed, the character index, starting from 0; or -1 to remove the text
+     * until the last column.
+     * @return True iff removed successfully.
+     */
+    bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
+
+protected:
     class EditPrimitive: public File::EditPrimitive
     {
     public:
@@ -159,15 +222,7 @@ public:
         GtkWidget *m_gtkWidget;
     };
 
-    static void installHistories();
-
-    static bool isSupportedType(const char *type);
-
-    static void registerType();
-
     static File::OptionsSetter *createOptionsSetter();
-
-    static const PropertyTree &defaultOptions();
 
     static bool optionsEqual(const PropertyTree &options1,
                              const PropertyTree &options2);
@@ -175,59 +230,6 @@ public:
     static void describeOptions(const PropertyTree &options,
                                 std::string &desc);
 
-    virtual PropertyTree *options() const;
-
-    const char *encoding() const { return m_encoding.c_str(); }
-
-    int characterCount() const;
-
-    int lineCount() const;
-
-    int maxColumnInLine(int line) const;
-
-    /**
-     * @param beginLine The line number of the first character to be returned,
-     * starting from 0.
-     * @param beginColumn The column number of the first character to be
-     * returned, the character index, starting from 0.
-     * @param endLine The line number of the exclusive last character to be
-     * retrieved, starting from 0; or -1 to retrieve the text until the last
-     * line.
-     * @param endColumn The column number of the exclusive last character to be
-     * retrieved, the character index, starting from 0; or -1 to retrieve the
-     * text until the last column.
-     * @return The text contents, in a memory chunk allocated by GTK+.
-     */
-    char *text(int beginLine, int beginColumn,
-               int endLine, int endColumn) const;
-
-    /**
-     * @param line The line number of the insertion position, starting from 0;
-     * or -1 to append.
-     * @param column The column number of the insertion position, the
-     * character index, starting from 0; or -1 to append.
-     * @param text The text to be inserted.
-     * @param length The number of the bytes to be inserted, or -1 to insert the
-     * text until '\0'.
-     * @return True iff inserted successfully.
-     */
-    bool insert(int line, int column, const char *text, int length);
-
-    /**
-     * @param beginLine The line number of the first character to be removed,
-     * starting from 0.
-     * @param beginColumn The column number of the first character to be
-     * removed, the character index, starting from 0.
-     * @param endLine The line number of the exclusive last character to be
-     * removed, starting from 0; or -1 to remove the text until the last line.
-     * @param endColumn The column number of the exclusive last character to be
-     * removed, the character index, starting from 0; or -1 to remove the text
-     * until the last column.
-     * @return True iff removed successfully.
-     */
-    bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
-
-protected:
     TextFile(const char *uri,
              const char *mimeType,
              const PropertyTree &options);

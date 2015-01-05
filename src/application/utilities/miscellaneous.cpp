@@ -3,8 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o miscellaneous
+g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST \
+`pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o miscellaneous
 */
 
 #ifdef HAVE_CONFIG_H

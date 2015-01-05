@@ -111,9 +111,7 @@ namespace Finder
 const char *TextFinderBar::ID = "text-finder-bar";
 
 TextFinderBar::TextFinderBar(TextEditor &editor):
-    m_editor(editor),
-    m_endReached(false),
-    m_beginReached(false)
+    m_editor(editor)
 {
     editor.getCursor(m_line, m_column);
 }
@@ -236,30 +234,25 @@ void TextFinderBar::search(bool next)
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_editor.gtkSourceView()));
     GtkTextIter start, matchBegin, matchEnd;
-    gtk_text_buffer_get_iter_at_mark(buffer, &start,
-                                     gtk_text_buffer_get_insert(buffer));
     unsigned int flags = GTK_TEXT_SEARCH_VISIBLE_ONLY |
         GTK_TEXT_SEARCH_TEXT_ONLY;
     if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(m_matchCase)))
         flags |= GTK_TEXT_SEARCH_CASE_INSENSITIVE;
 
     gboolean found;
+    bool wrapped = false;
     if (next)
     {
-        if (m_endReached)
+        gtk_text_buffer_get_selection_bounds(buffer, NULL, &start);
+        found = gtk_text_iter_forward_search(
+            &start, text,
+            static_cast<GtkTextSearchFlags>(flags),
+            &matchBegin, &matchEnd,
+            NULL);
+        if (!found)
         {
+            wrapped = true;
             gtk_text_buffer_get_start_iter(buffer, &start);
-            found = gtk_text_iter_forward_search(
-                &start, text,
-                static_cast<GtkTextSearchFlags>(flags),
-                &matchBegin, &matchEnd,
-                NULL);
-        }
-        else
-        {
-            gtk_text_buffer_get_iter_at_mark(
-                buffer, &start,
-                gtk_text_buffer_get_insert(buffer));
             found = gtk_text_iter_forward_search(
                 &start, text,
                 static_cast<GtkTextSearchFlags>(flags),
@@ -269,20 +262,16 @@ void TextFinderBar::search(bool next)
     }
     else
     {
-        if (m_beginReached)
+        gtk_text_buffer_get_iter_at_mark(buffer, &start, NULL);
+        found = gtk_text_iter_backward_search(
+            &start, text,
+            static_cast<GtkTextSearchFlags>(flags),
+            &matchBegin, &matchEnd,
+            NULL);
+        if (!found)
         {
+            wrapped = true;
             gtk_text_buffer_get_end_iter(buffer, &start);
-            found = gtk_text_iter_backward_search(
-                &start, text,
-                static_cast<GtkTextSearchFlags>(flags),
-                &matchBegin, &matchEnd,
-                NULL);
-        }
-        else
-        {
-            gtk_text_buffer_get_iter_at_mark(
-                buffer, &start,
-                gtk_text_buffer_get_insert(buffer));
             found = gtk_text_iter_backward_search(
                 &start, text,
                 static_cast<GtkTextSearchFlags>(flags),
@@ -299,77 +288,36 @@ void TextFinderBar::search(bool next)
         line2 = gtk_text_iter_get_line(&matchEnd);
         column2 = gtk_text_iter_get_line_offset(&matchEnd);
         m_editor.selectRange(line, column, line2, column2);
-        if (next)
+        if (wrapped)
         {
-            if (m_endReached)
+            if (next)
             {
-                m_endReached = false;
                 gtk_label_set_text(
                     GTK_LABEL(m_message),
-                    _("Searching from the beginning of the file."));
+                    _("Reached the end of the file. Continued from the "
+                      "beginning."));
                 gtk_widget_set_tooltip_text(
                     m_message,
-                    _("Searching from the beginning of the file."));
+                    _("Reached the end of the file. Continued from the "
+                      "beginning."));
             }
-        }
-        else
-        {
-            if (m_beginReached)
+            else
             {
-                m_beginReached = false;
                 gtk_label_set_text(
                     GTK_LABEL(m_message),
-                    _("Searching backward from the end of the file."));
+                    _("Reached the beginning of the file. Continued from the "
+                      "end."));
                 gtk_widget_set_tooltip_text(
                     m_message,
-                    _("Searching backward from the end of the file."));
+                    _("Reached the beginning of the file. Continued from the "
+                      "end."));
             }
         }
     }
     else
     {
-        if (next)
-        {
-            if (m_endReached)
-            {
-                m_endReached = false;
-                gtk_label_set_text(GTK_LABEL(m_message), _("Not found."));
-                gtk_widget_set_tooltip_text(m_message, _("Not found."));
-            }
-            else
-            {
-                m_endReached = true;
-                gtk_label_set_text(
-                    GTK_LABEL(m_message),
-                    _("Reached the end of the file. Click \"Next\" button to "
-                      "continue from the beginning."));
-                gtk_widget_set_tooltip_text(
-                    m_message,
-                    _("Reached the end of the file. Click \"Next\" button to "
-                      "continue from the beginning."));
-            }
-        }
-        else
-        {
-            if (m_beginReached)
-            {
-                m_beginReached = false;
-                gtk_label_set_text(GTK_LABEL(m_message), _("Not found."));
-                gtk_widget_set_tooltip_text(m_message, _("Not found."));
-            }
-            else
-            {
-                m_beginReached = true;
-                gtk_label_set_text(
-                    GTK_LABEL(m_message),
-                    _("Reached the beginning of the file. Click \"Previous\" "
-                      "button to continue from the beginning."));
-                gtk_widget_set_tooltip_text(
-                    m_message,
-                    _("Reached the beginning of the file. Click \"Previous\" "
-                      "button to continue from the beginning."));
-            }
-        }
+        gtk_label_set_text(GTK_LABEL(m_message), _("Not found."));
+        gtk_widget_set_tooltip_text(m_message, _("Not found."));
     }
 }
 
@@ -377,8 +325,6 @@ void TextFinderBar::onTextChanged(GtkEditable *edit, TextFinderBar *bar)
 {
     // Always start from the initial cursor.
     bar->m_editor.setCursor(bar->m_line, bar->m_column);
-    bar->m_endReached = false;
-    bar->m_beginReached = false;
     bar->search(true);
 }
 
@@ -393,8 +339,6 @@ void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
 
     // Always start from the initial cursor.
     bar->m_editor.setCursor(bar->m_line, bar->m_column);
-    bar->m_endReached = false;
-    bar->m_beginReached = false;
     bar->search(true);
 }
 
@@ -403,13 +347,6 @@ void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
     saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
                    gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
                    gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
-
-    // Move the cursor to the end of the found text.
-    int line, column, line2, column2;
-    bar->m_editor.getSelectedRange(line, column, line2, column2);
-    if (line2 > line || (line2 == line && column2 > column))
-        bar->m_editor.setCursor(line2, column2);
-    bar->m_beginReached = false;
     bar->search(true);
 }
 
@@ -418,8 +355,6 @@ void TextFinderBar::onFindPrevious(GtkButton *button, TextFinderBar *bar)
     saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
                    gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
                    gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
-
-    bar->m_endReached = false;
     bar->search(false);
 }
 

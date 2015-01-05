@@ -7,6 +7,7 @@
 #include "terminal-plugin.hpp"
 #include "terminal-view-extension.hpp"
 #include "ui/widget.hpp"
+#include <string.h>
 
 namespace Samoyed
 {
@@ -26,7 +27,9 @@ TerminalPlugin::TerminalPlugin(PluginManager &manager,
 
 Extension *TerminalPlugin::createExtension(const char *extensionId)
 {
-    return new TerminalViewExtension(extensionId, *this);
+    if (strcmp(extensionId, "terminal/view") == 0)
+        return new TerminalViewExtension(extensionId, *this);
+    return NULL;
 }
 
 void TerminalPlugin::onViewCreated(Widget &view)

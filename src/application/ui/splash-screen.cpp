@@ -3,8 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ splash-screen.cpp -DSMYD_SPLASH_SCREEN_UNIT_TEST\
- `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o splash-screen
+g++ splash-screen.cpp -DSMYD_SPLASH_SCREEN_UNIT_TEST \
+`pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o splash-screen
 */
 
 #ifdef HAVE_CONFIG_H

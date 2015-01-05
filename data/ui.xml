@@ -52,6 +52,11 @@
 
     <menu name="view" action="view">
       <menuitem name="new-window" action="create-window"/>
+      <menu name="window-layout" action="window-layout">
+        <menuitem name="set-tools-pane-right" action="set-tools-pane-right"/>
+        <menuitem name="set-tools-pane-bottom" action="set-tools-pane-bottom"/>
+      </menu>
+      <separator/>
       <menuitem name="new-editor" action="create-editor"/>
       <menuitem name="move-editor-down" action="move-editor-down"/>
       <menuitem name="move-editor-right" action="move-editor-right"/>

@@ -54,28 +54,6 @@ struct SavedParam
     Samoyed::FileSaver &m_saver;
 };
 
-struct FilterChangedParam
-{
-    std::map<GtkFileFilter *, const Samoyed::File::OptionsSetterFactory *>
-        filter2Factory;
-    Samoyed::File::OptionsSetter *optSetter;
-    FilterChangedParam(): optSetter(NULL) {}
-};
-
-void onFileChooserFilterChanged(GtkFileChooser *dialog,
-                                GParamSpec *spec,
-                                FilterChangedParam *param)
-{
-    if (param->optSetter)
-        delete param->optSetter;
-    GtkFileFilter *filter = gtk_file_chooser_get_filter(dialog);
-    const Samoyed::File::OptionsSetterFactory *factory =
-        param->filter2Factory[filter];
-    param->optSetter = (*factory)();
-    gtk_file_chooser_set_extra_widget(dialog,
-                                      param->optSetter->gtkWidget());
-}
-
 }
 
 namespace Samoyed
@@ -363,6 +341,19 @@ File::open(const char *uri, Project *project,
     return std::make_pair(file, editor);
 }
 
+void File::onFileChooserFilterChanged(GtkFileChooser *dialog,
+                                      GParamSpec *spec,
+                                      FilterChangedParam *param)
+{
+    if (param->optSetter)
+        delete param->optSetter;
+    GtkFileFilter *filter = gtk_file_chooser_get_filter(dialog);
+    const OptionsSetterFactory *factory = param->filter2Factory[filter];
+    param->optSetter = (*factory)();
+    gtk_file_chooser_set_extra_widget(dialog,
+                                      param->optSetter->gtkWidget());
+}
+
 void File::openByDialog(Project *project,
                         std::list<std::pair<File *, Editor *> > &opened)
 {
@@ -501,7 +492,8 @@ Editor *File::createEditor(Project *project)
         return NULL;
 
     // If an editor is created for a file that is being closed, we can safely
-    // destroy the editor that is waiting for the completion of the closing.
+    // destroy the editor that is waiting for the completion of the close
+    // operation.
     if (m_closing)
     {
         Editor *oldEditor = m_firstEditor;
@@ -524,7 +516,7 @@ Editor *File::createEditor(Project *project)
     return editor;
 }
 
-void File::continueClosing()
+void File::finishClosing()
 {
     assert(m_closing);
     assert(m_firstEditor == m_lastEditor);
@@ -540,7 +532,7 @@ void File::continueClosing()
 
 bool File::closeEditor(Editor &editor)
 {
-    // Can't close the editor waiting for the completion of the closing.
+    // Can't close the editor waiting for the completion of the close operation.
     assert(!m_closing);
 
     if (editor.nextInFile() || editor.previousInFile())
@@ -572,7 +564,8 @@ bool File::closeEditor(Editor &editor)
     m_reopening = false;
     if (m_loading)
     {
-        // Cancel the loading and wait for the completion of the cancellation.
+        // Cancel the load operation and wait for the completion of the
+        // cancellation.
         assert(m_loader);
         m_loader->cancel();
         m_loader = NULL;
@@ -581,7 +574,7 @@ bool File::closeEditor(Editor &editor)
     }
     if (m_saving)
     {
-        // Wait for the completion of the saving.
+        // Wait for the completion of the save operation.
         m_closing = true;
         return true;
     }
@@ -630,7 +623,7 @@ bool File::closeEditor(Editor &editor)
         m_closing = true;
 
     // Go ahead.
-    continueClosing();
+    finishClosing();
     return true;
 }
 
@@ -681,7 +674,6 @@ File::File(const char *uri,
     m_reopening(false),
     m_loading(false),
     m_saving(false),
-    m_ioError(NULL),
     m_superUndo(NULL),
     m_editCount(0),
     m_firstEditor(NULL),
@@ -704,8 +696,6 @@ File::~File()
     Application::instance().removeFile(*this);
 
     delete m_superUndo;
-    if (m_ioError)
-        g_error_free(m_ioError);
 }
 
 gboolean File::onLoadedInMainThread(gpointer param)
@@ -739,7 +729,7 @@ gboolean File::onLoadedInMainThread(gpointer param)
         file.unfreezeInternally();
         delete &loader;
         delete p;
-        file.continueClosing();
+        file.finishClosing();
         return FALSE;
     }
 
@@ -756,38 +746,36 @@ gboolean File::onLoadedInMainThread(gpointer param)
     }
 
     // Overwrite the contents with the loaded contents.
-    file.m_revision = loader.revision();
-    if (file.m_ioError)
-        g_error_free(file.m_ioError);
-    file.m_ioError = loader.takeError();
+    file.m_modifiedTime = loader.modifiedTime();
     file.resetEditCount();
     file.m_undoHistory.clear();
     file.m_redoHistory.clear();
     file.onLoaded(loader);
     file.m_loaded(file);
-    delete &loader;
-    delete p;
 
     // If any error was encountered, report it.
-    if (file.m_ioError)
+    if (loader.error())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to load file \"%s\"."),
+            GTK_MESSAGE_QUESTION,
+            GTK_BUTTONS_YES_NO,
+            _("Samoyed failed to load file \"%s\". Close it?"),
             file.uri());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
-            file.m_ioError->message);
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                        GTK_RESPONSE_CLOSE);
-        gtk_dialog_run(GTK_DIALOG(dialog));
+            loader.error()->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
+        if (response == GTK_RESPONSE_YES)
+            file.close();
     }
 
+    delete &loader;
+    delete p;
     return FALSE;
 }
 
@@ -812,13 +800,8 @@ gboolean File::onSavedInMainThread(gpointer param)
     // If any error was encountered, report it.
     if (saver.error())
     {
-        if (file.m_ioError)
-            g_error_free(file.m_ioError);
-        file.m_ioError = saver.takeError();
         file.onSaved(saver);
         file.m_saved(file);
-        delete &saver;
-        delete p;
 
         if (file.m_closing)
         file.m_closing = false;
@@ -832,7 +815,7 @@ gboolean File::onSavedInMainThread(gpointer param)
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
-            file.m_ioError->message);
+            saver.error()->message);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -840,20 +823,17 @@ gboolean File::onSavedInMainThread(gpointer param)
     }
     else
     {
-        file.m_revision = saver.revision();
-        if (file.m_ioError)
-            g_error_free(file.m_ioError);
-        file.m_ioError = NULL;
+        file.m_modifiedTime = saver.modifiedTime();
         file.resetEditCount();
         file.onSaved(saver);
         file.m_saved(file);
-        delete &saver;
-        delete p;
 
         if (file.m_closing)
-            file.continueClosing();
+            file.finishClosing();
     }
 
+    delete &saver;
+    delete p;
     return FALSE;
 }
 
@@ -884,7 +864,7 @@ bool File::load(bool userRequest)
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
             _("File \"%s\" was edited. Your edits will be discarded if you "
-              "load the file. Continue loading it?"),
+              "load the file. Continue to load it?"),
             uri());
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));

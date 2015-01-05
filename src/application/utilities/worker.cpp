@@ -3,8 +3,8 @@
 
 /*
 UNIT TEST BUILD
-g++ worker.cpp -DSMYD_WORKER_UNIT_TEST `pkg-config --cflags --libs glib-2.0`\
- -I../../../libs -lboost_thread -pthread -Werror -Wall -o worker
+g++ worker.cpp -DSMYD_WORKER_UNIT_TEST `pkg-config --cflags --libs glib-2.0` \
+-I../../../libs -lboost_thread -pthread -Werror -Wall -o worker
 */
 
 #ifdef HAVE_CONFIG_H
@@ -32,7 +32,7 @@ Worker::ExecutionWrapper::ExecutionWrapper(Worker &worker):
     m_worker(worker)
 {
 #ifndef SMYD_WORKER_UNIT_TEST
-    Window::onWorkerBegun(m_worker.description());
+    Window::addMessage(m_worker.description());
 #endif
     if (!m_worker.m_blocked)
         m_worker.begin();
@@ -43,7 +43,7 @@ Worker::ExecutionWrapper::~ExecutionWrapper()
     if (!m_worker.m_blocked)
         m_worker.end();
 #ifndef SMYD_WORKER_UNIT_TEST
-    Window::onWorkerEnded(m_worker.description());
+    Window::removeMessage(m_worker.description());
 #endif
 }
 

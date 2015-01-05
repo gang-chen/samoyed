@@ -52,9 +52,6 @@ private:
     TextEditor &m_editor;
     int m_line;
     int m_column;
-
-    bool m_endReached;
-    bool m_beginReached;
 };
 
 }

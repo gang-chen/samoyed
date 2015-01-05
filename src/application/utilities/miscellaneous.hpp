@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <string>
+#include <glib.h>
 #include <gtk/gtk.h>
 
 #define SAMOYED_DEFINE_DOUBLY_LINKED(Class) \
@@ -156,6 +157,16 @@ public:
 
     virtual ~Orientable() {}
     virtual Orientation orientation() const = 0;
+};
+
+/**
+ * UNIX time.
+ */
+class Time
+{
+public:
+    guint64 seconds;
+    guint32 microSeconds;
 };
 
 int numberOfProcessors();

@@ -1,4 +1,4 @@
-SUBDIRS = resources ui utilities
+SUBDIRS = ui utilities
 
 pkglib_LTLIBRARIES = libsamoyed.la
 
@@ -18,7 +18,6 @@ libsamoyed_la_LDFLAGS = \
     $(SAMOYED_LDFLAGS)
 
 libsamoyed_la_LIBADD = \
-    resources/libresources.la \
     ui/libui.la \
     ui/bars/libbars.la \
     ui/dialogs/libdialogs.la \

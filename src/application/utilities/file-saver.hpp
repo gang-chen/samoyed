@@ -5,7 +5,7 @@
 #define SMYD_FILE_SAVER_HPP
 
 #include "worker.hpp"
-#include "revision.hpp"
+#include "miscellaneous.hpp"
 #include <string>
 #include <glib.h>
 
@@ -32,7 +32,7 @@ public:
 
     const char *uri() const { return m_uri.c_str(); }
 
-    const Revision &revision() const { return m_revision; }
+    const Time &modifiedTime() const { return m_modifiedTime; }
 
     GError *error() const { return m_error; }
 
@@ -44,7 +44,7 @@ public:
     }
 
 protected:
-    Revision m_revision;
+    Time m_modifiedTime;
     GError *m_error;
 
 private:

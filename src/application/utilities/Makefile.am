@@ -1,8 +1,6 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
-    block-file.cpp \
-    block-file-pool.cpp \
     extension.cpp \
     extension-point-manager.cpp \
     lock-file.cpp \
@@ -10,31 +8,23 @@ libutilities_la_SOURCES = \
     plugin.cpp \
     plugin-manager.cpp \
     property-tree.cpp \
-    revision.cpp \
     signal.cpp \
     text-buffer.cpp \
     text-file-loader.cpp \
     text-file-saver.cpp \
     utf8.cpp \
     worker.cpp \
-    block-file.hpp \
-    block-file-pool.hpp \
     buffer.hpp \
-    change-hint.hpp \
     extension.hpp \
     extension-point.hpp \
     extension-point-manager.hpp \
     file-loader.hpp \
     file-saver.hpp \
     lock-file.hpp \
-    managed.hpp \
-    manager.hpp \
     miscellaneous.hpp \
     plugin.hpp \
     plugin-manager.hpp \
     property-tree.hpp \
-    range.hpp \
-    revision.hpp \
     scheduler.hpp \
     signal.hpp \
     text-buffer.hpp \

@@ -973,6 +973,8 @@ Session::Session(const char *name, const char *lockFileName):
     m_lockFile(lockFileName),
     m_unsavedFilesRequestExecutor(NULL)
 {
+    // Write the last session name here so that we can have the last session
+    // name even if it crashes before the session exits.
     writeLastSessionName(m_name.c_str());
 }
 
@@ -982,6 +984,7 @@ Session::~Session()
          it != m_unsavedFiles.end();
          ++it)
         delete it->second.m_options;
+    writeLastSessionName(m_name.c_str());
 }
 
 void Session::destroy()

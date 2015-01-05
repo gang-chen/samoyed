@@ -3,9 +3,9 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-loader.cpp worker.cpp revision.cpp utf8.cpp\
- -DSMYD_TEXT_FILE_LOADER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0`\
- -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-loader
+g++ text-file-loader.cpp worker.cpp utf8.cpp \
+-DSMYD_TEXT_FILE_LOADER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0` \
+-I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-loader
 */
 
 #ifdef HAVE_CONFIG_H
@@ -104,13 +104,38 @@ bool TextFileLoader::step()
             m_stream = m_converterStream;
         }
 
-        // Get the revision.
-        m_revision.synchronize(m_file, &m_error);
+        // Get the time when the file was last modified.
+        GFileInfo *fileInfo;
+        fileInfo =
+            g_file_query_info(m_file,
+                              G_FILE_ATTRIBUTE_TIME_MODIFIED,
+                              G_FILE_QUERY_INFO_NONE,
+                              NULL,
+                              &m_error);
         if (m_error)
         {
             cleanUp();
             return true;
         }
+        m_modifiedTime.seconds = g_file_info_get_attribute_uint64(
+            fileInfo,
+            G_FILE_ATTRIBUTE_TIME_MODIFIED);
+        g_object_unref(fileInfo);
+        fileInfo =
+            g_file_query_info(m_file,
+                              G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC,
+                              G_FILE_QUERY_INFO_NONE,
+                              NULL,
+                              &m_error);
+        if (m_error)
+        {
+            cleanUp();
+            return true;
+        }
+        m_modifiedTime.microSeconds = g_file_info_get_attribute_uint32(
+            fileInfo,
+            G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC);
+        g_object_unref(fileInfo);
 
         m_readBuffer = new char[BUFFER_SIZE];
         m_readPointer = m_readBuffer;

@@ -19,7 +19,7 @@ namespace Samoyed
 class Project;
 
 /**
- * An editor is used to edit an opened file in the context of an opened project.
+ * An editor is used to edit an open file in the context of an open project.
  *
  * To close an editor, the editor requests the file to close it, the file may
  * save the modified contents, the project, if existing, or the file otherwise

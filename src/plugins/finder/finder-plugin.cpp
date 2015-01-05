@@ -8,6 +8,7 @@
 #include "find-text-action-extension.hpp"
 #include "finder-histories-extension.hpp"
 #include "ui/widget.hpp"
+#include <string.h>
 #include <gmodule.h>
 
 namespace Samoyed
@@ -30,7 +31,7 @@ Extension *FinderPlugin::createExtension(const char *extensionId)
 {
     if (strcmp(extensionId, "finder/find-text") == 0)
         return new FindTextActionExtension(extensionId, *this);
-    else if (strcmp(extensionId, "finder/histories") == 0)
+    if (strcmp(extensionId, "finder/histories") == 0)
         return new FinderHistoriesExtension(extensionId, *this);
     return NULL;
 }

@@ -6,6 +6,7 @@
 #endif
 #include "file-browser-view.hpp"
 #include "../../../libs/gedit-file-browser/gedit-file-browser-widget.h"
+#include "../../../libs/gedit-file-browser/gedit-file-browser-store.h"
 #include "../../../libs/gedit-file-browser/gedit-file-browser-error.h"
 #include "application.hpp"
 #include "ui/file.hpp"
@@ -13,11 +14,16 @@
 #include "ui/window.hpp"
 #include "ui/notebook.hpp"
 #include "utilities/miscellaneous.hpp"
+#include "utilities/property-tree.hpp"
 #include <utility>
+#include <string>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
+
+#define FILE_BROWSER "file-browser"
+#define ROOT "root"
 
 namespace
 {
@@ -220,6 +226,20 @@ void setActiveRoot(GeditFileBrowserWidget *widget,
     }
 }
 
+void onRootChanged(GeditFileBrowserWidget *widget,
+                   GParamSpec *spec,
+                   gpointer data)
+{
+    GeditFileBrowserStore *store =
+        gedit_file_browser_widget_get_browser_store(widget);
+    GFile *root = gedit_file_browser_store_get_root(store);
+    char *rootUri = g_file_get_uri(root);
+    Samoyed::Application::instance().histories().
+        set(FILE_BROWSER "/" ROOT, std::string(rootUri), false, NULL);
+    g_free(rootUri);
+    g_object_unref(root);
+}
+
 }
 
 namespace Samoyed
@@ -233,6 +253,15 @@ bool FileBrowserView::setupFileBrowser()
     GtkWidget *widget = gedit_file_browser_widget_new();
     if (!widget)
         return false;
+    const std::string &rootUri = Application::instance().histories().
+        get<std::string>(FILE_BROWSER "/" ROOT);
+    if (!rootUri.empty())
+    {
+        GFile *root = g_file_new_for_uri(rootUri.c_str());
+        gedit_file_browser_widget_set_root(GEDIT_FILE_BROWSER_WIDGET(widget),
+                                           root, FALSE);
+        g_object_unref(root);
+    }
     g_signal_connect(widget, "location-activated",
                      G_CALLBACK(onLocationActivated), this);
     g_signal_connect(widget, "error",
@@ -245,6 +274,8 @@ bool FileBrowserView::setupFileBrowser()
                      G_CALLBACK(openInTerminal), NULL);
     g_signal_connect(widget, "set-active-root",
                      G_CALLBACK(setActiveRoot), this);
+    g_signal_connect_after(widget, "notify::root",
+                           G_CALLBACK(onRootChanged), NULL);
 
     setGtkWidget(widget);
     return true;

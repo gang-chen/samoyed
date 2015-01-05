@@ -14,7 +14,6 @@
 #include "text-editor.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
-#include "utilities/worker.hpp"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -65,34 +64,51 @@ const int LINE_NUMBER_WIDTH = 6;
 
 const int COLUMN_NUMBER_WIDTH = 4;
 
-const int WORKER_STATUS_WIDTH = 20;
-
 int serialNumber = 0;
 
-Samoyed::Widget *findPane(Samoyed::Widget &root, const char *id)
+Samoyed::Widget *findPane(Samoyed::Widget &widget, const char *id)
 {
-    if (strcmp(root.id(), id) == 0)
-        return &root;
-    if (strcmp(root.id(), PANED_ID) != 0)
+    if (strcmp(widget.id(), id) == 0)
+        return &widget;
+    if (strcmp(widget.id(), PANED_ID) != 0)
         return NULL;
-    Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(root);
+    Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
     Samoyed::Widget *child = findPane(paned.child(0), id);
     if (child)
         return child;
     return findPane(paned.child(1), id);
 }
 
-const Samoyed::Widget *findPane(const Samoyed::Widget &root, const char *id)
+const Samoyed::Widget *findPane(const Samoyed::Widget &widget, const char *id)
 {
-    if (strcmp(root.id(), id) == 0)
-        return &root;
-    if (strcmp(root.id(), PANED_ID) != 0)
+    if (strcmp(widget.id(), id) == 0)
+        return &widget;
+    if (strcmp(widget.id(), PANED_ID) != 0)
         return NULL;
-    const Samoyed::Paned &paned = static_cast<const Samoyed::Paned &>(root);
+    const Samoyed::Paned &paned = static_cast<const Samoyed::Paned &>(widget);
     const Samoyed::Widget *child = findPane(paned.child(0), id);
     if (child)
         return child;
     return findPane(paned.child(1), id);
+}
+
+bool closeEmptyEditorGroup(Samoyed::Widget &widget, Samoyed::Widget &root)
+{
+    if (strcmp(widget.id(), PANED_ID) != 0)
+    {
+        if (&widget == &root)
+            return false;
+        if (static_cast<Samoyed::Notebook &>(widget).childCount() == 0)
+        {
+            widget.close();
+            return true;
+        }
+        return false;
+    }
+    Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
+    if (closeEmptyEditorGroup(paned.child(0), root))
+        return true;
+    return closeEmptyEditorGroup(paned.child(1), root);
 }
 
 void onEditorRemoved(Samoyed::WidgetContainer &container,
@@ -542,8 +558,6 @@ Window::Window():
     m_currentFile(NULL),
     m_currentLine(NULL),
     m_currentColumn(NULL),
-    m_workerCount(numberOfProcessors()),
-    m_workersStatus(NULL),
     m_bypassCurrentFileChange(false),
     m_bypassCurrentFileInput(false),
     m_child(NULL),
@@ -683,9 +697,15 @@ bool Window::setup(const Configuration &config)
         WidgetWithBars::create(MAIN_AREA_ID, *editorGroup);
     addChildInternally(*mainArea);
 
+    // Create the navigation pane and the tools pane.
+    createNavigationPane(config.m_layout);
+    createToolsPane(config.m_layout);
+
     // Set the title.
     setTitle(_("Samoyed IDE"));
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
+
+    m_actions->createStatefulActions();
 
     s_created(*this);
     return true;
@@ -715,6 +735,13 @@ bool Window::restore(XmlElement &xmlElement)
         return false;
     addChildInternally(*child);
 
+    // Validate the restored window.  Close editor groups that don't contain
+    // any editor.
+    for (Widget *w = &mainArea().mainChild();
+         closeEmptyEditorGroup(*w, *w);
+         w = &mainArea().mainChild())
+        ;
+
     // Extract the serial number of the window from its identifier, and update
     // the global serial number.
     const char *cp = strrchr(id(), '-');
@@ -737,6 +764,8 @@ bool Window::restore(XmlElement &xmlElement)
     // Setup the side panes.
     setupSidePanesRecursively(*child);
 
+    m_actions->createStatefulActions();
+
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
 
     s_restored(*this);
@@ -753,7 +782,6 @@ Window::~Window()
          it != m_fileTitlesUris.end();
          ++it)
         g_free(it->title);
-    delete[] m_workersStatus;
     Application::instance().removeWindow(*this);
     if (m_uiManager)
         g_object_unref(m_uiManager);
@@ -1024,34 +1052,29 @@ void Window::addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
     editorGroup.addChildRemovedCallback(onEditorRemoved);
 }
 
-void Window::createNavigationPane(Window &window)
+void Window::createNavigationPane(Layout layout)
 {
     Notebook *pane =
         Notebook::create(NAVIGATION_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("Na_vigators"));
-    window.addSidePane(*pane, window.mainArea(), SIDE_LEFT,
-                       window.configuration().m_width * SIDE_PANE_SIZE_RATIO);
+    addSidePane(*pane, mainArea(), SIDE_LEFT,
+                configuration().m_width * SIDE_PANE_SIZE_RATIO);
     s_navigationPaneCreated(*pane);
 }
 
-void Window::createToolsPane(Window &window)
+void Window::createToolsPane(Layout layout)
 {
     Notebook *pane =
         Notebook::create(TOOLS_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Tools Pane"));
     pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("_Tools Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("T_ools"));
-    window.addSidePane(*pane, window.mainArea(), SIDE_RIGHT,
-                       window.configuration().m_width * SIDE_PANE_SIZE_RATIO);
+    addSidePane(*pane, mainArea(),
+                layout == LAYOUT_TOOLS_PANE_RIGHT ? SIDE_RIGHT : SIDE_BOTTOM,
+                configuration().m_width * SIDE_PANE_SIZE_RATIO);
     s_toolsPaneCreated(*pane);
-}
-
-void Window::registerDefaultSidePanes()
-{
-    addCreatedCallback(createNavigationPane);
-    addCreatedCallback(createToolsPane);
 }
 
 void Window::createMenuItemForSidePane(Widget &pane)
@@ -1270,7 +1293,7 @@ void Window::registerSidePaneChild(const char *paneId,
 
 void Window::unregisterSidePaneChild(const char *paneId, const char *id)
 {
-    // If the child is opened, close it.
+    // If the child is open, close it.
     WidgetContainer *pane =
         static_cast<WidgetContainer *>(findSidePane(paneId));
     assert(pane);
@@ -1456,7 +1479,22 @@ Window::Configuration Window::configuration() const
     config.m_toolbarVisible = m_toolbarVisible;
     config.m_statusBarVisible = m_statusBarVisible;
     config.m_toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
+    if (static_cast<const Paned *>(toolsPane().parent())->orientation() ==
+        Paned::ORIENTATION_HORIZONTAL)
+        config.m_layout = LAYOUT_TOOLS_PANE_RIGHT;
+    else
+        config.m_layout = LAYOUT_TOOLS_PANE_BOTTOM;
     return config;
+}
+
+void Window::changeLayout(Layout layout)
+{
+    if (layout == LAYOUT_TOOLS_PANE_RIGHT)
+        static_cast<Paned *>(mainArea().parent())->setOrientation(
+            Paned::ORIENTATION_HORIZONTAL);
+    else
+        static_cast<Paned *>(mainArea().parent())->setOrientation(
+            Paned::ORIENTATION_VERTICAL);
 }
 
 void Window::onToolbarVisibilityChanged(GtkWidget *toolbar,
@@ -1643,7 +1681,7 @@ void Window::createStatusBar()
                             GTK_POS_RIGHT, 1, 1);
     m_currentFile = gtk_combo_box_text_new();
 
-    // Add already opened files.
+    // Add already open files.
     for (File *file = Application::instance().files();
          file;
          file = file->next())
@@ -1664,7 +1702,7 @@ void Window::createStatusBar()
 
     gtk_widget_set_tooltip_text(
         m_currentFile,
-        _("Select which file to edit"));
+        _("Select the file to edit"));
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
                             m_currentFile, label,
                             GTK_POS_RIGHT, 1, 1);
@@ -1712,35 +1750,11 @@ void Window::createStatusBar()
     g_signal_connect(m_currentColumn, "activate",
                      G_CALLBACK(onCurrentTextEditorCursorInput), this);
 
-    label = gtk_label_new(_("Background workers:"));
+    m_message = gtk_label_new(NULL);
+    gtk_label_set_ellipsize(GTK_LABEL(m_message), PANGO_ELLIPSIZE_END);
     gtk_grid_attach_next_to(GTK_GRID(m_statusBar),
-                            label, m_currentColumn,
+                            m_message, m_currentColumn,
                             GTK_POS_RIGHT, 1, 1);
-    m_workersStatus = new GtkWidget *[m_workerCount];
-    for (int i = 0; i < m_workerCount; ++i)
-    {
-        char *cp = g_strdup_printf(_("%d."), i + 1);
-        GtkWidget *label2 = gtk_label_new(cp);
-        g_free(cp);
-        gtk_grid_attach_next_to(
-            GTK_GRID(m_statusBar),
-            label2,
-            i == 0 ? label : m_workersStatus[i - 1],
-            GTK_POS_RIGHT, 1, 1);
-        m_workersStatus[i] = gtk_label_new(_("Idle."));
-        gtk_label_set_single_line_mode(GTK_LABEL(m_workersStatus[i]),
-                                       TRUE);
-        gtk_label_set_max_width_chars(GTK_LABEL(m_workersStatus[i]),
-                                      WORKER_STATUS_WIDTH);
-        gtk_label_set_ellipsize(GTK_LABEL(m_workersStatus[i]),
-                                PANGO_ELLIPSIZE_END);
-        gtk_widget_set_tooltip_text(m_workersStatus[i], _("Idle."));
-        gtk_grid_attach_next_to(
-            GTK_GRID(m_statusBar),
-            m_workersStatus[i],
-            label2,
-            GTK_POS_RIGHT, 1, 1);
-    }
 
     gtk_grid_set_column_spacing(GTK_GRID(m_statusBar), CONTAINER_SPACING);
     gtk_widget_set_margin_left(m_statusBar, CONTAINER_SPACING);
@@ -1749,6 +1763,90 @@ void Window::createStatusBar()
     gtk_widget_set_hexpand(m_statusBar, TRUE);
     g_signal_connect_after(m_statusBar, "notify::visible",
                            G_CALLBACK(onStatusBarVisibilityChanged), this);
+}
+
+gboolean Window::addMessageInMainThread(gpointer param)
+{
+    char *message = static_cast<char *>(param);
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        if (!window->m_message)
+            continue;
+        const char *oldMsg = gtk_label_get_text(GTK_LABEL(window->m_message));
+        if (*oldMsg)
+        {
+            std::string msg = oldMsg;
+            msg += ' ';
+            msg += message;
+            gtk_label_set_text(GTK_LABEL(window->m_message), msg.c_str());
+            gtk_widget_set_tooltip_text(window->m_message, msg.c_str());
+        }
+        else
+        {
+            gtk_label_set_text(GTK_LABEL(window->m_message), message);
+            gtk_widget_set_tooltip_text(window->m_message, message);
+        }
+    }
+    g_free(message);
+    return FALSE;
+}
+
+gboolean Window::removeMessageInMainThread(gpointer param)
+{
+    char *message = static_cast<char *>(param);
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        if (!window->m_message)
+            continue;
+        const char *oldMsg = gtk_label_get_text(GTK_LABEL(window->m_message));
+        const char *found = strstr(oldMsg, message);
+        if (!found)
+            continue;
+        int len = strlen(message);
+        if (found == oldMsg)
+        {
+            // Exclude this message.
+            found += len;
+            // Exclude the delimiter, if any.
+            if (*found == ' ')
+                found++;
+            gtk_label_set_text(GTK_LABEL(window->m_message), found);
+            gtk_widget_set_tooltip_text(window->m_message, found);
+        }
+        else if (*(found - 1) == ' ')
+        {
+            // Exclude the delimiter.
+            std::string msg(oldMsg, found - oldMsg - 1);
+            msg += found + len;
+            gtk_label_set_text(GTK_LABEL(window->m_message), msg.c_str());
+            gtk_widget_set_tooltip_text(window->m_message, msg.c_str());
+        }
+        else
+        {
+            std::string msg(oldMsg, found - oldMsg);
+            msg += found + len;
+            gtk_label_set_text(GTK_LABEL(window->m_message), msg.c_str());
+            gtk_widget_set_tooltip_text(window->m_message, msg.c_str());
+        }
+    }
+    g_free(message);
+    return FALSE;
+}
+
+void Window::addMessage(const char *message)
+{
+    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, addMessageInMainThread,
+                    g_strdup(message), NULL);
+}
+
+void Window::removeMessage(const char *message)
+{
+    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, removeMessageInMainThread,
+                    g_strdup(message), NULL);
 }
 
 void Window::onFileOpened(const char *uri)
@@ -1835,74 +1933,6 @@ void Window::onCurrentTextEditorCursorChanged(int line, int column)
     g_free(cp);
 }
 
-gboolean Window::onWorkerBegunInMainThread(gpointer param)
-{
-    char *desc = static_cast<char *>(param);
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        if (!window->m_workersStatus)
-            continue;
-        for (int i = 0; i < window->m_workerCount; ++i)
-        {
-            const char *d =
-                gtk_label_get_text(GTK_LABEL(window->m_workersStatus[i]));
-            if (strcmp(d, _("Idle.")) == 0)
-            {
-                gtk_label_set_text(GTK_LABEL(window->m_workersStatus[i]),
-                                   desc);
-                gtk_widget_set_tooltip_text(window->m_workersStatus[i], desc);
-                break;
-            }
-        }
-    }
-    return FALSE;
-}
-
-gboolean Window::onWorkerEndedInMainThread(gpointer param)
-{
-    char *desc = static_cast<char *>(param);
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        if (!window->m_workersStatus)
-            continue;
-        for (int i = 0; i < window->m_workerCount; ++i)
-        {
-            const char *d =
-                gtk_label_get_text(GTK_LABEL(window->m_workersStatus[i]));
-            if (strcmp(d, desc) == 0)
-            {
-                gtk_label_set_text(GTK_LABEL(window->m_workersStatus[i]),
-                                   _("Idle."));
-                gtk_widget_set_tooltip_text(window->m_workersStatus[i],
-                                            _("Idle."));
-                break;
-            }
-        }
-    }
-    g_free(desc);
-    return FALSE;
-}
-
-void Window::onWorkerBegun(const char *desc)
-{
-    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-                    onWorkerBegunInMainThread,
-                    g_strdup(desc),
-                    NULL);
-}
-
-void Window::onWorkerEnded(const char *desc)
-{
-    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-                    onWorkerEndedInMainThread,
-                    g_strdup(desc),
-                    NULL);
-}
-
 void Window::onCurrentFileInput(GtkComboBox *combo, Window *window)
 {
     if (window->m_bypassCurrentFileInput)
@@ -1915,8 +1945,8 @@ void Window::onCurrentFileInput(GtkComboBox *combo, Window *window)
     std::vector<FileTitleUri>::iterator it =
         window->m_fileTitlesUris.begin() + index;
 
-    // Check to see if the file is opened in this window.  If any, switch to
-    // the editor.
+    // Check to see if the file is open in this window.  If any, switch to the
+    // editor.
     File *file = Application::instance().findFile(it->uri);
     for (Editor *editor = file->editors();
          editor;

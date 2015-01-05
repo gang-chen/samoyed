@@ -7,7 +7,6 @@
 #include "project.hpp"
 #include "editor.hpp"
 #include "application.hpp"
-#include "resources/project-configuration.hpp"
 #include <list>
 #include <map>
 #include <string>

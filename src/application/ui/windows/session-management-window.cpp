@@ -3,9 +3,9 @@
 
 /*
 UNIT TEST BUILD
-g++ session-management-window.cpp -DSMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST\
- -I../.. `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall\
- -o session-management-window
+g++ session-management-window.cpp -DSMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST \
+-I../.. `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall \
+-o session-management-window
 */
 
 #ifdef HAVE_CONFIG_H
