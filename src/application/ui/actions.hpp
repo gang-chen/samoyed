@@ -57,6 +57,7 @@ public:
         ACTION_EDIT_PREFERENCES,
 
         ACTION_CREATE_WINDOW,
+        ACTION_WINDOW_LAYOUT,
         ACTION_CREATE_EDITOR,
         ACTION_MOVE_EDITOR_DOWN,
         ACTION_MOVE_EDITOR_RIGHT,
@@ -89,7 +90,6 @@ public:
     static void invalidateSensitivity();
 
     Actions(Window *window);
-    void createStatefulActions();
     ~Actions();
 
     GtkAction *action(ActionIndex index) const { return m_actions[index]; }

@@ -40,7 +40,7 @@ void PreferencesEditor::removeCategory(const char *id)
     for (std::vector<Category>::iterator it = s_categories.begin();
          it != s_categories.end();
          ++it)
-        if (it->m_id == id)
+        if (it->id == id)
         {
             s_categories.erase(it);
             break;
@@ -53,9 +53,9 @@ void PreferencesEditor::registerPreferences(const char *category,
     for (std::vector<Category>::iterator it = s_categories.begin();
          it != s_categories.end();
          ++it)
-        if (it->m_id == category)
+        if (it->id == category)
         {
-            it->m_preferences.push_back(setup);
+            it->preferences.push_back(setup);
             break;
         }
 }
@@ -70,13 +70,13 @@ gboolean PreferencesEditor::setupCategoryPage(gpointer param)
     GtkWidget *n = gtk_bin_get_child(GTK_BIN(p->first->m_window));
     int i = gtk_notebook_page_num(GTK_NOTEBOOK(n), c);
     for (std::vector<Setup>::iterator it =
-            s_categories[i].m_preferences.begin();
-         it != s_categories[i].m_preferences.end();
+            s_categories[i].preferences.begin();
+         it != s_categories[i].preferences.end();
          ++it)
         (*it)(GTK_GRID(p->second));
     static_cast<PreferencesExtensionPoint &>(Application::instance().
         extensionPointManager().extensionPoint(PREFERENCES)).
-        setupPreferencesEditor(s_categories[i].m_id.c_str(),
+        setupPreferencesEditor(s_categories[i].id.c_str(),
                                GTK_GRID(p->second));
     delete p;
     return FALSE;
@@ -109,7 +109,7 @@ PreferencesEditor::PreferencesEditor()
         gtk_widget_set_hexpand(grid, TRUE);
         gtk_widget_set_vexpand(grid, TRUE);
         gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(sw), grid);
-        GtkWidget *label = gtk_label_new_with_mnemonic(it->m_label.c_str());
+        GtkWidget *label = gtk_label_new_with_mnemonic(it->label.c_str());
         gtk_notebook_append_page(GTK_NOTEBOOK(notebook), sw, label);
         gtk_container_set_border_width(GTK_CONTAINER(grid),
                                        CONTAINER_BORDER_WIDTH);

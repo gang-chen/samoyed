@@ -15,8 +15,9 @@ namespace Finder
 class FindTextActionExtension: public ActionExtension
 {
 public:
-    FindTextActionExtension(const char *id, Plugin &plugin):
-        ActionExtension(id, plugin)
+    FindTextActionExtension(const char *id, Plugin &plugin, bool next):
+        ActionExtension(id, plugin),
+        m_next(next)
     {}
 
     virtual void activateAction(Window &window, GtkAction *action);
@@ -24,6 +25,9 @@ public:
     virtual void onActionToggled(Window &window, GtkToggleAction *action) {}
 
     virtual bool isActionSensitive(Window &window, GtkAction *action);
+
+private:
+    bool m_next;
 };
 
 }

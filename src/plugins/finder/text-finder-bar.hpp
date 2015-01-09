@@ -20,7 +20,7 @@ class TextFinderBar: public Bar
 public:
     static const char *ID;
 
-    static TextFinderBar *create(TextEditor &editor);
+    static TextFinderBar *create(TextEditor &editor, bool nextByDefault);
 
     virtual Widget::XmlElement *save() const;
 
@@ -29,7 +29,7 @@ public:
     virtual void grabFocus();
 
 private:
-    static void onTextChanged(GtkEditable *edit, TextFinderBar *bar);
+    static void onPatternChanged(GtkEditable *edit, TextFinderBar *bar);
     static void onMatchCaseChanged(GtkToggleButton *button, TextFinderBar *bar);
     static void onFindNext(GtkButton *button, TextFinderBar *bar);
     static void onFindPrevious(GtkButton *button, TextFinderBar *bar);
@@ -39,15 +39,17 @@ private:
                                GdkEventKey *event,
                                TextFinderBar *bar);
 
-    TextFinderBar(TextEditor &editor);
+    TextFinderBar(TextEditor &editor, bool nextByDefault);
 
     bool setup();
 
-    void search(bool next);
+    bool search(bool next);
 
-    GtkWidget *m_text;
+    GtkWidget *m_pattern;
     GtkWidget *m_matchCase;
     GtkWidget *m_message;
+
+    bool m_nextByDefault;
 
     TextEditor &m_editor;
     int m_line;

@@ -33,11 +33,11 @@ public:
 private:
     struct Category
     {
-        std::string m_id;
-        std::string m_label;
-        std::vector<Setup> m_preferences;
+        std::string id;
+        std::string label;
+        std::vector<Setup> preferences;
         Category(const char *id, const char *label):
-            m_id(id), m_label(label)
+            id(id), label(label)
         {}
     };
 

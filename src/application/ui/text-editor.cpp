@@ -598,15 +598,15 @@ void TextEditor::onFileChanged(const File::Change &change)
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtkSourceView()));
     m_bypassEdit = true;
-    if (tc.m_type == File::Change::TYPE_INIT)
+    if (tc.type == File::Change::TYPE_INIT)
     {
         char *text = static_cast<const TextFile &>(file()).text(0, 0, -1, -1);
         gtk_text_buffer_set_text(buffer, text, -1);
         g_free(text);
     }
-    else if (tc.m_type == TextFile::Change::TYPE_INSERTION)
+    else if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
-        const TextFile::Change::Value::Insertion &ins = tc.m_value.insertion;
+        const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
         GtkTextIter iter;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                                 ins.line, ins.column);
@@ -616,7 +616,7 @@ void TextEditor::onFileChanged(const File::Change &change)
     }
     else
     {
-        const TextFile::Change::Value::Removal &rem = tc.m_value.removal;
+        const TextFile::Change::Value::Removal &rem = tc.value.removal;
         GtkTextIter begin, end;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
                                                 rem.beginLine, rem.beginColumn);

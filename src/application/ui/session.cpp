@@ -52,12 +52,12 @@ namespace
 
 struct UnsavedFilesReadParam
 {
-    Samoyed::Session &m_session;
-    Samoyed::Session::UnsavedFileTable m_unsavedFiles;
+    Samoyed::Session &session;
+    Samoyed::Session::UnsavedFileTable unsavedFiles;
     UnsavedFilesReadParam(Samoyed::Session &session,
                           Samoyed::Session::UnsavedFileTable &unsavedFiles):
-        m_session(session)
-    { m_unsavedFiles.swap(unsavedFiles); }
+        session(session)
+    { unsavedFiles.swap(unsavedFiles); }
 };
 
 class XmlElementSession
@@ -518,7 +518,7 @@ Session::UnsavedFilesWrite::UnsavedFilesWrite(
     for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
-        it->second.m_options = new PropertyTree(*it->second.m_options);
+        it->second.options = new PropertyTree(*it->second.options);
 }
 
 Session::UnsavedFilesWrite::~UnsavedFilesWrite()
@@ -526,7 +526,7 @@ Session::UnsavedFilesWrite::~UnsavedFilesWrite()
     for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
-        delete it->second.m_options;
+        delete it->second.options;
 }
 
 // Don't report any error.
@@ -549,16 +549,16 @@ void Session::UnsavedFilesWrite::execute(Session &session)
                         reinterpret_cast<const xmlChar *>(URI),
                         reinterpret_cast<const xmlChar *>(it->first.c_str()));
         char *timeStamp =
-            g_strdup_printf("%ld", it->second.m_timeStamp);
+            g_strdup_printf("%ld", it->second.timeStamp);
         xmlNewTextChild(file, NULL,
                         reinterpret_cast<const xmlChar *>(TIME_STAMP),
                         reinterpret_cast<const xmlChar *>(timeStamp));
         g_free(timeStamp);
         xmlNewTextChild(file, NULL,
                         reinterpret_cast<const xmlChar *>(MIME_TYPE),
-                        reinterpret_cast<const xmlChar *>(it->second.m_mimeType.
+                        reinterpret_cast<const xmlChar *>(it->second.mimeType.
                                                           c_str()));
-        xmlAddChild(file, it->second.m_options->writeXmlElement());
+        xmlAddChild(file, it->second.options->writeXmlElement());
         xmlAddChild(root, file);
     }
 
@@ -578,7 +578,7 @@ Session::UnsavedFilesRequestExecutor::
            callback),
     m_session(session)
 {
-    setDescription("Reading/writing unsaved file list");
+    setDescription("Reading/writing unsaved file list.");
 }
 
 bool Session::UnsavedFilesRequestExecutor::step()
@@ -590,19 +590,19 @@ gboolean Session::onUnsavedFilesRead(gpointer param)
 {
     UnsavedFilesReadParam *p =
         static_cast<UnsavedFilesReadParam *>(param);
-    for (UnsavedFileTable::iterator it = p->m_session.m_unsavedFiles.begin();
-         it != p->m_session.m_unsavedFiles.end();
+    for (UnsavedFileTable::iterator it = p->session.m_unsavedFiles.begin();
+         it != p->session.m_unsavedFiles.end();
          ++it)
-        delete it->second.m_options;
-    p->m_session.m_unsavedFiles.swap(p->m_unsavedFiles);
-    if (p->m_session.m_destroy)
+        delete it->second.options;
+    p->session.m_unsavedFiles.swap(p->unsavedFiles);
+    if (p->session.m_destroy)
     {
         delete p;
         return FALSE;
     }
 
     // Show the unsaved files.
-    if (!p->m_session.unsavedFiles().empty())
+    if (!p->session.unsavedFiles().empty())
     {
         WidgetWithBars &mainArea =
             Application::instance().currentWindow().mainArea();
@@ -610,10 +610,10 @@ gboolean Session::onUnsavedFilesRead(gpointer param)
             static_cast<FileRecoveryBar *>(
                 mainArea.findChild(FileRecoveryBar::ID));
         if (bar)
-            bar->setFiles(p->m_session.unsavedFiles());
+            bar->setFiles(p->session.unsavedFiles());
         else
         {
-            bar = FileRecoveryBar::create(p->m_session.unsavedFiles());
+            bar = FileRecoveryBar::create(p->session.unsavedFiles());
             mainArea.addBar(*bar, false);
         }
     }
@@ -983,7 +983,7 @@ Session::~Session()
     for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
          it != m_unsavedFiles.end();
          ++it)
-        delete it->second.m_options;
+        delete it->second.options;
     writeLastSessionName(m_name.c_str());
 }
 
@@ -1234,10 +1234,10 @@ void Session::addUnsavedFile(const char *uri,
     if (!p.second)
     {
         // Update.
-        p.first->second.m_timeStamp = timeStamp;
-        delete p.first->second.m_options;
-        p.first->second.m_mimeType = mimeType;
-        p.first->second.m_options = options;
+        p.first->second.timeStamp = timeStamp;
+        delete p.first->second.options;
+        p.first->second.mimeType = mimeType;
+        p.first->second.options = options;
     }
     queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
 }
@@ -1246,9 +1246,9 @@ void Session::removeUnsavedFile(const char *uri,
                                 long timeStamp)
 {
     UnsavedFileTable::iterator it = m_unsavedFiles.find(uri);
-    if (it == m_unsavedFiles.end() || it->second.m_timeStamp != timeStamp)
+    if (it == m_unsavedFiles.end() || it->second.timeStamp != timeStamp)
         return;
-    delete it->second.m_options;
+    delete it->second.options;
     m_unsavedFiles.erase(it);
     queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
 }

@@ -69,25 +69,25 @@ public:
 
     struct Configuration
     {
-        int m_screenIndex;
-        int m_width;
-        int m_height;
-        bool m_inFullScreen;
-        bool m_maximized;
-        bool m_toolbarVisible;
-        bool m_statusBarVisible;
-        bool m_toolbarVisibleInFullScreen;
-        Layout m_layout;
+        int screenIndex;
+        int width;
+        int height;
+        bool inFullScreen;
+        bool maximized;
+        bool toolbarVisible;
+        bool statusBarVisible;
+        bool toolbarVisibleInFullScreen;
+        Layout layout;
         Configuration():
-            m_screenIndex(-1),
-            m_width(-1),
-            m_height(-1),
-            m_inFullScreen(false),
-            m_maximized(true),
-            m_toolbarVisible(true),
-            m_statusBarVisible(true),
-            m_toolbarVisibleInFullScreen(false),
-            m_layout(LAYOUT_TOOLS_PANE_RIGHT)
+            screenIndex(-1),
+            width(-1),
+            height(-1),
+            inFullScreen(false),
+            maximized(true),
+            toolbarVisible(true),
+            statusBarVisible(true),
+            toolbarVisibleInFullScreen(false),
+            layout(LAYOUT_TOOLS_PANE_RIGHT)
         {}
     };
 

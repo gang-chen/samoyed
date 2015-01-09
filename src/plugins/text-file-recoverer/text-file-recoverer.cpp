@@ -104,8 +104,8 @@ void TextFileRecoverer::deactivate()
 
 void TextFileRecoverer::recoverFromReplayFile()
 {
-    const char *byteCode = m_reader->m_byteCode;
-    int length = m_reader->m_byteCodeLength;
+    const char *byteCode = m_reader->byteCode();
+    int length = m_reader->byteCodeLength();
     TextEdit::replay(m_file, byteCode, length);
 
     // Automatically deactivate the recoverer when done.
@@ -125,7 +125,7 @@ gboolean TextFileRecoverer::onReplayFileReadInMainThread(gpointer recoverer)
 
     if (rec->m_destroy)
         delete rec;
-    else if (!rec->m_reader->m_error.empty())
+    else if (*rec->m_reader->error())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -138,7 +138,7 @@ gboolean TextFileRecoverer::onReplayFileReadInMainThread(gpointer recoverer)
             dialog,
             _("Samoyed failed to read the automatically saved text edit replay "
               "file to recover file \"%s\". %s"),
-            rec->m_file.uri(), rec->m_reader->m_error.c_str());
+            rec->m_file.uri(), rec->m_reader->error());
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         rec->deactivate();

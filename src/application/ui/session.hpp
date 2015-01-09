@@ -58,20 +58,20 @@ public:
 
     struct UnsavedFileInfo
     {
+        long timeStamp;
+        std::string mimeType;
+        PropertyTree *options;
         UnsavedFileInfo():
-            m_timeStamp(-1),
-            m_options(NULL)
+            timeStamp(-1),
+            options(NULL)
         {}
         UnsavedFileInfo(long timeStamp,
                         const char *mimeType,
                         PropertyTree *options):
-            m_timeStamp(timeStamp),
-            m_mimeType(mimeType),
-            m_options(options)
+            timeStamp(timeStamp),
+            mimeType(mimeType),
+            options(options)
         {}
-        long m_timeStamp;
-        std::string m_mimeType;
-        PropertyTree *m_options;
     };
 
     typedef std::map<std::string, UnsavedFileInfo> UnsavedFileTable;

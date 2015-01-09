@@ -24,6 +24,7 @@
 
 #define FILE_BROWSER "file-browser"
 #define ROOT "root"
+#define VIRTUAL_ROOT "virtual-root"
 
 namespace
 {
@@ -226,18 +227,29 @@ void setActiveRoot(GeditFileBrowserWidget *widget,
     }
 }
 
-void onRootChanged(GeditFileBrowserWidget *widget,
+void onRootChanged(GeditFileBrowserStore *store,
                    GParamSpec *spec,
                    gpointer data)
 {
-    GeditFileBrowserStore *store =
-        gedit_file_browser_widget_get_browser_store(widget);
     GFile *root = gedit_file_browser_store_get_root(store);
     char *rootUri = g_file_get_uri(root);
     Samoyed::Application::instance().histories().
         set(FILE_BROWSER "/" ROOT, std::string(rootUri), false, NULL);
     g_free(rootUri);
     g_object_unref(root);
+}
+
+void onVirtualRootChanged(GeditFileBrowserStore *store,
+                          GParamSpec *spec,
+                          gpointer data)
+{
+    GFile *virtualRoot = gedit_file_browser_store_get_virtual_root(store);
+    char *virtualRootUri = g_file_get_uri(virtualRoot);
+    Samoyed::Application::instance().histories().
+        set(FILE_BROWSER "/" VIRTUAL_ROOT, std::string(virtualRootUri),
+            false, NULL);
+    g_free(virtualRootUri);
+    g_object_unref(virtualRoot);
 }
 
 }
@@ -255,13 +267,22 @@ bool FileBrowserView::setupFileBrowser()
         return false;
     const std::string &rootUri = Application::instance().histories().
         get<std::string>(FILE_BROWSER "/" ROOT);
+    GFile *root = NULL;
     if (!rootUri.empty())
-    {
-        GFile *root = g_file_new_for_uri(rootUri.c_str());
-        gedit_file_browser_widget_set_root(GEDIT_FILE_BROWSER_WIDGET(widget),
-                                           root, FALSE);
+        root = g_file_new_for_uri(rootUri.c_str());
+    const std::string &virtualRootUri = Application::instance().histories().
+        get<std::string>(FILE_BROWSER "/" VIRTUAL_ROOT);
+    GFile *virtualRoot = NULL;
+    if (!virtualRootUri.empty())
+        virtualRoot = g_file_new_for_uri(virtualRootUri.c_str());
+    if (root)
+        gedit_file_browser_widget_set_root_and_virtual_root(
+            GEDIT_FILE_BROWSER_WIDGET(widget),
+            root, virtualRoot);
+    if (root)
         g_object_unref(root);
-    }
+    if (virtualRoot)
+        g_object_unref(virtualRoot);
     g_signal_connect(widget, "location-activated",
                      G_CALLBACK(onLocationActivated), this);
     g_signal_connect(widget, "error",
@@ -274,8 +295,13 @@ bool FileBrowserView::setupFileBrowser()
                      G_CALLBACK(openInTerminal), NULL);
     g_signal_connect(widget, "set-active-root",
                      G_CALLBACK(setActiveRoot), this);
-    g_signal_connect_after(widget, "notify::root",
+    GeditFileBrowserStore *store =
+        gedit_file_browser_widget_get_browser_store(
+            GEDIT_FILE_BROWSER_WIDGET(widget));
+    g_signal_connect_after(store, "notify::root",
                            G_CALLBACK(onRootChanged), NULL);
+    g_signal_connect_after(store, "notify::virtual-root",
+                           G_CALLBACK(onVirtualRootChanged), NULL);
 
     setGtkWidget(widget);
     return true;

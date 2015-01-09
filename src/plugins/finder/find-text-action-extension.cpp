@@ -30,7 +30,7 @@ void FindTextActionExtension::activateAction(Window &window, GtkAction *action)
     TextEditor &editor =
         static_cast<Samoyed::TextEditor &>(window.currentEditorGroup().
                                            currentChild());
-    TextFinderBar *bar = TextFinderBar::create(editor);
+    TextFinderBar *bar = TextFinderBar::create(editor, m_next);
     window.mainArea().addBar(*bar, true);
     bar->setCurrent();
     FinderPlugin::instance().onTextFinderBarCreated(*bar);

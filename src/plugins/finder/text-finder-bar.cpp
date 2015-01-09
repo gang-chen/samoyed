@@ -20,7 +20,7 @@
 namespace
 {
 
-const int MAX_COMPLETION_COUNT = 10;
+const int MAX_PATTERN_COUNT = 10;
 
 GtkListStore *createCompletionModel()
 {
@@ -38,42 +38,42 @@ GtkListStore *createCompletionModel()
     return store;
 }
 
-void saveCompletion(GtkListStore *store, const char *text)
+void savePattern(GtkListStore *store, const char *pattern)
 {
     GtkTreeIter iter;
 
-    // If the text is already in the list, remove it because we will prepend it
-    // to the list later.
+    // If the pattern is already in the list, remove it because we will prepend
+    // it to the list later.
     if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter))
     {
         do
         {
-            char *comp;
+            char *ptn;
             gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
-                               0, &comp, -1);
-            if (g_ascii_strcasecmp(comp, text) == 0)
+                               0, &ptn, -1);
+            if (g_ascii_strcasecmp(ptn, pattern) == 0)
             {
-                g_free(comp);
+                g_free(ptn);
                 gtk_list_store_remove(store, &iter);
                 break;
             }
-            g_free(comp);
+            g_free(ptn);
         }
         while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
     }
 
-    // Remove extra completions if there are too many.
+    // Remove extra patterns if there are too many.
     if (gtk_tree_model_iter_n_children(GTK_TREE_MODEL(store), NULL) >=
-        MAX_COMPLETION_COUNT)
+        MAX_PATTERN_COUNT)
     {
         while (gtk_tree_model_iter_nth_child(GTK_TREE_MODEL(store), &iter,
-                                             NULL, MAX_COMPLETION_COUNT - 1))
+                                             NULL, MAX_PATTERN_COUNT - 1))
             gtk_list_store_remove(store, &iter);
     }
 
     // Prepend the new one.
     gtk_list_store_prepend(store, &iter);
-    gtk_list_store_set(store, &iter, 0, text, -1);
+    gtk_list_store_set(store, &iter, 0, pattern, -1);
 
     // Save the history.
     std::string patterns;
@@ -81,17 +81,17 @@ void saveCompletion(GtkListStore *store, const char *text)
     {
         do
         {
-            char *comp;
+            char *ptn;
             gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
-                               0, &comp, -1);
+                               0, &ptn, -1);
             if (patterns.empty())
-                patterns = comp;
+                patterns = ptn;
             else
             {
                 patterns += '\t';
-                patterns += comp;
+                patterns += ptn;
             }
-            g_free(comp);
+            g_free(ptn);
         }
         while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
     }
@@ -110,8 +110,9 @@ namespace Finder
 
 const char *TextFinderBar::ID = "text-finder-bar";
 
-TextFinderBar::TextFinderBar(TextEditor &editor):
-    m_editor(editor)
+TextFinderBar::TextFinderBar(TextEditor &editor, bool nextByDefault):
+    m_editor(editor),
+    m_nextByDefault(nextByDefault)
 {
     editor.getCursor(m_line, m_column);
 }
@@ -123,19 +124,19 @@ bool TextFinderBar::setup()
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *label = gtk_label_new_with_mnemonic(_("_Find:"));
-    m_text = gtk_entry_new();
-    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_text);
+    m_pattern = gtk_entry_new();
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), m_pattern);
     gtk_grid_attach_next_to(GTK_GRID(grid), label, NULL,
                             GTK_POS_RIGHT, 1, 1);
-    gtk_grid_attach_next_to(GTK_GRID(grid), m_text, label,
+    gtk_grid_attach_next_to(GTK_GRID(grid), m_pattern, label,
                             GTK_POS_RIGHT, 1, 1);
-    g_signal_connect(m_text, "changed",
-                     G_CALLBACK(onTextChanged), this);
-    g_signal_connect(m_text, "activate",
+    g_signal_connect(m_pattern, "changed",
+                     G_CALLBACK(onPatternChanged), this);
+    g_signal_connect(m_pattern, "activate",
                      G_CALLBACK(onDone), this);
 
     GtkEntryCompletion *comp = gtk_entry_completion_new();
-    gtk_entry_set_completion(GTK_ENTRY(m_text), comp);
+    gtk_entry_set_completion(GTK_ENTRY(m_pattern), comp);
     g_object_unref(comp);
     GtkListStore *store = createCompletionModel();
     gtk_entry_completion_set_model(comp, GTK_TREE_MODEL(store));
@@ -147,7 +148,7 @@ bool TextFinderBar::setup()
         GTK_TOGGLE_BUTTON(m_matchCase),
         Application::instance().histories().
             get<bool>(TEXT_SEARCH "/" MATCH_CASE));
-    gtk_grid_attach_next_to(GTK_GRID(grid), m_matchCase, m_text,
+    gtk_grid_attach_next_to(GTK_GRID(grid), m_matchCase, m_pattern,
                             GTK_POS_RIGHT, 1, 1);
     g_signal_connect(m_matchCase, "toggled",
                      G_CALLBACK(onMatchCaseChanged), this);
@@ -197,17 +198,17 @@ bool TextFinderBar::setup()
         char *pattern;
         gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
                            0, &pattern, -1);
-        gtk_entry_set_text(GTK_ENTRY(m_text), pattern);
-        gtk_editable_select_region(GTK_EDITABLE(m_text), 0, -1);
+        gtk_entry_set_text(GTK_ENTRY(m_pattern), pattern);
+        gtk_editable_select_region(GTK_EDITABLE(m_pattern), 0, -1);
         g_free(pattern);
     }
 
     return true;
 }
 
-TextFinderBar *TextFinderBar::create(TextEditor &editor)
+TextFinderBar *TextFinderBar::create(TextEditor &editor, bool nextByDefault)
 {
-    TextFinderBar *bar = new TextFinderBar(editor);
+    TextFinderBar *bar = new TextFinderBar(editor, nextByDefault);
     if (!bar->setup())
     {
         delete bar;
@@ -221,15 +222,15 @@ Widget::XmlElement *TextFinderBar::save() const
     return NULL;
 }
 
-void TextFinderBar::search(bool next)
+bool TextFinderBar::search(bool next)
 {
     // Clear the message.
     gtk_label_set_text(GTK_LABEL(m_message), "");
     gtk_widget_set_tooltip_text(m_message, "");
 
-    const char *text = gtk_entry_get_text(GTK_ENTRY(m_text));
-    if (*text == '\0')
-        return;
+    const char *pattern = gtk_entry_get_text(GTK_ENTRY(m_pattern));
+    if (*pattern == '\0')
+        return false;
 
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_editor.gtkSourceView()));
@@ -245,7 +246,7 @@ void TextFinderBar::search(bool next)
     {
         gtk_text_buffer_get_selection_bounds(buffer, NULL, &start);
         found = gtk_text_iter_forward_search(
-            &start, text,
+            &start, pattern,
             static_cast<GtkTextSearchFlags>(flags),
             &matchBegin, &matchEnd,
             NULL);
@@ -254,7 +255,7 @@ void TextFinderBar::search(bool next)
             wrapped = true;
             gtk_text_buffer_get_start_iter(buffer, &start);
             found = gtk_text_iter_forward_search(
-                &start, text,
+                &start, pattern,
                 static_cast<GtkTextSearchFlags>(flags),
                 &matchBegin, &matchEnd,
                 NULL);
@@ -262,9 +263,9 @@ void TextFinderBar::search(bool next)
     }
     else
     {
-        gtk_text_buffer_get_iter_at_mark(buffer, &start, NULL);
+        gtk_text_buffer_get_selection_bounds(buffer, &start, NULL);
         found = gtk_text_iter_backward_search(
-            &start, text,
+            &start, pattern,
             static_cast<GtkTextSearchFlags>(flags),
             &matchBegin, &matchEnd,
             NULL);
@@ -273,7 +274,7 @@ void TextFinderBar::search(bool next)
             wrapped = true;
             gtk_text_buffer_get_end_iter(buffer, &start);
             found = gtk_text_iter_backward_search(
-                &start, text,
+                &start, pattern,
                 static_cast<GtkTextSearchFlags>(flags),
                 &matchBegin, &matchEnd,
                 NULL);
@@ -319,13 +320,14 @@ void TextFinderBar::search(bool next)
         gtk_label_set_text(GTK_LABEL(m_message), _("Not found."));
         gtk_widget_set_tooltip_text(m_message, _("Not found."));
     }
+    return found;
 }
 
-void TextFinderBar::onTextChanged(GtkEditable *edit, TextFinderBar *bar)
+void TextFinderBar::onPatternChanged(GtkEditable *edit, TextFinderBar *bar)
 {
-    // Always start from the initial cursor.
+    // Always start from the initial starting point.
     bar->m_editor.setCursor(bar->m_line, bar->m_column);
-    bar->search(true);
+    bar->search(bar->m_nextByDefault);
 }
 
 void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
@@ -337,32 +339,40 @@ void TextFinderBar::onMatchCaseChanged(GtkToggleButton *button,
         true : false,
         false, NULL);
 
-    // Always start from the initial cursor.
+    // Always start from the initial starting point.
     bar->m_editor.setCursor(bar->m_line, bar->m_column);
-    bar->search(true);
+    bar->search(bar->m_nextByDefault);
 }
 
 void TextFinderBar::onFindNext(GtkButton *button, TextFinderBar *bar)
 {
-    saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
-                   gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
-                   gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
-    bar->search(true);
+    savePattern(GTK_LIST_STORE(gtk_entry_completion_get_model(
+                gtk_entry_get_completion(GTK_ENTRY(bar->m_pattern)))),
+                gtk_entry_get_text(GTK_ENTRY(bar->m_pattern)));
+    if (bar->search(true))
+    {
+        // Save the position of the occurrence.
+        bar->m_editor.getCursor(bar->m_line, bar->m_column);
+    }
 }
 
 void TextFinderBar::onFindPrevious(GtkButton *button, TextFinderBar *bar)
 {
-    saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
-                   gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
-                   gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
-    bar->search(false);
+    savePattern(GTK_LIST_STORE(gtk_entry_completion_get_model(
+                gtk_entry_get_completion(GTK_ENTRY(bar->m_pattern)))),
+                gtk_entry_get_text(GTK_ENTRY(bar->m_pattern)));
+    if (bar->search(false))
+    {
+        // Save the position of the occurrence.
+        bar->m_editor.getCursor(bar->m_line, bar->m_column);
+    }
 }
 
 void TextFinderBar::onDone(GtkEntry *entry, TextFinderBar *bar)
 {
-    saveCompletion(GTK_LIST_STORE(gtk_entry_completion_get_model(
-                   gtk_entry_get_completion(GTK_ENTRY(bar->m_text)))),
-                   gtk_entry_get_text(GTK_ENTRY(bar->m_text)));
+    savePattern(GTK_LIST_STORE(gtk_entry_completion_get_model(
+                gtk_entry_get_completion(GTK_ENTRY(bar->m_pattern)))),
+                gtk_entry_get_text(GTK_ENTRY(bar->m_pattern)));
 
     TextEditor &editor = bar->m_editor;
     bar->close();
@@ -382,7 +392,7 @@ gboolean TextFinderBar::onKeyPress(GtkWidget *widget,
 {
     if (event->keyval == GDK_KEY_Escape)
     {
-        // Restore the initial cursor.
+        // Return to the initial starting point.
         bar->m_editor.setCursor(bar->m_line, bar->m_column);
         TextEditor &editor = bar->m_editor;
         bar->close();
@@ -394,7 +404,7 @@ gboolean TextFinderBar::onKeyPress(GtkWidget *widget,
 
 void TextFinderBar::grabFocus()
 {
-    gtk_widget_grab_focus(m_text);
+    gtk_widget_grab_focus(m_pattern);
 }
 
 }

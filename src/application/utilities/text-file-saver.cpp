@@ -43,7 +43,7 @@ TextFileSaver::TextFileSaver(Scheduler &scheduler,
     m_encoding(encoding)
 {
     char *desc =
-        g_strdup_printf(_("Saving text file \"%s\" in encoding \"%s\""),
+        g_strdup_printf(_("Saving text file \"%s\" in encoding \"%s\"."),
                         uri, encoding);
     setDescription(desc);
     g_free(desc);

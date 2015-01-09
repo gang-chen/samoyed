@@ -129,7 +129,6 @@ libs/winpty/shared/Makefile
 po/Makefile.in
 src/Makefile
 src/application/Makefile
-src/application/resources/Makefile
 src/application/ui/Makefile
 src/application/ui/bars/Makefile
 src/application/ui/dialogs/Makefile

@@ -11,6 +11,7 @@
 
 #define FILE_BROWSER "file-browser"
 #define ROOT "root"
+#define VIRTUAL_ROOT "virtual-root"
 
 namespace Samoyed
 {
@@ -23,6 +24,7 @@ void FileBrowserHistoriesExtension::installHistories()
     PropertyTree &hist =
         Application::instance().histories().addChild(FILE_BROWSER);
     hist.addChild(ROOT, std::string());
+    hist.addChild(VIRTUAL_ROOT, std::string());
 }
 
 void FileBrowserHistoriesExtension::uninstallHistories()

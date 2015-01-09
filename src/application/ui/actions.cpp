@@ -310,7 +310,9 @@ void enterLeaveFullScreen(GtkToggleAction *action, Samoyed::Window *window)
         window->leaveFullScreen();
 }
 
-void changeWindowLayout(GtkRadioAction *action, Samoyed::Window *window)
+void changeWindowLayout(GtkRadioAction *action,
+                        GtkRadioAction *current,
+                        Samoyed::Window *window)
 {
     window->changeLayout(static_cast<Samoyed::Window::Layout>
         (gtk_radio_action_get_current_value(action)));
@@ -391,6 +393,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     // View menu.
     { "create-window", "window-new", N_("New _Window"), NULL,
       N_("Create a window"), G_CALLBACK(createWindow) },
+    { "window-layout", NULL, N_("Window _Layout"), NULL, NULL, NULL },
     { "create-editor", NULL, N_("New _Editor"), NULL,
       N_("Create an editor for the current file"), G_CALLBACK(createEditor) },
     { "move-editor-down", NULL, N_("Move Editor _Down"), NULL,
@@ -572,24 +575,15 @@ Actions::Actions(Window *window):
 {
     m_actionGroup = gtk_action_group_new("actions");
     gtk_action_group_set_translation_domain(m_actionGroup, NULL);
+
     gtk_action_group_add_actions(m_actionGroup,
                                  actionEntries,
                                  N_ACTIONS,
                                  window);
-    // Fill the action array.
     for (int i = 0; i < N_ACTIONS; ++i)
         m_actions[i] = gtk_action_group_get_action(m_actionGroup,
                                                    actionEntries[i].name);
-}
 
-void Actions::createStatefulActions()
-{
-    toggleActionEntries[TOGGLE_ACTION_SHOW_HIDE_TOOLBAR].is_active =
-        m_window->toolbarVisible();
-    toggleActionEntries[TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR].is_active =
-        m_window->statusBarVisible();
-    toggleActionEntries[TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN].is_active =
-        m_window->inFullScreen();
     gtk_action_group_add_toggle_actions(m_actionGroup,
                                         toggleActionEntries,
                                         N_TOGGLE_ACTIONS,
@@ -602,7 +596,7 @@ void Actions::createStatefulActions()
     gtk_action_group_add_radio_actions(m_actionGroup,
                                        windowLayoutEntries,
                                        2,
-                                       m_window->configuration().m_layout,
+                                       Window::LAYOUT_TOOLS_PANE_RIGHT,
                                        G_CALLBACK(changeWindowLayout),
                                        m_window);
     m_radioActionGroups[RADIO_ACTION_GROUP_WINDOW_LAYOUT] = GTK_RADIO_ACTION(
@@ -617,22 +611,24 @@ Actions::~Actions()
 
 void Actions::onToolbarVisibilityChanged(bool visibility)
 {
-    gtk_toggle_action_set_active(toggleAction(TOGGLE_ACTION_SHOW_HIDE_TOOLBAR),
-                                 visibility);
+    GtkToggleAction *action = toggleAction(TOGGLE_ACTION_SHOW_HIDE_TOOLBAR);
+    if (action)
+        gtk_toggle_action_set_active(action, visibility);
 }
 
 void Actions::onStatusBarVisibilityChanged(bool visibility)
 {
-    gtk_toggle_action_set_active(toggleAction(
-                                     TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR),
-                                 visibility);
+    GtkToggleAction *action = toggleAction(TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR);
+    if (action)
+        gtk_toggle_action_set_active(action, visibility);
 }
 
 void Actions::onWindowFullScreenChanged(bool inFullScreen)
 {
-    gtk_toggle_action_set_active(toggleAction(
-                                     TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN),
-                                 inFullScreen);
+    GtkToggleAction *action =
+        toggleAction(TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN);
+    if (action)
+        gtk_toggle_action_set_active(action, inFullScreen);
 }
 
 }

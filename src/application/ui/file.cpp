@@ -38,20 +38,20 @@ const char *DEFAULT_FILTER = "C/C++ Source and Header Files";
 
 struct LoadedParam
 {
+    Samoyed::File &file;
+    Samoyed::FileLoader &loader;
     LoadedParam(Samoyed::File &file, Samoyed::FileLoader &loader):
-        m_file(file), m_loader(loader)
+        file(file), loader(loader)
     {}
-    Samoyed::File &m_file;
-    Samoyed::FileLoader &m_loader;
 };
 
 struct SavedParam
 {
+    Samoyed::File &file;
+    Samoyed::FileSaver &saver;
     SavedParam(Samoyed::File &file, Samoyed::FileSaver &saver):
-        m_file(file), m_saver(saver)
+        file(file), saver(saver)
     {}
-    Samoyed::File &m_file;
-    Samoyed::FileSaver &m_saver;
 };
 
 }
@@ -152,7 +152,7 @@ void File::registerTypeSet(const char *mimeTypeSet,
     std::list<TypeRecord>::const_iterator it;
     for (it = s_typeRegistry.begin(); it != s_typeRegistry.end(); ++it)
     {
-        if (g_content_type_equals(it->m_type.c_str(), masterType))
+        if (g_content_type_equals(it->type.c_str(), masterType))
             break;
     }
     g_free(masterType);
@@ -160,14 +160,14 @@ void File::registerTypeSet(const char *mimeTypeSet,
         return;
     s_typeSetRegistry.push_back(TypeSet());
     TypeSet &set = s_typeSetRegistry.back();
-    set.m_masterType = &(*it);
+    set.masterType = &(*it);
 
     char **mimeTypes = g_strsplit(mimeTypeSet, " ", -1);
     for (char **mimeType = mimeTypes; *mimeType; ++mimeType)
-        set.m_mimeTypes.push_back(*mimeType);
+        set.mimeTypes.push_back(*mimeType);
     g_strfreev(mimeTypes);
 
-    set.m_description = description;
+    set.description = description;
 }
 
 const File::TypeRecord *File::findTypeRecord(const char *type)
@@ -177,7 +177,7 @@ const File::TypeRecord *File::findTypeRecord(const char *type)
          it != s_typeRegistry.end();
          ++it)
     {
-        if (g_content_type_equals(it->m_type.c_str(), type))
+        if (g_content_type_equals(it->type.c_str(), type))
             return &(*it);
     }
 
@@ -187,7 +187,7 @@ const File::TypeRecord *File::findTypeRecord(const char *type)
          it != s_typeRegistry.end();
          ++it)
     {
-        if (g_content_type_is_a(type, it->m_type.c_str()))
+        if (g_content_type_is_a(type, it->type.c_str()))
             baseTypes.push_back(it);
     }
     if (baseTypes.empty())
@@ -200,7 +200,7 @@ const File::TypeRecord *File::findTypeRecord(const char *type)
         baseTypes.begin();
     for (++it2; it2 != baseTypes.end(); ++it2)
     {
-        if (g_content_type_is_a((*it2)->m_type.c_str(), (*it)->m_type.c_str()))
+        if (g_content_type_is_a((*it2)->type.c_str(), (*it)->type.c_str()))
             it = it2;
     }
     return &(**it);
@@ -212,7 +212,7 @@ const PropertyTree *File::defaultOptionsForType(const char *mimeType)
     const TypeRecord *rec = findTypeRecord(type);
     g_free(type);
     if (rec)
-        return &rec->m_defOptGetter();
+        return &rec->defOptGetter();
     return NULL;
 }
 
@@ -285,17 +285,17 @@ File::open(const char *uri, Project *project,
     g_free(type);
 
     if (!options)
-        options = &rec->m_defOptGetter();
+        options = &rec->defOptGetter();
 
     file = Application::instance().findFile(uri);
     if (file)
     {
         PropertyTree *existOpt = file->options();
-        if (!rec->m_optEqual(*options, *existOpt))
+        if (!rec->optEqual(*options, *existOpt))
         {
             std::string optDesc, existOptDesc;
-            rec->m_optDescriber(*options, optDesc);
-            rec->m_optDescriber(*existOpt, existOptDesc);
+            rec->optDescriber(*options, optDesc);
+            rec->optDescriber(*existOpt, existOptDesc);
             delete existOpt;
             GtkWidget *dialog = gtk_message_dialog_new(
                 GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -322,8 +322,8 @@ File::open(const char *uri, Project *project,
         return std::make_pair(file, editor);
     }
 
-    char *matchedMimeType = g_content_type_get_mime_type(rec->m_type.c_str());
-    file = rec->m_factory(uri, matchedMimeType, *options);
+    char *matchedMimeType = g_content_type_get_mime_type(rec->type.c_str());
+    file = rec->factory(uri, matchedMimeType, *options);
     g_free(matchedMimeType);
     if (!file)
         return std::pair<File *, Editor *>(NULL, NULL);
@@ -385,16 +385,16 @@ void File::openByDialog(Project *project,
     {
         GtkFileFilter *filter = gtk_file_filter_new();
 
-        char *mimeType = g_content_type_get_mime_type(it->m_type.c_str());
+        char *mimeType = g_content_type_get_mime_type(it->type.c_str());
         gtk_file_filter_add_mime_type(filter, mimeType);
         filter2MimeType[filter] = mimeType;
 
-        gtk_file_filter_set_name(filter, it->m_description.c_str());
+        gtk_file_filter_set_name(filter, it->description.c_str());
 
         gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-        param.filter2Factory[filter] = &it->m_optSetterFactory;
+        param.filter2Factory[filter] = &it->optSetterFactory;
 
-        if (!lastFilter || lastFilterName == it->m_description)
+        if (!lastFilter || lastFilterName == it->description)
             lastFilter = filter;
     }
     for (std::list<TypeSet>::const_iterator it = s_typeSetRegistry.begin();
@@ -404,20 +404,20 @@ void File::openByDialog(Project *project,
         GtkFileFilter *filter = gtk_file_filter_new();
 
         for (std::list<std::string>::const_iterator it2 =
-             it->m_mimeTypes.begin();
-             it2 != it->m_mimeTypes.end();
+             it->mimeTypes.begin();
+             it2 != it->mimeTypes.end();
              ++it2)
             gtk_file_filter_add_mime_type(filter, it2->c_str());
         char *mimeType =
-            g_content_type_get_mime_type(it->m_masterType->m_type.c_str());
+            g_content_type_get_mime_type(it->masterType->type.c_str());
         filter2MimeType[filter] = mimeType;
 
-        gtk_file_filter_set_name(filter, it->m_description.c_str());
+        gtk_file_filter_set_name(filter, it->description.c_str());
 
         gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-        param.filter2Factory[filter] = &it->m_masterType->m_optSetterFactory;
+        param.filter2Factory[filter] = &it->masterType->optSetterFactory;
 
-        if (!lastFilter || lastFilterName == it->m_description)
+        if (!lastFilter || lastFilterName == it->description)
             lastFilter = filter;
     }
 
@@ -701,8 +701,8 @@ File::~File()
 gboolean File::onLoadedInMainThread(gpointer param)
 {
     LoadedParam *p = static_cast<LoadedParam *>(param);
-    File &file = p->m_file;
-    FileLoader &loader = p->m_loader;
+    File &file = p->file;
+    FileLoader &loader = p->loader;
 
     assert(file.m_loading);
 
@@ -782,8 +782,8 @@ gboolean File::onLoadedInMainThread(gpointer param)
 gboolean File::onSavedInMainThread(gpointer param)
 {
     SavedParam *p = static_cast<SavedParam *>(param);
-    File &file = p->m_file;
-    FileSaver &saver = p->m_saver;
+    File &file = p->file;
+    FileSaver &saver = p->saver;
 
     assert(file.m_saving);
     file.m_saving = false;

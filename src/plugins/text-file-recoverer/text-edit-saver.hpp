@@ -75,6 +75,7 @@ private:
         virtual bool execute(TextEditSaver &saver);
         virtual bool merge(const TextInsertion *ins);
         virtual bool merge(const TextRemoval *rem);
+    private:
         TextEdit *m_edit;
     };
 

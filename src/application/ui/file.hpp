@@ -56,15 +56,14 @@ public:
     /**
      * A change.  Derived classes should define their concrete changes.
      */
-    class Change
+    struct Change
     {
-    public:
         enum Type
         {
             TYPE_INIT
         };
-        int m_type;
-        Change(int type): m_type(type) {}
+        int type;
+        Change(int type): type(type) {}
     };
 
     /**
@@ -397,13 +396,13 @@ protected:
 private:
     struct TypeRecord
     {
-        std::string m_type;
-        Factory m_factory;
-        OptionsSetterFactory m_optSetterFactory;
-        OptionsGetter m_defOptGetter;
-        OptionsEqual m_optEqual;
-        OptionsDescriber m_optDescriber;
-        std::string m_description;
+        std::string type;
+        Factory factory;
+        OptionsSetterFactory optSetterFactory;
+        OptionsGetter defOptGetter;
+        OptionsEqual optEqual;
+        OptionsDescriber optDescriber;
+        std::string description;
         TypeRecord(const char *type,
                    const Factory &factory,
                    const OptionsSetterFactory &optSetterFactory,
@@ -411,21 +410,21 @@ private:
                    const OptionsEqual &optEqual,
                    const OptionsDescriber &optDescriber,
                    const char *description):
-            m_type(type),
-            m_factory(factory),
-            m_optSetterFactory(optSetterFactory),
-            m_defOptGetter(defOptGetter),
-            m_optEqual(optEqual),
-            m_optDescriber(optDescriber),
-            m_description(description)
+            type(type),
+            factory(factory),
+            optSetterFactory(optSetterFactory),
+            defOptGetter(defOptGetter),
+            optEqual(optEqual),
+            optDescriber(optDescriber),
+            description(description)
         {}
     };
 
     struct TypeSet
     {
-        std::list<std::string> m_mimeTypes;
-        const TypeRecord *m_masterType;
-        std::string m_description;
+        std::list<std::string> mimeTypes;
+        const TypeRecord *masterType;
+        std::string description;
     };
 
     struct FilterChangedParam

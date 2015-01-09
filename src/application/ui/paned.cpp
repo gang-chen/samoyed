@@ -564,6 +564,8 @@ Paned *Paned::split(const char *id,
     paned->setGtkWidget(p);
     paned->m_sidePaneIndex = -1;
 
+    gtk_widget_show_all(p);
+
     // Replace the original widget with the paned widget.
     parent->replaceChild(*original, *paned);
 
@@ -571,8 +573,6 @@ Paned *Paned::split(const char *id,
     paned->addChildInternally(child1, 0);
     paned->addChildInternally(child2, 1);
     paned->m_currentChildIndex = newChildIndex;
-
-    gtk_widget_show_all(p);
 
     if (totalSize != -1)
     {

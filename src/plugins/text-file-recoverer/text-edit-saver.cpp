@@ -79,7 +79,7 @@ TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
     m_saver(saver)
 {
     char *desc =
-        g_strdup_printf("Saving text edits for file \"%s\"",
+        g_strdup_printf("Saving text edits for file \"%s\".",
                         saver.m_file.uri());
     setDescription(desc);
     g_free(desc);
@@ -304,18 +304,18 @@ void TextEditSaver::onFileChanged(const File::Change &change,
             m_file.options());
     }
     const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);
-    if (tc.m_type == TextFile::Change::TYPE_INSERTION)
+    if (tc.type == TextFile::Change::TYPE_INSERTION)
         queueReplayFileAppending(
-            new TextInsertion(tc.m_value.insertion.line,
-                              tc.m_value.insertion.column,
-                              tc.m_value.insertion.text,
-                              tc.m_value.insertion.length));
+            new TextInsertion(tc.value.insertion.line,
+                              tc.value.insertion.column,
+                              tc.value.insertion.text,
+                              tc.value.insertion.length));
     else
         queueReplayFileAppending(
-            new TextRemoval(tc.m_value.removal.beginLine,
-                            tc.m_value.removal.beginColumn,
-                            tc.m_value.removal.endLine,
-                            tc.m_value.removal.endColumn));
+            new TextRemoval(tc.value.removal.beginLine,
+                            tc.value.removal.beginColumn,
+                            tc.value.removal.endLine,
+                            tc.value.removal.endColumn));
 }
 
 }

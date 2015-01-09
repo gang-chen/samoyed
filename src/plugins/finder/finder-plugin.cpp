@@ -30,7 +30,9 @@ FinderPlugin::FinderPlugin(PluginManager &manager,
 Extension *FinderPlugin::createExtension(const char *extensionId)
 {
     if (strcmp(extensionId, "finder/find-text") == 0)
-        return new FindTextActionExtension(extensionId, *this);
+        return new FindTextActionExtension(extensionId, *this, true);
+    if (strcmp(extensionId, "finder/find-text-back") == 0)
+        return new FindTextActionExtension(extensionId, *this, false);
     if (strcmp(extensionId, "finder/histories") == 0)
         return new FinderHistoriesExtension(extensionId, *this);
     return NULL;

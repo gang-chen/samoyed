@@ -60,7 +60,7 @@ TextFileLoader::TextFileLoader(Scheduler &scheduler,
     m_readBuffer(NULL)
 {
     char *desc =
-        g_strdup_printf(_("Loading text file \"%s\" in encoding \"%s\""),
+        g_strdup_printf(_("Loading text file \"%s\" in encoding \"%s\"."),
                         uri, encoding);
     setDescription(desc);
     g_free(desc);

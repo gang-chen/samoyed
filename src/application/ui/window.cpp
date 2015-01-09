@@ -42,6 +42,7 @@
 #define TOOLBAR_VISIBLE "toolbar-visible"
 #define STATUS_BAR_VISIBLE "status-bar-visible"
 #define TOOLBAR_VISIBLE_IN_FULL_SCREEN "toolbar-visible-in-full-screen"
+#define LAYOUT "layout"
 #define CHILD "child"
 
 #define WINDOW_ID "window"
@@ -202,7 +203,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_screenIndex =
+                    m_configuration.screenIndex =
                         boost::lexical_cast<int>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
@@ -229,7 +230,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_width = boost::lexical_cast<int>(value);
+                    m_configuration.width = boost::lexical_cast<int>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
                 {
@@ -255,7 +256,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_height = boost::lexical_cast<int>(value);
+                    m_configuration.height = boost::lexical_cast<int>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
                 {
@@ -281,7 +282,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_inFullScreen =
+                    m_configuration.inFullScreen =
                         boost::lexical_cast<bool>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
@@ -308,7 +309,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_maximized =
+                    m_configuration.maximized =
                         boost::lexical_cast<bool>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
@@ -335,7 +336,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_toolbarVisible =
+                    m_configuration.toolbarVisible =
                         boost::lexical_cast<bool>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
@@ -362,7 +363,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_statusBarVisible =
+                    m_configuration.statusBarVisible =
                         boost::lexical_cast<bool>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
@@ -390,7 +391,7 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
             {
                 try
                 {
-                    m_configuration.m_toolbarVisibleInFullScreen =
+                    m_configuration.toolbarVisibleInFullScreen =
                         boost::lexical_cast<bool>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
@@ -401,6 +402,35 @@ bool Window::XmlElement::readInternally(xmlNodePtr node,
                             _("Line %d: Invalid Boolean value \"%s\" for "
                               "element \"%s\". %s.\n"),
                             child->line, value, TOOLBAR_VISIBLE_IN_FULL_SCREEN,
+                            error.what());
+                        errors->push_back(cp);
+                        g_free(cp);
+                    }
+                }
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        LAYOUT) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                try
+                {
+                    m_configuration.layout =
+                        static_cast<Layout>(
+                            boost::lexical_cast<unsigned int>(value));
+                }
+                catch (boost::bad_lexical_cast &error)
+                {
+                    if (errors)
+                    {
+                        cp = g_strdup_printf(
+                            _("Line %d: Invalid nonnegative integer \"%s\" for "
+                              "element \"%s\". %s.\n"),
+                            child->line, value, LAYOUT,
                             error.what());
                         errors->push_back(cp);
                         g_free(cp);
@@ -487,40 +517,44 @@ xmlNodePtr Window::XmlElement::write() const
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(WINDOW));
     xmlAddChild(node, WidgetContainer::XmlElement::write());
-    str = boost::lexical_cast<std::string>(m_configuration.m_screenIndex);
+    str = boost::lexical_cast<std::string>(m_configuration.screenIndex);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(SCREEN_INDEX),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_configuration.m_width);
+    str = boost::lexical_cast<std::string>(m_configuration.width);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(WIDTH),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_configuration.m_height);
+    str = boost::lexical_cast<std::string>(m_configuration.height);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(HEIGHT),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_configuration.m_inFullScreen);
+    str = boost::lexical_cast<std::string>(m_configuration.inFullScreen);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(IN_FULL_SCREEN),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_configuration.m_maximized);
+    str = boost::lexical_cast<std::string>(m_configuration.maximized);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(MAXIMIZED),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_configuration.m_toolbarVisible);
+    str = boost::lexical_cast<std::string>(m_configuration.toolbarVisible);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    str = boost::lexical_cast<std::string>(m_configuration.m_statusBarVisible);
+    str = boost::lexical_cast<std::string>(m_configuration.statusBarVisible);
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(STATUS_BAR_VISIBLE),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
     str = boost::lexical_cast<std::string>(
-        m_configuration.m_toolbarVisibleInFullScreen);
+        m_configuration.toolbarVisibleInFullScreen);
     xmlNewTextChild(
         node, NULL,
         reinterpret_cast<const xmlChar *>(TOOLBAR_VISIBLE_IN_FULL_SCREEN),
         reinterpret_cast<const xmlChar *>(str.c_str()));
+    str = boost::lexical_cast<std::string>(m_configuration.layout);
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(LAYOUT),
+                    reinterpret_cast<const xmlChar *>(str.c_str()));
     xmlNodePtr child = xmlNewNode(NULL,
                                   reinterpret_cast<const xmlChar *>(CHILD));
     xmlAddChild(child, m_child->write());
@@ -646,16 +680,16 @@ bool Window::build(const Configuration &config)
     setGtkWidget(window);
 
     // Configure the window.
-    if (config.m_screenIndex >= 0)
+    if (config.screenIndex >= 0)
     {
         GdkDisplay *display = gdk_display_get_default();
         GdkScreen *screen = gdk_display_get_screen(display,
-                                                   config.m_screenIndex);
+                                                   config.screenIndex);
         gtk_window_set_screen(GTK_WINDOW(window), screen);
     }
 
-    m_width = config.m_width;
-    m_height = config.m_height;
+    m_width = config.width;
+    m_height = config.height;
     if (m_width == -1)
     {
         GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(window));
@@ -664,17 +698,17 @@ bool Window::build(const Configuration &config)
     }
     gtk_window_set_default_size(GTK_WINDOW(window), m_width, m_height);
 
-    m_toolbarVisible = config.m_toolbarVisible;
-    m_statusBarVisible = config.m_statusBarVisible;
-    m_toolbarVisibleInFullScreen = config.m_toolbarVisibleInFullScreen;
+    m_toolbarVisible = config.toolbarVisible;
+    m_statusBarVisible = config.statusBarVisible;
+    m_toolbarVisibleInFullScreen = config.toolbarVisibleInFullScreen;
     gtk_widget_show_all(grid);
     if (!m_toolbarVisible)
         setToolbarVisible(false);
     if (!m_statusBarVisible)
         setStatusBarVisible(false);
-    if (config.m_inFullScreen)
+    if (config.inFullScreen)
         enterFullScreen();
-    else if (config.m_maximized)
+    else if (config.maximized)
         gtk_window_maximize(GTK_WINDOW(window));
 
     return true;
@@ -698,14 +732,12 @@ bool Window::setup(const Configuration &config)
     addChildInternally(*mainArea);
 
     // Create the navigation pane and the tools pane.
-    createNavigationPane(config.m_layout);
-    createToolsPane(config.m_layout);
+    createNavigationPane(config.layout);
+    createToolsPane(config.layout);
 
     // Set the title.
     setTitle(_("Samoyed IDE"));
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
-
-    m_actions->createStatefulActions();
 
     s_created(*this);
     return true;
@@ -763,8 +795,6 @@ bool Window::restore(XmlElement &xmlElement)
 
     // Setup the side panes.
     setupSidePanesRecursively(*child);
-
-    m_actions->createStatefulActions();
 
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
 
@@ -1060,7 +1090,7 @@ void Window::createNavigationPane(Layout layout)
     pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("_Navigation Pane"));
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("Na_vigators"));
     addSidePane(*pane, mainArea(), SIDE_LEFT,
-                configuration().m_width * SIDE_PANE_SIZE_RATIO);
+                m_width * SIDE_PANE_SIZE_RATIO);
     s_navigationPaneCreated(*pane);
 }
 
@@ -1073,7 +1103,8 @@ void Window::createToolsPane(Layout layout)
     pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("T_ools"));
     addSidePane(*pane, mainArea(),
                 layout == LAYOUT_TOOLS_PANE_RIGHT ? SIDE_RIGHT : SIDE_BOTTOM,
-                configuration().m_width * SIDE_PANE_SIZE_RATIO);
+                (layout == LAYOUT_TOOLS_PANE_RIGHT ? m_width : m_height)
+                * SIDE_PANE_SIZE_RATIO);
     s_toolsPaneCreated(*pane);
 }
 
@@ -1470,20 +1501,20 @@ void Window::leaveFullScreen()
 Window::Configuration Window::configuration() const
 {
     Configuration config;
-    config.m_screenIndex =
+    config.screenIndex =
         gdk_screen_get_number(gtk_window_get_screen(GTK_WINDOW(gtkWidget())));
-    config.m_width = m_width;
-    config.m_height = m_height;
-    config.m_inFullScreen = m_inFullScreen;
-    config.m_maximized = m_maximized;
-    config.m_toolbarVisible = m_toolbarVisible;
-    config.m_statusBarVisible = m_statusBarVisible;
-    config.m_toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
+    config.width = m_width;
+    config.height = m_height;
+    config.inFullScreen = m_inFullScreen;
+    config.maximized = m_maximized;
+    config.toolbarVisible = m_toolbarVisible;
+    config.statusBarVisible = m_statusBarVisible;
+    config.toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
     if (static_cast<const Paned *>(toolsPane().parent())->orientation() ==
         Paned::ORIENTATION_HORIZONTAL)
-        config.m_layout = LAYOUT_TOOLS_PANE_RIGHT;
+        config.layout = LAYOUT_TOOLS_PANE_RIGHT;
     else
-        config.m_layout = LAYOUT_TOOLS_PANE_BOTTOM;
+        config.layout = LAYOUT_TOOLS_PANE_BOTTOM;
     return config;
 }
 
@@ -1814,8 +1845,9 @@ gboolean Window::removeMessageInMainThread(gpointer param)
             // Exclude the delimiter, if any.
             if (*found == ' ')
                 found++;
-            gtk_label_set_text(GTK_LABEL(window->m_message), found);
+            // Note that 'found' can't be used after the label is changed.
             gtk_widget_set_tooltip_text(window->m_message, found);
+            gtk_label_set_text(GTK_LABEL(window->m_message), found);
         }
         else if (*(found - 1) == ' ')
         {

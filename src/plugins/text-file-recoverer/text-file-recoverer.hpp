@@ -40,6 +40,11 @@ private:
 
         virtual bool step();
 
+        const char *byteCode() const { return m_byteCode; }
+        int byteCodeLength() const { return m_byteCodeLength; }
+        const char *error() const { return m_error.c_str(); }
+
+    private:
         TextFileRecoverer &m_recoverer;
         char *m_byteCode;
         gsize m_byteCodeLength;

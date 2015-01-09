@@ -72,7 +72,7 @@ private:
     std::string m_text;
 };
 
-struct TextRemoval: public TextEdit
+class TextRemoval: public TextEdit
 {
 public:
     TextRemoval(int beginLine,
