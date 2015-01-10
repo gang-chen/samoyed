@@ -679,6 +679,9 @@ bool Window::build(const Configuration &config)
 
     setGtkWidget(window);
 
+    // By default show all.
+    gtk_widget_show_all(grid);
+
     // Configure the window.
     if (config.screenIndex >= 0)
     {
@@ -701,7 +704,6 @@ bool Window::build(const Configuration &config)
     m_toolbarVisible = config.toolbarVisible;
     m_statusBarVisible = config.statusBarVisible;
     m_toolbarVisibleInFullScreen = config.toolbarVisibleInFullScreen;
-    gtk_widget_show_all(grid);
     if (!m_toolbarVisible)
         setToolbarVisible(false);
     if (!m_statusBarVisible)
@@ -738,6 +740,8 @@ bool Window::setup(const Configuration &config)
     // Set the title.
     setTitle(_("Samoyed IDE"));
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
+
+    m_actions->updateStatefulActions();
 
     s_created(*this);
     return true;
@@ -793,10 +797,11 @@ bool Window::restore(XmlElement &xmlElement)
     // Start to observe all editors.
     addEditorRemovedCallbacks(mainArea().mainChild());
 
-    // Setup the side panes.
-    setupSidePanesRecursively(*child);
+    createMenuItemsForSidePanesRecursively(*child);
 
     gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
+
+    m_actions->updateStatefulActions();
 
     s_restored(*this);
 
@@ -1214,15 +1219,15 @@ void Window::createMenuItemForSidePane(Widget &pane)
     m_sidePaneData.insert(std::make_pair(pane.id(), data));
 }
 
-void Window::setupSidePanesRecursively(Widget &widget)
+void Window::createMenuItemsForSidePanesRecursively(Widget &widget)
 {
     if (strcmp(widget.id(), MAIN_AREA_ID) == 0)
         return;
     if (strcmp(widget.id(), PANED_ID) == 0)
     {
         Paned &paned = static_cast<Paned &>(widget);
-        setupSidePanesRecursively(paned.child(0));
-        setupSidePanesRecursively(paned.child(1));
+        createMenuItemsForSidePanesRecursively(paned.child(0));
+        createMenuItemsForSidePanesRecursively(paned.child(1));
         return;
     }
 
@@ -1460,42 +1465,60 @@ void Window::setStatusBarVisible(bool visible)
 
 void Window::enterFullScreen()
 {
-    m_toolbarVisible = gtk_widget_get_visible(m_toolbar);
-    if (m_toolbarVisible)
+    m_inFullScreen = true;
+    bool toolbarVisible = gtk_widget_get_visible(m_toolbar);
+    if (toolbarVisible)
     {
         if (!m_toolbarVisibleInFullScreen)
-            setToolbarVisible(false);
+            gtk_widget_set_visible(m_toolbar, false);
     }
     else
     {
         if (m_toolbarVisibleInFullScreen)
-            setToolbarVisible(true);
+            gtk_widget_set_visible(m_toolbar, true);
     }
-    gtk_widget_hide(m_menuBar);
-    gtk_widget_hide(m_statusBar);
+    gtk_widget_set_visible(m_menuBar, false);
+    gtk_widget_set_visible(m_statusBar, false);
     gtk_window_fullscreen(GTK_WINDOW(gtkWidget()));
-    m_inFullScreen = true;
     m_actions->onWindowFullScreenChanged(true);
 }
 
 void Window::leaveFullScreen()
 {
-    m_toolbarVisibleInFullScreen = gtk_widget_get_visible(m_toolbar);
-    if (m_toolbarVisibleInFullScreen)
+    m_inFullScreen = false;
+    bool toolbarVisibleInFullScreen = gtk_widget_get_visible(m_toolbar);
+    if (toolbarVisibleInFullScreen)
     {
         if (!m_toolbarVisible)
-            setToolbarVisible(false);
+            gtk_widget_set_visible(m_toolbar, false);
     }
     else
     {
         if (m_toolbarVisible)
-            setToolbarVisible(true);
+            gtk_widget_set_visible(m_toolbar, true);
     }
-    gtk_widget_show(m_menuBar);
-    gtk_widget_show(m_statusBar);
+    gtk_widget_set_visible(m_menuBar, true);
+    gtk_widget_set_visible(m_statusBar, true);
     gtk_window_unfullscreen(GTK_WINDOW(gtkWidget()));
-    m_inFullScreen = false;
     m_actions->onWindowFullScreenChanged(false);
+}
+
+Window::Layout Window::layout() const
+{
+    if (static_cast<const Paned *>(toolsPane().parent())->orientation() ==
+        Paned::ORIENTATION_HORIZONTAL)
+        return LAYOUT_TOOLS_PANE_RIGHT;
+    return LAYOUT_TOOLS_PANE_BOTTOM;
+}
+
+void Window::changeLayout(Layout layout)
+{
+    if (layout == LAYOUT_TOOLS_PANE_RIGHT)
+        static_cast<Paned *>(mainArea().parent())->setOrientation(
+            Paned::ORIENTATION_HORIZONTAL);
+    else
+        static_cast<Paned *>(mainArea().parent())->setOrientation(
+            Paned::ORIENTATION_VERTICAL);
 }
 
 Window::Configuration Window::configuration() const
@@ -1510,38 +1533,30 @@ Window::Configuration Window::configuration() const
     config.toolbarVisible = m_toolbarVisible;
     config.statusBarVisible = m_statusBarVisible;
     config.toolbarVisibleInFullScreen = m_toolbarVisibleInFullScreen;
-    if (static_cast<const Paned *>(toolsPane().parent())->orientation() ==
-        Paned::ORIENTATION_HORIZONTAL)
-        config.layout = LAYOUT_TOOLS_PANE_RIGHT;
-    else
-        config.layout = LAYOUT_TOOLS_PANE_BOTTOM;
+    config.layout = layout();
     return config;
-}
-
-void Window::changeLayout(Layout layout)
-{
-    if (layout == LAYOUT_TOOLS_PANE_RIGHT)
-        static_cast<Paned *>(mainArea().parent())->setOrientation(
-            Paned::ORIENTATION_HORIZONTAL);
-    else
-        static_cast<Paned *>(mainArea().parent())->setOrientation(
-            Paned::ORIENTATION_VERTICAL);
 }
 
 void Window::onToolbarVisibilityChanged(GtkWidget *toolbar,
                                         GParamSpec *spec,
                                         Window *window)
 {
-    window->m_actions->onToolbarVisibilityChanged(
-        gtk_widget_get_visible(toolbar));
+    bool visible = gtk_widget_get_visible(toolbar);
+    if (window->inFullScreen())
+        window->m_toolbarVisibleInFullScreen = visible;
+    else
+        window->m_toolbarVisible = visible;
+    window->m_actions->onToolbarVisibilityChanged(visible);
 }
 
 void Window::onStatusBarVisibilityChanged(GtkWidget *statusBar,
                                           GParamSpec *spec,
                                           Window *window)
 {
-    window->m_actions->onStatusBarVisibilityChanged(
-        gtk_widget_get_visible(statusBar));
+    bool visible = gtk_widget_get_visible(statusBar);
+    if (!window->inFullScreen())
+        window->m_statusBarVisible = visible;
+    window->m_actions->onStatusBarVisibilityChanged(visible);
 }
 
 gboolean Window::onKeyPressEvent(GtkWidget *widget,

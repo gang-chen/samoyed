@@ -609,26 +609,35 @@ Actions::~Actions()
     g_object_unref(m_actionGroup);
 }
 
-void Actions::onToolbarVisibilityChanged(bool visibility)
+void Actions::onToolbarVisibilityChanged(bool visible)
 {
-    GtkToggleAction *action = toggleAction(TOGGLE_ACTION_SHOW_HIDE_TOOLBAR);
-    if (action)
-        gtk_toggle_action_set_active(action, visibility);
+    gtk_toggle_action_set_active(
+        toggleAction(TOGGLE_ACTION_SHOW_HIDE_TOOLBAR),
+        visible);
 }
 
-void Actions::onStatusBarVisibilityChanged(bool visibility)
+void Actions::onStatusBarVisibilityChanged(bool visible)
 {
-    GtkToggleAction *action = toggleAction(TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR);
-    if (action)
-        gtk_toggle_action_set_active(action, visibility);
+    gtk_toggle_action_set_active(
+        toggleAction(TOGGLE_ACTION_SHOW_HIDE_STATUS_BAR),
+        visible);
 }
 
 void Actions::onWindowFullScreenChanged(bool inFullScreen)
 {
-    GtkToggleAction *action =
-        toggleAction(TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN);
-    if (action)
-        gtk_toggle_action_set_active(action, inFullScreen);
+    gtk_toggle_action_set_active(
+        toggleAction(TOGGLE_ACTION_ENTER_LEAVE_FULL_SCREEN),
+        inFullScreen);
+}
+
+void Actions::updateStatefulActions()
+{
+    onToolbarVisibilityChanged(m_window->toolbarVisible());
+    onStatusBarVisibilityChanged(m_window->statusBarVisible());
+    onWindowFullScreenChanged(m_window->inFullScreen());
+    gtk_radio_action_set_current_value(
+        m_radioActionGroups[RADIO_ACTION_GROUP_WINDOW_LAYOUT],
+        m_window->layout());
 }
 
 }

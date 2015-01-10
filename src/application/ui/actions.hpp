@@ -100,9 +100,11 @@ public:
 
     GtkActionGroup *actionGroup() const { return m_actionGroup; }
 
-    void onToolbarVisibilityChanged(bool visibility);
-    void onStatusBarVisibilityChanged(bool visibility);
+    void onToolbarVisibilityChanged(bool visible);
+    void onStatusBarVisibilityChanged(bool visible);
     void onWindowFullScreenChanged(bool inFullScreen);
+
+    void updateStatefulActions();
 
 private:
     static gboolean updateSensitivity(gpointer);

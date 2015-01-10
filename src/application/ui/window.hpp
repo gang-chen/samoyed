@@ -281,6 +281,7 @@ public:
     void enterFullScreen();
     void leaveFullScreen();
 
+    Layout layout() const;
     void changeLayout(Layout layout);
 
     Actions &actions() { return *m_actions; }
@@ -389,7 +390,7 @@ private:
     bool build(const Configuration &config);
 
     void createMenuItemForSidePane(Widget &pane);
-    void setupSidePanesRecursively(Widget &widget);
+    void createMenuItemsForSidePanesRecursively(Widget &widget);
     void onSidePaneClosed(const Widget &pane);
     void onSidePaneChildClosed(const Widget &paneChild, const Widget &pane);
 
