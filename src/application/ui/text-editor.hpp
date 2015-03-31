@@ -107,7 +107,7 @@ public:
 protected:
     TextEditor(TextFile &file, Project *project);
 
-    bool setup(GtkTextTagTable *tagTable);
+    bool setup(GtkTextTagTable *tagTable, bool highlightSyntax);
 
     bool restore(XmlElement &xmlElement, GtkTextTagTable *tagTable);
 
@@ -137,8 +137,7 @@ private:
     static void onIndentWidthChanged(GtkSpinButton *spin, gpointer data);
     static void onIndentToggled(GtkToggleButton *toggle, gpointer data);
 
-    bool m_bypassEdit;
-    bool m_selfEdit;
+    bool m_fileChange;
     bool m_followCursor;
 
     int m_presetCursorLine;

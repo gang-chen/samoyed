@@ -77,6 +77,8 @@ public:
 
     static const PropertyTree &defaultOptions();
 
+    static const int TYPE = 0;
+
     virtual PropertyTree *options() const;
 
     const char *encoding() const { return m_encoding.c_str(); }
@@ -170,7 +172,8 @@ protected:
                 m_text.append(text, length);
         }
 
-        virtual Edit *execute(File &file) const;
+        virtual Edit *execute(File &file,
+                              std::list<File::Change *> &changes) const;
 
         virtual bool merge(const File::EditPrimitive *edit);
 
@@ -201,7 +204,8 @@ protected:
             m_endColumn(endColumn)
         {}
 
-        virtual Edit *execute(File &file) const;
+        virtual Edit *execute(File &file,
+                              std::list<File::Change *> &changes) const;
 
         virtual bool merge(const File::EditPrimitive *edit);
 
@@ -231,6 +235,7 @@ protected:
                                 std::string &desc);
 
     TextFile(const char *uri,
+             int type,
              const char *mimeType,
              const PropertyTree &options);
 
@@ -250,10 +255,12 @@ private:
                         const PropertyTree &options);
 
     Removal *insertOnly(int line, int column,
-                        const char *text, int length);
+                        const char *text, int length,
+                        Change *&change);
 
     Insertion *removeOnly(int beginLine, int beginColumn,
-                          int endLine, int endColumn);
+                          int endLine, int endColumn,
+                          Change *&change);
 
     static PropertyTree s_defaultOptions;
 

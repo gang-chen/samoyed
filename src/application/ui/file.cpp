@@ -67,13 +67,14 @@ PropertyTree File::s_defaultOptions(FILE_OPTIONS);
 
 File::Opened File::s_opened;
 
-File::Edit *File::EditStack::execute(File &file) const
+File::Edit *File::EditStack::execute(File &file,
+                                     std::list<Change *> &changes) const
 {
     EditStack *undo = new EditStack;
     for (std::list<Edit *>::const_reverse_iterator it = m_edits.rbegin();
          it != m_edits.rend();
          ++it)
-        undo->push((*it)->execute(file));
+        undo->push((*it)->execute(file, changes));
     return undo;
 }
 
@@ -477,7 +478,8 @@ void File::openByDialog(Project *project,
         g_slist_free_full(uris, g_free);
     }
 
-    for (std::map<GtkFileFilter *, char *>::iterator it = filter2MimeType.begin();
+    for (std::map<GtkFileFilter *, char *>::iterator it =
+            filter2MimeType.begin();
          it != filter2MimeType.end();
          ++it)
         g_free(it->second);
@@ -496,9 +498,10 @@ Editor *File::createEditor(Project *project)
     // operation.
     if (m_closing)
     {
-        Editor *oldEditor = m_firstEditor;
+        assert(m_firstEditor);
         assert(m_firstEditor == m_lastEditor);
-        oldEditor->destroyInFile();
+        assert(m_firstEditor->closing());
+        m_firstEditor->destroyInFile();
         m_closing = false;
         m_reopening = true;
     }
@@ -519,10 +522,10 @@ Editor *File::createEditor(Project *project)
 void File::finishClosing()
 {
     assert(m_closing);
+    assert(m_firstEditor);
     assert(m_firstEditor == m_lastEditor);
-
-    Editor *lastEditor = m_firstEditor;
-    lastEditor->destroyInFile();
+    assert(m_firstEditor->closing());
+    m_firstEditor->destroyInFile();
 
     // Notify the observers right before deleting the file so that the observers
     // can access the intact concrete file.
@@ -666,9 +669,11 @@ void File::removeEditor(Editor &editor)
 }
 
 File::File(const char *uri,
+           int type,
            const char *mimeType,
            const PropertyTree &options):
     m_uri(uri),
+    m_type(type),
     m_mimeType(mimeType),
     m_closing(false),
     m_reopening(false),
@@ -803,8 +808,17 @@ gboolean File::onSavedInMainThread(gpointer param)
         file.onSaved(saver);
         file.m_saved(file);
 
+        // Cancel closing the editor waiting for the completion of the close
+        // operation.
         if (file.m_closing)
-        file.m_closing = false;
+        {
+            file.m_closing = false;
+            assert(file.m_firstEditor);
+            assert(file.m_firstEditor == file.m_lastEditor);
+            assert(file.m_firstEditor->closing());
+            file.m_firstEditor->cancelClosing();
+        }
+
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -913,9 +927,18 @@ void File::undo()
     assert(undoable());
     Edit *edit = m_undoHistory.top();
     m_undoHistory.pop();
-    Edit *undo = edit->execute(*this);
+    std::list<Change *> changes;
+    Edit *undo = edit->execute(*this, changes);
     m_redoHistory.push(undo);
     decreaseEditCount();
+    for (std::list<Change *>::const_iterator it = changes.begin();
+         it != changes.end();
+         ++it)
+    {
+        onChanged(**it, false);
+        delete *it;
+    }
+    delete edit;
 }
 
 void File::redo()
@@ -923,9 +946,18 @@ void File::redo()
     assert(redoable());
     Edit *edit = m_redoHistory.top();
     m_redoHistory.pop();
-    Edit *undo = edit->execute(*this);
+    std::list<Change *> changes;
+    Edit *undo = edit->execute(*this, changes);
     m_undoHistory.push(undo);
     increaseEditCount();
+    for (std::list<Change *>::const_iterator it = changes.begin();
+         it != changes.end();
+         ++it)
+    {
+        onChanged(**it, false);
+        delete *it;
+    }
+    delete edit;
 }
 
 void File::beginEditGroup()

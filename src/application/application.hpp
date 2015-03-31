@@ -24,6 +24,7 @@ class HistoriesExtensionPoint;
 class PreferencesExtensionPoint;
 class ViewsExtensionPoint;
 class PropertyTree;
+class ForegroundFileParser;
 class Session;
 class Project;
 class File;
@@ -55,8 +56,6 @@ public:
      */
     int run(int argc, char *argv[]);
 
-    bool quitting() const { return m_quitting; }
-
     /**
      * Request to quit the application.
      */
@@ -71,11 +70,6 @@ public:
      * Request to switch to another session.
      */
     void switchSession();
-
-    /**
-     * Request to cancel quitting.
-     */
-    void cancelQuitting();
 
     /**
      * Get the sole application instance.
@@ -100,6 +94,9 @@ public:
     PropertyTree &preferences() const { return *m_preferences; }
 
     PropertyTree &histories() const { return *m_histories; }
+
+    ForegroundFileParser &foregroundFileParser() const
+    { return *m_foregroundFileParser; }
 
     Session &session() const { return *m_session; }
 
@@ -199,8 +196,9 @@ private:
     PropertyTree *m_preferences;
     PropertyTree *m_histories;
 
+    ForegroundFileParser *m_foregroundFileParser;
+
     // Session related data.
-    bool m_quitting;
     Session *m_session;
     bool m_creatingSession;
     bool m_switchingSession;

@@ -55,6 +55,7 @@ AC_CHECK_HEADERS(sys/select.h sys/syslimits.h sys/termios.h sys/un.h sys/wait.h 
 AC_CHECK_FUNCS([getpgid round pread pwrite fwrite_unlocked])
 
 AX_BOOST_BASE([1.42])
+AX_BOOST_CHRONO
 AX_BOOST_REGEX
 AX_BOOST_SYSTEM
 AX_BOOST_THREAD
@@ -71,7 +72,12 @@ AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
 AC_PATH_PROG([GLIB_GENMARSHAL], [glib-genmarshal])
 AC_PATH_PROG([GLIB_MKENUMS], [glib-mkenums])
 
-SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
+AC_CHECK_LIB([clang], [clang_createIndex])
+AC_CHECK_HEADERS([clang-c/Index.h])
+
+AX_PATH_BDB([6])
+
+SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS $BDB_CPPFLAGS"
 AC_SUBST([SAMOYED_CPPFLAGS])
 
 if test "x$os_windows" = "xyes"; then
@@ -81,10 +87,10 @@ else
 fi
 AC_SUBST(SAMOYED_CXXFLAGS)
 
-SAMOYED_LIBS="$BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS"
+SAMOYED_LIBS="$BOOST_CHRONO_LIB $BOOST_REGEX_LIB $BOOST_SYSTEM_LIB $BOOST_THREAD_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS $BDB_LIBS"
 AC_SUBST([SAMOYED_LIBS])
 
-SAMOYED_LDFLAGS="$BOOST_LDFLAGS -no-undefined -avoid-version"
+SAMOYED_LDFLAGS="$BOOST_LDFLAGS $BDB_LDFLAGS -no-undefined -avoid-version"
 AC_SUBST([SAMOYED_LDFLAGS])
 
 SAMOYED_LIBSAMOYED="\$(top_builddir)/src/application/libsamoyed.la"
@@ -129,6 +135,7 @@ libs/winpty/shared/Makefile
 po/Makefile.in
 src/Makefile
 src/application/Makefile
+src/application/parsers/Makefile
 src/application/ui/Makefile
 src/application/ui/bars/Makefile
 src/application/ui/dialogs/Makefile

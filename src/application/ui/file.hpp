@@ -64,6 +64,7 @@ public:
         };
         int type;
         Change(int type): type(type) {}
+        virtual ~Change() {}
     };
 
     /**
@@ -115,10 +116,17 @@ public:
                              std::list<std::pair<File *, Editor *> > &opened);
 
     /**
+     * @return True iff the file is being closed.
+     */
+    bool closing() const { return m_closing; }
+
+    /**
      * Close a file by closing all editors.
      * @return False iff the user cancels closing the file.
      */
     bool close();
+
+    void cancelClosing() { m_closing = false; }
 
     /**
      * This function can be called by the application instance only.
@@ -131,12 +139,15 @@ public:
     Editor *createEditor(Project *project);
 
     /**
-     * Close an editor.
+     * Close an editor.  This function is called by the editor when it is
+     * requested to be closed.
      * @return False iff the user cancels closing the editor.
      */
     bool closeEditor(Editor &editor);
 
     const char *uri() const { return m_uri.c_str(); }
+
+    int type() const { return m_type; }
 
     const char *mimeType() const { return m_mimeType.c_str(); }
 
@@ -147,11 +158,6 @@ public:
      */
     virtual PropertyTree *options() const
     { return new PropertyTree(defaultOptions()); }
-
-    /**
-     * @return True iff the file is being closed.
-     */
-    bool closing() const { return m_closing; }
 
     /**
      * @return True iff the file is being loaded.
@@ -269,9 +275,12 @@ protected:
         virtual ~Edit() {}
 
         /**
+         * @param file The file to be edited.
+         * @param changes The changes resulting from the execution of the edit.
          * @return The reverse edit.
          */
-        virtual Edit *execute(File &file) const = 0;
+        virtual Edit *execute(File &file,
+                              std::list<Change *> &changes) const = 0;
 
         /**
          * Merge this edit with the edit that will be executed immediately
@@ -295,7 +304,7 @@ protected:
     public:
         virtual ~EditStack() { clear(); }
 
-        virtual Edit *execute(File &file) const;
+        virtual Edit *execute(File &file, std::list<Change *> &changes) const;
 
         bool empty() const { return m_edits.empty(); }
 
@@ -367,13 +376,16 @@ protected:
                                 const char *masterMimeType,
                                 const char *description);
 
-    File(const char *uri, const char *mimeType, const PropertyTree &options);
+    File(const char *uri,
+         int type,
+         const char *mimeType,
+         const PropertyTree &options);
 
     /**
      * This function is called by a derived class to notify all editors and
      * observers after changed.
      */
-    void onChanged(const Change &change, bool loading);
+    virtual void onChanged(const Change &change, bool loading);
 
     /**
      * This function is called by a derived class to save the reverse edit of a
@@ -467,6 +479,8 @@ private:
     static PropertyTree s_defaultOptions;
 
     const std::string m_uri;
+
+    int m_type;
 
     const std::string m_mimeType;
 

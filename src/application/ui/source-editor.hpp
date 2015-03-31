@@ -10,6 +10,7 @@
 #include <string>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
+#include <clang-c/Index.h>
 
 namespace Samoyed
 {
@@ -42,7 +43,7 @@ public:
     /**
      * Create the data that will be shared by all source editors.  It is
      * required that this function be called before any source editor is
-     * created.  This function creates a tag group.
+     * created.  This function creates a tag table.
      */
     static void createSharedData();
 
@@ -51,6 +52,13 @@ public:
     static SourceEditor *create(SourceFile &file, Project *project);
 
     virtual Widget::XmlElement *save() const;
+
+    void highlightToken(int beginLine, int beginColumn,
+                        int endLine, int endColumn,
+                        CXTokenKind tokenKind);
+
+    void cleanTokens(int beginLine, int beginColumn,
+                     int endLine, int endColumn);
 
 protected:
     SourceEditor(SourceFile &file, Project *project);

@@ -249,16 +249,14 @@ bool Editor::close()
     return true;
 }
 
-void Editor::onFileEditedStateChanged()
+void Editor::cancelClosing()
 {
-    std::string title = this->title();
-    if (m_file.edited())
-    {
-        title.insert(0, "* ");
-        setTitle(title.c_str());
-    }
-    else
-        setTitle(title.c_str() + 2);
+    if (m_project && m_project->closing())
+        m_project->cancelClosing();
+    if (m_file.closing())
+        m_file.cancelClosing();
+
+    Widget::cancelClosing();
 }
 
 void Editor::destroyInFile()
@@ -272,6 +270,18 @@ void Editor::destroyInFile()
 void Editor::destroyInProject()
 {
     destroy();
+}
+
+void Editor::onFileEditedStateChanged()
+{
+    std::string title = this->title();
+    if (m_file.edited())
+    {
+        title.insert(0, "* ");
+        setTitle(title.c_str());
+    }
+    else
+        setTitle(title.c_str() + 2);
 }
 
 gboolean Editor::onFocusIn(GtkWidget *widget,

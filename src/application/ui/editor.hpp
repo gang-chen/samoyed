@@ -21,10 +21,11 @@ class Project;
 /**
  * An editor is used to edit an open file in the context of an open project.
  *
- * To close an editor, the editor requests the file to close it, the file may
- * save the modified contents, the project, if existing, or the file otherwise
- * requests the owner of the editor to destroy it, and the project, if
- * existing, and the file perform some actions after the editor is destroyed.
+ * To close an editor, the editor requests the file to close it and the file may
+ * save the modified contents and cancel the close request; if completed, the
+ * file requests the owner of the editor to destroy it, or the file requests the
+ * project, if existing, and the project performs some actions and requests the
+ * owner of the editor to destroy it.
  */
 class Editor: public Widget
 {
@@ -58,12 +59,14 @@ public:
     };
 
     /**
-     * This function can be called by the file only.
+     * This function is called by the file after it processes the editor close
+     * request.
      */
     void destroyInFile();
 
     /**
-     * This function can be called by the project only.
+     * This function is called by the project after it processes the editor
+     * close request.
      */
     void destroyInProject();
 
@@ -74,6 +77,8 @@ public:
     const Project *project() const { return m_project; }
 
     virtual bool close();
+
+    virtual void cancelClosing();
 
     /**
      * This function is called by the file when it is changed.

@@ -67,12 +67,25 @@ public:
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    virtual int childCount() const { return 1 + barCount(); }
+    virtual int childCount() const
+    {
+        if (m_mainChild)
+            return 1 + barCount();
+        return barCount();
+    }
 
     virtual Widget &child(int index)
-    { return index == 0 ? *m_mainChild : *m_bars[index - 1]; }
+    {
+        if (m_mainChild)
+            return index == 0 ? *m_mainChild : *m_bars[index - 1];
+        return *m_bars[index];
+    }
     virtual const Widget &child(int index) const
-    { return index == 0 ? *m_mainChild : *m_bars[index - 1]; }
+    {
+        if (m_mainChild)
+            return index == 0 ? *m_mainChild : *m_bars[index - 1];
+        return *m_bars[index];
+    }
 
     virtual int currentChildIndex() const { return m_currentChildIndex; }
     virtual void setCurrentChildIndex(int index)

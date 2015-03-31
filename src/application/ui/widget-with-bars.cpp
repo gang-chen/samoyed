@@ -449,13 +449,7 @@ void WidgetWithBars::removeBar(Bar &bar)
 void WidgetWithBars::removeChild(Widget &child)
 {
     if (&child == m_mainChild)
-    {
-        // All the child bars are already removed.
-        assert(closing());
-        assert(barCount() == 0);
         removeMainChild(child);
-        destroyInternally();
-    }
     else
         removeBar(static_cast<Bar &>(child));
 }
@@ -463,6 +457,7 @@ void WidgetWithBars::removeChild(Widget &child)
 void WidgetWithBars::replaceChild(Widget &oldChild, Widget &newChild)
 {
     // Only the main child can be replaced.
+    assert(&oldChild == m_mainChild);
     removeMainChild(oldChild);
     addMainChild(newChild);
 }

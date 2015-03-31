@@ -421,7 +421,7 @@ bool Notebook::close()
     setClosing(true);
     if (m_children.empty())
     {
-        destroyInternally();
+        destroy();
         return true;
     }
 
@@ -450,6 +450,22 @@ bool Notebook::close()
 Widget::XmlElement *Notebook::save() const
 {
     return new XmlElement(*this);
+}
+
+void Notebook::destroyChild(Widget &child)
+{
+    // If this notebook needs to be closed when empty, check to see if this
+    // child is the only one, and if true, request to close this notebook.
+    // Make sure that onPageRemoved() will not destroy this notebook and we
+    // will destroy it after the child is destroyed.
+    if (closeOnEmpty() && childCount() == 1)
+        setClosing(true);
+
+    removeChild(child);
+    child.onClosed();
+    delete &child;
+    if (closing() && childCount() == 0)
+        destroy();
 }
 
 void Notebook::addChild(Widget &child, int index)
@@ -566,9 +582,17 @@ void Notebook::onPageRemoved(GtkWidget *widget, GtkWidget *child, int index,
     assert(ch);
     notebook->m_children.erase(notebook->m_children.begin() + index);
     notebook->removeChildInternally(*ch);
-    if ((notebook->automaticClose() || notebook->closing()) &&
+
+    // This condition will be true iff the child is moved to another notebook
+    // in the same notebook group.
+    if (!notebook->closing() &&
+        notebook->closeOnEmpty() &&
         notebook->childCount() == 0)
-        notebook->destroyInternally();
+    {
+        // The child should not have been requested to be closed.
+        assert(!ch->closing());
+        notebook->destroy();
+    }
 }
 
 }

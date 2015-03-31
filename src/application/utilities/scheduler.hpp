@@ -19,7 +19,7 @@ namespace Samoyed
 class Scheduler: public boost::threadpool::prio_pool
 {
 public:
-    Scheduler(size_t nThreads = 0):
+    Scheduler(size_t nThreads):
         boost::threadpool::prio_pool(nThreads)
     {}
 

@@ -17,9 +17,37 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
+#include <clang-c/Index.h>
 
 #define TEXT_EDITOR "text-editor"
 #define SOURCE_EDITOR "source-editor"
+
+namespace
+{
+
+const int TOKEN_KINDS = CXToken_Comment + 1;
+
+// Indexed by CXTokenKind.
+const char *TOKEN_KIND_NAMES[TOKEN_KINDS] =
+{
+    "punctuation marks",
+    "keywords",
+    "identifiers",
+    "literals",
+    "comments"
+};
+
+// Indexed by CXTokenKind.
+const char *TOKEN_COLORS[TOKEN_KINDS] =
+{
+    "brown",
+    "blue",
+    "black",
+    "purple",
+    "green"
+};
+
+}
 
 namespace Samoyed
 {
@@ -29,6 +57,15 @@ GtkTextTagTable *SourceEditor::s_sharedTagTable = NULL;
 void SourceEditor::createSharedData()
 {
     s_sharedTagTable = gtk_text_tag_table_new();
+
+    for (int i = 0; i < TOKEN_KINDS; ++i)
+    {
+        GtkTextTag *tag;
+        tag = gtk_text_tag_new(TOKEN_KIND_NAMES[i]);
+        g_object_set(tag, "foreground", TOKEN_COLORS[i], NULL);
+        gtk_text_tag_table_add(s_sharedTagTable, tag);
+        g_object_unref(tag);
+    }
 }
 
 void SourceEditor::destroySharedData()
@@ -147,7 +184,7 @@ SourceEditor::SourceEditor(SourceFile &file, Project *project):
 
 bool SourceEditor::setup()
 {
-    if (!TextEditor::setup(s_sharedTagTable))
+    if (!TextEditor::setup(s_sharedTagTable, false))
         return false;
     return true;
 }
@@ -173,6 +210,44 @@ bool SourceEditor::restore(XmlElement &xmlElement)
 Widget::XmlElement *SourceEditor::save() const
 {
     return new SourceEditor::XmlElement(*this);
+}
+
+void SourceEditor::highlightToken(int beginLine, int beginColumn,
+                                  int endLine, int endColumn,
+                                  CXTokenKind tokenKind)
+{
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtkSourceView()));
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
+                                            beginLine, beginColumn);
+    if (endLine == -1 && endColumn == -1)
+        gtk_text_buffer_get_end_iter(buffer, &end);
+    else
+        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
+                                                endLine, endColumn);
+    gtk_text_buffer_apply_tag_by_name(buffer,
+                                      TOKEN_KIND_NAMES[tokenKind],
+                                      &begin, &end);
+}
+
+void SourceEditor::cleanTokens(int beginLine, int beginColumn,
+                               int endLine, int endColumn)
+{
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtkSourceView()));
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
+                                            beginLine, beginColumn);
+    if (endLine == -1 && endColumn == -1)
+        gtk_text_buffer_get_end_iter(buffer, &end);
+    else
+        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
+                                                endLine, endColumn);
+    for (int i = 0; i < TOKEN_KINDS; ++i)
+        gtk_text_buffer_remove_tag_by_name(buffer,
+                                           TOKEN_KIND_NAMES[i],
+                                           &begin, &end);
 }
 
 }

@@ -201,7 +201,6 @@ bool Widget::restore(XmlElement &xmlElement)
 Widget::~Widget()
 {
     assert(!m_parent);
-    m_closed(*this);
     if (m_gtkWidget)
         gtk_widget_destroy(m_gtkWidget);
 }
@@ -271,7 +270,10 @@ void Widget::destroy()
     if (parent())
         parent()->destroyChild(*this);
     else
+    {
+        onClosed();
         delete this;
+    }
 }
 
 bool Widget::close()
@@ -281,6 +283,14 @@ bool Widget::close()
     setClosing(true);
     destroy();
     return true;
+}
+
+void Widget::cancelClosing()
+{
+    assert(m_closing);
+    m_closing = false;
+    if (parent())
+        parent()->onChildCloseCanceled(*this);
 }
 
 }

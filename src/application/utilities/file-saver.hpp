@@ -36,13 +36,6 @@ public:
 
     GError *error() const { return m_error; }
 
-    GError *takeError()
-    {
-        GError *error = m_error;
-        m_error = NULL;
-        return error;
-    }
-
 protected:
     Time m_modifiedTime;
     GError *m_error;

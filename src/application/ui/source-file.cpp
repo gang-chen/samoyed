@@ -8,12 +8,15 @@
 #include "source-editor.hpp"
 #include "project.hpp"
 #include "application.hpp"
+#include "parsers/foreground-file-parser.hpp"
 #include "utilities/text-file-loader.hpp"
 #include "utilities/property-tree.hpp"
 #include <utility>
 #include <list>
 #include <string>
+#include <boost/shared_ptr.hpp>
 #include <glib/gi18n.h>
+#include <clang-c/Index.h>
 
 #define TEXT_FILE_OPTIONS "text-file-options"
 #define SOURCE_FILE_OPTIONS "source-file-options"
@@ -106,24 +109,27 @@ void SourceFile::describeOptions(const PropertyTree &options,
 
 // It is possible that options for text files are given.
 SourceFile::SourceFile(const char *uri,
+                       int type,
                        const char *mimeType,
                        const PropertyTree &options):
     TextFile(uri,
+             type,
              mimeType,
              strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
-             options.child(TEXT_FILE_OPTIONS) : options)
+             options.child(TEXT_FILE_OPTIONS) : options),
+    m_needReparse(false)
 {
-    std::string uriEncoding;
-    uriEncoding += uri;
-    uriEncoding += '?';
-    uriEncoding += encoding();
+}
+
+SourceFile::~SourceFile()
+{
 }
 
 File *SourceFile::create(const char *uri,
                          const char *mimeType,
                          const PropertyTree &options)
 {
-    return new SourceFile(uri, mimeType, options);
+    return new SourceFile(uri, TYPE, mimeType, options);
 }
 
 bool SourceFile::isSupportedType(const char *mimeType)
@@ -162,10 +168,6 @@ void SourceFile::registerType()
                               gettext(mimeTypeSet->description));
 }
 
-SourceFile::~SourceFile()
-{
-}
-
 PropertyTree *SourceFile::options() const
 {
     PropertyTree *options = new PropertyTree(SOURCE_FILE_OPTIONS);
@@ -176,6 +178,101 @@ PropertyTree *SourceFile::options() const
 Editor *SourceFile::createEditorInternally(Project *project)
 {
     return SourceEditor::create(*this, project);
+}
+
+void SourceFile::onLoaded(FileLoader &loader)
+{
+    TextFile::onLoaded(loader);
+    if (m_tu)
+    {
+        boost::shared_ptr<CXTranslationUnitImpl> tu;
+        tu.swap(m_tu);
+        Application::instance().foregroundFileParser().reparse(uri(), tu);
+    }
+    else
+        Application::instance().foregroundFileParser().parse(uri());
+}
+
+void SourceFile::onChanged(const File::Change &change, bool loading)
+{
+    TextFile::onChanged(change, loading);
+    if (loading)
+        return;
+    if (m_tu)
+    {
+        boost::shared_ptr<CXTranslationUnitImpl> tu;
+        tu.swap(m_tu);
+        Application::instance().foregroundFileParser().reparse(uri(), tu);
+    }
+    else
+        m_needReparse = true;
+}
+
+void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
+                             int error)
+{
+    if (error)
+    {
+    }
+    if (m_needReparse)
+    {
+        if (tu)
+            Application::instance().foregroundFileParser().reparse(uri(), tu);
+        else
+            Application::instance().foregroundFileParser().parse(uri());
+        m_needReparse = false;
+    }
+    else if (!error)
+    {
+        m_tu.swap(tu);
+        highlightTokens();
+    }
+}
+
+void
+SourceFile::onCodeCompletionDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
+                                 CXCodeCompleteResults *results)
+{
+}
+
+void SourceFile::highlightTokens()
+{
+    for (SourceEditor *editor = static_cast<SourceEditor *>(editors());
+         editor;
+         editor = static_cast<SourceEditor *>(editor->nextInFile()))
+        editor->cleanTokens(0, 0, -1, -1);
+
+    CXTranslationUnit tu = m_tu.get();
+    char *fileName = g_filename_from_uri(uri(), NULL, NULL);
+    CXFile file = clang_getFile(tu, fileName);
+    g_free(fileName);
+    CXSourceLocation begin = clang_getLocationForOffset(tu, file, 0);
+    CXSourceLocation end =
+        clang_getLocationForOffset(tu, file, characterCount());
+    CXSourceRange range = clang_getRange(begin, end);
+    CXToken *tokens;
+    unsigned int numTokens;
+    clang_tokenize(tu, range, &tokens, &numTokens);
+
+    for (unsigned int i = 0; i < numTokens; ++i)
+    {
+        CXSourceRange range = clang_getTokenExtent(tu, tokens[i]);
+        CXSourceLocation begin = clang_getRangeStart(range);
+        unsigned int beginLine, beginColumn;
+        clang_getFileLocation(begin, NULL, &beginLine, &beginColumn, NULL);
+        CXSourceLocation end = clang_getRangeEnd(range);
+        unsigned int endLine, endColumn;
+        clang_getFileLocation(end, NULL, &endLine, &endColumn, NULL);
+
+        for (SourceEditor *editor = static_cast<SourceEditor *>(editors());
+             editor;
+             editor = static_cast<SourceEditor *>(editor->nextInFile()))
+        {
+            editor->highlightToken(beginLine - 1, beginColumn - 1,
+                                   endLine - 1, endColumn - 1,
+                                   clang_getTokenKind(tokens[i]));
+        }
+    }
 }
 
 }

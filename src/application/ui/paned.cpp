@@ -301,8 +301,9 @@ xmlNodePtr Paned::XmlElement::write() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(SIDE_PANE_INDEX),
                     reinterpret_cast<const xmlChar *>(str.c_str()));
-    xmlNodePtr children = xmlNewNode(NULL,
-                                     reinterpret_cast<const xmlChar *>(CHILDREN));
+    xmlNodePtr children =
+        xmlNewNode(NULL,
+                   reinterpret_cast<const xmlChar *>(CHILDREN));
     xmlAddChild(children, m_children[0]->write());
     xmlAddChild(children, m_children[1]->write());
     xmlAddChild(node, children);
@@ -450,23 +451,80 @@ bool Paned::close()
         return true;
 
     setClosing(true);
-    Widget *child1 = m_children[m_currentChildIndex];
-    Widget *child2 = m_children[1 - m_currentChildIndex];
+    int index = m_currentChildIndex;
+    Widget *child1 = m_children[index];
+    Widget *child2 = m_children[1 - index];
     if (!child1->close())
     {
         setClosing(false);
         return false;
     }
     if (!child2->close())
-        // Do not call setClosing(false) because the paned widget will be
-        // deleted if either child is closed.
+    {
+        // If child1 has already been destroyed, then replace this paned widget
+        // with child2.
+        if (!m_children[index])
+        {
+            removeChildInternally(*child2);
+            assert(parent());
+            parent()->replaceChild(*this, *child2);
+            destroy();
+            return false;
+        }
+        setClosing(false);
         return false;
+    }
     return true;
+}
+
+void Paned::onChildCloseCanceled(Widget &child)
+{
+    WidgetContainer::onChildCloseCanceled(child);
+
+    // If the other child has already been destroyed, then replace this paned
+    // widget with the remaining child.
+    if (childCount() == 1)
+    {
+        removeChildInternally(child);
+        assert(parent());
+        parent()->replaceChild(*this, child);
+        destroy();
+    }
 }
 
 Widget::XmlElement *Paned::save() const
 {
     return new XmlElement(*this);
+}
+
+void Paned::destroyChild(Widget &child)
+{
+    int index = m_children[0] == &child ? 0 : 1;
+
+    // Destroy the child.
+    removeChild(child);
+    child.onClosed();
+    delete &child;
+
+    if (closing())
+    {
+        // If this paned widget has been requested to be closed and both
+        // children have been destroyed, destroy this paned widget.
+        if (childCount() == 0)
+            destroy();
+    }
+    else
+    {
+        // If this paned widget hasn't been requested to be closed, then if
+        // either child has been destroyed, replace this paned widget with the
+        // remaining child.
+        Widget *remaining = m_children[1 - index];
+        assert(remaining);
+        removeChildInternally(*remaining);
+        assert(parent());
+        parent()->replaceChild(*this, *remaining);
+        destroy();
+    }
 }
 
 void Paned::addChildInternally(Widget &child, int index)
@@ -484,7 +542,7 @@ void Paned::addChildInternally(Widget &child, int index)
 
 void Paned::removeChildInternally(Widget &child)
 {
-    int index = childIndex(child);
+    int index = m_children[0] == &child ? 0 : 1;
     m_children[index] = NULL;
     g_object_ref(child.gtkWidget());
     gtk_container_remove(GTK_CONTAINER(gtkWidget()), child.gtkWidget());
@@ -493,25 +551,12 @@ void Paned::removeChildInternally(Widget &child)
 
 void Paned::removeChild(Widget &child)
 {
-    int index = childIndex(child);
     removeChildInternally(child);
-
-    // Remove the remained child from this paned widget.
-    Widget *remained = m_children[1 - index];
-    assert(remained);
-    removeChildInternally(*remained);
-
-    // Replace this paned widget with the remained child.
-    assert(parent());
-    parent()->replaceChild(*this, *remained);
-
-    // Destroy this paned widget.
-    destroyInternally();
 }
 
 void Paned::replaceChild(Widget &oldChild, Widget &newChild)
 {
-    int index = childIndex(oldChild);
+    int index = m_children[0] == &oldChild ? 0 : 1;
     removeChildInternally(oldChild);
     addChildInternally(newChild, index);
 }
@@ -572,7 +617,7 @@ Paned *Paned::split(const char *id,
     // Add the two widgets to the paned widget.
     paned->addChildInternally(child1, 0);
     paned->addChildInternally(child2, 1);
-    paned->m_currentChildIndex = newChildIndex;
+    paned->setCurrentChildIndex(newChildIndex);
 
     if (totalSize != -1)
     {
@@ -645,7 +690,7 @@ Paned *Paned::split(const char *id,
     // Add the two widgets to the paned widget.
     paned->addChildInternally(child1, 0);
     paned->addChildInternally(child2, 1);
-    paned->m_currentChildIndex = newChildIndex;
+    paned->setCurrentChildIndex(newChildIndex);
 
     gtk_widget_show_all(p);
 

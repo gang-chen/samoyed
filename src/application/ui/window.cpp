@@ -112,27 +112,58 @@ bool closeEmptyEditorGroup(Samoyed::Widget &widget, Samoyed::Widget &root)
     return closeEmptyEditorGroup(paned.child(1), root);
 }
 
-void onEditorRemoved(Samoyed::WidgetContainer &container,
-                     Samoyed::Widget &child)
-{
-    // If this is the last editor in the group and the group is not the last
-    // group in the window, close the group.
-    if (container.childCount() == 0 &&
-        strcmp(container.parent()->id(), MAIN_AREA_ID) != 0)
-        static_cast<Samoyed::Notebook &>(container).setAutomaticClose(true);
-}
-
-void addEditorRemovedCallbacks(Samoyed::Widget &widget)
+int countEditorGroups(Samoyed::Widget &widget)
 {
     if (strcmp(widget.id(), PANED_ID) == 0)
     {
         Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
-        addEditorRemovedCallbacks(paned.child(0));
-        addEditorRemovedCallbacks(paned.child(1));
-        return;
+        int count = 0;
+        for (int i = 0; i < paned.childCount(); ++i)
+            count += countEditorGroups(paned.child(i));
+        return count;
     }
-    static_cast<Samoyed::WidgetContainer &>(widget).
-        addChildRemovedCallback(onEditorRemoved);
+    return 1;
+}
+
+void setEditorGroupCloseOnEmpty(Samoyed::Widget &widget, bool closeOnEmpty)
+{
+    if (strcmp(widget.id(), PANED_ID) == 0)
+    {
+        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
+        int count = 0;
+        for (int i = 0; i < paned.childCount(); ++i)
+            setEditorGroupCloseOnEmpty(paned.child(i), closeOnEmpty);
+    }
+    else
+        static_cast<Samoyed::Notebook &>(widget).setCloseOnEmpty(closeOnEmpty);
+}
+
+void checkEditorGroupsCloseOnEmpty(Samoyed::Window &window)
+{
+    if (window.mainArea().childCount() > window.mainArea().barCount())
+    {
+        // If only one editor group is left, disallow it to be closed when
+        // empty.
+        if (countEditorGroups(window.mainArea().mainChild()) == 1)
+            setEditorGroupCloseOnEmpty(window.mainArea().mainChild(), false);
+        // If there are multiple editor groups, let them be closed when empty.
+        else
+            setEditorGroupCloseOnEmpty(window.mainArea().mainChild(), true);
+    }
+}
+
+void addEditorGroupClosedCallbacks(Samoyed::Window &window,
+                                   Samoyed::Widget &widget)
+{
+    if (strcmp(widget.id(), PANED_ID) == 0)
+    {
+        Samoyed::Paned &paned = static_cast<Samoyed::Paned &>(widget);
+        addEditorGroupClosedCallbacks(window, paned.child(0));
+        addEditorGroupClosedCallbacks(window, paned.child(1));
+    }
+    else
+        widget.addClosedCallback(boost::bind(checkEditorGroupsCloseOnEmpty,
+                                             boost::ref(window)));
 }
 
 void activateAction(GtkAction *action,
@@ -794,8 +825,8 @@ bool Window::restore(XmlElement &xmlElement)
         }
     }
 
-    // Start to observe all editors.
-    addEditorRemovedCallbacks(mainArea().mainChild());
+    checkEditorGroupsCloseOnEmpty(*this);
+    addEditorGroupClosedCallbacks(*this, mainArea().mainChild());
 
     createMenuItemsForSidePanesRecursively(*child);
 
@@ -824,6 +855,7 @@ Window::~Window()
 
 void Window::destroy()
 {
+    onClosed();
     Application::instance().destroyWindow(*this);
 }
 
@@ -886,7 +918,6 @@ void Window::removeChild(Widget &child)
 {
     assert(closing());
     removeChildInternally(child);
-    destroyInternally();
 }
 
 void Window::replaceChild(Widget &oldChild, Widget &newChild)
@@ -1077,6 +1108,10 @@ Notebook *Window::splitEditorGroup(Notebook &editorGroup, Side side)
         Paned::split(PANED_ID, Paned::ORIENTATION_HORIZONTAL,
                      editorGroup, *newEditorGroup, 0.5);
     }
+
+    checkEditorGroupsCloseOnEmpty(*this);
+    newEditorGroup->addClosedCallback(boost::bind(checkEditorGroupsCloseOnEmpty,
+                                                  boost::ref(*this)));
     return newEditorGroup;
 }
 
@@ -1084,7 +1119,6 @@ void Window::addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                     int index)
 {
     editorGroup.addChild(editor, index);
-    editorGroup.addChildRemovedCallback(onEditorRemoved);
 }
 
 void Window::createNavigationPane(Layout layout)

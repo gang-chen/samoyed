@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "application.hpp"
+#include "parsers/foreground-file-parser.hpp"
 #include "ui/session.hpp"
 #include "ui/project.hpp"
 #include "ui/file.hpp"
@@ -71,7 +72,7 @@ Application::Application():
     m_viewsExtensionPoint(NULL),
     m_preferences(NULL),
     m_histories(NULL),
-    m_quitting(false),
+    m_foregroundFileParser(NULL),
     m_session(NULL),
     m_creatingSession(false),
     m_switchingSession(false),
@@ -196,6 +197,9 @@ gboolean Application::startUp(gpointer app)
     File::installHistories();
     TextFile::installHistories();
 
+    a->m_foregroundFileParser = new ForegroundFileParser;
+    a->m_foregroundFileParser->run();
+
     // Create the plugin manager.
     a->m_pluginManager = new PluginManager(a->extensionPointManager(),
                                            pluginModsDirName.c_str(),
@@ -246,8 +250,6 @@ void Application::finishQuitting()
     assert(!m_firstWindow);
     assert(!m_lastWindow);
 
-    m_quitting = false;
-
     assert(m_session);
     m_session->destroy();
     m_session = NULL;
@@ -279,7 +281,6 @@ void Application::shutDown()
     assert(!m_firstWindow);
     assert(!m_lastWindow);
     assert(!m_currentWindow);
-    assert(!m_quitting);
     assert(!m_splashScreen);
     assert(!m_sessionName);
     assert(!m_newSessionName);
@@ -290,6 +291,7 @@ void Application::shutDown()
     delete m_historiesExtensionPoint;
     delete m_preferencesExtensionPoint;
     delete m_viewsExtensionPoint;
+    delete m_foregroundFileParser;
     m_pluginManager->shutDown();
     delete m_histories;
     delete m_preferences;
@@ -319,8 +321,6 @@ bool Application::quit()
     if (!m_session->save())
         return false;
 
-    m_quitting = true;
-
     if (m_preferencesEditor)
         delete m_preferencesEditor;
 
@@ -329,10 +329,7 @@ bool Application::quit()
     {
         next = project->next();
         if (!project->close())
-        {
-            m_quitting = false;
             return false;
-        }
     }
 
     // Close all windows.
@@ -340,10 +337,7 @@ bool Application::quit()
     {
         prev = window->previous();
         if (!window->close())
-        {
-            m_quitting = false;
             return false;
-        }
     }
     return true;
 }
@@ -513,7 +507,6 @@ ERROR_OUT:
 
 void Application::createSession()
 {
-    assert(!m_quitting);
     assert(!m_creatingSession);
     assert(!m_switchingSession);
     m_creatingSession = true;
@@ -522,19 +515,10 @@ void Application::createSession()
 
 void Application::switchSession()
 {
-    assert(!m_quitting);
     assert(!m_creatingSession);
     assert(!m_switchingSession);
     m_switchingSession = true;
     quit();
-}
-
-void Application::cancelQuitting()
-{
-    assert(m_quitting);
-    m_quitting = false;
-    m_creatingSession = false;
-    m_switchingSession = false;
 }
 
 Project *Application::findProject(const char *uri)
@@ -568,7 +552,7 @@ void Application::removeProject(Project &project)
 void Application::destroyProject(Project &project)
 {
     delete &project;
-    if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
+    if (!m_firstProject && !m_firstFile && !m_firstWindow)
         finishQuitting();
 }
 
@@ -603,7 +587,7 @@ void Application::removeFile(File &file)
 void Application::destroyFile(File &file)
 {
     delete &file;
-    if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
+    if (!m_firstProject && !m_firstFile && !m_firstWindow)
         finishQuitting();
 }
 
@@ -624,7 +608,7 @@ void Application::removeWindow(Window &window)
 void Application::destroyWindow(Window& window)
 {
     delete &window;
-    if (m_quitting && !m_firstProject && !m_firstFile && !m_firstWindow)
+    if (!m_firstProject && !m_firstFile && !m_firstWindow)
         finishQuitting();
 }
 

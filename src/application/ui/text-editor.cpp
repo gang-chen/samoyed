@@ -360,15 +360,14 @@ Widget *TextEditor::XmlElement::restoreWidget()
 
 TextEditor::TextEditor(TextFile &file, Project *project):
     Editor(file, project),
-    m_bypassEdit(false),
-    m_selfEdit(false),
+    m_fileChange(false),
     m_followCursor(false),
     m_presetCursorLine(0),
     m_presetCursorColumn(0)
 {
 }
 
-bool TextEditor::setup(GtkTextTagTable *tagTable)
+bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
 {
     if (!Editor::setup())
         return false;
@@ -394,24 +393,26 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
     gtk_source_view_set_insert_spaces_instead_of_tabs(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(INSERT_SPACES_INSTEAD_OF_TABS));
-    gtk_source_view_set_show_line_numbers(
-        GTK_SOURCE_VIEW(view),
-        prefs.get<bool>(SHOW_LINE_NUMBERS));
-    // TODO: Support syntax highlighting and indenting for C/C++ by ourselves.
-    char *fileType = g_content_type_from_mime_type(file().mimeType());
-    GtkSourceLanguage *lang = gtk_source_language_manager_guess_language(
-        gtk_source_language_manager_get_default(), NULL, fileType);
-    g_free(fileType);
-    gtk_source_buffer_set_language(buffer, lang);
-    gtk_source_buffer_set_highlight_syntax(
-        buffer,
-        prefs.get<bool>(HIGHLIGHT_SYNTAX));
     gtk_source_view_set_auto_indent(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(INDENT));
     gtk_source_view_set_indent_width(
         GTK_SOURCE_VIEW(view),
         prefs.get<int>(INDENT_WIDTH));
+    gtk_source_view_set_show_line_numbers(
+        GTK_SOURCE_VIEW(view),
+        prefs.get<bool>(SHOW_LINE_NUMBERS));
+    if (highlightSyntax)
+    {
+        char *fileType = g_content_type_from_mime_type(file().mimeType());
+        GtkSourceLanguage *lang = gtk_source_language_manager_guess_language(
+            gtk_source_language_manager_get_default(), NULL, fileType);
+        g_free(fileType);
+        gtk_source_buffer_set_language(buffer, lang);
+        gtk_source_buffer_set_highlight_syntax(
+            buffer,
+            prefs.get<bool>(HIGHLIGHT_SYNTAX));
+    }
     gtk_widget_show_all(sw);
     g_signal_connect(view, "focus-in-event",
                      G_CALLBACK(onFocusIn), this);
@@ -425,7 +426,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
 TextEditor *TextEditor::create(TextFile &file, Project *project)
 {
     TextEditor *editor = new TextEditor(file, project);
-    if (!editor->setup(NULL))
+    if (!editor->setup(NULL, true))
     {
         editor->close();
         return NULL;
@@ -591,18 +592,24 @@ bool TextEditor::selectRange(int line, int column,
 
 void TextEditor::onFileChanged(const File::Change &change)
 {
-    if (m_selfEdit)
-        return;
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtkSourceView()));
-    m_bypassEdit = true;
+    m_fileChange = true;
     if (tc.type == File::Change::TYPE_INIT)
     {
-        char *text = static_cast<const TextFile &>(file()).text(0, 0, -1, -1);
-        gtk_text_buffer_set_text(buffer, text, -1);
-        g_free(text);
+        TextEditor *old = static_cast<TextEditor *>(file().editors());
+        GtkTextBuffer *oldBuffer = gtk_text_view_get_buffer(
+            GTK_TEXT_VIEW(old->gtkSourceView()));
+        GtkTextIter begin, end, oldBegin, oldEnd;
+        gtk_text_buffer_get_start_iter(buffer, &begin);
+        gtk_text_buffer_get_end_iter(buffer, &end);
+        gtk_text_buffer_delete(buffer, &begin, &end);
+        gtk_text_buffer_get_end_iter(buffer, &end);
+        gtk_text_buffer_get_start_iter(oldBuffer, &oldBegin);
+        gtk_text_buffer_get_end_iter(oldBuffer, &oldEnd);
+        gtk_text_buffer_insert_range(buffer, &end, &oldBegin, &oldEnd);
     }
     else if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
@@ -626,36 +633,34 @@ void TextEditor::onFileChanged(const File::Change &change)
         if (m_followCursor)
             setCursor(rem.beginLine, rem.beginColumn);
     }
-    m_bypassEdit = false;
+    m_fileChange = false;
 }
 
 void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
                         char *text, int length,
                         TextEditor *editor)
 {
-    if (editor->m_bypassEdit)
+    if (editor->m_fileChange)
         return;
-    editor->m_selfEdit = true;
+    g_signal_stop_emission_by_name(buffer, "insert-text");
     static_cast<TextFile &>(editor->file()).insert(
         gtk_text_iter_get_line(location),
         gtk_text_iter_get_line_offset(location),
         text, length);
-    editor->m_selfEdit = false;
 }
 
 void TextEditor::remove(GtkTextBuffer *buffer,
                         GtkTextIter *begin, GtkTextIter *end,
                         TextEditor *editor)
 {
-    if (editor->m_bypassEdit)
+    if (editor->m_fileChange)
         return;
-    editor->m_selfEdit = true;
+    g_signal_stop_emission_by_name(buffer, "delete-range");
     static_cast<TextFile &>(editor->file()).remove(
         gtk_text_iter_get_line(begin),
         gtk_text_iter_get_line_offset(begin),
         gtk_text_iter_get_line(end),
         gtk_text_iter_get_line_offset(end));
-    editor->m_selfEdit = false;
 }
 
 void TextEditor::onFileLoaded()

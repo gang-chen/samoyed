@@ -3,7 +3,7 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-loader.cpp worker.cpp utf8.cpp \
+g++ text-file-loader.cpp worker.cpp utf8.cpp -DSMYD_UNIT_TEST \
 -DSMYD_TEXT_FILE_LOADER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0` \
 -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-loader
 */
@@ -12,7 +12,6 @@ g++ text-file-loader.cpp worker.cpp utf8.cpp \
 # include <config.h>
 #endif
 #include "text-file-loader.hpp"
-#include "text-buffer.hpp"
 #include "utf8.hpp"
 #include "scheduler.hpp"
 #ifdef SMYD_TEXT_FILE_LOADER_UNIT_TEST
@@ -51,7 +50,6 @@ TextFileLoader::TextFileLoader(Scheduler &scheduler,
                                const char *encoding):
     FileLoader(scheduler, priority, callback, uri),
     m_encoding(encoding),
-    m_buffer(NULL),
     m_file(NULL),
     m_fileStream(NULL),
     m_encodingConverter(NULL),
@@ -68,15 +66,12 @@ TextFileLoader::TextFileLoader(Scheduler &scheduler,
 
 TextFileLoader::~TextFileLoader()
 {
-    delete m_buffer;
 }
 
 bool TextFileLoader::step()
 {
-    if (!m_buffer)
+    if (!m_file)
     {
-        m_buffer = new TextBuffer;
-
         // Open the file.
         m_file = g_file_new_for_uri(uri());
         m_fileStream = g_file_read(m_file, NULL, &m_error);
@@ -181,7 +176,7 @@ bool TextFileLoader::step()
         cleanUp();
         return true;
     }
-    m_buffer->insert(m_readBuffer, valid - m_readBuffer, -1, -1);
+    m_buffer.push_back(std::string(m_readBuffer, valid - m_readBuffer));
     size -= valid - m_readBuffer;
     memmove(m_readBuffer, valid, size);
     m_readPointer = m_readBuffer + size;
@@ -214,20 +209,18 @@ void onDone(Samoyed::Worker &worker)
 {
     Samoyed::TextFileLoader &loader =
         static_cast<Samoyed::TextFileLoader &>(worker);
-    GError *error = loader.takeError();
-    if (error)
+    if (loader.error())
     {
-        printf("Text file loader error: %s.\n", error->message);
-        g_error_free(error);
+        printf("Text file loader error: %s.\n", loader.error()->message);
         return;
     }
-    Samoyed::TextBuffer *buffer = loader.takeBuffer();
-    char *text = new char[buffer->length() + 1];
-    buffer->getAtoms(0, buffer->length(), text);
-    text[buffer->length()] = '\0';
-    assert(strcmp(text, textUtf8) == 0);
-    delete[] text;
-    delete buffer;
+    const std::list<std::string> &buffer = loader.buffer();
+    std::string text;
+    for (std::list<std::string>::const_iterator it = buffer.begin();
+         it != buffer.end();
+         ++it)
+        text += *it;
+    assert(text == textUtf8);
     delete &loader;
 }
 

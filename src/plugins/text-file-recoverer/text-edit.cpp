@@ -190,9 +190,9 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
-            _("The current contents of file \"%s\" are changed since the last "
-              "edit. The changes will be discarded if you recover the file. "
-              "Continue recovering it?"),
+            _("File \"%s\" have been changed since Samoyed crashed. The "
+              "changes will be discarded if you recover the file. Continue "
+              "recovering it?"),
             file.uri());
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));

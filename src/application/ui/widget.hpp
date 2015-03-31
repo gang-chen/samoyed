@@ -23,13 +23,14 @@ class Window;
 /**
  * A widget is owned by its parent widget if it is not a top-level widget.  To
  * destroy a widget, the user cannot destroy it directly but should close it.
- * When requested to be closed, a widget saves its working data, and requests
- * its owner to destroy it if it does not contain any child, or closes its child
- * widgets.  When requested to destroy a child widget, a widget removes the
- * child widget, destroys the child, checks to see if the parent has been
- * requested to be closed and all child widgets are destroyed, and if true
- * requests the owner of the parent to destroy it.  During this process, any
- * participant may refuse to close itself, aborting the process.
+ * When requested to be closed, a widget possibly asks the user to confirm the
+ * close request, possibly refuses the close request if the user refuses,
+ * possibly saves its working data, which may be completed or aborted
+ * asynchronously, requests its child widgets, if any, to close, which may be
+ * refused, and requests its owner to destroy itself.  When requested to destroy
+ * a child widget, a widget removes the child widget, destroys the child, checks
+ * to see if it has been requested to be closed and all child widgets are
+ * destroyed, and if true requests its owner to destroy it.
  */
 class Widget: public boost::noncopyable
 {
@@ -154,9 +155,26 @@ public:
     bool closing() const { return m_closing; }
 
     /**
-     * Close this widget.
+     * Close this widget.  When this function returns, the caller can check to
+     * see if the close request is refused.  If not refused, the close request
+     * may be already completed, or be ongoing.  If on going, the close request
+     * will be completed or canceled in the future.  To get notified of the
+     * completion of the close operation, the caller can add a callback to the
+     * closed signal.
+     * @return False iff the widget refuses to close.
      */
     virtual bool close();
+
+    /**
+     * Cancel the close request.
+     */
+    virtual void cancelClosing();
+
+    /**
+     * This is function is called to notify the observers before it is destroyed
+     * so that the observers can access the intact concrete widget.
+     */
+    void onClosed() { m_closed(*this); }
 
     /**
      * Save the information on this widget in an XML element.
@@ -201,8 +219,7 @@ protected:
     void setClosing(bool closing) { m_closing = closing; }
 
     /**
-     * Request the owner of this widget to destroy this widget.  This function
-     * is called after all child widgets are closed.
+     * Destroy the widget by requesting the owner of the widget to destroy it.
      */
     virtual void destroy();
 

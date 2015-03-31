@@ -5,6 +5,7 @@
 #define SMYD_PANED_HPP
 
 #include "widget-container.hpp"
+#include <assert.h>
 #include <list>
 #include <string>
 #include <gtk/gtk.h>
@@ -91,14 +92,36 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    virtual void destroyChild(Widget &child);
+
     virtual void removeChild(Widget &child);
 
     virtual void replaceChild(Widget &oldChild, Widget &newChild);
 
-    virtual int childCount() const { return 2; }
+    virtual int childCount() const
+    {
+        int count = 0;
+        if (m_children[0])
+            count++;
+        if (m_children[1])
+            count++;
+        return count;
+    }
 
-    virtual Widget &child(int index) { return *m_children[index]; }
-    virtual const Widget &child(int index) const { return *m_children[index]; }
+    virtual Widget &child(int index)
+    {
+        assert(index < childCount());
+        if (m_children[0])
+            return *m_children[index];
+        return *m_children[index + 1];
+    }
+    virtual const Widget &child(int index) const
+    {
+        assert(index < childCount());
+        if (m_children[0])
+            return *m_children[index];
+        return *m_children[index + 1];
+    }
 
     virtual int currentChildIndex() const { return m_currentChildIndex; }
     virtual void setCurrentChildIndex(int index)
@@ -143,6 +166,8 @@ protected:
                Widget &child1, Widget &child2);
 
     bool restore(XmlElement &xmlElement);
+
+    virtual void onChildCloseCanceled(Widget &child);
 
     void addChildInternally(Widget &child, int index);
 

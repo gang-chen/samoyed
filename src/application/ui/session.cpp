@@ -54,10 +54,10 @@ struct UnsavedFilesReadParam
 {
     Samoyed::Session &session;
     Samoyed::Session::UnsavedFileTable unsavedFiles;
-    UnsavedFilesReadParam(Samoyed::Session &session,
-                          Samoyed::Session::UnsavedFileTable &unsavedFiles):
-        session(session)
-    { unsavedFiles.swap(unsavedFiles); }
+    UnsavedFilesReadParam(Samoyed::Session &s,
+                          Samoyed::Session::UnsavedFileTable &uf):
+        session(s)
+    { unsavedFiles.swap(uf); }
 };
 
 class XmlElementSession

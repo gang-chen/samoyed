@@ -63,7 +63,11 @@ public:
      */
     ~Project();
 
+    bool closing() const { return m_closing; }
+
     bool close();
+
+    void cancelClosing() { m_closing = false; }
 
     XmlElement *save() const;
 
@@ -76,6 +80,11 @@ public:
 
     void addEditor(Editor &editor);
     void removeEditor(Editor &editor);
+
+    /**
+     * This function is called by the editor after the file processed the editor
+     * close request.
+     */
     void destroyEditor(Editor &editor);
 
     Editor *editors() { return m_firstEditor; }

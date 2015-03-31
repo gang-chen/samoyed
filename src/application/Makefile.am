@@ -1,4 +1,4 @@
-SUBDIRS = ui utilities
+SUBDIRS = parsers ui utilities
 
 pkglib_LTLIBRARIES = libsamoyed.la
 
@@ -18,6 +18,7 @@ libsamoyed_la_LDFLAGS = \
     $(SAMOYED_LDFLAGS)
 
 libsamoyed_la_LIBADD = \
+    parsers/libparsers.la \
     ui/libui.la \
     ui/bars/libbars.la \
     ui/dialogs/libdialogs.la \

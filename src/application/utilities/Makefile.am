@@ -9,12 +9,10 @@ libutilities_la_SOURCES = \
     plugin-manager.cpp \
     property-tree.cpp \
     signal.cpp \
-    text-buffer.cpp \
     text-file-loader.cpp \
     text-file-saver.cpp \
     utf8.cpp \
     worker.cpp \
-    buffer.hpp \
     extension.hpp \
     extension-point.hpp \
     extension-point-manager.hpp \
@@ -27,7 +25,6 @@ libutilities_la_SOURCES = \
     property-tree.hpp \
     scheduler.hpp \
     signal.hpp \
-    text-buffer.hpp \
     text-file-loader.hpp \
     text-file-saver.hpp \
     utf8.hpp \

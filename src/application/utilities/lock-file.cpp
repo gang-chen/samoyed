@@ -16,7 +16,6 @@ g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST \
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
 #ifdef SMYD_LOCK_FILE_UNIT_TEST
 # include <string.h>
 #endif
@@ -25,6 +24,7 @@ g++ lock-file.cpp signal.cpp -DSMYD_LOCK_FILE_UNIT_TEST \
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <boost/scoped_array.hpp>
 #include <glib.h>
 #include <glib/gstdio.h>
 
@@ -87,7 +87,6 @@ LockFile::~LockFile()
 LockFile::State LockFile::queryState()
 {
     int fd, l, m = 0, n = 256;
-    char *buffer;
     char *cp;
 
     if (m_locked)
@@ -104,13 +103,12 @@ LockFile::State LockFile::queryState()
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
     }
 
-    buffer = static_cast<char *>(malloc(sizeof(char) * n));
+    boost::scoped_array<char> buffer(new char[n]);
     for (;;)
     {
-        l = read(fd, buffer + m, n - m - 1);
+        l = read(fd, buffer.get() + m, n - m - 1);
         if (l == -1)
         {
-            free(buffer);
             close(fd);
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
         }
@@ -120,21 +118,17 @@ LockFile::State LockFile::queryState()
         if (n - m - 1 == 0)
         {
             n = n * 2;
-            buffer = static_cast<char *>(realloc(buffer, sizeof(char) * n));
+            buffer.reset(new char[n]);
         }
     }
     close(fd);
-    buffer[m] = '\0';
-    cp = strchr(buffer, ' ');
+    buffer.get()[m] = '\0';
+    cp = strchr(buffer.get(), ' ');
     if (cp == NULL)
-    {
-        free(buffer);
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
-    }
     *cp = '\0';
-    m_lockingHostName = buffer;
+    m_lockingHostName = buffer.get();
     m_lockingProcessId = atoi(cp + 1);
-    free(buffer);
 
     if (m_lockingHostName != g_get_host_name())
         return STATE_LOCKED_BY_ANOTHER_PROCESS;
@@ -200,14 +194,13 @@ RETRY:
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
         }
 
-        buffer = static_cast<char *>(malloc(sizeof(char) * n));
+        boost::scoped_array<char> buffer(new char[n]);
         for (;;)
         {
-            l = read(fd, buffer + m, n - m - 1);
+            l = read(fd, buffer.get() + m, n - m - 1);
             if (l == -1)
             {
                 close(fd);
-                free(buffer);
                 return STATE_LOCKED_BY_ANOTHER_PROCESS;
             }
             if (l == 0)
@@ -216,25 +209,18 @@ RETRY:
             if (n - m - 1 == 0)
             {
                 n = n * 2;
-                buffer = static_cast<char *>(realloc(buffer, sizeof(char) * n));
+                buffer.reset(new char[n]);
             }
         }
         if (close(fd))
-        {
-            free(buffer);
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
-        }
-        buffer[m] = '\0';
-        cp = strchr(buffer, ' ');
+        buffer.get()[m] = '\0';
+        cp = strchr(buffer.get(), ' ');
         if (cp == NULL)
-        {
-            free(buffer);
             return STATE_LOCKED_BY_ANOTHER_PROCESS;
-        }
         *cp = '\0';
-        m_lockingHostName = buffer;
+        m_lockingHostName = buffer.get();
         m_lockingProcessId = atoi(cp + 1);
-        free(buffer);
 
         if (m_lockingHostName != thisHostName)
             return STATE_LOCKED_BY_ANOTHER_PROCESS;

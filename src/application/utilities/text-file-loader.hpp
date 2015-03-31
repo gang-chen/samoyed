@@ -5,13 +5,12 @@
 #define SMYD_TEXT_FILE_LOADER_HPP
 
 #include "file-loader.hpp"
+#include <list>
 #include <string>
 #include <gio/gio.h>
 
 namespace Samoyed
 {
-
-class TextBuffer;
 
 /**
  * A text file loader reads a text file, converts its contents into UTF-8
@@ -28,14 +27,7 @@ public:
 
     virtual ~TextFileLoader();
 
-    const TextBuffer *buffer() const { return m_buffer; }
-
-    TextBuffer *takeBuffer()
-    {
-        TextBuffer *buffer = m_buffer;
-        m_buffer = NULL;
-        return buffer;
-    }
+    const std::list<std::string> &buffer() const { return m_buffer; }
 
     virtual bool step();
 
@@ -44,7 +36,7 @@ private:
 
     std::string m_encoding;
 
-    TextBuffer *m_buffer;
+    std::list<std::string> m_buffer;
 
     GFile *m_file;
     GFileInputStream *m_fileStream;

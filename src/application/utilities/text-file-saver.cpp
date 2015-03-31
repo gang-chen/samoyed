@@ -3,9 +3,9 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-saver.cpp worker.cpp -DSMYD_TEXT_FILE_SAVER_UNIT_TEST \
-`pkg-config --cflags --libs gtk+-3.0` -I../../../libs -lboost_thread -pthread \
--Werror -Wall -o text-file-saver
+g++ text-file-saver.cpp worker.cpp -DSMYD_UNIT_TEST \
+-DSMYD_TEXT_FILE_SAVER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0` \
+-I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-saver
 */
 
 #ifdef HAVE_CONFIG_H
@@ -146,13 +146,12 @@ void onDone(Samoyed::Worker &worker)
 {
     Samoyed::TextFileSaver &saver =
         static_cast<Samoyed::TextFileSaver &>(worker);
-    GError *error = saver.takeError();
-    if (error)
+    if (saver.error())
     {
-        printf("Text file saver error: %s.\n", error->message);
-        g_error_free(error);
+        printf("Text file saver error: %s.\n", saver.error()->message);
         return;
     }
+    GError *error;
     char *fileName = g_filename_from_uri(saver.uri(), NULL, &error);
     if (error)
     {

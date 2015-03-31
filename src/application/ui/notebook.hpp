@@ -75,6 +75,8 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    virtual void destroyChild(Widget &child);
+
     void addChild(Widget &child, int index);
 
     virtual void removeChild(Widget &child);
@@ -103,15 +105,15 @@ public:
     bool canDragChildren() const { return m_canDragChildren; }
     bool useUnderline() const { return m_useUnderline; }
 
-    bool automaticClose() const { return m_autoClose; }
-    void setAutomaticClose(bool autoClose) { m_autoClose = autoClose; }
+    bool closeOnEmpty() const { return m_closeOnEmpty; }
+    void setCloseOnEmpty(bool closeOnEmpty) { m_closeOnEmpty = closeOnEmpty; }
 
 protected:
     Notebook():
         m_createCloseButtons(false),
         m_canDragChildren(false),
         m_useUnderline(false),
-        m_autoClose(false)
+        m_closeOnEmpty(false)
     {}
 
     virtual ~Notebook();
@@ -136,7 +138,7 @@ private:
     bool m_createCloseButtons;
     bool m_canDragChildren;
     bool m_useUnderline;
-    bool m_autoClose;
+    bool m_closeOnEmpty;
 
     std::vector<Widget *> m_children;
 };

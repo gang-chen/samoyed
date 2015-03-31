@@ -133,7 +133,7 @@ PreferencesEditor::~PreferencesEditor()
 
 void PreferencesEditor::show()
 {
-    gtk_widget_show(m_window);
+    gtk_window_present(GTK_WINDOW(m_window));
 }
 
 void PreferencesEditor::hide()
