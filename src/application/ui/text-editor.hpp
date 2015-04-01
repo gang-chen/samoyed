@@ -49,6 +49,15 @@ public:
         int m_cursorColumn;
     };
 
+    /**
+     * Create the data that will be shared by all text editors.  It is required
+     * that this function be called before any text editor or derived editor is
+     * created.  This function creates a tag table.
+     */
+    static void createSharedData();
+
+    static void destroySharedData();
+
     static TextEditor *create(TextFile &file, Project *project);
 
     static void installPreferences();
@@ -116,6 +125,8 @@ protected:
                               TextEditor *editor);
 
 private:
+    static GtkTextTagTable *s_sharedTagTable;
+
     static void insert(GtkTextBuffer *buffer, GtkTextIter *location,
                        char *text, int length,
                        TextEditor *editor);

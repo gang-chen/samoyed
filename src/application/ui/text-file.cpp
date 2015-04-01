@@ -449,7 +449,8 @@ void TextFile::onLoaded(FileLoader &loader)
         editor->onFileLoaded();
 }
 
-bool TextFile::insert(int line, int column, const char *text, int length)
+bool TextFile::insert(int line, int column, const char *text, int length,
+                      int *newLine, int *newColumn)
 {
     if (line == -1 && column == -1)
         static_cast<TextEditor *>(editors())->endCursor(line, column);
@@ -459,6 +460,12 @@ bool TextFile::insert(int line, int column, const char *text, int length)
     Removal *undo = insertOnly(line, column, text, length, chng);
     saveUndo(undo);
     onChanged(*chng, false);
+    if (newLine)
+        *newLine =
+            static_cast<TextFile::Change *>(chng)->value.insertion.newLine;
+    if (newColumn)
+        *newColumn =
+            static_cast<TextFile::Change *>(chng)->value.insertion.newColumn;
     delete chng;
     return true;
 }

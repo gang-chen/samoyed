@@ -195,6 +195,18 @@ static void source_undo_manager_class_init(SourceUndoManagerClass *c)
 namespace Samoyed
 {
 
+GtkTextTagTable *TextEditor::s_sharedTagTable = NULL;
+
+void TextEditor::createSharedData()
+{
+    s_sharedTagTable = gtk_text_tag_table_new();
+}
+
+void TextEditor::destroySharedData()
+{
+    g_object_unref(s_sharedTagTable);
+}
+
 void TextEditor::XmlElement::registerReader()
 {
     Widget::XmlElement::registerReader(TEXT_EDITOR,
@@ -371,7 +383,8 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
 {
     if (!Editor::setup())
         return false;
-    GtkSourceBuffer *buffer = gtk_source_buffer_new(tagTable);
+    GtkSourceBuffer *buffer =
+        gtk_source_buffer_new(tagTable ? tagTable : s_sharedTagTable);
     SourceUndoManager *undo = SOURCE_UNDO_MANAGER(
         g_object_new(source_undo_manager_get_type(), NULL));
     undo->editor = this;
@@ -599,17 +612,21 @@ void TextEditor::onFileChanged(const File::Change &change)
     m_fileChange = true;
     if (tc.type == File::Change::TYPE_INIT)
     {
-        TextEditor *old = static_cast<TextEditor *>(file().editors());
-        GtkTextBuffer *oldBuffer = gtk_text_view_get_buffer(
-            GTK_TEXT_VIEW(old->gtkSourceView()));
-        GtkTextIter begin, end, oldBegin, oldEnd;
+        TextEditor *source = static_cast<TextEditor *>(file().editors());
+        if (source == this)
+            source = static_cast<TextEditor *>(source->nextInFile());
+        GtkTextBuffer *sourceBuffer = gtk_text_view_get_buffer(
+            GTK_TEXT_VIEW(source->gtkSourceView()));
+        assert(gtk_text_buffer_get_tag_table(buffer) ==
+               gtk_text_buffer_get_tag_table(sourceBuffer));
+        GtkTextIter begin, end, sourceBegin, sourceEnd;
         gtk_text_buffer_get_start_iter(buffer, &begin);
         gtk_text_buffer_get_end_iter(buffer, &end);
         gtk_text_buffer_delete(buffer, &begin, &end);
         gtk_text_buffer_get_end_iter(buffer, &end);
-        gtk_text_buffer_get_start_iter(oldBuffer, &oldBegin);
-        gtk_text_buffer_get_end_iter(oldBuffer, &oldEnd);
-        gtk_text_buffer_insert_range(buffer, &end, &oldBegin, &oldEnd);
+        gtk_text_buffer_get_start_iter(sourceBuffer, &sourceBegin);
+        gtk_text_buffer_get_end_iter(sourceBuffer, &sourceEnd);
+        gtk_text_buffer_insert_range(buffer, &end, &sourceBegin, &sourceEnd);
     }
     else if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
@@ -642,11 +659,19 @@ void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
 {
     if (editor->m_fileChange)
         return;
-    g_signal_stop_emission_by_name(buffer, "insert-text");
+
+    // Ask the file to populate this insertion operation.
+    int newLine, newColumn;
     static_cast<TextFile &>(editor->file()).insert(
         gtk_text_iter_get_line(location),
         gtk_text_iter_get_line_offset(location),
-        text, length);
+        text, length,
+        &newLine, &newColumn);
+
+    // Validate the iterator and stop this signal emission.
+    gtk_text_buffer_get_iter_at_line_offset(buffer, location,
+                                            newLine, newColumn);
+    g_signal_stop_emission_by_name(buffer, "insert-text");
 }
 
 void TextEditor::remove(GtkTextBuffer *buffer,
@@ -655,12 +680,17 @@ void TextEditor::remove(GtkTextBuffer *buffer,
 {
     if (editor->m_fileChange)
         return;
-    g_signal_stop_emission_by_name(buffer, "delete-range");
+
+    // Ask the file to populate this removal operation.
     static_cast<TextFile &>(editor->file()).remove(
         gtk_text_iter_get_line(begin),
         gtk_text_iter_get_line_offset(begin),
         gtk_text_iter_get_line(end),
         gtk_text_iter_get_line_offset(end));
+
+    // Validate the iterators and stop this signal emission.
+    gtk_text_iter_assign(end, begin);
+    g_signal_stop_emission_by_name(buffer, "delete-range");
 }
 
 void TextEditor::onFileLoaded()

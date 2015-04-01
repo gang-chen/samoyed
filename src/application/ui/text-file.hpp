@@ -113,9 +113,14 @@ public:
      * @param text The text to be inserted.
      * @param length The number of the bytes to be inserted, or -1 to insert the
      * text until '\0'.
+     * @param newLine The holder of the line number of the position after the
+     * insertion, or NULL if not needed.
+     * @param newColumn The holder of the column number of the position after
+     * the insertion, or NULL if not needed.
      * @return True iff inserted successfully.
      */
-    bool insert(int line, int column, const char *text, int length);
+    bool insert(int line, int column, const char *text, int length,
+                int *newLine, int *newColumn);
 
     /**
      * @param beginLine The line number of the first character to be removed,

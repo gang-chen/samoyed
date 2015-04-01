@@ -181,6 +181,7 @@ gboolean Application::startUp(gpointer app)
     WidgetWithBars::XmlElement::registerReader();
     Window::XmlElement::registerReader();
     TextEditor::XmlElement::registerReader();
+    TextEditor::createSharedData();
     SourceEditor::XmlElement::registerReader();
     SourceEditor::createSharedData();
 

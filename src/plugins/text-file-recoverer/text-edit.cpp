@@ -201,7 +201,7 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
         if (response == GTK_RESPONSE_YES)
         {
             file.remove(0, 0, -1, -1);
-            file.insert(0, 0, byteCode, len);
+            file.insert(0, 0, byteCode, len, NULL, NULL);
         }
         else
         {
@@ -230,7 +230,7 @@ bool TextInsertion::replay(TextFile &file, const char *&byteCode, int &length)
         return false;
     if (length < len)
         return false;
-    if (!file.insert(line, column, byteCode, len))
+    if (!file.insert(line, column, byteCode, len, NULL, NULL))
         return false;
     byteCode += len;
     length -= len;

@@ -42,8 +42,8 @@ public:
 
     /**
      * Create the data that will be shared by all source editors.  It is
-     * required that this function be called before any source editor is
-     * created.  This function creates a tag table.
+     * required that this function be called before any source editor or
+     * derived editor is created.  This function creates a tag table.
      */
     static void createSharedData();
 
@@ -68,9 +68,6 @@ protected:
     bool restore(XmlElement &xmlElement);
 
 private:
-    /**
-     * The tag table shared by all the GTK+ text buffers.
-     */
     static GtkTextTagTable *s_sharedTagTable;
 };
 
