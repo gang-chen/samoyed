@@ -170,7 +170,7 @@ private:
      * Shut down this application.  This function quits the GTK+ main event
      * loop.
      */
-    void shutDown();
+    static gboolean shutDown(gpointer app);
 
     bool chooseSessionToStart(bool restore);
 

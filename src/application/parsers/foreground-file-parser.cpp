@@ -7,11 +7,13 @@
 #include "foreground-file-parser.hpp"
 #include "application.hpp"
 #include "ui/source-file.hpp"
+#include "ui/window.hpp"
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/ref.hpp>
 #include <boost/chrono/duration.hpp>
 #include <glib.h>
+#include <glib/gi18n.h>
 
 namespace
 {
@@ -98,8 +100,11 @@ void ForegroundFileParser::Procedure::Job::updateDiagnosticList()
 
 void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
 {
+    char *fileUri = g_filename_to_uri(m_fileName, NULL, NULL);
+    char *desc = g_strdup_printf(_("Parsing file \"%s\"."), fileUri);
     if (!m_tu)
     {
+        Window::addMessage(desc);
         CXTranslationUnit tu;
         CXErrorCode error = clang_parseTranslationUnit2(
             index,
@@ -113,7 +118,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
         m_tu.reset(tu, clang_disposeTranslationUnit);
         if (error)
             m_tu.reset();
-        char *fileUri = g_filename_to_uri(m_fileName, NULL, NULL);
+        Window::removeMessage(desc);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         onParseDone,
                         new ParseDoneParam(fileUri, m_tu, error),
@@ -121,6 +126,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
     }
     else if (m_codeCompletionLine < 0)
     {
+        Window::addMessage(desc);
         int error = clang_reparseTranslationUnit(
             m_tu.get(),
             m_unsavedFiles.numUnsavedFiles,
@@ -128,7 +134,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             clang_defaultReparseOptions(m_tu.get()));
         if (error)
             m_tu.reset();
-        char *fileUri = g_filename_to_uri(m_fileName, NULL, NULL);
+        Window::removeMessage(desc);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         onParseDone,
                         new ParseDoneParam(fileUri, m_tu, error),
@@ -136,6 +142,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
     }
     else
     {
+        Window::addMessage(desc);
         CXCodeCompleteResults *results = clang_codeCompleteAt(
             m_tu.get(),
             m_fileName,
@@ -146,7 +153,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             clang_defaultCodeCompleteOptions());
         if (!results)
             m_tu.reset();
-        char *fileUri = g_filename_to_uri(m_fileName, NULL, NULL);
+        Window::removeMessage(desc);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         onCodeCompletionDone,
                         new CodeCompletionDoneParam(fileUri, m_tu, results),

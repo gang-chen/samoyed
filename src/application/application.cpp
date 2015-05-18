@@ -236,45 +236,47 @@ CLEAN_UP:
 
     // If no session is started, shut down.
     if (!a->m_session)
-        a->shutDown();
+        g_idle_add_full(G_PRIORITY_LOW, shutDown, app, NULL);
     return FALSE;
 }
 
-void Application::shutDown()
+gboolean Application::shutDown(gpointer app)
 {
-    assert(!m_session);
-    assert(!m_createSession);
-    assert(!m_switchSession);
-    assert(!m_firstProject);
-    assert(!m_lastProject);
-    assert(!m_firstFile);
-    assert(!m_lastFile);
-    assert(!m_firstWindow);
-    assert(!m_lastWindow);
-    assert(!m_currentWindow);
-    assert(!m_splashScreen);
+    Application *a = static_cast<Application *>(app);
 
-    delete m_actionsExtensionPoint;
-    delete m_fileObExtensionPoint;
-    delete m_fileRecExtensionPoint;
-    delete m_historiesExtensionPoint;
-    delete m_preferencesExtensionPoint;
-    delete m_viewsExtensionPoint;
-    delete m_foregroundFileParser;
+    assert(!a->m_session);
+    assert(!a->m_createSession);
+    assert(!a->m_switchSession);
+    assert(!a->m_firstProject);
+    assert(!a->m_lastProject);
+    assert(!a->m_firstFile);
+    assert(!a->m_lastFile);
+    assert(!a->m_firstWindow);
+    assert(!a->m_lastWindow);
+    assert(!a->m_currentWindow);
+    assert(!a->m_splashScreen);
+
+    delete a->m_actionsExtensionPoint;
+    delete a->m_fileObExtensionPoint;
+    delete a->m_fileRecExtensionPoint;
+    delete a->m_historiesExtensionPoint;
+    delete a->m_preferencesExtensionPoint;
+    delete a->m_viewsExtensionPoint;
+    delete a->m_foregroundFileParser;
 
     // The real shut-down may happen later but should happen in the GTK+ main
     // event loop.
-    if (m_pluginManager)
-        m_pluginManager->shutDown();
+    if (a->m_pluginManager)
+        a->m_pluginManager->shutDown();
 
-    delete m_histories;
-    delete m_preferences;
+    delete a->m_histories;
+    delete a->m_preferences;
 
     // This will force us to wait for the completion of all running and pending
     // workers.
-    delete m_scheduler;
+    delete a->m_scheduler;
 
-    delete m_extensionPointManager;
+    delete a->m_extensionPointManager;
 
     SourceEditor::destroySharedData();
     TextEditor::destroySharedData();
@@ -287,6 +289,7 @@ void Application::shutDown()
 
     // Quit the GTK+ main event loop.
     gtk_main_quit();
+    return FALSE;
 }
 
 void Application::finishQuitting()
@@ -317,7 +320,7 @@ void Application::finishQuitting()
 
     // If no session is started, shut down.
     if (!m_session)
-        shutDown();
+        g_idle_add_full(G_PRIORITY_LOW, shutDown, this, NULL);
 }
 
 bool Application::quit()
@@ -357,7 +360,7 @@ gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
 {
     delete app->m_splashScreen;
     app->m_splashScreen = NULL;
-    app->shutDown();
+    g_idle_add_full(G_PRIORITY_LOW, shutDown, app, NULL);
     return TRUE;
 }
 

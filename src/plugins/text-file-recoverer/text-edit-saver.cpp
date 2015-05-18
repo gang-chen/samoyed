@@ -339,7 +339,7 @@ void TextEditSaver::onFileChanged(const File::Change &change,
             m_replayFileTimeStamp);
         queueReplayFileOperation(new ReplayFileCreation(fileName));
         queueReplayFileOperation(new ReplayFileAppending(
-            new TextInit(m_initText.get(), -1)));
+            new TextInit(m_initText, -1)));
         m_replayFileCreated = true;
         PropertyTree *options = m_file.options();
         Application::instance().session().addUnsavedFile(

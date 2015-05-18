@@ -691,8 +691,6 @@ File::~File()
 
     Window::onFileClosed(uri());
     Application::instance().removeFile(*this);
-
-    delete m_superUndo;
 }
 
 void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)

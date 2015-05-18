@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 
 namespace Samoyed
@@ -36,20 +37,19 @@ public:
 class TextInit: public TextEdit
 {
 public:
-    TextInit(char *text, int length): m_text(text), m_length(length)
+    TextInit(boost::shared_ptr<char> text, int length):
+        m_text(text), m_length(length)
     {
         if (m_length == -1)
-            m_length = strlen(m_text);
+            m_length = strlen(m_text.get());
     }
-
-    virtual ~TextInit() { g_free(m_text); }
 
     virtual bool write(FILE *file) const;
 
     static bool replay(TextFile &file, const char *&byteCode, int &length);
 
 private:
-    char *m_text;
+    boost::shared_ptr<char> m_text;
     int m_length;
 };
 

@@ -125,7 +125,7 @@ bool TextInit::write(FILE *file) const
         return false;
     if (!writeInteger(m_length, file))
         return false;
-    return fwrite(m_text, sizeof(char), m_length, file) ==
+    return fwrite(m_text.get(), sizeof(char), m_length, file) ==
         sizeof(char) * m_length;
 }
 
