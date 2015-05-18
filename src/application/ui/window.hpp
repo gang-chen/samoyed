@@ -296,6 +296,9 @@ public:
     static void addMessage(const char *message);
     static void removeMessage(const char *message);
 
+    static void enableShowActiveWorkers();
+    static void disableShowActiveWorkers();
+
 protected:
     Window();
 
@@ -454,6 +457,8 @@ private:
     std::map<std::string, ActionData *> m_actionData;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Window)
+
+    static boost::signals2::connection s_workerBegunConn, s_workerEndedConn;
 };
 
 }

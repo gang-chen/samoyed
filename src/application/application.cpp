@@ -74,8 +74,8 @@ Application::Application():
     m_histories(NULL),
     m_foregroundFileParser(NULL),
     m_session(NULL),
-    m_creatingSession(false),
-    m_switchingSession(false),
+    m_createSession(false),
+    m_switchSession(false),
     m_firstProject(NULL),
     m_lastProject(NULL),
     m_firstFile(NULL),
@@ -95,6 +95,8 @@ Application::Application():
 
 Application::~Application()
 {
+    g_free(m_sessionName);
+    g_free(m_newSessionName);
     s_instance = NULL;
 }
 
@@ -184,9 +186,10 @@ gboolean Application::startUp(gpointer app)
     TextEditor::createSharedData();
     SourceEditor::XmlElement::registerReader();
     SourceEditor::createSharedData();
+    Window::enableShowActiveWorkers();
 
-    // Create global managers.
     a->m_extensionPointManager = new ExtensionPointManager;
+
     a->m_scheduler = new Scheduler(numberOfProcessors());
 
     // Initialize the preferences with the default values.
@@ -220,61 +223,28 @@ gboolean Application::startUp(gpointer app)
     gtk_window_set_auto_startup_notification(TRUE);
     a->startSession();
 
-    // All the background initialization is done.  Close the splash screen.
-    delete a->m_splashScreen;
-    a->m_splashScreen = NULL;
-
     goto CLEAN_UP;
 
 ERROR_OUT:
-    delete a->m_splashScreen;
-    a->m_splashScreen = NULL;
     a->m_exitStatus = EXIT_FAILURE;
 
 CLEAN_UP:
-    g_free(a->m_sessionName);
-    g_free(a->m_newSessionName);
-    a->m_sessionName = NULL;
-    a->m_newSessionName = NULL;
+    // All the background initialization is done or an error occurs.  Close the
+    // splash screen.
+    delete a->m_splashScreen;
+    a->m_splashScreen = NULL;
 
-    if (a->m_exitStatus == EXIT_FAILURE || !a->m_session)
-        gtk_main_quit();
+    // If no session is started, shut down.
+    if (!a->m_session)
+        a->shutDown();
     return FALSE;
-}
-
-void Application::finishQuitting()
-{
-    assert(!m_firstProject);
-    assert(!m_lastProject);
-    assert(!m_firstFile);
-    assert(!m_lastFile);
-    assert(!m_firstWindow);
-    assert(!m_lastWindow);
-
-    assert(m_session);
-    m_session->destroy();
-    m_session = NULL;
-
-    bool restore;
-    if (m_creatingSession)
-        restore = false;
-    if (m_switchingSession)
-        restore = true;
-    if (m_creatingSession || m_switchingSession)
-    {
-        m_creatingSession = false;
-        m_switchingSession = false;
-        chooseSessionToStart(restore);
-    }
-    if (!m_session)
-        gtk_main_quit();
 }
 
 void Application::shutDown()
 {
     assert(!m_session);
-    assert(!m_creatingSession);
-    assert(!m_switchingSession);
+    assert(!m_createSession);
+    assert(!m_switchSession);
     assert(!m_firstProject);
     assert(!m_lastProject);
     assert(!m_firstFile);
@@ -283,8 +253,6 @@ void Application::shutDown()
     assert(!m_lastWindow);
     assert(!m_currentWindow);
     assert(!m_splashScreen);
-    assert(!m_sessionName);
-    assert(!m_newSessionName);
 
     delete m_actionsExtensionPoint;
     delete m_fileObExtensionPoint;
@@ -293,37 +261,77 @@ void Application::shutDown()
     delete m_preferencesExtensionPoint;
     delete m_viewsExtensionPoint;
     delete m_foregroundFileParser;
-    m_pluginManager->shutDown();
+
+    // The real shut-down may happen later but should happen in the GTK+ main
+    // event loop.
+    if (m_pluginManager)
+        m_pluginManager->shutDown();
+
     delete m_histories;
     delete m_preferences;
+
+    // This will force us to wait for the completion of all running and pending
+    // workers.
     delete m_scheduler;
+
     delete m_extensionPointManager;
+
     SourceEditor::destroySharedData();
+    TextEditor::destroySharedData();
+    Window::disableShowActiveWorkers();
+
+    // Process all pending events so that the pending jobs in the idle handlers
+    // can be performed.
+    while (gtk_events_pending())
+        gtk_main_iteration();
+
+    // Quit the GTK+ main event loop.
+    gtk_main_quit();
+}
+
+void Application::finishQuitting()
+{
+    assert(m_session);
+    assert(!m_firstProject);
+    assert(!m_lastProject);
+    assert(!m_firstFile);
+    assert(!m_lastFile);
+    assert(!m_firstWindow);
+    assert(!m_lastWindow);
+
+    m_session->quit();
+    m_session = NULL;
+
+    // Start a new session, if requested.
+    bool restore;
+    if (m_createSession)
+        restore = false;
+    if (m_switchSession)
+        restore = true;
+    if (m_createSession || m_switchSession)
+    {
+        m_createSession = false;
+        m_switchSession = false;
+        chooseSessionToStart(restore);
+    }
+
+    // If no session is started, shut down.
+    if (!m_session)
+        shutDown();
 }
 
 bool Application::quit()
 {
-    // If we're starting up the application, just quit.
-    if (m_splashScreen)
-    {
-        delete m_splashScreen;
-        m_splashScreen = NULL;
-        g_free(m_sessionName);
-        g_free(m_newSessionName);
-        m_sessionName = NULL;
-        m_newSessionName = NULL;
-        gtk_main_quit();
-        return true;
-    }
+    assert(m_session);
 
     // Save the current session.  If the user cancels quitting the session,
     // cancel quitting.
-    assert(m_session);
     if (!m_session->save())
         return false;
 
-    if (m_preferencesEditor)
-        delete m_preferencesEditor;
+    // Destroy the preferences editor for this session.
+    delete m_preferencesEditor;
+    m_preferencesEditor = NULL;
 
     // Close all projects.
     for (Project *project = m_firstProject, *next; project; project = next)
@@ -347,7 +355,9 @@ gboolean Application::onSplashScreenDeleteEvent(GtkWidget *widget,
                                                 GdkEvent *event,
                                                 Application *app)
 {
-    app->quit();
+    delete app->m_splashScreen;
+    app->m_splashScreen = NULL;
+    app->shutDown();
     return TRUE;
 }
 
@@ -437,7 +447,7 @@ int Application::run(int argc, char *argv[])
         g_option_context_free(optionContext);
         g_printerr(_("%s"), error->message);
         g_error_free(error);
-        goto ERROR_OUT;
+        return EXIT_FAILURE;
     }
     g_option_context_free(optionContext);
 
@@ -448,13 +458,13 @@ int Application::run(int argc, char *argv[])
         {
             g_printerr(_("Cannot set both option --session and option "
                          "--new-session.\n"));
-            goto ERROR_OUT;
+            return EXIT_FAILURE;
         }
         if (m_chooseSession)
         {
             g_printerr(_("Cannot set both option --session and option "
                          "--choose-session.\n"));
-            goto ERROR_OUT;
+            return EXIT_FAILURE;
         }
     }
     else if (m_newSessionName)
@@ -463,14 +473,14 @@ int Application::run(int argc, char *argv[])
         {
             g_printerr(_("Cannot set both option --new-session and option "
                          "--choose-session.\n"));
-            goto ERROR_OUT;
+            return EXIT_FAILURE;
         }
     }
 
     if (showVersion)
     {
         g_print(PACKAGE_STRING);
-        return m_exitStatus;
+        return EXIT_SUCCESS;
     }
 
     gtk_window_set_default_icon_name("samoyed");
@@ -489,36 +499,25 @@ int Application::run(int argc, char *argv[])
 
     g_idle_add(startUp, this);
 
-    // Enter the main event loop.
+    // Enter the GTK+ main event loop.
     gtk_main();
 
-    shutDown();
-    return m_exitStatus;
-
-ERROR_OUT:
-    delete m_splashScreen;
-    m_splashScreen = NULL;
-    g_free(m_sessionName);
-    g_free(m_newSessionName);
-    m_sessionName = NULL;
-    m_newSessionName = NULL;
-    m_exitStatus = EXIT_FAILURE;
     return m_exitStatus;
 }
 
 void Application::createSession()
 {
-    assert(!m_creatingSession);
-    assert(!m_switchingSession);
-    m_creatingSession = true;
+    if (m_createSession || m_switchSession)
+        return;
+    m_createSession = true;
     quit();
 }
 
 void Application::switchSession()
 {
-    assert(!m_creatingSession);
-    assert(!m_switchingSession);
-    m_switchingSession = true;
+    if (m_createSession || m_switchSession)
+        return;
+    m_switchSession = true;
     quit();
 }
 

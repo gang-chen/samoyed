@@ -182,6 +182,7 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     va_end(args);
 
     label = gtk_label_new(text);
+    g_free(text);
     gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
     gtk_label_set_selectable(GTK_LABEL(label), TRUE);
     gtk_misc_set_alignment(GTK_MISC(label), 0., 0.);
@@ -201,7 +202,6 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
     gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
-    g_free(text);
 }
 
 }

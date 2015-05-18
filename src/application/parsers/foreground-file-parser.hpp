@@ -5,6 +5,7 @@
 #define SMYD_FOREGROUND_FILE_PARSER_HPP
 
 #include <queue>
+#include <vector>
 #include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -35,6 +36,13 @@ public:
                         boost::shared_ptr<CXTranslationUnitImpl> tu);
 
 private:
+    struct UnsavedFiles
+    {
+        CXUnsavedFile *unsavedFiles;
+        unsigned numUnsavedFiles;
+        std::vector<boost::shared_ptr<char> > textPtrs;
+    };
+
     class Procedure
     {
     public:
@@ -46,17 +54,15 @@ private:
 
         void quit();
 
-        void parse(char *fileName,
-                   CXUnsavedFile *unsavedFiles, unsigned numUnsavedFiles);
+        void parse(char *fileName, const UnsavedFiles &unsavedFiles);
 
         void reparse(char *fileName,
                      boost::shared_ptr<CXTranslationUnitImpl> tu,
-                     CXUnsavedFile *unsavedFiles, unsigned numUnsavedFiles);
+                     const UnsavedFiles &unsavedFiles);
 
         void completeCodeAt(char *fileName, int line, int column,
                             boost::shared_ptr<CXTranslationUnitImpl> tu,
-                            CXUnsavedFile *unsavedFiles,
-                            unsigned numUnsavedFiles);
+                            const UnsavedFiles &unsavedFiles);
 
     private:
         class Job
@@ -66,14 +72,12 @@ private:
                 boost::shared_ptr<CXTranslationUnitImpl> tu,
                 int ccLine,
                 int ccColumn,
-                CXUnsavedFile *unsavedFiles,
-                unsigned numUnsavedFiles):
+                const UnsavedFiles &unsavedFiles):
                 m_fileName(fileName),
                 m_tu(tu),
                 m_codeCompletionLine(ccLine),
                 m_codeCompletionColumn(ccColumn),
-                m_unsavedFiles(unsavedFiles),
-                m_numUnsavedFiles(numUnsavedFiles)
+                m_unsavedFiles(unsavedFiles)
             {}
 
             ~Job();
@@ -88,8 +92,7 @@ private:
             boost::shared_ptr<CXTranslationUnitImpl> m_tu;
             int m_codeCompletionLine;
             int m_codeCompletionColumn;
-            CXUnsavedFile *m_unsavedFiles;
-            unsigned m_numUnsavedFiles;
+            UnsavedFiles m_unsavedFiles;
         };
 
         CXIndex m_index;
@@ -100,6 +103,8 @@ private:
 
         std::queue<Job *> m_jobQueue;
     };
+
+    static void collectUnsavedFiles(UnsavedFiles &unsavedFiles);
 
     Procedure *m_procedure;
 };

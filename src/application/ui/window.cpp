@@ -14,6 +14,7 @@
 #include "text-editor.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
+#include "utilities/worker.hpp"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -176,6 +177,16 @@ void onActionToggled(GtkToggleAction *action,
                      boost::function<void (GtkToggleAction *)> *toggled)
 {
     (*toggled)(action);
+}
+
+void onWorkerBegun(const boost::shared_ptr<Samoyed::Worker> &worker)
+{
+    Samoyed::Window::addMessage(worker->description());
+}
+
+void onWorkerEnded(const boost::shared_ptr<Samoyed::Worker> &worker)
+{
+    Samoyed::Window::removeMessage(worker->description());
 }
 
 }
@@ -2101,6 +2112,21 @@ bool Window::compareFileTitles(const FileTitleUri &titleUri1,
                                const FileTitleUri &titleUri2)
 {
     return strcmp(titleUri1.title, titleUri2.title) < 0;
+}
+
+boost::signals2::connection Window::s_workerBegunConn,
+                            Window::s_workerEndedConn;
+
+void Window::enableShowActiveWorkers()
+{
+    s_workerBegunConn = Worker::addBegunCallbackForAny(onWorkerBegun);
+    s_workerEndedConn = Worker::addBegunCallbackForAny(onWorkerEnded);
+}
+
+void Window::disableShowActiveWorkers()
+{
+    s_workerBegunConn.disconnect();
+    s_workerEndedConn.disconnect();
 }
 
 }

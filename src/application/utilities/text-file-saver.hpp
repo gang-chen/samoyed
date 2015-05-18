@@ -6,6 +6,7 @@
 
 #include "file-saver.hpp"
 #include <string>
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 
 namespace Samoyed
@@ -20,19 +21,16 @@ class TextFileSaver: public FileSaver
 public:
     TextFileSaver(Scheduler &scheduler,
                   unsigned int priority,
-                  const Callback &callback,
                   const char *uri,
-                  char *text,
+                  const boost::shared_ptr<char> &text,
                   int length,
                   const char *encoding);
 
-    virtual ~TextFileSaver()
-    { g_free(m_text); }
-
+protected:
     virtual bool step();
 
 private:
-    char *m_text;
+    boost::shared_ptr<char> m_text;
 
     int m_length;
 

@@ -5,19 +5,18 @@
 #define SMYD_SESSION_HPP
 
 #include "utilities/lock-file.hpp"
+#include "utilities/property-tree.hpp"
 #include "utilities/worker.hpp"
 #include <string>
 #include <list>
 #include <map>
 #include <deque>
 #include <boost/utility.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/shared_ptr.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
-
-class PropertyTree;
 
 /**
  * A session can be saved and restored so that the user can quit the application
@@ -43,7 +42,7 @@ class PropertyTree;
  * The session directory: ~USER/sessions/SESSION.
  * The session file: ~USER/sessions/SESSION/session.xml.
  * The session lock file: ~USER/sessions/SESSION.lock.
- * The unsaved file in a session are stored in
+ * The unsaved files in a session are stored in
  * ~USER/sessions/SESSION/unsaved-files.xml.
  */
 class Session: public boost::noncopyable
@@ -60,14 +59,10 @@ public:
     {
         long timeStamp;
         std::string mimeType;
-        PropertyTree *options;
-        UnsavedFileInfo():
-            timeStamp(-1),
-            options(NULL)
-        {}
+        PropertyTree options;
         UnsavedFileInfo(long timeStamp,
                         const char *mimeType,
-                        PropertyTree *options):
+                        const PropertyTree &options):
             timeStamp(timeStamp),
             mimeType(mimeType),
             options(options)
@@ -100,6 +95,8 @@ public:
      */
     static Session *restore(const char *name);
 
+    void quit();
+
     const char *name() const { return m_name.c_str(); }
 
     /**
@@ -108,64 +105,123 @@ public:
      */
     bool save();
 
-    /**
-     * Request to destroy this session object.
-     */
-    void destroy();
-
-    const UnsavedFileTable &unsavedFiles() const
-    { return m_unsavedFiles; }
-
     void addUnsavedFile(const char *uri,
                         long timeStamp,
                         const char *mimeType,
-                        PropertyTree *options);
+                        const PropertyTree &options);
+
     void removeUnsavedFile(const char *uri,
                            long timeStamp);
 
 private:
-    class UnsavedFilesRequest
+    class UnsavedFilesProvider
     {
     public:
-        virtual ~UnsavedFilesRequest() {}
-        virtual void execute(Session &session) = 0;
+        virtual ~UnsavedFilesProvider() {}
+        virtual UnsavedFileTable &unsavedFiles() = 0;
     };
 
-    class UnsavedFilesRead: public UnsavedFilesRequest
+    class UnsavedFilesHolder: public UnsavedFilesProvider
     {
     public:
-        virtual void execute(Session &session);
-    };
-
-    class UnsavedFilesWrite: public UnsavedFilesRequest
-    {
-    public:
-        UnsavedFilesWrite(const UnsavedFileTable &unsavedFiles);
-        virtual ~UnsavedFilesWrite();
-        virtual void execute(Session &session);
+        UnsavedFilesHolder(const UnsavedFileTable &unsavedFiles):
+            m_unsavedFiles(unsavedFiles)
+        {}
+        virtual UnsavedFileTable &unsavedFiles() { return m_unsavedFiles; }
     private:
         UnsavedFileTable m_unsavedFiles;
     };
 
-    class UnsavedFilesRequestExecutor: public Worker
+    class UnsavedFileTableOperation
     {
     public:
-        UnsavedFilesRequestExecutor(Scheduler &scheduler,
-                                    unsigned int priority,
-                                    const Callback &callback,
-                                    Session &session);
+        virtual ~UnsavedFileTableOperation() {}
+        virtual bool execute(UnsavedFileTable &unsavedFiles) = 0;
+    };
+
+    class UnsavedFileTableAddition: public UnsavedFileTableOperation
+    {
+    public:
+        UnsavedFileTableAddition(const char *uri,
+                                 long timeStamp,
+                                 const char *mimeType,
+                                 const PropertyTree &options):
+            m_uri(uri),
+            m_info(timeStamp, mimeType, options)
+        {}
+
+        virtual bool execute(UnsavedFileTable &unsavedFiles);
+
+    private:
+        std::string m_uri;
+        UnsavedFileInfo m_info;
+    };
+
+    class UnsavedFileTableRemoval: public UnsavedFileTableOperation
+    {
+    public:
+        UnsavedFileTableRemoval(const char *uri,
+                                long timeStamp):
+            m_uri(uri),
+            m_timeStamp(timeStamp)
+        {}
+
+        virtual bool execute(UnsavedFileTable &unsavedFiles);
+
+    private:
+        std::string m_uri;
+        long m_timeStamp;
+    };
+
+    class UnsavedFilesReader: public Worker, public UnsavedFilesProvider
+    {
+    public:
+        UnsavedFilesReader(Scheduler &scheduler,
+                           unsigned int priority,
+                           const char *fileName,
+                           const char *sessionName);
+
+        virtual UnsavedFileTable &unsavedFiles() { return m_unsavedFiles; }
+
+    protected:
         virtual bool step();
 
     private:
-        Session &m_session;
+        std::string m_fileName;
+        UnsavedFileTable m_unsavedFiles;
+    };
+
+    class UnsavedFilesWriter: public Worker, public UnsavedFilesProvider
+    {
+    public:
+        UnsavedFilesWriter(
+            Scheduler &scheduler,
+            unsigned int priority,
+            const char *fileName,
+            const boost::shared_ptr<UnsavedFilesProvider> &unsavedFilesProvider,
+            UnsavedFileTableOperation *operation,
+            const char *sessionName);
+
+        virtual UnsavedFileTable &unsavedFiles() { return m_unsavedFiles; }
+
+    protected:
+        virtual bool step();
+
+    private:
+        std::string m_fileName;
+        boost::shared_ptr<UnsavedFilesProvider> m_unsavedFilesProvider;
+        UnsavedFileTable m_unsavedFiles;
+        UnsavedFileTableOperation *m_operation;
+    };
+
+    struct UnsavedFilesWriterInfo
+    {
+        boost::shared_ptr<UnsavedFilesWriter> writer;
+        boost::signals2::connection finishedConn;
+        boost::signals2::connection canceledConn;
     };
 
     static bool writeLastSessionName(const char *name);
-
-    static gboolean onUnsavedFilesRead(gpointer param);
-
-    static gboolean
-        onUnsavedFilesRequestExecutorDoneInMainThread(gpointer param);
 
     Session(const char *name, const char *lockFileName);
     ~Session();
@@ -173,13 +229,14 @@ private:
     bool lock();
     void unlock();
 
-    void queueUnsavedFilesRequest(UnsavedFilesRequest *request);
-    bool executeOneQueuedUnsavedFilesRequest();
-    void onUnsavedFilesRequestExecutorDone(Worker &worker);
+    void onUnsavedFilesReaderFinished(const boost::shared_ptr<Worker> &worker);
+    void onUnsavedFilesReaderCanceled(const boost::shared_ptr<Worker> &worker);
+    void onUnsavedFilesWriterFinished(const boost::shared_ptr<Worker> &worker);
+    void onUnsavedFilesWriterCanceled(const boost::shared_ptr<Worker> &worker);
+
+    void scheduleUnsavedFilesWriter(UnsavedFileTableOperation *op);
 
     static bool s_crashHandlerRegistered;
-
-    bool m_destroy;
 
     const std::string m_name;
 
@@ -187,10 +244,11 @@ private:
 
     UnsavedFileTable m_unsavedFiles;
 
-    std::deque<UnsavedFilesRequest *> m_unsavedFilesRequestQueue;
-    mutable boost::mutex m_unsavedFilesRequestQueueMutex;
+    boost::shared_ptr<UnsavedFilesReader> m_unsavedFilesReader;
+    boost::signals2::connection m_unsavedFilesReaderFinishedConn;
+    boost::signals2::connection m_unsavedFilesReaderCanceledConn;
 
-    UnsavedFilesRequestExecutor *m_unsavedFilesRequestExecutor;
+    std::deque<UnsavedFilesWriterInfo> m_unsavedFilesWriters;
 };
 
 }

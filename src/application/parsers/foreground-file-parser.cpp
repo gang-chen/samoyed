@@ -19,39 +19,6 @@ namespace
 const int BREAK_TIME = 200;
 const int SLOW_DOWN_CYCLES = 100000;
 
-void
-collectUnsavedFiles(CXUnsavedFile *&unsavedFiles, unsigned &numUnsavedFiles)
-{
-    unsavedFiles = NULL;
-    numUnsavedFiles = 0;
-    for (Samoyed::File *file = Samoyed::Application::instance().files();
-         file;
-         file = file->next())
-    {
-        if (file->edited() && file->type() == Samoyed::SourceFile::TYPE)
-            numUnsavedFiles++;
-    }
-    if (numUnsavedFiles)
-    {
-        unsavedFiles = new CXUnsavedFile[numUnsavedFiles];
-        CXUnsavedFile *dest = unsavedFiles;
-        for (Samoyed::File *file = Samoyed::Application::instance().files();
-             file;
-             file = file->next())
-        {
-            if (file->edited() && file->type() == Samoyed::SourceFile::TYPE)
-            {
-                dest->Filename = g_filename_from_uri(file->uri(), NULL, NULL);
-                dest->Contents =
-                    static_cast<Samoyed::TextFile *>(file)->text(0, 0, -1, -1);
-                dest->Length =
-                    static_cast<Samoyed::TextFile *>(file)->characterCount();
-                ++dest;
-            }
-        }
-    }
-}
-
 Samoyed::SourceFile *findSourceFile(const char *fileUri)
 {
     Samoyed::File *file = Samoyed::Application::instance().findFile(fileUri);
@@ -114,12 +81,9 @@ namespace Samoyed
 ForegroundFileParser::Procedure::Job::~Job()
 {
     g_free(m_fileName);
-    for (unsigned i = 0; i < m_numUnsavedFiles; ++i)
-    {
-        g_free(const_cast<char *>(m_unsavedFiles[i].Filename));
-        g_free(const_cast<char *>(m_unsavedFiles[i].Contents));
-    }
-    delete[] m_unsavedFiles;
+    for (unsigned i = 0; i < m_unsavedFiles.numUnsavedFiles; ++i)
+        g_free(const_cast<char *>(m_unsavedFiles.unsavedFiles[i].Filename));
+    delete[] m_unsavedFiles.unsavedFiles;
 }
 
 void ForegroundFileParser::Procedure::Job::updateSymbolTable()
@@ -142,8 +106,8 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_fileName,
             NULL,
             0,
-            m_unsavedFiles,
-            m_numUnsavedFiles,
+            m_unsavedFiles.unsavedFiles,
+            m_unsavedFiles.numUnsavedFiles,
             clang_defaultEditingTranslationUnitOptions(),
             &tu);
         m_tu.reset(tu, clang_disposeTranslationUnit);
@@ -159,8 +123,8 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
     {
         int error = clang_reparseTranslationUnit(
             m_tu.get(),
-            m_numUnsavedFiles,
-            m_unsavedFiles,
+            m_unsavedFiles.numUnsavedFiles,
+            m_unsavedFiles.unsavedFiles,
             clang_defaultReparseOptions(m_tu.get()));
         if (error)
             m_tu.reset();
@@ -177,8 +141,8 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_fileName,
             m_codeCompletionLine,
             m_codeCompletionColumn,
-            m_unsavedFiles,
-            m_numUnsavedFiles,
+            m_unsavedFiles.unsavedFiles,
+            m_unsavedFiles.numUnsavedFiles,
             clang_defaultCodeCompleteOptions());
         if (!results)
             m_tu.reset();
@@ -251,31 +215,27 @@ void ForegroundFileParser::Procedure::quit()
 
 void ForegroundFileParser::Procedure::parse(
     char *fileName,
-    CXUnsavedFile *unsavedFiles,
-    unsigned numUnsavedFiles)
+    const UnsavedFiles &unsavedFiles)
 {
     boost::mutex::scoped_lock lock(m_mutex);
     m_jobQueue.push(new Job(fileName,
                             boost::shared_ptr<CXTranslationUnitImpl>(),
                             -1,
                             -1,
-                            unsavedFiles,
-                            numUnsavedFiles));
+                            unsavedFiles));
 }
 
 void ForegroundFileParser::Procedure::reparse(
     char *fileName,
     boost::shared_ptr<CXTranslationUnitImpl> tu,
-    CXUnsavedFile *unsavedFiles,
-    unsigned numUnsavedFiles)
+    const UnsavedFiles &unsavedFiles)
 {
     boost::mutex::scoped_lock lock(m_mutex);
     m_jobQueue.push(new Job(fileName,
                             tu,
                             -1,
                             -1,
-                            unsavedFiles,
-                            numUnsavedFiles));
+                            unsavedFiles));
 }
 
 void ForegroundFileParser::Procedure::completeCodeAt(
@@ -283,16 +243,14 @@ void ForegroundFileParser::Procedure::completeCodeAt(
     int line,
     int column,
     boost::shared_ptr<CXTranslationUnitImpl> tu,
-    CXUnsavedFile *unsavedFiles,
-    unsigned numUnsavedFiles)
+    const UnsavedFiles &unsavedFiles)
 {
     boost::mutex::scoped_lock lock(m_mutex);
     m_jobQueue.push(new Job(fileName,
                             tu,
                             line,
                             column,
-                            unsavedFiles,
-                            numUnsavedFiles));
+                            unsavedFiles));
 }
 
 ForegroundFileParser::ForegroundFileParser():
@@ -317,23 +275,55 @@ void ForegroundFileParser::quit()
         m_procedure->quit();
 }
 
+void ForegroundFileParser::collectUnsavedFiles(UnsavedFiles &unsavedFiles)
+{
+    unsavedFiles.unsavedFiles = NULL;
+    unsavedFiles.numUnsavedFiles = 0;
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (file->edited() && file->type() == SourceFile::TYPE)
+            unsavedFiles.numUnsavedFiles++;
+    }
+    if (unsavedFiles.numUnsavedFiles)
+    {
+        unsavedFiles.unsavedFiles =
+            new CXUnsavedFile[unsavedFiles.numUnsavedFiles];
+        CXUnsavedFile *dest = unsavedFiles.unsavedFiles;
+        for (File *file = Application::instance().files();
+             file;
+             file = file->next())
+        {
+            if (file->edited() && file->type() == SourceFile::TYPE)
+            {
+                dest->Filename = g_filename_from_uri(file->uri(), NULL, NULL);
+                unsavedFiles.textPtrs.push_back(
+                    static_cast<Samoyed::TextFile *>(file)->text(0, 0, -1, -1));
+                dest->Contents = unsavedFiles.textPtrs.back().get();
+                dest->Length =
+                    static_cast<Samoyed::TextFile *>(file)->characterCount();
+                ++dest;
+            }
+        }
+    }
+}
+
 void ForegroundFileParser::parse(const char *fileUri)
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
-    CXUnsavedFile *unsavedFiles;
-    unsigned numUnsavedFiles;
-    collectUnsavedFiles(unsavedFiles, numUnsavedFiles);
-    m_procedure->parse(fileName, unsavedFiles, numUnsavedFiles);
+    UnsavedFiles unsavedFiles;
+    collectUnsavedFiles(unsavedFiles);
+    m_procedure->parse(fileName, unsavedFiles);
 }
 
 void ForegroundFileParser::reparse(const char *fileUri,
                                    boost::shared_ptr<CXTranslationUnitImpl> tu)
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
-    CXUnsavedFile *unsavedFiles;
-    unsigned numUnsavedFiles;
-    collectUnsavedFiles(unsavedFiles, numUnsavedFiles);
-    m_procedure->reparse(fileName, tu, unsavedFiles, numUnsavedFiles);
+    UnsavedFiles unsavedFiles;
+    collectUnsavedFiles(unsavedFiles);
+    m_procedure->reparse(fileName, tu, unsavedFiles);
 }
 
 void ForegroundFileParser::completeCodeAt(
@@ -343,11 +333,9 @@ void ForegroundFileParser::completeCodeAt(
     boost::shared_ptr<CXTranslationUnitImpl> tu)
 {
     char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
-    CXUnsavedFile *unsavedFiles;
-    unsigned numUnsavedFiles;
-    collectUnsavedFiles(unsavedFiles, numUnsavedFiles);
-    m_procedure->completeCodeAt(fileName, line, column, tu,
-                                unsavedFiles, numUnsavedFiles);
+    UnsavedFiles unsavedFiles;
+    collectUnsavedFiles(unsavedFiles);
+    m_procedure->completeCodeAt(fileName, line, column, tu, unsavedFiles);
 }
 
 }

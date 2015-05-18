@@ -4,7 +4,7 @@
 #ifndef SMYD_TXRC_TEXT_FILE_RECOVERER_HPP
 #define SMYD_TXRC_TEXT_FILE_RECOVERER_HPP
 
-#include "utilities/worker.hpp"
+#include "utilities/raw-file-loader.hpp"
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
 
@@ -28,43 +28,34 @@ public:
     void deactivate();
 
 private:
-    class ReplayFileReader: public Worker
+    class ReplayFileReader: public RawFileLoader
     {
     public:
         ReplayFileReader(Scheduler &scheduler,
                          unsigned int priority,
-                         const Callback &callback,
-                         TextFileRecoverer &recoverer);
+                         const char *uri);
 
-        virtual ~ReplayFileReader();
-
+    protected:
         virtual bool step();
-
-        const char *byteCode() const { return m_byteCode; }
-        int byteCodeLength() const { return m_byteCodeLength; }
-        const char *error() const { return m_error.c_str(); }
-
-    private:
-        TextFileRecoverer &m_recoverer;
-        char *m_byteCode;
-        gsize m_byteCodeLength;
-        std::string m_error;
     };
 
     void recoverFromReplayFile();
 
     void onFileLoaded(File &file);
 
-    static gboolean onReplayFileReadInMainThread(gpointer recoverer);
-
-    void onReplayFileRead(Worker &worker);
+    void onReplayFileReaderFinished(const boost::shared_ptr<Worker> &worker);
+    void onReplayFileReaderCanceled(const boost::shared_ptr<Worker> &worker);
 
     TextFile &m_file;
     long m_timeStamp;
-    bool m_destroy;
 
-    ReplayFileReader *m_reader;
-    bool m_read;
+    bool m_replayFileRead;
+    boost::shared_ptr<char> m_byteCode;
+    int m_byteCodeLength;
+
+    boost::shared_ptr<ReplayFileReader> m_replayFileReader;
+    boost::signals2::connection m_replayFileReaderFinishedConn;
+    boost::signals2::connection m_replayFileReaderCanceledConn;
 
     boost::signals2::connection m_fileLoadedConnection;
 };

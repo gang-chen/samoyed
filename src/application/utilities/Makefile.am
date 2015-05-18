@@ -8,6 +8,7 @@ libutilities_la_SOURCES = \
     plugin.cpp \
     plugin-manager.cpp \
     property-tree.cpp \
+    raw-file-loader.cpp \
     signal.cpp \
     text-file-loader.cpp \
     text-file-saver.cpp \
@@ -23,6 +24,7 @@ libutilities_la_SOURCES = \
     plugin.hpp \
     plugin-manager.hpp \
     property-tree.hpp \
+    raw-file-loader.hpp \
     scheduler.hpp \
     signal.hpp \
     text-file-loader.hpp \

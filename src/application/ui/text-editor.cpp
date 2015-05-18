@@ -16,6 +16,7 @@
 #include <list>
 #include <string>
 #include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 #include <glib-object.h>
 #include <glib/gi18n.h>
@@ -188,6 +189,26 @@ static void source_undo_manager_init(SourceUndoManager *m)
 
 static void source_undo_manager_class_init(SourceUndoManagerClass *c)
 {
+}
+
+void beforePasteClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
+{
+    editor->file().beginEditGroup();
+}
+
+void afterPasteClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
+{
+    editor->file().endEditGroup();
+}
+
+void beforeCutClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
+{
+    editor->file().beginEditGroup();
+}
+
+void afterCutClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
+{
+    editor->file().endEditGroup();
 }
 
 }
@@ -433,6 +454,14 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
                      G_CALLBACK(onCursorChanged), this);
     g_signal_connect(buffer, "mark-set",
                      G_CALLBACK(onMarkSet), this);
+    g_signal_connect(view, "cut-clipboard",
+                     G_CALLBACK(beforeCutClipboard), this);
+    g_signal_connect_after(view, "cut-clipboard",
+                           G_CALLBACK(afterCutClipboard), this);
+    g_signal_connect(view, "paste-clipboard",
+                     G_CALLBACK(beforePasteClipboard), this);
+    g_signal_connect_after(view, "paste-clipboard",
+                           G_CALLBACK(afterPasteClipboard), this);
     return true;
 }
 
@@ -518,8 +547,8 @@ bool TextEditor::isValidCursor(int line, int column) const
     return true;
 }
 
-char *TextEditor::text(int beginLine, int beginColumn,
-                       int endLine, int endColumn) const
+boost::shared_ptr<char> TextEditor::text(int beginLine, int beginColumn,
+                                         int endLine, int endColumn) const
 {
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtkSourceView()));
@@ -531,7 +560,9 @@ char *TextEditor::text(int beginLine, int beginColumn,
     else
         gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
                                                 endLine, endColumn);
-    return gtk_text_buffer_get_text(buffer, &begin, &end, TRUE);
+    return boost::shared_ptr<char>(
+        gtk_text_buffer_get_text(buffer, &begin, &end, TRUE),
+        g_free);
 }
 
 void TextEditor::getCursor(int &line, int &column) const

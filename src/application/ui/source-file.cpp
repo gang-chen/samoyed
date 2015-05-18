@@ -15,6 +15,7 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include <glib.h>
 #include <glib/gi18n.h>
 #include <clang-c/Index.h>
 
@@ -180,7 +181,7 @@ Editor *SourceFile::createEditorInternally(Project *project)
     return SourceEditor::create(*this, project);
 }
 
-void SourceFile::onLoaded(FileLoader &loader)
+void SourceFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
 {
     TextFile::onLoaded(loader);
     if (m_tu)
@@ -213,6 +214,26 @@ void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
 {
     if (error)
     {
+        // Do not disturb the user.  Log this Clang error.
+        switch (error)
+        {
+        case CXError_Failure:
+            g_warning(_("Clang failed to parse file \"%s\"."), uri());
+            break;
+        case CXError_Crashed:
+            g_warning(_("Clang crashed when parsing file \"%s\"."), uri());
+            break;
+        case CXError_InvalidArguments:
+            g_warning(_("Clang failed to parse file \"%s\" due to invalid "
+                        "arguments."),
+                      uri());
+            break;
+        case CXError_ASTReadError:
+            g_warning(_("Clang failed to parse file \"%s\" due to an AST "
+                        "deserialization error."),
+                      uri());
+            break;
+        }
     }
     if (m_needReparse)
     {
@@ -222,7 +243,7 @@ void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
             Application::instance().foregroundFileParser().parse(uri());
         m_needReparse = false;
     }
-    else if (!error)
+    else
     {
         m_tu.swap(tu);
         highlightTokens();
@@ -233,6 +254,11 @@ void
 SourceFile::onCodeCompletionDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
                                  CXCodeCompleteResults *results)
 {
+    if (!results)
+    {
+        // Do not disturb the user.  Log this Clang error.
+        g_warning(_("Clang failed to complete code in file \"%s\"."), uri());
+    }
 }
 
 void SourceFile::highlightTokens()
@@ -241,6 +267,9 @@ void SourceFile::highlightTokens()
          editor;
          editor = static_cast<SourceEditor *>(editor->nextInFile()))
         editor->cleanTokens(0, 0, -1, -1);
+
+    if (!m_tu)
+        return;
 
     CXTranslationUnit tu = m_tu.get();
     char *fileName = g_filename_from_uri(uri(), NULL, NULL);

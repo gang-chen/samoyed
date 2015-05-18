@@ -4,10 +4,14 @@
 #ifndef SMYD_WORKER_HPP
 #define SMYD_WORKER_HPP
 
+#include <utility>
+#include <map>
 #include <string>
 #include <boost/utility.hpp>
-#include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/signals2/signal.hpp>
+#include <glib.h>
 
 namespace Samoyed
 {
@@ -47,54 +51,51 @@ public:
 
     enum State
     {
-        /**
-         * Ready to be scheduled to run; not scheduled.
-         */
-        STATE_READY,
+        // => queued, dependent.
+        STATE_UNSUBMITTED,
 
-        /**
-         * Running; scheduled.
-         */
-        STATE_RUNNING,
+        // => queued, canceled, blocked.
+        STATE_DEPENDENT,
 
-        /**
-         * Blocked; scheduled.
-         */
+        // => queued, canceled.
         STATE_BLOCKED,
 
-        /**
-         * Finished; scheduled.
-         */
+        // => running, canceled, blocked.
+        STATE_QUEUED,
+
+        // => finished, canceled, blocked.
+        STATE_RUNNING,
+
         STATE_FINISHED,
 
-        /**
-         * Canceled; scheduled.
-         */
         STATE_CANCELED
     };
 
-    typedef boost::function<void (Worker &)> Callback;
+    typedef boost::signals2::signal<void (const boost::shared_ptr<Worker> &)>
+        Finished;
+    typedef boost::signals2::signal<void (const boost::shared_ptr<Worker> &)>
+        Canceled;
+
+    typedef boost::signals2::signal<void (const boost::shared_ptr<Worker> &)>
+        Begun;
+    typedef boost::signals2::signal<void (const boost::shared_ptr<Worker> &)>
+        Ended;
 
     static unsigned int defaultPriorityInCurrentThread();
 
     /**
      * Construct a worker.  It is assumed that the worker will be submitted to
      * the task scheduler.
-     * @param callback The callback called when the worker is finished or
-     * canceled.  The callback is called without locking the mutex, allowing
-     * the callback to destroy this worker.
      */
     Worker(Scheduler &scheduler,
-           unsigned int priority,
-           const Callback &callback):
+           unsigned int priority):
         m_scheduler(scheduler),
         m_priority(priority),
-        m_state(STATE_READY),
+        m_state(STATE_UNSUBMITTED),
         m_cancel(false),
         m_block(false),
         m_update(false),
-        m_blocked(false),
-        m_callback(callback)
+        m_bypassWrapper(false)
     {}
 
     virtual ~Worker() {}
@@ -109,34 +110,95 @@ public:
 
     unsigned int priority() const { return m_priority; }
 
-    /**
-     * Run.
-     */
-    void operator()();
+    // The following two function can be called before submitted only.
+    void addDependency(const boost::shared_ptr<Worker> &dependency);
+    void removeDependency(const boost::shared_ptr<Worker> &dependency);
 
     /**
      * Run until finished.  The worker cannot be canceled, blocked, updated or
      * preempted.
      */
-    void runAll();
+    void runAll(const boost::shared_ptr<Worker> &self);
 
     /**
-     * Request to cancel the worker.  The worker will be canceled immediately
-     * if it was blocked.
+     * Submit the worker to the scheduler.
      */
-    void cancel();
+    void submit(const boost::shared_ptr<Worker> &self);
 
     /**
-     * Request to block the worker.
+     * Request to cancel the worker.  This function can be called after
+     * submitted only.
      */
-    void block();
+    void cancel(const boost::shared_ptr<Worker> &self);
 
     /**
-     * Unblock the worker.  If the worker was blocked, reset its state and
-     * re-submit it to the scheduler.  Otherwise, cancel the pending blocking
-     * request if existing.
+     * Request to block the worker.  This function can be called after submitted
+     * only.
      */
-    void unblock();
+    void block(const boost::shared_ptr<Worker> &self);
+
+    /**
+     * Unblock the worker.  This function can be called after submitted only.
+     * If the worker was blocked, reset its state and re-submit it to the
+     * scheduler.  Otherwise, cancel the pending blocking request if existing.
+     */
+    void unblock(const boost::shared_ptr<Worker> &self);
+
+    boost::signals2::connection
+    addFinishedCallback(const Finished::slot_type &callback)
+    { return m_finished.connect(callback); }
+
+    boost::signals2::connection
+    addCanceledCallback(const Canceled::slot_type &callback)
+    { return m_canceled.connect(callback); }
+
+    boost::signals2::connection
+    addFinishedCallbackInMainThread(const Finished::slot_type &callback)
+    { return m_finishedInMainThread.connect(callback); }
+
+    boost::signals2::connection
+    addCanceledCallbackInMainThread(const Canceled::slot_type &callback)
+    { return m_canceledInMainThread.connect(callback); }
+
+    /**
+     * Check to see if the worker is finished or canceled.  If neither, add a
+     * callback that will be called when finished.
+     * @return The state and the connection between the callback and the worker.
+     */
+    std::pair<State, boost::signals2::connection>
+    checkAddFinishedCallback(const Finished::slot_type &callback);
+
+    /**
+     * Check to see if the worker is finished or canceled.  If neither, add a
+     * callback that will be called when canceled.
+     * @return The state and the connection between the callback and the worker.
+     */
+    std::pair<State, boost::signals2::connection>
+    checkAddCanceledCallback(const Canceled::slot_type &callback);
+
+    /**
+     * Check to see if the worker is finished or canceled.  If neither, add a
+     * callback that will be called in the main thread when finished.
+     * @return The state and the connection between the callback and the worker.
+     */
+    std::pair<State, boost::signals2::connection>
+    checkAddFinishedCallbackInMainThread(const Finished::slot_type &callback);
+
+    /**
+     * Check to see if the worker is finished or canceled.  If neither, add a
+     * callback that will be called in the main thread when canceled.
+     * @return The state and the connection between the callback and the worker.
+     */
+    std::pair<State, boost::signals2::connection>
+    checkAddCanceledCallbackInMainThread(const Canceled::slot_type &callback);
+
+    static boost::signals2::connection
+    addBegunCallbackForAny(const Begun::slot_type &callback)
+    { return s_begun.connect(callback); }
+
+    static boost::signals2::connection
+    addEndedCallbackForAny(const Ended::slot_type &callback)
+    { return s_ended.connect(callback); }
 
 protected:
     /**
@@ -157,24 +219,18 @@ protected:
     template<class UpdateSaver> bool update(const UpdateSaver &updateSaver)
     {
         boost::mutex::scoped_lock lock(m_mutex);
-        // If the worker will be scheduled, is running or was blocked, request
-        // it to update.
-        if (m_state == STATE_READY || m_state == STATE_RUNNING ||
-            m_state == STATE_BLOCKED)
-        {
-            m_update = true;
-            // Save this update.
-            updateSaver(*this);
-            return true;
-        }
-        return false;
+        if (m_state == STATE_FINISHED || m_state == STATE_CANCELED)
+            return false;
+        m_update = true;
+        // Save this update.
+        updateSaver(*this);
+        return true;
     }
 
     void setDescription(const char *description)
     { m_description = description; }
 
-private:
-    // The following four functions are called sequentially.
+    // The following three functions are called sequentially.
     /**
      * Begin execution.  Used to prepare the worker for execution.
      */
@@ -207,14 +263,31 @@ private:
      */
     virtual void updateInternally() {}
 
+private:
+    /**
+     * Run.
+     */
+    void operator()(const boost::shared_ptr<Worker> &self);
+
+    // Note that the first parameter is a shared_ptr instead of a reference to a
+    // shared_ptr.  The purpose is to make each function object created by
+    // 'bind()' hold a shared_ptr.
+    static void
+    onDependencyFinished(boost::shared_ptr<Worker> dependent,
+                         const boost::shared_ptr<Worker> &dependency);
+
+    static gboolean onFinishedInMainThread(gpointer param);
+
+    static gboolean onCanceledInMainThread(gpointer param);
+
     class ExecutionWrapper
     {
     public:
-        ExecutionWrapper(Worker &worker);
+        ExecutionWrapper(const boost::shared_ptr<Worker> &worker);
         ~ExecutionWrapper();
 
     private:
-        Worker &m_worker;
+        boost::shared_ptr<Worker> m_worker;
     };
 
     Scheduler &m_scheduler;
@@ -239,21 +312,27 @@ private:
     bool m_update;
 
     /**
-     * Blocked?  Used by the execution wrapper to bypass begin() and end() if
-     * the worker is unblocked or blocked.
+     * Used by the execution wrapper to bypass 'begin()' and 'end()' if the
+     * worker is unblocked or blocked.
      */
-    bool m_blocked;
+    bool m_bypassWrapper;
 
-    /**
-     * The callback called when the worker is finished or canceled.
-     */
-    Callback m_callback;
+    std::map<boost::shared_ptr<Worker>, boost::signals2::connection>
+        m_dependencies;
+
+    Finished m_finished;
+    Canceled m_canceled;
+    Finished m_finishedInMainThread;
+    Canceled m_canceledInMainThread;
 
     std::string m_description;
 
     mutable boost::mutex m_mutex;
 
-    friend class ExecutionWrapper;
+    static Begun s_begun;
+    static Ended s_ended;
+
+    friend class WorkerAdapter;
 };
 
 }

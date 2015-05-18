@@ -38,7 +38,9 @@ public:
 
     ~LockFile();
 
-    State queryState();
+    static State queryState(const char *fileName,
+                            std::string *lockingHostName,
+                            ProcessId *lockingProcessId);
 
     State lock();
 

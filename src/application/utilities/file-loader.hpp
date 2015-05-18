@@ -17,9 +17,8 @@ class FileLoader: public Worker
 public:
     FileLoader(Scheduler &scheduler,
                unsigned int priority,
-               const Callback &callback,
                const char *uri):
-        Worker(scheduler, priority, callback),
+        Worker(scheduler, priority),
         m_error(NULL),
         m_uri(uri)
     {}

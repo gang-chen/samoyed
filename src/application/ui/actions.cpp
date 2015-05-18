@@ -28,6 +28,11 @@ void switchSession(GtkAction *action, Samoyed::Window *window)
     Samoyed::Application::instance().switchSession();
 }
 
+void editPreferences(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Application::instance().preferencesEditor().show();
+}
+
 void manageSessions(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::SessionManagementWindow *manWindow =
@@ -65,7 +70,19 @@ void createDirectory(GtkAction *action, Samoyed::Window *window)
 {
 }
 
-void configure(GtkAction *action, Samoyed::Window *window)
+void createLibrary(GtkAction *action, Samoyed::Window *window)
+{
+}
+
+void createProgram(GtkAction *action, Samoyed::Window *window)
+{
+}
+
+void editProperties(GtkAction *action, Samoyed::Window *window)
+{
+}
+
+void setActiveConfiguration(GtkAction *action, Samoyed::Window *window)
 {
 }
 
@@ -175,11 +192,6 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
     window->current().activateAction(*window,
                                      action,
                                      Samoyed::Actions::ACTION_DELETE);
-}
-
-void editPreferences(GtkAction *action, Samoyed::Window *window)
-{
-    Samoyed::Application::instance().preferencesEditor().show();
 }
 
 void createWindow(GtkAction *action, Samoyed::Window *window)
@@ -336,7 +348,9 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     { "switch-session", NULL, N_("_Switch..."), NULL,
       N_("Quit the current session and restore a saved one"),
       G_CALLBACK(switchSession) },
-    { "manage-sessions", NULL, N_("_Manage"), NULL,
+    { "edit-preferences", NULL, N_("_Preferences"), NULL,
+      N_("Edit your preferences"), G_CALLBACK(editPreferences) },
+    { "manage-sessions", NULL, N_("_Manage Sessions"), NULL,
       N_("Manage saved sessions"), G_CALLBACK(manageSessions) },
     { "quit-session", "application-exit", N_("_Quit"), "<Control>q",
       N_("Quit the current session"), G_CALLBACK(quitSession) },
@@ -354,9 +368,17 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Create a file"), G_CALLBACK(createFile) },
     { "create-directory", NULL, N_("New _Directory..."), NULL,
       N_("Create a directory"), G_CALLBACK(createDirectory) },
-    { "configure", "document-properties", N_("Confi_gure"), "<Alt>Return",
-      N_("Configure the selected object"), G_CALLBACK(configure) },
-    { "manage-configurations", NULL, N_("Manage Confi_gurations"), NULL,
+    { "create-library", NULL, N_("New _Library..."), NULL,
+      N_("Create a shared or static library"), G_CALLBACK(createLibrary) },
+    { "create-program", NULL, N_("New _Program..."), NULL,
+      N_("Create a program"), G_CALLBACK(createProgram) },
+    { "edit-properties", "document-properties", N_("P_roperties"),
+      "<Alt>Return", N_("Edit the properties of the selected object"),
+      G_CALLBACK(editProperties) },
+    { "set-active-configuration", NULL, N_("Set Active Confi_guration"), NULL,
+      N_("Set the active configuration of the current project"),
+      G_CALLBACK(setActiveConfiguration) },
+    { "manage-configurations", NULL, N_("_Manage Configurations"), NULL,
       N_("Manage configurations of the current project"),
       G_CALLBACK(manageConfigurations) },
 
@@ -387,8 +409,6 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
     { "delete", "edit-delete", N_("_Delete"), NULL,
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
-    { "edit-preferences", GTK_STOCK_PREFERENCES, N_("Pre_ferences"), NULL,
-      N_("Edit your preferences"), G_CALLBACK(editPreferences) },
 
     // View menu.
     { "create-window", "window-new", N_("New _Window"), NULL,

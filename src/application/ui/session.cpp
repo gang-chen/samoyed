@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <boost/scoped_ptr.hpp>
+#include <boost/bind.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
@@ -50,15 +52,13 @@
 namespace
 {
 
-struct UnsavedFilesReadParam
+void makeFileNameForUnsavedFiles(std::string &fileName, const char *sessionName)
 {
-    Samoyed::Session &session;
-    Samoyed::Session::UnsavedFileTable unsavedFiles;
-    UnsavedFilesReadParam(Samoyed::Session &s,
-                          Samoyed::Session::UnsavedFileTable &uf):
-        session(s)
-    { unsavedFiles.swap(uf); }
-};
+    fileName = Samoyed::Application::instance().userDirectoryName();
+    fileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    fileName += sessionName;
+    fileName += G_DIR_SEPARATOR_S "unsaved-files.xml";
+}
 
 class XmlElementSession
 {
@@ -387,7 +387,7 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char *&error)
     if (state == Samoyed::LockFile::STATE_LOCKED_BY_ANOTHER_PROCESS)
     {
         const char *lockHostName = lockFile.lockingHostName();
-        pid_t lockPid = lockFile.lockingProcessId();
+        Samoyed::LockFile::ProcessId lockPid = lockFile.lockingProcessId();
         if (*lockHostName != '\0' && lockPid != -1)
             error = g_strdup_printf(
                 _("Samoyed failed to lock session \"%s\" because the session "
@@ -398,8 +398,9 @@ bool lockSession(const char *name, Samoyed::LockFile &lockFile, char *&error)
         else
             error = g_strdup_printf(
                 _("Samoyed failed to lock session \"%s\" because the session "
-                  "is being locked by another process."),
-                name);
+                  "is being locked by another process. To force to lock the "
+                  "session, remove lock file \"%s\" and retry."),
+                name, lockFile.fileName());
         return false;
     }
 
@@ -417,126 +418,165 @@ namespace Samoyed
 
 bool Session::s_crashHandlerRegistered = false;
 
-// Don't report any error.
-void Session::UnsavedFilesRead::execute(Session &session)
+bool Session::UnsavedFileTableAddition::execute(UnsavedFileTable &unsavedFiles)
 {
-    std::string unsavedFn(Application::instance().userDirectoryName());
-    unsavedFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    unsavedFn += session.name();
-    unsavedFn += G_DIR_SEPARATOR_S "unsaved-files.xml";
+    return unsavedFiles.insert(std::make_pair(m_uri, m_info)).second;
+}
 
-    UnsavedFileTable unsavedFiles;
-    xmlDocPtr doc = xmlParseFile(unsavedFn.c_str());
-    char *value;
-    if (doc)
+bool Session::UnsavedFileTableRemoval::execute(UnsavedFileTable &unsavedFiles)
+{
+    UnsavedFileTable::iterator iter = unsavedFiles.find(m_uri);
+    if (iter != unsavedFiles.end() && iter->second.timeStamp == m_timeStamp)
     {
-        xmlNodePtr root = xmlDocGetRootElement(doc);
-        if (root &&
-            strcmp(reinterpret_cast<const char *>(root->name),
-                   UNSAVED_FILES) == 0)
+        unsavedFiles.erase(iter);
+        return true;
+    }
+    return false;
+}
+
+Session::UnsavedFilesReader::UnsavedFilesReader(Scheduler &scheduler,
+                                                unsigned int priority,
+                                                const char *fileName,
+                                                const char *sessionName):
+    Worker(scheduler, priority),
+    m_fileName(fileName)
+{
+    char *desc =
+        g_strdup_printf(_("Reading the unsaved file list of session \"%s\" "
+                          "from file \"%s\"."),
+                        sessionName, fileName);
+    setDescription(desc);
+    g_free(desc);
+}
+
+// Don't report any error.
+bool Session::UnsavedFilesReader::step()
+{
+    xmlDocPtr doc = xmlParseFile(m_fileName.c_str());
+    if (!doc)
+    {
+        xmlErrorPtr error = xmlGetLastError();
+        if (error)
+            g_warning(_("Samoyed failed to parse file \"%s\" storing the "
+                        "unsaved files. %s."),
+                      m_fileName.c_str(), error->message);
+        else
+            g_warning(_("Samoyed failed to parse file \"%s\" storing the "
+                        "unsaved files."),
+                      m_fileName.c_str());
+        return true;
+    }
+
+    char *value;
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    if (root &&
+        strcmp(reinterpret_cast<const char *>(root->name),
+               UNSAVED_FILES) == 0)
+    {
+        for (xmlNodePtr file = root->children; file; file = file->next)
         {
-            for (xmlNodePtr file = root->children; file; file = file->next)
+            if (file->type != XML_ELEMENT_NODE)
+                continue;
+            if (strcmp(reinterpret_cast<const char *>(file->name),
+                       FILE_STR) != 0)
+                continue;
+            std::string uri;
+            long timeStamp = -1;
+            std::string mimeType;
+            PropertyTree *options = NULL;
+            for (xmlNodePtr child = file->children;
+                 child;
+                 child = child->next)
             {
                 if (file->type != XML_ELEMENT_NODE)
                     continue;
-                if (strcmp(reinterpret_cast<const char *>(file->name),
-                           FILE_STR) != 0)
-                    continue;
-                std::string uri;
-                long timeStamp = -1;
-                std::string mimeType;
-                PropertyTree *options = NULL;
-                for (xmlNodePtr child = file->children;
-                     child;
-                     child = child->next)
+                if (strcmp(reinterpret_cast<const char *>(child->name),
+                           URI) == 0)
                 {
-                    if (file->type != XML_ELEMENT_NODE)
-                        continue;
-                    if (strcmp(reinterpret_cast<const char *>(child->name),
-                               URI) == 0)
+                    value = reinterpret_cast<char *>(
+                        xmlNodeGetContent(child->children));
+                    if (value)
                     {
-                        value = reinterpret_cast<char *>(
-                            xmlNodeGetContent(child->children));
-                        if (value)
-                        {
-                            uri = value;
-                            xmlFree(value);
-                        }
+                        uri = value;
+                        xmlFree(value);
                     }
-                    else if (strcmp(reinterpret_cast<const char *>(child->name),
-                                    TIME_STAMP) == 0)
-                    {
-                        value = reinterpret_cast<char *>(
-                            xmlNodeGetContent(child->children));
-                        if (value)
-                        {
-                            timeStamp = atol(value);
-                            xmlFree(value);
-                        }
-                    }
-                    else if (strcmp(reinterpret_cast<const char *>(child->name),
-                                    MIME_TYPE) == 0)
-                    {
-                        value = reinterpret_cast<char *>(
-                            xmlNodeGetContent(child->children));
-                        if (value)
-                        {
-                            mimeType = value;
-                            xmlFree(value);
-                            const PropertyTree *defOpt =
-                                File::defaultOptionsForType(mimeType.c_str());
-                            if (defOpt)
-                                options = new PropertyTree(*defOpt);
-                        }
-                    }
-                    else if (options &&
-                             strcmp(reinterpret_cast<const char *>(child->name),
-                                    options->name()) == 0)
-                        options->readXmlElement(child, NULL);
                 }
-                if (timeStamp > 0 && options)
-                    unsavedFiles.insert(
-                        std::make_pair(uri, UnsavedFileInfo(timeStamp,
-                                                            mimeType.c_str(),
-                                                            options)));
-                else
-                    delete options;
+                else if (strcmp(reinterpret_cast<const char *>(child->name),
+                                TIME_STAMP) == 0)
+                {
+                    value = reinterpret_cast<char *>(
+                        xmlNodeGetContent(child->children));
+                    if (value)
+                    {
+                        timeStamp = atol(value);
+                        xmlFree(value);
+                    }
+                }
+                else if (strcmp(reinterpret_cast<const char *>(child->name),
+                                MIME_TYPE) == 0)
+                {
+                    value = reinterpret_cast<char *>(
+                        xmlNodeGetContent(child->children));
+                    if (value)
+                    {
+                        mimeType = value;
+                        xmlFree(value);
+                        const PropertyTree *defOpt =
+                            File::defaultOptionsForType(mimeType.c_str());
+                        if (defOpt)
+                            options = new PropertyTree(*defOpt);
+                    }
+                }
+                else if (options &&
+                         strcmp(reinterpret_cast<const char *>(child->name),
+                                options->name()) == 0)
+                    options->readXmlElement(child, NULL);
             }
+            if (timeStamp > 0 && options)
+                m_unsavedFiles.insert(std::make_pair(uri,
+                                                     UnsavedFileInfo(timeStamp,
+                                                     mimeType.c_str(),
+                                                     *options)));
+            delete options;
         }
-        xmlFreeDoc(doc);
     }
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onUnsavedFilesRead,
-                    new UnsavedFilesReadParam(session, unsavedFiles),
-                    NULL);
+
+    xmlFreeDoc(doc);
+    return true;
 }
 
-Session::UnsavedFilesWrite::UnsavedFilesWrite(
-    const UnsavedFileTable &unsavedFiles):
-    m_unsavedFiles(unsavedFiles)
+Session::UnsavedFilesWriter::UnsavedFilesWriter(
+    Scheduler &scheduler,
+    unsigned int priority,
+    const char *fileName,
+    const boost::shared_ptr<UnsavedFilesProvider> &unsavedFilesProvider,
+    UnsavedFileTableOperation *operation,
+    const char *sessionName):
+        Worker(scheduler, priority),
+        m_fileName(fileName),
+        m_unsavedFilesProvider(unsavedFilesProvider),
+        m_operation(operation)
 {
-    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
-         it != m_unsavedFiles.end();
-         ++it)
-        it->second.options = new PropertyTree(*it->second.options);
-}
-
-Session::UnsavedFilesWrite::~UnsavedFilesWrite()
-{
-    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
-         it != m_unsavedFiles.end();
-         ++it)
-        delete it->second.options;
+    char *desc =
+        g_strdup_printf(_("Writing the unsaved file list of session \"%s\" to "
+                          "file \"%s\"."),
+                        sessionName, fileName);
+    setDescription(desc);
+    g_free(desc);
 }
 
 // Don't report any error.
-void Session::UnsavedFilesWrite::execute(Session &session)
+bool Session::UnsavedFilesWriter::step()
 {
-    std::string unsavedFn(Application::instance().userDirectoryName());
-    unsavedFn += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    unsavedFn += session.name();
-    unsavedFn += G_DIR_SEPARATOR_S "unsaved-files.xml";
+    // The unsaved files provider is ready now.  Read the unsaved file list.
+    m_unsavedFiles.swap(m_unsavedFilesProvider->unsavedFiles());
+    m_unsavedFilesProvider.reset();
 
+    // Change the unsaved file list.
+    if (!m_operation->execute(m_unsavedFiles))
+        return true;
+
+    // Write the changed unsaved file list to the file.
     xmlNodePtr root =
         xmlNewNode(NULL, reinterpret_cast<const xmlChar *>(UNSAVED_FILES));
     for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
@@ -558,51 +598,45 @@ void Session::UnsavedFilesWrite::execute(Session &session)
                         reinterpret_cast<const xmlChar *>(MIME_TYPE),
                         reinterpret_cast<const xmlChar *>(it->second.mimeType.
                                                           c_str()));
-        xmlAddChild(file, it->second.options->writeXmlElement());
+        xmlAddChild(file, it->second.options.writeXmlElement());
         xmlAddChild(root, file);
     }
 
     xmlDocPtr doc = xmlNewDoc(reinterpret_cast<const xmlChar *>("1.0"));
     xmlDocSetRootElement(doc, root);
-    xmlSaveFormatFile(unsavedFn.c_str(), doc, 1);
-    xmlFreeDoc(doc);
-}
 
-Session::UnsavedFilesRequestExecutor::
-    UnsavedFilesRequestExecutor(Scheduler &scheduler,
-                                unsigned int priority,
-                                const Callback &callback,
-                                Session &session):
-    Worker(scheduler,
-           priority,
-           callback),
-    m_session(session)
-{
-    setDescription("Reading/writing unsaved file list.");
-}
-
-bool Session::UnsavedFilesRequestExecutor::step()
-{
-    return m_session.executeOneQueuedUnsavedFilesRequest();
-}
-
-gboolean Session::onUnsavedFilesRead(gpointer param)
-{
-    UnsavedFilesReadParam *p =
-        static_cast<UnsavedFilesReadParam *>(param);
-    for (UnsavedFileTable::iterator it = p->session.m_unsavedFiles.begin();
-         it != p->session.m_unsavedFiles.end();
-         ++it)
-        delete it->second.options;
-    p->session.m_unsavedFiles.swap(p->unsavedFiles);
-    if (p->session.m_destroy)
+    if (xmlSaveFormatFile(m_fileName.c_str(), doc, 1) == -1)
     {
-        delete p;
-        return FALSE;
+        xmlErrorPtr error = xmlGetLastError();
+        if (error)
+            g_warning(_("Samoyed failed to save file \"%s\" storing the "
+                        "unsaved files. %s."),
+                      m_fileName.c_str(), error->message);
+        else
+            g_warning(_("Samoyed failed to save file \"%s\" storing the "
+                        "unsaved files."),
+                      m_fileName.c_str());
     }
 
+    xmlFreeDoc(doc);
+    return true;
+}
+
+void
+Session::onUnsavedFilesReaderFinished(const boost::shared_ptr<Worker> &worker)
+{
+    assert(m_unsavedFilesReader == worker);
+
+    // Update the unsaved file list.
+    m_unsavedFiles.swap(m_unsavedFilesReader->unsavedFiles());
+
+    // Clean up.
+    m_unsavedFilesReaderFinishedConn.disconnect();
+    m_unsavedFilesReaderCanceledConn.disconnect();
+    m_unsavedFilesReader.reset();
+
     // Show the unsaved files.
-    if (!p->session.unsavedFiles().empty())
+    if (!m_unsavedFiles.empty())
     {
         WidgetWithBars &mainArea =
             Application::instance().currentWindow().mainArea();
@@ -610,89 +644,91 @@ gboolean Session::onUnsavedFilesRead(gpointer param)
             static_cast<FileRecoveryBar *>(
                 mainArea.findChild(FileRecoveryBar::ID));
         if (bar)
-            bar->setFiles(p->session.unsavedFiles());
+            bar->setFiles(m_unsavedFiles);
         else
         {
-            bar = FileRecoveryBar::create(p->session.unsavedFiles());
+            bar = FileRecoveryBar::create(m_unsavedFiles);
             mainArea.addBar(*bar, false);
         }
     }
-    delete p;
-    return FALSE;
 }
 
-gboolean
-Session::onUnsavedFilesRequestExecutorDoneInMainThread(gpointer param)
+void
+Session::onUnsavedFilesReaderCanceled(const boost::shared_ptr<Worker> &worker)
 {
-    Session *session = static_cast<Session *>(param);
-    delete session->m_unsavedFilesRequestExecutor;
-    {
-        boost::mutex::scoped_lock
-            lock(session->m_unsavedFilesRequestQueueMutex);
-        if (!session->m_unsavedFilesRequestQueue.empty())
-        {
-            session->m_unsavedFilesRequestExecutor =
-                new UnsavedFilesRequestExecutor(
-                    Application::instance().scheduler(),
-                    Worker::PRIORITY_IDLE,
-                    boost::bind(&Session::onUnsavedFilesRequestExecutorDone,
-                                session, _1),
-                    *session);
-            Application::instance().scheduler().
-                schedule(*session->m_unsavedFilesRequestExecutor);
-        }
-        else
-            session->m_unsavedFilesRequestExecutor = NULL;
-    }
-    if (!session->m_unsavedFilesRequestExecutor && session->m_destroy)
-        delete session;
-    return FALSE;
+    assert(0);
 }
 
-void Session::onUnsavedFilesRequestExecutorDone(Worker &worker)
+void
+Session::onUnsavedFilesWriterFinished(const boost::shared_ptr<Worker> &worker)
 {
-    assert(&worker == m_unsavedFilesRequestExecutor);
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onUnsavedFilesRequestExecutorDoneInMainThread,
-                    this,
-                    NULL);
+    assert(m_unsavedFilesWriters.front().writer == worker);
+
+    // Update the unsaved file list.
+    m_unsavedFiles.swap(m_unsavedFilesWriters.front().writer->unsavedFiles());
+
+    // Clean up.
+    m_unsavedFilesWriters.front().finishedConn.disconnect();
+    m_unsavedFilesWriters.front().canceledConn.disconnect();
+    m_unsavedFilesWriters.pop_front();
 }
 
-void Session::queueUnsavedFilesRequest(UnsavedFilesRequest *request)
+void
+Session::onUnsavedFilesWriterCanceled(const boost::shared_ptr<Worker> &worker)
 {
-    {
-        boost::mutex::scoped_lock lock(m_unsavedFilesRequestQueueMutex);
-        m_unsavedFilesRequestQueue.push_back(request);
-    }
+    assert(0);
+}
 
-    if (!m_unsavedFilesRequestExecutor)
+void Session::scheduleUnsavedFilesWriter(UnsavedFileTableOperation *op)
+{
+    std::string unsavedFileName;
+    makeFileNameForUnsavedFiles(unsavedFileName, m_name.c_str());
+
+    UnsavedFilesWriterInfo info;
+    if (!m_unsavedFilesWriters.empty())
     {
-        m_unsavedFilesRequestExecutor = new UnsavedFilesRequestExecutor(
+        // If any writers are running or pending, use the output of the last
+        // writer as the input of the new writer.
+        info.writer.reset(new UnsavedFilesWriter(
             Application::instance().scheduler(),
             Worker::PRIORITY_IDLE,
-            boost::bind(&Session::onUnsavedFilesRequestExecutorDone,
-                        this, _1),
-            *this);
-        Application::instance().scheduler().
-            schedule(*m_unsavedFilesRequestExecutor);
+            unsavedFileName.c_str(),
+            m_unsavedFilesWriters.back().writer,
+            op,
+            m_name.c_str()));
+        info.writer->addDependency(m_unsavedFilesWriters.back().writer);
     }
-}
-
-bool Session::executeOneQueuedUnsavedFilesRequest()
-{
-    bool done;
-    UnsavedFilesRequest *request;
+    else if (m_unsavedFilesReader)
     {
-        boost::mutex::scoped_lock
-            queueLock(m_unsavedFilesRequestQueueMutex);
-        assert(!m_unsavedFilesRequestQueue.empty());
-        request = m_unsavedFilesRequestQueue.front();
-        m_unsavedFilesRequestQueue.pop_front();
-        done = m_unsavedFilesRequestQueue.empty();
+        // If a reader is running or pending, use its output as input.
+        info.writer.reset(new UnsavedFilesWriter(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            unsavedFileName.c_str(),
+            m_unsavedFilesReader,
+            op,
+            m_name.c_str()));
+        info.writer->addDependency(m_unsavedFilesReader);
     }
-    request->execute(*this);
-    delete request;
-    return done;
+    else
+    {
+        boost::shared_ptr<UnsavedFilesHolder>
+            unsavedFilesHolder(new UnsavedFilesHolder(m_unsavedFiles));
+        info.writer.reset(new UnsavedFilesWriter(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            unsavedFileName.c_str(),
+            unsavedFilesHolder,
+            op,
+            m_name.c_str()));
+    }
+    info.finishedConn = info.writer->addFinishedCallbackInMainThread(
+        boost::bind(&Session::onUnsavedFilesWriterFinished, this, _1));
+    info.canceledConn = info.writer->addCanceledCallbackInMainThread(
+        boost::bind(&Session::onUnsavedFilesWriterCanceled, this, _1));
+    m_unsavedFilesWriters.push_back(info);
+
+    info.writer->submit(info.writer);
 }
 
 // Report errors.
@@ -731,7 +767,16 @@ bool Session::writeLastSessionName(const char *name)
 {
     std::string fileName(Application::instance().userDirectoryName());
     fileName += G_DIR_SEPARATOR_S "last-session";
-    return g_file_set_contents(fileName.c_str(), name, -1, NULL);
+    GError *error = NULL;
+    if (!g_file_set_contents(fileName.c_str(), name, -1, &error))
+    {
+        g_warning(_("Samoyed failed to write file \"%s\" storing the last "
+                    "session name. %s."),
+                  fileName.c_str(), error->message);
+        g_error_free(error);
+        return false;
+    }
+    return true;
 }
 
 // Don't report any error.
@@ -741,8 +786,15 @@ bool Session::readLastSessionName(std::string &name)
     fileName += G_DIR_SEPARATOR_S "last-session";
     char *text;
     gsize textLength;
-    if (!g_file_get_contents(fileName.c_str(), &text, &textLength, NULL))
+    GError *error = NULL;
+    if (!g_file_get_contents(fileName.c_str(), &text, &textLength, &error))
+    {
+        g_warning(_("Samoyed failed to read file \"%s\" storing the last "
+                    "session name. %s."),
+                  fileName.c_str(), error->message);
+        g_error_free(error);
         return false;
+    }
     if (textLength == 0)
         return false;
     name = text;
@@ -802,8 +854,9 @@ Session::LockState Session::queryLockState(const char *name)
     lockFileName += name;
     lockFileName += ".lock";
 
-    LockFile lockFile(lockFileName.c_str());
-    LockFile::State state = lockFile.queryState();
+    LockFile::State state = LockFile::queryState(lockFileName.c_str(),
+                                                 NULL,
+                                                 NULL);
     if (state == LockFile::STATE_UNLOCKED)
         return STATE_UNLOCKED;
     if (state == LockFile::STATE_LOCKED_BY_THIS_PROCESS)
@@ -968,10 +1021,8 @@ bool Session::rename(const char *oldName, const char *newName)
 }
 
 Session::Session(const char *name, const char *lockFileName):
-    m_destroy(false),
     m_name(name),
-    m_lockFile(lockFileName),
-    m_unsavedFilesRequestExecutor(NULL)
+    m_lockFile(lockFileName)
 {
     // Write the last session name here so that we can have the last session
     // name even if it crashes before the session exits.
@@ -980,20 +1031,7 @@ Session::Session(const char *name, const char *lockFileName):
 
 Session::~Session()
 {
-    for (UnsavedFileTable::iterator it = m_unsavedFiles.begin();
-         it != m_unsavedFiles.end();
-         ++it)
-        delete it->second.options;
     writeLastSessionName(m_name.c_str());
-}
-
-void Session::destroy()
-{
-    m_destroy = true;
-    if (m_unsavedFilesRequestExecutor)
-        m_unsavedFilesRequestExecutor->cancel();
-    else
-        delete this;
 }
 
 void Session::unlock()
@@ -1169,7 +1207,20 @@ Session *Session::restore(const char *name)
     delete s;
 
     // Check to see if the session has any unsaved files.
-    session->queueUnsavedFilesRequest(new UnsavedFilesRead);
+    std::string unsavedFileName;
+    makeFileNameForUnsavedFiles(unsavedFileName, name);
+    session->m_unsavedFilesReader.reset(new UnsavedFilesReader(
+        Application::instance().scheduler(),
+        Worker::PRIORITY_IDLE,
+        unsavedFileName.c_str(),
+        name));
+    session->m_unsavedFilesReaderFinishedConn =
+        session->m_unsavedFilesReader->addFinishedCallbackInMainThread(
+            boost::bind(&Session::onUnsavedFilesReaderFinished, session, _1));
+    session->m_unsavedFilesReaderCanceledConn =
+        session->m_unsavedFilesReader->addCanceledCallbackInMainThread(
+            boost::bind(&Session::onUnsavedFilesReaderCanceled, session, _1));
+    session->m_unsavedFilesReader->submit(session->m_unsavedFilesReader);
 
     return session;
 }
@@ -1223,34 +1274,51 @@ bool Session::save()
     return true;
 }
 
+void Session::quit()
+{
+    // Cancel reading unsaved files if no pending writer.
+    if (m_unsavedFilesReader && m_unsavedFilesWriters.empty())
+    {
+        m_unsavedFilesReaderFinishedConn.disconnect();
+        m_unsavedFilesReaderCanceledConn.disconnect();
+        m_unsavedFilesReader->cancel(m_unsavedFilesReader);
+        m_unsavedFilesReader.reset();
+    }
+
+    // Disconnect the ongoing reader, if any.
+    if (m_unsavedFilesReader)
+    {
+        m_unsavedFilesReaderFinishedConn.disconnect();
+        m_unsavedFilesReaderCanceledConn.disconnect();
+        m_unsavedFilesReader.reset();
+    }
+
+    // Disconnect all ongoing writers.
+    while (!m_unsavedFilesWriters.empty())
+    {
+        m_unsavedFilesWriters.front().finishedConn.disconnect();
+        m_unsavedFilesWriters.front().canceledConn.disconnect();
+        m_unsavedFilesWriters.front().writer.reset();
+        m_unsavedFilesWriters.pop_front();
+    }
+
+    delete this;
+}
+
 void Session::addUnsavedFile(const char *uri,
                              long timeStamp,
                              const char *mimeType,
-                             PropertyTree *options)
+                             const PropertyTree &options)
 {
-    std::pair<UnsavedFileTable::iterator, bool> p =
-        m_unsavedFiles.insert(
-            std::make_pair(uri, UnsavedFileInfo(timeStamp, mimeType, options)));
-    if (!p.second)
-    {
-        // Update.
-        p.first->second.timeStamp = timeStamp;
-        delete p.first->second.options;
-        p.first->second.mimeType = mimeType;
-        p.first->second.options = options;
-    }
-    queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
+    scheduleUnsavedFilesWriter(new UnsavedFileTableAddition(uri,
+                                                            timeStamp,
+                                                            mimeType,
+                                                            options));
 }
 
-void Session::removeUnsavedFile(const char *uri,
-                                long timeStamp)
+void Session::removeUnsavedFile(const char *uri, long timeStamp)
 {
-    UnsavedFileTable::iterator it = m_unsavedFiles.find(uri);
-    if (it == m_unsavedFiles.end() || it->second.timeStamp != timeStamp)
-        return;
-    delete it->second.options;
-    m_unsavedFiles.erase(it);
-    queueUnsavedFilesRequest(new UnsavedFilesWrite(m_unsavedFiles));
+    scheduleUnsavedFilesWriter(new UnsavedFileTableRemoval(uri, timeStamp));
 }
 
 }

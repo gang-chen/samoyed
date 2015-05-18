@@ -23,42 +23,22 @@ namespace Samoyed
 namespace TextFileRecoverer
 {
 
-TextFileRecoverer::ReplayFileReader::ReplayFileReader(
-    Scheduler &scheduler,
-    unsigned int priority,
-    const Callback &callback,
-    TextFileRecoverer &recoverer):
-    Worker(scheduler,
-           priority,
-           callback),
-    m_recoverer(recoverer),
-    m_byteCode(NULL),
-    m_byteCodeLength(0)
+TextFileRecoverer::ReplayFileReader::ReplayFileReader(Scheduler &scheduler,
+                                                      unsigned int priority,
+                                                      const char *uri):
+    RawFileLoader(scheduler, priority, uri)
 {
-}
-
-TextFileRecoverer::ReplayFileReader::~ReplayFileReader()
-{
-    g_free(m_byteCode);
+    char *desc = g_strdup_printf("Reading replay file \"%s\".", uri);
+    setDescription(desc);
+    g_free(desc);
 }
 
 bool TextFileRecoverer::ReplayFileReader::step()
 {
-    GError *error = NULL;
-    char *fileName =
-        TextFileRecovererPlugin::getTextReplayFileName(m_recoverer.m_file.uri(),
-                                                       m_recoverer.m_timeStamp);
-    g_file_get_contents(fileName,
-                        &m_byteCode,
-                        &m_byteCodeLength,
-                        &error);
-    if (error)
-    {
-        m_error = error->message;
-        g_error_free(error);
-        g_free(fileName);
-        return true;
-    }
+    RawFileLoader::step();
+
+    // After reading the file, remove it.
+    char *fileName = g_filename_from_uri(uri(), NULL, NULL);
     g_unlink(fileName);
     g_free(fileName);
     return true;
@@ -68,26 +48,35 @@ TextFileRecoverer::TextFileRecoverer(TextFile &file,
                                      long timeStamp):
     m_file(file),
     m_timeStamp(timeStamp),
-    m_destroy(false),
-    m_reader(NULL),
-    m_read(false)
+    m_replayFileRead(false)
 {
     TextFileRecovererPlugin::instance().onTextFileRecoveringBegun(*this);
     m_file.pin(_("Samoyed is recovering it"));
     if (file.loading())
         m_fileLoadedConnection = file.addLoadedCallback(boost::bind(
             &TextFileRecoverer::onFileLoaded, this, _1));
-    m_reader = new ReplayFileReader(
+    char *fileName = TextFileRecovererPlugin::getTextReplayFileName(
+        m_file.uri(), m_timeStamp);
+    char *uri = g_filename_to_uri(fileName, NULL, NULL);
+    m_replayFileReader.reset(new ReplayFileReader(
         Application::instance().scheduler(),
         Worker::PRIORITY_INTERACTIVE,
-        boost::bind(&TextFileRecoverer::onReplayFileRead, this, _1),
-        *this);
-    Application::instance().scheduler().schedule(*m_reader);
+        uri));
+    m_replayFileReaderFinishedConn =
+        m_replayFileReader->addFinishedCallbackInMainThread(
+            boost::bind(&TextFileRecoverer::onReplayFileReaderFinished,
+                        this, _1));
+    m_replayFileReaderCanceledConn =
+        m_replayFileReader->addCanceledCallbackInMainThread(
+            boost::bind(&TextFileRecoverer::onReplayFileReaderCanceled,
+                        this, _1));
+    m_replayFileReader->submit(m_replayFileReader);
+    g_free(uri);
+    g_free(fileName);
 }
 
 TextFileRecoverer::~TextFileRecoverer()
 {
-    delete m_reader;
     m_file.unpin(_("Samoyed is recovering it"));
     TextFileRecovererPlugin::instance().onTextFileRecoveringEnded(*this);
 }
@@ -95,18 +84,16 @@ TextFileRecoverer::~TextFileRecoverer()
 void TextFileRecoverer::deactivate()
 {
     m_fileLoadedConnection.disconnect();
-    m_destroy = true;
-    if (m_reader && !m_read)
-        m_reader->cancel();
-    else
-        delete this;
+    m_replayFileReaderFinishedConn.disconnect();
+    m_replayFileReaderCanceledConn.disconnect();
+    m_replayFileReader->cancel(m_replayFileReader);
+    delete this;
 }
 
 void TextFileRecoverer::recoverFromReplayFile()
 {
-    const char *byteCode = m_reader->byteCode();
-    int length = m_reader->byteCodeLength();
-    TextEdit::replay(m_file, byteCode, length);
+    const char *byteCode = m_byteCode.get();
+    TextEdit::replay(m_file, byteCode, m_byteCodeLength);
 
     // Automatically deactivate the recoverer when done.
     deactivate();
@@ -114,18 +101,15 @@ void TextFileRecoverer::recoverFromReplayFile()
 
 void TextFileRecoverer::onFileLoaded(File &file)
 {
-    if (m_read)
+    if (m_replayFileRead)
         recoverFromReplayFile();
 }
 
-gboolean TextFileRecoverer::onReplayFileReadInMainThread(gpointer recoverer)
+void TextFileRecoverer::onReplayFileReaderFinished(
+    const boost::shared_ptr<Worker> &worker)
 {
-    TextFileRecoverer *rec = static_cast<TextFileRecoverer *>(recoverer);
-    rec->m_read = true;
-
-    if (rec->m_destroy)
-        delete rec;
-    else if (*rec->m_reader->error())
+    assert(m_replayFileReader == worker);
+    if (m_replayFileReader->error())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -133,30 +117,30 @@ gboolean TextFileRecoverer::onReplayFileReadInMainThread(gpointer recoverer)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to recover file \"%s\"."),
-            rec->m_file.uri());
+            m_file.uri());
         gtkMessageDialogAddDetails(
             dialog,
             _("Samoyed failed to read the automatically saved text edit replay "
               "file to recover file \"%s\". %s"),
-            rec->m_file.uri(), rec->m_reader->error());
+            m_file.uri(), m_replayFileReader->error()->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        rec->deactivate();
+        deactivate();
     }
     else
     {
-        if (!rec->m_file.loading())
-            rec->recoverFromReplayFile();
+        m_replayFileRead = true;
+        m_byteCode = m_replayFileReader->contents();
+        m_byteCodeLength = m_replayFileReader->length();
+        if (!m_file.loading())
+            recoverFromReplayFile();
     }
-    return FALSE;
 }
 
-void TextFileRecoverer::onReplayFileRead(Worker &worker)
+void TextFileRecoverer::onReplayFileReaderCanceled(
+    const boost::shared_ptr<Worker> &worker)
 {
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onReplayFileReadInMainThread,
-                    this,
-                    NULL);
+    assert(0);
 }
 
 }

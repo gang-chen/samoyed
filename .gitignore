@@ -97,11 +97,12 @@ plugin.xml
 /src/application/utilities/lock-file
 /src/application/utilities/miscellaneous
 /src/application/utilities/property-tree
+/src/application/utilities/raw-file-loader
 /src/application/utilities/signal
-/src/application/utilities/utf8
-/src/application/utilities/worker
 /src/application/utilities/text-file-loader
 /src/application/utilities/text-file-saver
+/src/application/utilities/utf8
+/src/application/utilities/worker
 
 # Generated files in gedit-file-browser.
 /libs/gedit-file-browser/gedit-file-browser-enum-types.h

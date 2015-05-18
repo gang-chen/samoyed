@@ -22,7 +22,7 @@ class Project;
  * An editor is used to edit an open file in the context of an open project.
  *
  * To close an editor, the editor requests the file to close it and the file may
- * save the modified contents and cancel the close request; if completed, the
+ * save the modified contents or refuse the close request; if completed, the
  * file requests the owner of the editor to destroy it, or the file requests the
  * project, if existing, and the project performs some actions and requests the
  * owner of the editor to destroy it.

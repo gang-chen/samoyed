@@ -3,7 +3,7 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-loader.cpp worker.cpp utf8.cpp -DSMYD_UNIT_TEST \
+g++ text-file-loader.cpp worker.cpp utf8.cpp \
 -DSMYD_TEXT_FILE_LOADER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0` \
 -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-loader
 */
@@ -45,10 +45,9 @@ namespace Samoyed
 
 TextFileLoader::TextFileLoader(Scheduler &scheduler,
                                unsigned int priority,
-                               const Callback &callback,
                                const char *uri,
                                const char *encoding):
-    FileLoader(scheduler, priority, callback, uri),
+    FileLoader(scheduler, priority, uri),
     m_encoding(encoding),
     m_file(NULL),
     m_fileStream(NULL),
@@ -205,23 +204,22 @@ const char *TEXT_UTF8 = "\xe4\xbd\xa0\xe5\xa5\xbd\x68\x65\x6c\x6c\x6f";
 char *textGbk = NULL;
 char *textUtf8 = NULL;
 
-void onDone(Samoyed::Worker &worker)
+void onDone(const boost::shared_ptr<Samoyed::Worker> &worker)
 {
-    Samoyed::TextFileLoader &loader =
-        static_cast<Samoyed::TextFileLoader &>(worker);
-    if (loader.error())
+    Samoyed::TextFileLoader *loader =
+        static_cast<Samoyed::TextFileLoader *>(worker.get());
+    if (loader->error())
     {
-        printf("Text file loader error: %s.\n", loader.error()->message);
+        printf("Text file loader error: %s.\n", loader->error()->message);
         return;
     }
-    const std::list<std::string> &buffer = loader.buffer();
+    const std::list<std::string> &buffer = loader->buffer();
     std::string text;
     for (std::list<std::string>::const_iterator it = buffer.begin();
          it != buffer.end();
          ++it)
         text += *it;
     assert(text == textUtf8);
-    delete &loader;
 }
 
 int main()
@@ -257,8 +255,10 @@ int main()
         printf("File name to URI conversion error.\n");
         return -1;
     }
-    Samoyed::TextFileLoader *loader1 =
-        new Samoyed::TextFileLoader(scheduler, 1, onDone, uri1, "GBK");
+    boost::shared_ptr<Samoyed::TextFileLoader> loader1(
+        new Samoyed::TextFileLoader(scheduler, 1, uri1, "GBK"));
+    loader1->addFinishedCallback(onDone);
+    loader1->addCanceledCallback(onDone);
     g_free(uri1);
 
     std::string fileName2(pwd);
@@ -274,8 +274,10 @@ int main()
         printf("File name to URI conversion error.\n");
         return -1;
     }
-    Samoyed::TextFileLoader *loader2 =
-        new Samoyed::TextFileLoader(scheduler, 1, onDone, uri2, "UTF-8");
+    boost::shared_ptr<Samoyed::TextFileLoader> loader2(
+        new Samoyed::TextFileLoader(scheduler, 1, uri2, "UTF-8"));
+    loader2->addFinishedCallback(onDone);
+    loader2->addCanceledCallback(onDone);
     g_free(uri2);
 
     std::string fileName3(pwd);
@@ -291,13 +293,15 @@ int main()
         printf("File name to URI conversion error.\n");
         return -1;
     }
-    Samoyed::TextFileLoader *loader3 =
-        new Samoyed::TextFileLoader(scheduler, 1, onDone, uri3, "UTF-8");
+    boost::shared_ptr<Samoyed::TextFileLoader> loader3(
+        new Samoyed::TextFileLoader(scheduler, 1, uri3, "UTF-8"));
+    loader3->addFinishedCallback(onDone);
+    loader3->addCanceledCallback(onDone);
     g_free(uri3);
 
-    scheduler.schedule(*loader1);
-    scheduler.schedule(*loader2);
-    scheduler.schedule(*loader3);
+    loader1->submit(loader1);
+    loader2->submit(loader2);
+    loader3->submit(loader3);
     scheduler.wait();
 
     g_unlink(fileName1.c_str());

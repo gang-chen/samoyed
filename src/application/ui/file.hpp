@@ -13,6 +13,7 @@
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/signals2/signal.hpp>
 
 namespace Samoyed
@@ -162,24 +163,27 @@ public:
     /**
      * @return True iff the file is being loaded.
      */
-    bool loading() const { return m_loading; }
+    bool loading() const { return m_loader; }
 
     /**
      * @return True iff the file is being saved.
      */
-    bool saving() const { return m_saving; }
+    bool saving() const { return m_saver; }
 
     /**
      * @return True iff the file was edited.
      */
-    bool edited() const { return m_editCount; }
+    bool edited() const
+    {
+        return m_editCount || (m_superUndo && !m_superUndo->empty());
+    }
 
     /**
      * Request to load the file.  The file cannot be loaded if it is being
      * closed, loaded or saved, or is frozen.  When loading, the file is frozen.
      * The caller can get notified of the completion of the loading by adding a
      * callback.
-     * @return True iff the loading is started.
+     * @return True iff the load operation is started.
      */
     bool load(bool userRequest);
 
@@ -188,8 +192,9 @@ public:
      * closed, loaded or saved, or is frozen.  When saving, the file is frozen.
      * The caller can get notified of the completion of the saving by adding a
      * callback.
+     * @return True iff the save operation is started.
      */
-    void save();
+    bool save();
 
     bool closeable() const { return m_pinned.empty(); }
 
@@ -395,15 +400,13 @@ protected:
 
     virtual Editor *createEditorInternally(Project *project) = 0;
 
-    virtual FileLoader *createLoader(unsigned int priority,
-                                     const Worker::Callback &callback) = 0;
+    virtual FileLoader *createLoader(unsigned int priority) = 0;
 
-    virtual FileSaver *createSaver(unsigned int priority,
-                                   const Worker::Callback &callback) = 0;
+    virtual FileSaver *createSaver(unsigned int priority) = 0;
 
-    virtual void onLoaded(FileLoader &loader) = 0;
+    virtual void onLoaded(const boost::shared_ptr<FileLoader> &loader) = 0;
 
-    virtual void onSaved(FileSaver &saver) {}
+    virtual void onSaved(const boost::shared_ptr<FileSaver> &saver) {}
 
 private:
     struct TypeRecord
@@ -460,13 +463,11 @@ private:
 
     void decreaseEditCount();
 
-    static gboolean onLoadedInMainThread(gpointer param);
+    void onLoaderFinished(const boost::shared_ptr<Worker> &worker);
+    void onLoaderCanceled(const boost::shared_ptr<Worker> &worker);
 
-    static gboolean onSavedInMainThread(gpointer param);
-
-    void onLoadedWrapper(Worker &worker);
-
-    void onSavedWrapper(Worker &worker);
+    void onSaverFinished(const boost::shared_ptr<Worker> &worker);
+    void onSaverCanceled(const boost::shared_ptr<Worker> &worker);
 
     static void onFileChooserFilterChanged(GtkFileChooser *dialog,
                                            GParamSpec *spec,
@@ -485,12 +486,6 @@ private:
     const std::string m_mimeType;
 
     bool m_closing;
-
-    bool m_reopening;
-
-    bool m_loading;
-
-    bool m_saving;
 
     Time m_modifiedTime;
 
@@ -512,11 +507,17 @@ private:
     Editor *m_lastEditor;
 
     std::set<std::string> m_pinned;
+
     int m_freezeCount;
     int m_internalFreezeCount;
 
-    // We memorize the file loader so that we can cancel it later.
-    FileLoader *m_loader;
+    boost::shared_ptr<FileLoader> m_loader;
+    boost::signals2::connection m_loaderFinishedConn;
+    boost::signals2::connection m_loaderCanceledConn;
+
+    boost::shared_ptr<FileSaver> m_saver;
+    boost::signals2::connection m_saverFinishedConn;
+    boost::signals2::connection m_saverCanceledConn;
 
     static Opened s_opened;
     Close m_close;

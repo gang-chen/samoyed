@@ -380,8 +380,8 @@ int TextFile::maxColumnInLine(int line) const
     return static_cast<const TextEditor *>(editors())->maxColumnInLine(line);
 }
 
-char *TextFile::text(int beginLine, int beginColumn,
-                     int endLine, int endColumn) const
+boost::shared_ptr<char> TextFile::text(int beginLine, int beginColumn,
+                                       int endLine, int endColumn) const
 {
     return static_cast<const TextEditor *>(editors())->
         text(beginLine, beginColumn, endLine, endColumn);
@@ -392,31 +392,27 @@ Editor *TextFile::createEditorInternally(Project *project)
     return TextEditor::create(*this, project);
 }
 
-FileLoader *TextFile::createLoader(unsigned int priority,
-                                   const Worker::Callback &callback)
+FileLoader *TextFile::createLoader(unsigned int priority)
 {
     return new TextFileLoader(Application::instance().scheduler(),
                               priority,
-                              callback,
                               uri(),
                               encoding());
 }
 
-FileSaver *TextFile::createSaver(unsigned int priority,
-                                 const Worker::Callback &callback)
+FileSaver *TextFile::createSaver(unsigned int priority)
 {
     return new TextFileSaver(Application::instance().scheduler(),
                              priority,
-                             callback,
                              uri(),
                              text(0, 0, -1, -1),
                              -1,
                              encoding());
 }
 
-void TextFile::onLoaded(FileLoader &loader)
+void TextFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
 {
-    TextFileLoader &ld = static_cast<TextFileLoader &>(loader);
+    TextFileLoader &ld = static_cast<TextFileLoader &>(*loader);
 
     // Copy the contents in the loader's buffer to the editors.
     int line, column, newLine, newColumn;
@@ -518,9 +514,9 @@ TextFile::removeOnly(int beginLine, int beginColumn,
                      int endLine, int endColumn,
                      Change *&change)
 {
-    char *removed = text(beginLine, beginColumn, endLine, endColumn);
-    Insertion *undo = new Insertion(beginLine, beginColumn, removed, -1);
-    free(removed);
+    boost::shared_ptr<char> removed =
+        text(beginLine, beginColumn, endLine, endColumn);
+    Insertion *undo = new Insertion(beginLine, beginColumn, removed.get(), -1);
     change = new Change(beginLine, beginColumn, endLine, endColumn);
     return undo;
 }

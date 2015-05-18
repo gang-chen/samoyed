@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <string>
 #include <glib.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 
 #define TEXT_EDITOR "text-editor"
@@ -32,32 +33,32 @@ TextEditSaver::ReplayFileAppending::~ReplayFileAppending()
     delete m_edit;
 }
 
-bool TextEditSaver::ReplayFileCreation::execute(TextEditSaver &saver)
+bool TextEditSaver::ReplayFileCreation::execute(FILE *&file)
 {
-    if (saver.m_replayFile)
-        fclose(saver.m_replayFile);
-    saver.m_replayFile = g_fopen(m_fileName,
+    if (file)
+        fclose(file);
+    file = g_fopen(m_fileName,
 #ifdef OS_WINDOWS
                                  "wb");
 #else
                                  "w");
 #endif
-    return saver.m_replayFile;
+    return file;
 }
 
-bool TextEditSaver::ReplayFileRemoval::execute(TextEditSaver &saver)
+bool TextEditSaver::ReplayFileRemoval::execute(FILE *&file)
 {
-    if (saver.m_replayFile)
-        fclose(saver.m_replayFile);
-    saver.m_replayFile = NULL;
+    if (file)
+        fclose(file);
+    file = NULL;
     return !g_unlink(m_fileName);
 }
 
-bool TextEditSaver::ReplayFileAppending::execute(TextEditSaver &saver)
+bool TextEditSaver::ReplayFileAppending::execute(FILE *&file)
 {
-    if (!saver.m_replayFile)
+    if (!file)
         return false;
-    return m_edit->write(saver.m_replayFile);
+    return m_edit->write(file);
 }
 
 bool TextEditSaver::ReplayFileAppending::merge(const TextInsertion *ins)
@@ -73,31 +74,72 @@ bool TextEditSaver::ReplayFileAppending::merge(const TextRemoval *rem)
 TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
         Scheduler &scheduler,
         unsigned int priority,
-        const Callback &callback,
-        TextEditSaver &saver):
-    Worker(scheduler, priority, callback),
-    m_saver(saver)
+        FILE *file,
+        std::deque<ReplayFileOperation *> &operations,
+        const char *uri):
+    Worker(scheduler, priority),
+    m_begun(false),
+    m_file(file)
 {
-    char *desc =
-        g_strdup_printf("Saving text edits for file \"%s\".",
-                        saver.m_file.uri());
+    m_operations.swap(operations);
+    char *desc = g_strdup_printf(_("Saving text edits for file \"%s\"."), uri);
     setDescription(desc);
     g_free(desc);
 }
 
+TextEditSaver::ReplayFileOperationExecutor::ReplayFileOperationExecutor(
+        Scheduler &scheduler,
+        unsigned int priority,
+        const boost::shared_ptr<ReplayFileOperationExecutor> &previous,
+        std::deque<ReplayFileOperation *> &operations,
+        const char *uri):
+    Worker(scheduler, priority),
+    m_begun(false),
+    m_previous(previous),
+    m_file(NULL)
+{
+    m_operations.swap(operations);
+    char *desc =
+        g_strdup_printf("Saving text edits for file \"%s\".", uri);
+    setDescription(desc);
+    g_free(desc);
+}
+
+void TextEditSaver::ReplayFileOperationExecutor::begin()
+{
+    if (m_begun)
+        return;
+    m_begun = true;
+    if (m_previous)
+    {
+        m_file = m_previous->m_file;
+        m_previous.reset();
+    }
+}
+
 bool TextEditSaver::ReplayFileOperationExecutor::step()
 {
-    return m_saver.executeOneQueuedRelayFileOperation();
+    if (m_operations.empty())
+        return true;
+    ReplayFileOperation *op = m_operations.front();
+    m_operations.pop_front();
+    op->execute(m_file);
+    delete op;
+    if (m_operations.empty())
+    {
+        // When done, flush the file.
+        if (m_file)
+            fflush(m_file);
+        return true;
+    }
+    return false;
 }
 
 TextEditSaver::TextEditSaver(TextFile &file):
     FileObserver(file),
-    m_destroy(false),
     m_replayFile(NULL),
     m_replayFileCreated(false),
-    m_replayFileTimeStamp(-1),
-    m_initText(NULL),
-    m_operationExecutor(NULL)
+    m_replayFileTimeStamp(-1)
 {
     TextFileRecovererPlugin::instance().onTextEditSaverCreated(*this);
     m_schedulerId = g_timeout_add_full(
@@ -111,9 +153,7 @@ TextEditSaver::TextEditSaver(TextFile &file):
 
 TextEditSaver::~TextEditSaver()
 {
-    assert(!m_replayFile);
     assert(!m_replayFileCreated);
-    g_free(m_initText);
     if (m_schedulerId)
         g_source_remove(m_schedulerId);
     TextFileRecovererPlugin::instance().onTextEditSaverDestroyed(*this);
@@ -122,6 +162,8 @@ TextEditSaver::~TextEditSaver()
 void TextEditSaver::deactivate()
 {
     FileObserver::deactivate();
+
+    // Remove the replay file.
     if (m_replayFileCreated)
     {
         char *fileName = TextFileRecovererPlugin::getTextReplayFileName(
@@ -132,68 +174,90 @@ void TextEditSaver::deactivate()
         Application::instance().session().
             removeUnsavedFile(m_file.uri(), m_replayFileTimeStamp);
     }
-    m_destroy = true;
+
+    // Schedule it now.
     scheduleReplayFileOperationExecutor(this);
-    if (!m_operationExecutor)
-        delete this;
+
+    // Disconnect all ongoing executors.
+    while (!m_operationExecutors.empty())
+    {
+        m_operationExecutors.front().finishedConn.disconnect();
+        m_operationExecutors.front().canceledConn.disconnect();
+        m_operationExecutors.front().executor.reset();
+        m_operationExecutors.pop_front();
+    }
+
+    delete this;
 }
 
 gboolean TextEditSaver::scheduleReplayFileOperationExecutor(gpointer param)
 {
     TextEditSaver *saver = static_cast<TextEditSaver *>(param);
-    if (!saver->m_operationExecutor)
+    if (saver->m_operationQueue.empty())
+        return TRUE;
+
+    ReplayFileOperationExecutorInfo info;
+    if (!saver->m_operationExecutors.empty())
     {
-        boost::mutex::scoped_lock lock(saver->m_operationQueueMutex);
-        if (!saver->m_operationQueue.empty())
-        {
-            saver->m_operationExecutor =
-                new ReplayFileOperationExecutor(
-                    Application::instance().scheduler(),
-                    Worker::PRIORITY_IDLE,
-                    boost::bind(
-                        &TextEditSaver::onReplayFileOperationExecutorDone,
-                        saver, _1),
-                    *saver);
-            Application::instance().scheduler().
-                schedule(*saver->m_operationExecutor);
-        }
+        // If any executors are running or pending, use the file of the last
+        // executor as the file of the new executor.
+        info.executor.reset(new ReplayFileOperationExecutor(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            saver->m_operationExecutors.back().executor,
+            saver->m_operationQueue,
+            saver->m_file.uri()));
+        info.executor->addDependency(
+            saver->m_operationExecutors.back().executor);
     }
+    else
+    {
+        info.executor.reset(new ReplayFileOperationExecutor(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            saver->m_replayFile,
+            saver->m_operationQueue,
+            saver->m_file.uri()));
+    }
+    info.finishedConn = info.executor->addFinishedCallbackInMainThread(
+        boost::bind(&TextEditSaver::onReplayFileOperationExecutorFinished,
+                    saver, _1));
+    info.canceledConn = info.executor->addCanceledCallbackInMainThread(
+        boost::bind(&TextEditSaver::onReplayFileOperationExecutorCanceled,
+                    saver, _1));
+    saver->m_operationExecutors.push_back(info);
+
+    info.executor->submit(info.executor);
     return TRUE;
 }
 
-gboolean
-TextEditSaver::onReplayFileOperationExecutorDoneInMainThread(gpointer param)
+void TextEditSaver::onReplayFileOperationExecutorFinished(
+    const boost::shared_ptr<Worker> &worker)
 {
-    TextEditSaver *saver = static_cast<TextEditSaver *>(param);
-    delete saver->m_operationExecutor;
-    saver->m_operationExecutor = NULL;
-    if (saver->m_destroy)
-    {
-        scheduleReplayFileOperationExecutor(saver);
-        if (!saver->m_operationExecutor)
-            delete saver;
-    }
-    return FALSE;
+    assert(m_operationExecutors.front().executor == worker);
+
+    // Update the replay file.
+    m_replayFile = m_operationExecutors.front().executor->file();
+
+    // Clean up.
+    m_operationExecutors.front().finishedConn.disconnect();
+    m_operationExecutors.front().canceledConn.disconnect();
+    m_operationExecutors.pop_front();
 }
 
-void TextEditSaver::onReplayFileOperationExecutorDone(Worker &worker)
+void TextEditSaver::onReplayFileOperationExecutorCanceled(
+    const boost::shared_ptr<Worker> &worker)
 {
-    assert(&worker == m_operationExecutor);
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onReplayFileOperationExecutorDoneInMainThread,
-                    this,
-                    NULL);
+    assert(0);
 }
 
 void TextEditSaver::queueReplayFileOperation(ReplayFileOperation *op)
 {
-    boost::mutex::scoped_lock lock(m_operationQueueMutex);
     m_operationQueue.push_back(op);
 }
 
 void TextEditSaver::queueReplayFileAppending(TextInsertion *ins)
 {
-    boost::mutex::scoped_lock lock(m_operationQueueMutex);
     if (m_operationQueue.empty())
         m_operationQueue.push_back(new ReplayFileAppending(ins));
     else
@@ -207,7 +271,6 @@ void TextEditSaver::queueReplayFileAppending(TextInsertion *ins)
 
 void TextEditSaver::queueReplayFileAppending(TextRemoval *rem)
 {
-    boost::mutex::scoped_lock lock(m_operationQueueMutex);
     if (m_operationQueue.empty())
         m_operationQueue.push_back(new ReplayFileAppending(rem));
     else
@@ -217,24 +280,6 @@ void TextEditSaver::queueReplayFileAppending(TextRemoval *rem)
         else
             m_operationQueue.push_back(new ReplayFileAppending(rem));
     }
-}
-
-bool TextEditSaver::executeOneQueuedRelayFileOperation()
-{
-    bool done;
-    ReplayFileOperation *op;
-    {
-        boost::mutex::scoped_lock queueLock(m_operationQueueMutex);
-        assert(!m_operationQueue.empty());
-        op = m_operationQueue.front();
-        m_operationQueue.pop_front();
-        done = m_operationQueue.empty();
-    }
-    op->execute(*this);
-    delete op;
-    if (done && m_replayFile)
-        fflush(m_replayFile);
-    return done;
 }
 
 void TextEditSaver::onCloseFile()
@@ -294,14 +339,15 @@ void TextEditSaver::onFileChanged(const File::Change &change,
             m_replayFileTimeStamp);
         queueReplayFileOperation(new ReplayFileCreation(fileName));
         queueReplayFileOperation(new ReplayFileAppending(
-            new TextInit(m_initText, -1)));
+            new TextInit(m_initText.get(), -1)));
         m_replayFileCreated = true;
-        m_initText = NULL;
+        PropertyTree *options = m_file.options();
         Application::instance().session().addUnsavedFile(
             m_file.uri(),
             m_replayFileTimeStamp,
             m_file.mimeType(),
-            m_file.options());
+            *options);
+        delete options;
     }
     const TextFile::Change &tc = static_cast<const TextFile::Change &>(change);
     if (tc.type == TextFile::Change::TYPE_INSERTION)

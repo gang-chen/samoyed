@@ -182,8 +182,8 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
         return false;
     if (length < len)
         return false;
-    char *text = file.text(0, 0, -1, -1);
-    if (*(text + len) != '\0' || memcmp(text, byteCode, len) != 0)
+    boost::shared_ptr<char> text = file.text(0, 0, -1, -1);
+    if (*(text.get() + len) != '\0' || memcmp(text.get(), byteCode, len) != 0)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -205,13 +205,11 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
         }
         else
         {
-            g_free(text);
             byteCode += len;
             length -= len;
             return false;
         }
     }
-    g_free(text);
     byteCode += len;
     length -= len;
     return true;

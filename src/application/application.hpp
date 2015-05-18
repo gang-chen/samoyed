@@ -57,7 +57,11 @@ public:
     int run(int argc, char *argv[]);
 
     /**
-     * Request to quit the application.
+     * Request to quit the current session.  The user may cancel the quitting
+     * operation.  After completed, we will shut down this application, start a
+     * new session or switch to a different session.
+     * @return True iff the quitting operation is started, which, however, is
+     * still possible to be canceled later.
      */
     bool quit();
 
@@ -156,14 +160,31 @@ private:
 
     static gboolean checkTerminateRequest(gpointer app);
 
+    /**
+     * Start up this application.  This function is called after the GTK+ main
+     * event loop is started.
+     */
     static gboolean startUp(gpointer app);
 
+    /**
+     * Shut down this application.  This function quits the GTK+ main event
+     * loop.
+     */
     void shutDown();
 
     bool chooseSessionToStart(bool restore);
 
+    /**
+     * Start the specified session or the default session, or let the user
+     * choose a session during start-up.
+     */
     bool startSession();
 
+    /**
+     * Perform the second half of the quitting operation.  This function is
+     * called after all projects, files and windows are closed.  This implies
+     * that the quitting operation will be completed inevitably.
+     */
     void finishQuitting();
 
     bool makeUserDirectory();
@@ -198,10 +219,12 @@ private:
 
     ForegroundFileParser *m_foregroundFileParser;
 
-    // Session related data.
     Session *m_session;
-    bool m_creatingSession;
-    bool m_switchingSession;
+
+    // We are quitting the current session.  Will we create a new session,
+    // switch to another session, or quit this application?
+    bool m_createSession;
+    bool m_switchSession;
 
     // Global data.
     ProjectTable m_projectTable;
@@ -216,6 +239,7 @@ private:
     Window *m_lastWindow;
     Window *m_currentWindow;
 
+    // Command line options.
     char *m_sessionName;
     char *m_newSessionName;
     int m_chooseSession;

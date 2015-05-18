@@ -6,7 +6,11 @@
     <menu name="session" action="session">
       <menuitem name="new" action="create-session"/>
       <menuitem name="switch" action="switch-session"/>
-      <menuitem name="manage" action="manage-sessions"/>
+      <separator/>
+      <menuitem name="preferences" action="edit-preferences"/>
+      <separator/>
+      <menuitem name="manage-sessions" action="manage-sessions"/>
+      <separator/>
       <menuitem name="quit" action="quit-session"/>
     </menu>
 
@@ -18,7 +22,13 @@
       <separator/>
       <menuitem name="new-file" action="create-file"/>
       <menuitem name="new-directory" action="create-directory"/>
+      <menuitem name="new-library" action="create-library"/>
+      <menuitem name="new-program" action="create-program"/>
       <separator/>
+      <menuitem name="properties" action="edit-properties"/>
+      <separator/>
+      <menuitem name="set-active-configuration"
+                action="set-active-configuration"/>
       <menuitem name="manage-configurations" action="manage-configurations"/>
     </menu>
 
@@ -41,10 +51,6 @@
       <menuitem name="copy" action="copy"/>
       <menuitem name="paste" action="paste"/>
       <menuitem name="delete" action="delete"/>
-      <separator/>
-      <menuitem name="configure" action="configure"/>
-      <separator/>
-      <menuitem name="preferences" action="edit-preferences"/>
     </menu>
 
     <menu name="search" action="search">

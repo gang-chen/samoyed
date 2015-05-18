@@ -7,6 +7,7 @@
 #include "editor.hpp"
 #include <list>
 #include <string>
+#include <boost/shared_ptr.hpp>
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksourceview.h>
 #include <libxml/tree.h>
@@ -84,8 +85,8 @@ public:
 
     bool isValidCursor(int line, int column) const;
 
-    char *text(int beginLine, int beginColumn,
-               int endLine, int endColumn) const;
+    boost::shared_ptr<char> text(int beginLine, int beginColumn,
+                                 int endLine, int endColumn) const;
 
     void getCursor(int &line, int &column) const;
     bool setCursor(int line, int column);

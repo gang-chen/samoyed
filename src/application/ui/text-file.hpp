@@ -6,6 +6,7 @@
 
 #include "file.hpp"
 #include "utilities/property-tree.hpp"
+#include <boost/shared_ptr.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -100,10 +101,9 @@ public:
      * @param endColumn The column number of the exclusive last character to be
      * retrieved, the character index, starting from 0; or -1 to retrieve the
      * text until the last column.
-     * @return The text contents, in a memory chunk allocated by GTK+.
      */
-    char *text(int beginLine, int beginColumn,
-               int endLine, int endColumn) const;
+    boost::shared_ptr<char> text(int beginLine, int beginColumn,
+                                 int endLine, int endColumn) const;
 
     /**
      * @param line The line number of the insertion position, starting from 0;
@@ -246,13 +246,11 @@ protected:
 
     virtual Editor *createEditorInternally(Project *project);
 
-    virtual FileLoader *createLoader(unsigned int priority,
-                                     const Worker::Callback &callback);
+    virtual FileLoader *createLoader(unsigned int priority);
 
-    virtual FileSaver *createSaver(unsigned int priority,
-                                   const Worker::Callback &callback);
+    virtual FileSaver *createSaver(unsigned int priority);
 
-    virtual void onLoaded(FileLoader &loader);
+    virtual void onLoaded(const boost::shared_ptr<FileLoader> &loader);
 
 private:
     static File *create(const char *uri,

@@ -7,34 +7,59 @@
 #include "worker.hpp"
 #include "boost/threadpool.hpp"
 #include <stddef.h>
-#include <boost/ref.hpp>
+#include <set>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread/mutex.hpp>
 
 namespace Samoyed
 {
+
+class WorkerAdapter
+{
+public:
+    explicit WorkerAdapter(const boost::shared_ptr<Worker> &worker):
+        m_worker(worker)
+    {}
+
+    void operator()() const { (*m_worker)(m_worker); }
+
+    bool operator<(const WorkerAdapter &rhs) const
+    { return priority() < rhs.priority(); }
+
+    unsigned int priority() const { return m_worker->priority(); }
+
+private:
+    boost::shared_ptr<Worker> m_worker;
+};
 
 /**
  * A scheduler schedules workers to run in background threads based on workers'
  * priorities.  It is implemented by a prioritized thread pool.
  */
-class Scheduler: public boost::threadpool::prio_pool
+class Scheduler:
+    public boost::threadpool::thread_pool<WorkerAdapter,
+                                          boost::threadpool::prio_scheduler,
+                                          boost::threadpool::static_size,
+                                          boost::threadpool::resize_controller,
+                                          boost::threadpool::wait_for_all_tasks>
 {
 public:
     Scheduler(size_t nThreads):
-        boost::threadpool::prio_pool(nThreads)
+        boost::threadpool::thread_pool<WorkerAdapter,
+                                       boost::threadpool::prio_scheduler,
+                                       boost::threadpool::static_size,
+                                       boost::threadpool::resize_controller,
+                                       boost::threadpool::wait_for_all_tasks>
+            (nThreads)
     {}
 
-    void schedule(Worker& worker)
-    {
-        boost::threadpool::prio_pool::schedule(
-            boost::threadpool::prio_task_func(worker.priority(),
-                                              boost::ref(worker)));
-    }
-
+private:
     unsigned int highestPendingWorkerPriority() const
     {
         return m_core->highest_pending_priority();
     }
 
+    friend class Worker;
 };
 
 }

@@ -21,7 +21,6 @@ class TextFileLoader: public FileLoader
 public:
     TextFileLoader(Scheduler &scheduler,
                    unsigned int priority,
-                   const Callback &callback,
                    const char *uri,
                    const char *encoding);
 
@@ -29,6 +28,7 @@ public:
 
     const std::list<std::string> &buffer() const { return m_buffer; }
 
+protected:
     virtual bool step();
 
 private:

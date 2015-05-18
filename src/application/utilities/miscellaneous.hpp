@@ -82,34 +82,6 @@ const int CONTAINER_SPACING = 6;
 const int TEXT_WIDTH_REQUEST = 400;
 const int TEXT_HEIGHT_REQUEST = 300;
 
-template<bool INT> class IntOrNil
-{
-public:
-    IntOrNil(): m_i(0) {}
-    IntOrNil(int i): m_i(i) {}
-    int operator=(int i) { return m_i = i; }
-    int operator+=(int i) { return m_i += i; }
-    int operator-=(int i) { return m_i -= i; }
-    int operator++() { return ++m_i; }
-    int operator--() { return --m_i; }
-    operator int() const { return m_i; }
-private:
-    int m_i;
-};
-
-template<> class IntOrNil<false>
-{
-public:
-    IntOrNil() {}
-    IntOrNil(int i) {}
-    int operator=(int i) { return i; }
-    int operator+=(int i) { return i; }
-    int operator-=(int i) { return -i; }
-    int operator++() { return 0; }
-    int operator--() { return 0; }
-    operator int() const { return 0; }
-};
-
 template<class T> class ComparablePointer
 {
 public:
@@ -162,9 +134,8 @@ public:
 /**
  * UNIX time.
  */
-class Time
+struct Time
 {
-public:
     guint64 seconds;
     guint32 microSeconds;
 };

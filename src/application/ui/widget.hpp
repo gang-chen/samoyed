@@ -30,7 +30,7 @@ class Window;
  * refused, and requests its owner to destroy itself.  When requested to destroy
  * a child widget, a widget removes the child widget, destroys the child, checks
  * to see if it has been requested to be closed and all child widgets are
- * destroyed, and if true requests its owner to destroy it.
+ * destroyed, and if true, requests its owner to destroy it.
  */
 class Widget: public boost::noncopyable
 {
@@ -156,8 +156,8 @@ public:
 
     /**
      * Close this widget.  When this function returns, the caller can check to
-     * see if the close request is refused.  If not refused, the close request
-     * may be already completed, or be ongoing.  If on going, the close request
+     * see if the close request is refused.  If not refused, the close operation
+     * may be already completed, or be ongoing.  If ongoing, the close operation
      * will be completed or canceled in the future.  To get notified of the
      * completion of the close operation, the caller can add a callback to the
      * closed signal.

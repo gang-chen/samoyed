@@ -12,7 +12,6 @@
 #include "utilities/miscellaneous.hpp"
 #include "utilities/file-loader.hpp"
 #include "utilities/file-saver.hpp"
-#include "utilities/scheduler.hpp"
 #include "utilities/property-tree.hpp"
 #include <assert.h>
 #include <string.h>
@@ -20,6 +19,7 @@
 #include <list>
 #include <string>
 #include <map>
+#include <boost/shared_ptr.hpp>
 #include <boost/bind.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -35,24 +35,6 @@ namespace
 {
 
 const char *DEFAULT_FILTER = "C/C++ Source and Header Files";
-
-struct LoadedParam
-{
-    Samoyed::File &file;
-    Samoyed::FileLoader &loader;
-    LoadedParam(Samoyed::File &file, Samoyed::FileLoader &loader):
-        file(file), loader(loader)
-    {}
-};
-
-struct SavedParam
-{
-    Samoyed::File &file;
-    Samoyed::FileSaver &saver;
-    SavedParam(Samoyed::File &file, Samoyed::FileSaver &saver):
-        file(file), saver(saver)
-    {}
-};
 
 }
 
@@ -100,6 +82,7 @@ void File::EditStack::clear()
          it != m_edits.rend();
          ++it)
         delete (*it);
+    m_edits.clear();
 }
 
 PropertyTree *File::OptionsSetter::options() const
@@ -319,7 +302,13 @@ File::open(const char *uri, Project *project,
         if (newEditor)
             editor = file->createEditor(project);
         else
+        {
             editor = file->editors();
+            // If the editor is waiting for the close operation, cancel the
+            // close operation and reuse the editor.
+            if (editor->closing())
+                editor->cancelClosing();
+        }
         return std::make_pair(file, editor);
     }
 
@@ -503,11 +492,10 @@ Editor *File::createEditor(Project *project)
         assert(m_firstEditor->closing());
         m_firstEditor->destroyInFile();
         m_closing = false;
-        m_reopening = true;
     }
 
     // If the file is loaded, initialize the editor with the current contents.
-    if (!m_loading)
+    if (!loading())
     {
         assert(m_firstEditor != editor);
         assert(m_lastEditor == editor);
@@ -522,9 +510,12 @@ Editor *File::createEditor(Project *project)
 void File::finishClosing()
 {
     assert(m_closing);
+    assert(!loading());
+    assert(!saving());
     assert(m_firstEditor);
     assert(m_firstEditor == m_lastEditor);
     assert(m_firstEditor->closing());
+
     m_firstEditor->destroyInFile();
 
     // Notify the observers right before deleting the file so that the observers
@@ -538,15 +529,18 @@ bool File::closeEditor(Editor &editor)
     // Can't close the editor waiting for the completion of the close operation.
     assert(!m_closing);
 
+    // If the editor is not the only left one, just close it.
     if (editor.nextInFile() || editor.previousInFile())
     {
         editor.destroyInFile();
         return true;
     }
 
+    // The editor is the only left one.  Need to close this file as well.
     assert(&editor == m_firstEditor);
     assert(&editor == m_lastEditor);
 
+    // Check to see if we can close this file.
     if (!closeable())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -563,27 +557,25 @@ bool File::closeEditor(Editor &editor)
         return false;
     }
 
-    // Need to close this file.
-    m_reopening = false;
-    if (m_loading)
-    {
-        // Cancel the load operation and wait for the completion of the
-        // cancellation.
-        assert(m_loader);
-        m_loader->cancel();
-        m_loader = NULL;
-        m_closing = true;
-        return true;
-    }
-    if (m_saving)
+    // Close this file.
+    if (saving())
     {
         // Wait for the completion of the save operation.
         m_closing = true;
         return true;
     }
-    if (edited())
+    if (loading())
     {
-        // Ask the user.
+        // Cancel the load operation and close now.
+        m_loaderFinishedConn.disconnect();
+        m_loaderCanceledConn.disconnect();
+        m_loader->cancel(m_loader);
+        m_loader.reset();
+        m_closing = true;
+    }
+    else if (edited())
+    {
+        // Ask the user if the file needs to be saved.
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -615,12 +607,13 @@ bool File::closeEditor(Editor &editor)
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_CANCEL)
             return false;
-        m_closing = true;
         if (response != GTK_RESPONSE_NO)
         {
             save();
+            m_closing = true;
             return true;
         }
+        m_closing = true;
     }
     else
         m_closing = true;
@@ -634,6 +627,8 @@ bool File::close()
 {
     if (m_closing)
         return true;
+
+    // Check to see if we can close this file.
     if (!closeable())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -649,6 +644,8 @@ bool File::close()
         gtk_widget_destroy(dialog);
         return false;
     }
+
+    // Close all editors.
     for (Editor *editor = m_firstEditor, *next; editor; editor = next)
     {
         next = editor->nextInFile();
@@ -676,16 +673,12 @@ File::File(const char *uri,
     m_type(type),
     m_mimeType(mimeType),
     m_closing(false),
-    m_reopening(false),
-    m_loading(false),
-    m_saving(false),
     m_superUndo(NULL),
     m_editCount(0),
     m_firstEditor(NULL),
     m_lastEditor(NULL),
     m_freezeCount(0),
-    m_internalFreezeCount(0),
-    m_loader(NULL)
+    m_internalFreezeCount(0)
 {
     Application::instance().addFile(*this);
     Window::onFileOpened(this->uri());
@@ -695,7 +688,6 @@ File::~File()
 {
     assert(m_firstEditor == NULL);
     assert(!m_superUndo);
-    assert(!m_loader);
 
     Window::onFileClosed(uri());
     Application::instance().removeFile(*this);
@@ -703,63 +695,21 @@ File::~File()
     delete m_superUndo;
 }
 
-gboolean File::onLoadedInMainThread(gpointer param)
+void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
 {
-    LoadedParam *p = static_cast<LoadedParam *>(param);
-    File &file = p->file;
-    FileLoader &loader = p->loader;
-
-    assert(file.m_loading);
-
-    // If we are reopening the file, we need to reload it.
-    if (file.m_reopening)
-    {
-        assert(!file.m_loader);
-        file.m_reopening = false;
-        file.m_loading = false;
-        file.m_loader = NULL;
-        file.unfreezeInternally();
-        delete &loader;
-        delete p;
-        file.load(false);
-        return FALSE;
-    }
-
-    // If we are closing the file, now we can finish closing.
-    if (file.m_closing)
-    {
-        assert(!file.m_loader);
-        file.m_loading = false;
-        file.m_loader = NULL;
-        file.unfreezeInternally();
-        delete &loader;
-        delete p;
-        file.finishClosing();
-        return FALSE;
-    }
-
-    assert(file.m_loader == &loader);
-    file.m_loading = false;
-    file.m_loader = NULL;
-    file.unfreezeInternally();
-
-    if (loader.state() != Worker::STATE_FINISHED)
-    {
-        delete &loader;
-        delete p;
-        return FALSE;
-    }
+    assert(m_loader == worker);
+    assert(!m_closing);
 
     // Overwrite the contents with the loaded contents.
-    file.m_modifiedTime = loader.modifiedTime();
-    file.resetEditCount();
-    file.m_undoHistory.clear();
-    file.m_redoHistory.clear();
-    file.onLoaded(loader);
-    file.m_loaded(file);
+    m_modifiedTime = m_loader->modifiedTime();
+    resetEditCount();
+    m_undoHistory.clear();
+    m_redoHistory.clear();
+    onLoaded(m_loader);
+    m_loaded(*this);
 
     // If any error was encountered, report it.
-    if (loader.error())
+    if (m_loader->error())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
@@ -767,56 +717,49 @@ gboolean File::onLoadedInMainThread(gpointer param)
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
             _("Samoyed failed to load file \"%s\". Close it?"),
-            file.uri());
+            uri());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
-            loader.error()->message);
+            m_loader->error()->message);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_YES)
-            file.close();
+            close();
     }
 
-    delete &loader;
-    delete p;
-    return FALSE;
+    // Clean up.
+    m_loaderFinishedConn.disconnect();
+    m_loaderCanceledConn.disconnect();
+    m_loader.reset();
+    unfreezeInternally();
 }
 
-gboolean File::onSavedInMainThread(gpointer param)
+void File::onLoaderCanceled(const boost::shared_ptr<Worker> &worker)
 {
-    SavedParam *p = static_cast<SavedParam *>(param);
-    File &file = p->file;
-    FileSaver &saver = p->saver;
+    assert(0);
+}
 
-    assert(file.m_saving);
-    file.m_saving = false;
-    file.m_reopening = false;
-    file.unfreezeInternally();
-
-    if (saver.state() != Worker::STATE_FINISHED)
-    {
-        delete &saver;
-        delete p;
-        return FALSE;
-    }
+void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
+{
+    assert(m_saver == worker);
 
     // If any error was encountered, report it.
-    if (saver.error())
+    if (m_saver->error())
     {
-        file.onSaved(saver);
-        file.m_saved(file);
+        onSaved(m_saver);
+        m_saved(*this);
 
         // Cancel closing the editor waiting for the completion of the close
         // operation.
-        if (file.m_closing)
+        if (m_closing)
         {
-            file.m_closing = false;
-            assert(file.m_firstEditor);
-            assert(file.m_firstEditor == file.m_lastEditor);
-            assert(file.m_firstEditor->closing());
-            file.m_firstEditor->cancelClosing();
+            m_closing = false;
+            assert(m_firstEditor);
+            assert(m_firstEditor == m_lastEditor);
+            assert(m_firstEditor->closing());
+            m_firstEditor->cancelClosing();
         }
 
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -825,11 +768,11 @@ gboolean File::onSavedInMainThread(gpointer param)
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to save file \"%s\"."),
-            file.uri());
+            uri());
         gtkMessageDialogAddDetails(
             dialog,
             _("%s."),
-            saver.error()->message);
+            m_saver->error()->message);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -837,39 +780,33 @@ gboolean File::onSavedInMainThread(gpointer param)
     }
     else
     {
-        file.m_modifiedTime = saver.modifiedTime();
-        file.resetEditCount();
-        file.onSaved(saver);
-        file.m_saved(file);
-
-        if (file.m_closing)
-            file.finishClosing();
+        m_modifiedTime = m_saver->modifiedTime();
+        resetEditCount();
+        onSaved(m_saver);
+        m_saved(*this);
     }
 
-    delete &saver;
-    delete p;
-    return FALSE;
+    // Clean up.
+    m_saverFinishedConn.disconnect();
+    m_saverCanceledConn.disconnect();
+    m_saver.reset();
+    unfreezeInternally();
+
+    // Now we can close this file, if requested.
+    if (m_closing)
+        finishClosing();
 }
 
-void File::onLoadedWrapper(Worker &worker)
+void File::onSaverCanceled(const boost::shared_ptr<Worker> &worker)
 {
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onLoadedInMainThread,
-                    new LoadedParam(*this, static_cast<FileLoader &>(worker)),
-                    NULL);
-}
-
-void File::onSavedWrapper(Worker &worker)
-{
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                    onSavedInMainThread,
-                    new SavedParam(*this, static_cast<FileSaver &>(worker)),
-                    NULL);
+    assert(0);
 }
 
 bool File::load(bool userRequest)
 {
-    assert(!frozen() && !m_superUndo);
+    if (frozen() || m_superUndo)
+        return false;
+
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
@@ -886,23 +823,28 @@ bool File::load(bool userRequest)
         if (response != GTK_RESPONSE_YES)
             return false;
     }
-    m_loading = true;
     freezeInternally();
-    m_loader = createLoader(Worker::PRIORITY_INTERACTIVE,
-                            boost::bind(&File::onLoadedWrapper, this, _1));
-    Application::instance().scheduler().schedule(*m_loader);
+    m_loader.reset(createLoader(Worker::PRIORITY_INTERACTIVE));
+    m_loaderFinishedConn = m_loader->addFinishedCallbackInMainThread(
+        boost::bind(&File::onLoaderFinished, this, _1));
+    m_loaderCanceledConn = m_loader->addCanceledCallbackInMainThread(
+        boost::bind(&File::onLoaderCanceled, this, _1));
+    m_loader->submit(m_loader);
     return true;
 }
 
-void File::save()
+bool File::save()
 {
-    assert(!frozen() && !m_superUndo);
-    m_saving = true;
+    if (frozen() || m_superUndo)
+        return false;
     freezeInternally();
-    FileSaver *saver =
-        createSaver(Worker::PRIORITY_INTERACTIVE,
-                    boost::bind(&File::onSavedWrapper, this, _1));
-    Application::instance().scheduler().schedule(*saver);
+    m_saver.reset(createSaver(Worker::PRIORITY_INTERACTIVE));
+    m_saverFinishedConn = m_saver->addFinishedCallbackInMainThread(
+        boost::bind(&File::onSaverFinished, this, _1));
+    m_saverCanceledConn = m_saver->addCanceledCallbackInMainThread(
+        boost::bind(&File::onSaverCanceled, this, _1));
+    m_saver->submit(m_saver);
+    return true;
 }
 
 void File::saveUndo(EditPrimitive *edit)

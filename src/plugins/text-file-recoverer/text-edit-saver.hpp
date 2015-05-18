@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <deque>
 #include <string>
-#include <boost/thread/mutex.hpp>
 
 namespace Samoyed
 {
@@ -42,7 +41,7 @@ private:
     {
     public:
         virtual ~ReplayFileOperation() {}
-        virtual bool execute(TextEditSaver &saver) = 0;
+        virtual bool execute(FILE *&file) = 0;
         virtual bool merge(const TextInsertion *ins) { return false; }
         virtual bool merge(const TextRemoval *rem) { return false; }
     };
@@ -52,7 +51,7 @@ private:
     public:
         ReplayFileCreation(char *fileName): m_fileName(fileName) {}
         ~ReplayFileCreation() { g_free(m_fileName); }
-        virtual bool execute(TextEditSaver &saver);
+        virtual bool execute(FILE *&file);
     private:
         char *m_fileName;
     };
@@ -62,7 +61,7 @@ private:
     public:
         ReplayFileRemoval(char *fileName): m_fileName(fileName) {}
         ~ReplayFileRemoval() { g_free(m_fileName); }
-        virtual bool execute(TextEditSaver &saver);
+        virtual bool execute(FILE *&file);
     private:
         char *m_fileName;
     };
@@ -72,7 +71,7 @@ private:
     public:
         ReplayFileAppending(TextEdit *edit): m_edit(edit) {}
         virtual ~ReplayFileAppending();
-        virtual bool execute(TextEditSaver &saver);
+        virtual bool execute(FILE *&file);
         virtual bool merge(const TextInsertion *ins);
         virtual bool merge(const TextRemoval *rem);
     private:
@@ -82,35 +81,60 @@ private:
     class ReplayFileOperationExecutor: public Worker
     {
     public:
-        ReplayFileOperationExecutor(Scheduler &scheduler,
-                                    unsigned int priority,
-                                    const Callback &callback,
-                                    TextEditSaver &saver);
+        ReplayFileOperationExecutor(
+            Scheduler &scheduler,
+            unsigned int priority,
+            FILE *file,
+            std::deque<ReplayFileOperation *> &operations,
+            const char *uri);
+        ReplayFileOperationExecutor(
+            Scheduler &scheduler,
+            unsigned int priority,
+            const boost::shared_ptr<ReplayFileOperationExecutor> &previous,
+            std::deque<ReplayFileOperation *> &operations,
+            const char *uri);
+        FILE *file() const { return m_file; }
+
+    protected:
+        virtual void begin();
         virtual bool step();
+
     private:
-        TextEditSaver &m_saver;
+        bool m_begun;
+        boost::shared_ptr<ReplayFileOperationExecutor> m_previous;
+        FILE *m_file;
+        std::deque<ReplayFileOperation *> m_operations;
     };
 
+    struct ReplayFileOperationExecutorInfo
+    {
+        boost::shared_ptr<ReplayFileOperationExecutor> executor;
+        boost::signals2::connection finishedConn;
+        boost::signals2::connection canceledConn;
+    };
+
+    void
+    onReplayFileOperationExecutorFinished(
+        const boost::shared_ptr<Worker> &worker);
+    void
+    onReplayFileOperationExecutorCanceled(
+        const boost::shared_ptr<Worker> &worker);
+
     static gboolean scheduleReplayFileOperationExecutor(gpointer param);
-    static gboolean
-        onReplayFileOperationExecutorDoneInMainThread(gpointer param);
-    void onReplayFileOperationExecutorDone(Worker &worker);
+
     void queueReplayFileOperation(ReplayFileOperation *op);
     void queueReplayFileAppending(TextInsertion *ins);
     void queueReplayFileAppending(TextRemoval *rem);
-    bool executeOneQueuedRelayFileOperation();
 
-    bool m_destroy;
     FILE *m_replayFile;
     bool m_replayFileCreated;
     long m_replayFileTimeStamp;
 
-    char *m_initText;
+    boost::shared_ptr<char> m_initText;
 
     std::deque<ReplayFileOperation *> m_operationQueue;
-    mutable boost::mutex m_operationQueueMutex;
 
-    ReplayFileOperationExecutor *m_operationExecutor;
+    std::deque<ReplayFileOperationExecutorInfo> m_operationExecutors;
 
     guint m_schedulerId;
 };

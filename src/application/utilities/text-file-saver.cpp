@@ -3,7 +3,7 @@
 
 /*
 UNIT TEST BUILD
-g++ text-file-saver.cpp worker.cpp -DSMYD_UNIT_TEST \
+g++ text-file-saver.cpp worker.cpp \
 -DSMYD_TEXT_FILE_SAVER_UNIT_TEST `pkg-config --cflags --libs gtk+-3.0` \
 -I../../../libs -lboost_thread -pthread -Werror -Wall -o text-file-saver
 */
@@ -32,12 +32,11 @@ namespace Samoyed
 
 TextFileSaver::TextFileSaver(Scheduler &scheduler,
                              unsigned int priority,
-                             const Callback &callback,
                              const char *uri,
-                             char *text,
+                             const boost::shared_ptr<char> &text,
                              int length,
                              const char *encoding):
-    FileSaver(scheduler, priority, callback, uri),
+    FileSaver(scheduler, priority, uri),
     m_text(text),
     m_length(length),
     m_encoding(encoding)
@@ -85,8 +84,8 @@ bool TextFileSaver::step()
 
     // Convert and write.
     g_output_stream_write(stream,
-                          m_text,
-                          m_length == -1 ? strlen(m_text) : m_length,
+                          m_text.get(),
+                          m_length == -1 ? strlen(m_text.get()) : m_length,
                           NULL,
                           &m_error);
     if (m_error)
@@ -142,17 +141,17 @@ CLEAN_UP:
 const char *TEXT_GBK = "\xc4\xe3\xba\xc3\x68\x65\x6c\x6c\x6f";
 const char *TEXT_UTF8 = "\xe4\xbd\xa0\xe5\xa5\xbd\x68\x65\x6c\x6c\x6f";
 
-void onDone(Samoyed::Worker &worker)
+void onDone(const boost::shared_ptr<Samoyed::Worker> &worker)
 {
-    Samoyed::TextFileSaver &saver =
-        static_cast<Samoyed::TextFileSaver &>(worker);
-    if (saver.error())
+    Samoyed::TextFileSaver *saver =
+        static_cast<Samoyed::TextFileSaver *>(worker.get());
+    if (saver->error())
     {
-        printf("Text file saver error: %s.\n", saver.error()->message);
+        printf("Text file saver error: %s.\n", saver->error()->message);
         return;
     }
     GError *error;
-    char *fileName = g_filename_from_uri(saver.uri(), NULL, &error);
+    char *fileName = g_filename_from_uri(saver->uri(), NULL, &error);
     if (error)
     {
         printf("URI to file name conversion error: %s.\n", error->message);
@@ -167,16 +166,15 @@ void onDone(Samoyed::Worker &worker)
         g_error_free(error);
         return;
     }
-    if (strcmp(strrchr(saver.uri(), '.'), ".GBK") == 0)
+    if (strcmp(strrchr(saver->uri(), '.'), ".GBK") == 0)
         assert(strcmp(text, TEXT_GBK) == 0);
-    else if (strcmp(strrchr(saver.uri(), '.'), ".UTF-8") == 0)
+    else if (strcmp(strrchr(saver->uri(), '.'), ".UTF-8") == 0)
         assert(strcmp(text, TEXT_UTF8) == 0);
     else
         assert(0);
     g_unlink(fileName);
     g_free(text);
     g_free(fileName);
-    delete &saver;
 }
 
 int main()
@@ -195,10 +193,12 @@ int main()
         printf("File name to URI conversion error.\n");
         return -1;
     }
-    char *textUtf8 = g_strdup(TEXT_UTF8);
-    Samoyed::TextFileSaver *saver1 =
-        new Samoyed::TextFileSaver(scheduler, 1, onDone, uri1, textUtf8, -1,
-                                   "GBK");
+    boost::shared_ptr<char> textUtf8(g_strdup(TEXT_UTF8), g_free);
+    boost::shared_ptr<Samoyed::TextFileSaver> saver1(
+        new Samoyed::TextFileSaver(scheduler, 1, uri1, textUtf8, -1,
+                                   "GBK"));
+    saver1->addFinishedCallback(onDone);
+    saver1->addCanceledCallback(onDone);
     g_free(uri1);
 
     std::string fileName2(pwd);
@@ -209,14 +209,15 @@ int main()
         printf("File name to URI conversion error.\n");
         return -1;
     }
-    char *text2Utf8 = g_strdup(TEXT_UTF8);
-    Samoyed::TextFileSaver *saver2 =
-        new Samoyed::TextFileSaver(scheduler, 1, onDone, uri2, text2Utf8, -1,
-                                   "UTF-8");
+    boost::shared_ptr<Samoyed::TextFileSaver> saver2(
+        new Samoyed::TextFileSaver(scheduler, 1, uri2, textUtf8, -1,
+                                   "UTF-8"));
+    saver2->addFinishedCallback(onDone);
+    saver2->addCanceledCallback(onDone);
     g_free(uri2);
 
-    scheduler.schedule(*saver1);
-    scheduler.schedule(*saver2);
+    saver1->submit(saver1);
+    saver2->submit(saver2);
     scheduler.wait();
 
     g_free(pwd);

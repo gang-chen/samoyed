@@ -64,7 +64,7 @@ protected:
 
     virtual Editor *createEditorInternally(Project *project);
 
-    virtual void onLoaded(FileLoader &loader);
+    virtual void onLoaded(const boost::shared_ptr<FileLoader> &loader);
 
     virtual void onChanged(const File::Change &change, bool loading);
 

@@ -82,12 +82,15 @@ PluginManager::~PluginManager()
 
 void PluginManager::shutDown()
 {
+    if (m_shuttingDown)
+        return;
+    m_shuttingDown = true;
+
     // Unregister all plugins.
     Registry::iterator it;
     while ((it = m_registry.begin()) != m_registry.end())
         unregisterPlugin(it->second->id.c_str());
 
-    m_shuttingDown = true;
     if (static_cast<int>(m_table.size()) == m_nCachedPlugins)
         delete this;
 }
@@ -561,10 +564,12 @@ Extension *PluginManager::acquireExtension(const char *extensionId)
             Plugin *p = m_lruCachedPlugin;
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
-            // Defer destroying the plugin.
-            g_idle_add(destroyPluginDeferred,
-                       new std::pair<PluginManager *, Plugin *>(this, p));
             --m_nCachedPlugins;
+            // Defer destroying the plugin.
+            g_idle_add_full(G_PRIORITY_LOW,
+                            destroyPluginDeferred,
+                            new std::pair<PluginManager *, Plugin *>(this, p),
+                            NULL);
         }
     }
     return ext;
@@ -583,16 +588,20 @@ void PluginManager::destroyPlugin(Plugin &plugin)
             Plugin *p = m_lruCachedPlugin;
             m_table.erase(p->id());
             p->removeFromCache(m_lruCachedPlugin, m_mruCachedPlugin);
-            // Defer destroying the plugin.
-            g_idle_add(destroyPluginDeferred,
-                       new std::pair<PluginManager *, Plugin *>(this, p));
             --m_nCachedPlugins;
+            // Defer destroying the plugin.
+            g_idle_add_full(G_PRIORITY_LOW,
+                            destroyPluginDeferred,
+                            new std::pair<PluginManager *, Plugin *>(this, p),
+                            NULL);
         }
     }
     else
         // Defer destroying the plugin.
-        g_idle_add(destroyPluginDeferred,
-                   new std::pair<PluginManager *, Plugin *>(this, &plugin));
+        g_idle_add_full(G_PRIORITY_LOW,
+                        destroyPluginDeferred,
+                        new std::pair<PluginManager *, Plugin *>(this, &plugin),
+                        NULL);
 }
 
 void PluginManager::scanPlugins(const char *pluginsDirName)
