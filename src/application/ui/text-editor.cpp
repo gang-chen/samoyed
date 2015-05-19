@@ -713,14 +713,20 @@ void TextEditor::remove(GtkTextBuffer *buffer,
         return;
 
     // Ask the file to populate this removal operation.
+    int newLine, newColumn;
+    newLine = gtk_text_iter_get_line(begin);
+    newColumn = gtk_text_iter_get_line_offset(begin);
     static_cast<TextFile &>(editor->file()).remove(
-        gtk_text_iter_get_line(begin),
-        gtk_text_iter_get_line_offset(begin),
+        newLine,
+        newColumn,
         gtk_text_iter_get_line(end),
         gtk_text_iter_get_line_offset(end));
 
     // Validate the iterators and stop this signal emission.
-    gtk_text_iter_assign(end, begin);
+    gtk_text_buffer_get_iter_at_line_offset(buffer, begin,
+                                            newLine, newColumn);
+    gtk_text_buffer_get_iter_at_line_offset(buffer, end,
+                                            newLine, newColumn);
     g_signal_stop_emission_by_name(buffer, "delete-range");
 }
 

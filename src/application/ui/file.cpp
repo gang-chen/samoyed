@@ -724,7 +724,15 @@ void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_YES)
+        {
+            // Clean up and close.
+            m_loaderFinishedConn.disconnect();
+            m_loaderCanceledConn.disconnect();
+            m_loader.reset();
+            unfreezeInternally();
             close();
+            return;
+        }
     }
 
     // Clean up.
