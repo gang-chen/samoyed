@@ -82,13 +82,6 @@ gboolean PreferencesEditor::setupCategoryPage(gpointer param)
     return FALSE;
 }
 
-void PreferencesEditor::onCategoryPageMapped(GtkWidget *grid,
-                                             PreferencesEditor *editor)
-{
-    g_idle_add(setupCategoryPage,
-               new std::pair<PreferencesEditor *, GtkWidget *>(editor, grid));
-}
-
 PreferencesEditor::PreferencesEditor()
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -114,7 +107,9 @@ PreferencesEditor::PreferencesEditor()
         gtk_container_set_border_width(GTK_CONTAINER(grid),
                                        CONTAINER_BORDER_WIDTH);
         gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
-        g_signal_connect(grid, "map", G_CALLBACK(onCategoryPageMapped), this);
+        g_idle_add(setupCategoryPage,
+                   new std::pair<PreferencesEditor *, GtkWidget *>(this,
+                                                                   grid));
     }
     GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(m_window));
     int width = gdk_screen_get_width(screen) * DEFAULT_SIZE_RATIO;

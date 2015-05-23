@@ -42,8 +42,6 @@ private:
     };
 
     static gboolean setupCategoryPage(gpointer param);
-    static void onCategoryPageMapped(GtkWidget *grid,
-                                     PreferencesEditor *editor);
 
     static std::vector<Category> s_categories;
 

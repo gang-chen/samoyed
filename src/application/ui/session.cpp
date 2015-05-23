@@ -1024,14 +1024,10 @@ Session::Session(const char *name, const char *lockFileName):
     m_name(name),
     m_lockFile(lockFileName)
 {
-    // Write the last session name here so that we can have the last session
-    // name even if it crashes before the session exits.
-    writeLastSessionName(m_name.c_str());
 }
 
 Session::~Session()
 {
-    writeLastSessionName(m_name.c_str());
 }
 
 void Session::unlock()
@@ -1145,13 +1141,16 @@ Session *Session::create(const char *name)
     Application::instance().histories().resetAll();
 
     // Create the main window for the new session.
-    if (!Window::create(Window::Configuration()))
+    if (!Window::create(name, Window::Configuration()))
     {
         remove(name);
         delete session;
         return NULL;
     }
 
+    // Write the last session name here so that we can have the last session
+    // name even if it crashes before the session exits.
+    writeLastSessionName(name);
     return session;
 }
 
@@ -1185,19 +1184,46 @@ Session *Session::restore(const char *name)
         return NULL;
     }
 
-    Application::instance().preferences().resetAll();
-    Application::instance().histories().resetAll();
+    std::string sessionDirName(Application::instance().userDirectoryName());
+    sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionDirName += name;
 
-    // Read the session file and restore the session.
     std::string sessionFileName(Application::instance().userDirectoryName());
     sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionFileName += name;
     sessionFileName += G_DIR_SEPARATOR_S "session.xml";
+
+    // If the session directory or the session file does not exist, create the
+    // session.
+    if (!g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS) ||
+        !g_file_test(sessionFileName.c_str(), G_FILE_TEST_EXISTS))
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_YES_NO,
+            _("Session \"%s\" does not exist. Create it?"),
+            name);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_NO);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        delete session;
+        if (response == GTK_RESPONSE_YES)
+            return create(name);
+        return NULL;
+    }
+
+    Application::instance().preferences().resetAll();
+    Application::instance().histories().resetAll();
+
+    // Read the session file and restore the session.
     XmlElementSession *s = parseSessionFile(sessionFileName.c_str(), name);
     if (!s || !s->restoreSession())
     {
         // Create the main window for the session if any error occurs.
-        if (!Window::create(Window::Configuration()))
+        if (!Window::create(name, Window::Configuration()))
         {
             delete s;
             delete session;
@@ -1222,11 +1248,45 @@ Session *Session::restore(const char *name)
             boost::bind(&Session::onUnsavedFilesReaderCanceled, session, _1));
     session->m_unsavedFilesReader->submit(session->m_unsavedFilesReader);
 
+    // Write the last session name here so that we can have the last session
+    // name even if it crashes before the session exits.
+    writeLastSessionName(name);
     return session;
 }
 
 bool Session::save()
 {
+    std::string sessionDirName(Application::instance().userDirectoryName());
+    sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
+    sessionDirName += m_name;
+
+    // If the session directory does not exist, create it.
+    if (!g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS))
+    {
+        if (g_mkdir(sessionDirName.c_str(), 0755))
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_YES_NO,
+                _("Samoyed failed to save the current session. Quit the "
+                  "session without saving it?"));
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to create directory \"%s\" for session "
+                  "\"%s\". %s."),
+                sessionDirName.c_str(), m_name.c_str(), g_strerror(errno));
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_NO);
+            int response = gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            if (response == GTK_RESPONSE_YES)
+                return true;
+            return false;
+        }
+    }
+
     std::string sessionFileName(Application::instance().userDirectoryName());
     sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionFileName += m_name;
@@ -1266,7 +1326,6 @@ bool Session::save()
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         if (response == GTK_RESPONSE_YES)
-            // To continue quitting the session.
             return true;
         return false;
     }
@@ -1302,6 +1361,7 @@ void Session::quit()
         m_unsavedFilesWriters.pop_front();
     }
 
+    writeLastSessionName(m_name.c_str());
     delete this;
 }
 

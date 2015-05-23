@@ -9,6 +9,7 @@
 #include "file.hpp"
 #include "editor.hpp"
 #include "notebook.hpp"
+#include "session.hpp"
 #include "windows/session-management-window.hpp"
 #include "windows/preferences-editor.hpp"
 #include "application.hpp"
@@ -196,8 +197,9 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
 
 void createWindow(GtkAction *action, Samoyed::Window *window)
 {
+    const char *sessionName = Samoyed::Application::instance().session().name();
     Samoyed::Window::Configuration config = window->configuration();
-    Samoyed::Window::create(config);
+    Samoyed::Window::create(sessionName, config);
 }
 
 void createEditor(GtkAction *action, Samoyed::Window *window)

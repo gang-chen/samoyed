@@ -144,7 +144,7 @@ public:
     addToolsPaneCreatedCallback(const SidePaneCreated::slot_type &callback)
     { return s_toolsPaneCreated.connect(callback); }
 
-    static Window *create(const Configuration &config);
+    static Window *create(const char *sessionName, const Configuration &config);
 
     /**
      * This function can be called by the application instance only.
@@ -302,7 +302,7 @@ public:
 protected:
     Window();
 
-    bool setup(const Configuration &config);
+    bool setup(const char *sessionName, const Configuration &config);
 
     bool restore(XmlElement &xmlElement);
 

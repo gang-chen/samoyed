@@ -39,7 +39,7 @@ void onSaveIntervalChanged(GtkSpinButton *spin, gpointer data)
 {
     Samoyed::Application::instance().preferences().child(TEXT_EDITOR).
         set(TEXT_EDIT_SAVE_INTERVAL,
-            static_cast<int>(gtk_spin_button_get_value_as_int(spin)),
+            gtk_spin_button_get_value_as_int(spin),
             false,
             NULL);
 }
@@ -78,29 +78,27 @@ void TextFileRecovererPreferencesExtension::setupPreferencesEditor(
 {
     const PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
-    GtkWidget *check = gtk_check_button_new();
     GtkWidget *g = gtk_grid_new();
-    GtkWidget *label1 = gtk_label_new_with_mnemonic(
+    GtkWidget *check = gtk_check_button_new_with_mnemonic(
         _("_Save changed files every"));
     GtkAdjustment *adjust = gtk_adjustment_new(
         prefs.get<int>(TEXT_EDIT_SAVE_INTERVAL),
         1.0, 100.0, 1.0, 5.0, 0.0);
     GtkWidget *spin = gtk_spin_button_new(adjust, 1.0, 0);
-    GtkWidget *label2 = gtk_label_new(
+    GtkWidget *label = gtk_label_new(
         _("minutes in replay files for recovering them from crashes"));
-    gtk_grid_attach(GTK_GRID(g), label1, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(g), check, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(g), spin, 1, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(g), label2, 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(g), label, 2, 0, 1, 1);
     gtk_grid_set_column_spacing(GTK_GRID(g), CONTAINER_SPACING);
-    gtk_container_add(GTK_CONTAINER(check), g);
-    gtk_grid_attach_next_to(grid, check, NULL, GTK_POS_BOTTOM, 1, 1);
+    gtk_grid_attach_next_to(grid, g, NULL, GTK_POS_BOTTOM, 1, 1);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check),
                                  prefs.get<bool>(SAVE_TEXT_EDITS));
     g_signal_connect(check, "toggled",
                      G_CALLBACK(onSaveToggled), NULL);
     g_signal_connect(spin, "value-changed",
                      G_CALLBACK(onSaveIntervalChanged), NULL);
-    gtk_widget_show_all(check);
+    gtk_widget_show_all(g);
 }
 
 }

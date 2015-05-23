@@ -758,7 +758,7 @@ bool Window::build(const Configuration &config)
     return true;
 }
 
-bool Window::setup(const Configuration &config)
+bool Window::setup(const char *sessionName, const Configuration &config)
 {
     std::string id(WINDOW_ID "-");
     id += boost::lexical_cast<std::string>(serialNumber++);
@@ -780,8 +780,10 @@ bool Window::setup(const Configuration &config)
     createToolsPane(config.layout);
 
     // Set the title.
-    setTitle(_("Samoyed IDE"));
-    gtk_window_set_title(GTK_WINDOW(gtkWidget()), title());
+    std::string title(sessionName);
+    title += _(" - Samoyed IDE");
+    setTitle(title.c_str());
+    gtk_window_set_title(GTK_WINDOW(gtkWidget()), title.c_str());
 
     m_actions->updateStatefulActions();
 
@@ -789,10 +791,10 @@ bool Window::setup(const Configuration &config)
     return true;
 }
 
-Window *Window::create(const Configuration &config)
+Window *Window::create(const char *sessionName, const Configuration &config)
 {
     Window *window = new Window;
-    if (!window->setup(config))
+    if (!window->setup(sessionName, config))
     {
         delete window;
         return NULL;

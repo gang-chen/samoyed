@@ -973,7 +973,7 @@ void TextEditor::onIndentWidthChanged(GtkSpinButton *spin, gpointer data)
     PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
     prefs.set(INDENT_WIDTH,
-              static_cast<bool>(gtk_spin_button_get_value_as_int(spin)),
+              gtk_spin_button_get_value_as_int(spin),
               false,
               NULL);
     int indentWidth = prefs.get<int>(INDENT_WIDTH);
@@ -1086,8 +1086,12 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_widget_show_all(highlight);
 
     GtkWidget *indentLine = gtk_grid_new();
-    GtkWidget *indentLabel1 = gtk_label_new_with_mnemonic(
+    GtkWidget *indentCheck = gtk_check_button_new_with_mnemonic(
         _("_Indent new lines by"));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indentCheck),
+                                 prefs.get<bool>(INDENT));
+    g_signal_connect(indentCheck, "toggled",
+                     G_CALLBACK(onIndentToggled), NULL);
     GtkAdjustment *indentWidthAdjust = gtk_adjustment_new(
         prefs.get<int>(INDENT_WIDTH),
         1.0, 100.0, 1.0, 4.0, 0.0);
@@ -1095,20 +1099,14 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
         gtk_spin_button_new(indentWidthAdjust, 1.0, 0);
     g_signal_connect(indentWidthSpin, "value-changed",
                      G_CALLBACK(onIndentWidthChanged), NULL);
-    GtkWidget *indentWidthLabel2 = gtk_label_new(_("spaces"));
-    gtk_grid_attach(GTK_GRID(indentLine), indentLabel1, 0, 0, 1, 1);
+    GtkWidget *indentLabel = gtk_label_new(_("spaces"));
+    gtk_grid_attach(GTK_GRID(indentLine), indentCheck, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(indentLine), indentWidthSpin, 1, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(indentLine), indentWidthLabel2, 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(indentLine), indentLabel, 2, 0, 1, 1);
     gtk_grid_set_column_spacing(GTK_GRID(indentLine), CONTAINER_SPACING);
-    GtkWidget *indentCheck = gtk_check_button_new();
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indentCheck),
-                                 prefs.get<bool>(INDENT));
-    g_signal_connect(indentCheck, "toggled",
-                     G_CALLBACK(onIndentToggled), NULL);
-    gtk_container_add(GTK_CONTAINER(indentCheck), indentLine);
-    gtk_grid_attach_next_to(grid, indentCheck, highlight,
+    gtk_grid_attach_next_to(grid, indentLine, highlight,
                             GTK_POS_BOTTOM, 1, 1);
-    gtk_widget_show_all(indentCheck);
+    gtk_widget_show_all(indentLine);
 }
 
 }
