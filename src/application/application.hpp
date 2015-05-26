@@ -182,8 +182,8 @@ private:
 
     /**
      * Perform the second half of the quitting operation.  This function is
-     * called after all projects, files and windows are closed.  This implies
-     * that the quitting operation will be completed inevitably.
+     * called after all projects and files are closed.  This implies that the
+     * quitting operation will be completed inevitably.
      */
     void finishQuitting();
 

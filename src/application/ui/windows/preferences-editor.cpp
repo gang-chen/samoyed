@@ -95,7 +95,7 @@ PreferencesEditor::PreferencesEditor()
     {
         GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
         GtkWidget *grid = gtk_grid_new();
-        GtkWidget *msg = gtk_label_new(_("Collecting preferences..."));
+        GtkWidget *msg = gtk_label_new(_("Loading preferences..."));
         gtk_widget_set_halign(msg, GTK_ALIGN_START);
         gtk_widget_set_valign(msg, GTK_ALIGN_START);
         gtk_grid_attach(GTK_GRID(grid), msg, 0, 0, 1, 1);

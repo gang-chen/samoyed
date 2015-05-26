@@ -29,9 +29,13 @@ public:
 
     static const PropertyTree &defaultOptions();
 
-    static const int TYPE = TextFile::TYPE + 1;
+    static const int TYPE = 2;
 
     virtual PropertyTree *options() const;
+
+    virtual bool structured() const { return true; }
+
+    virtual void updateStructure();
 
     void onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
                      int error);

@@ -61,6 +61,8 @@ public:
                      int endLine, int endColumn);
 
 protected:
+    static GtkTextTagTable *createSharedTagTable();
+
     SourceEditor(SourceFile &file, Project *project);
 
     bool setup();

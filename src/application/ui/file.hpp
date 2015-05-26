@@ -160,6 +160,8 @@ public:
     virtual PropertyTree *options() const
     { return new PropertyTree(defaultOptions()); }
 
+    virtual bool structured() const { return false; }
+
     /**
      * @return True iff the file is being loaded.
      */
@@ -270,6 +272,8 @@ public:
     boost::signals2::connection
     addChangedCallback(const Changed::slot_type &callback)
     { return m_changed.connect(callback); }
+
+    virtual void updateStructure() {}
 
 protected:
     class EditPrimitive;

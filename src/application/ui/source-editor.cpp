@@ -54,18 +54,25 @@ namespace Samoyed
 
 GtkTextTagTable *SourceEditor::s_sharedTagTable = NULL;
 
-void SourceEditor::createSharedData()
+GtkTextTagTable *SourceEditor::createSharedTagTable()
 {
-    s_sharedTagTable = gtk_text_tag_table_new();
+    GtkTextTagTable *tagTable = TextEditor::createSharedTagTable();
 
     for (int i = 0; i < TOKEN_KINDS; ++i)
     {
         GtkTextTag *tag;
         tag = gtk_text_tag_new(TOKEN_KIND_NAMES[i]);
         g_object_set(tag, "foreground", TOKEN_COLORS[i], NULL);
-        gtk_text_tag_table_add(s_sharedTagTable, tag);
+        gtk_text_tag_table_add(tagTable, tag);
         g_object_unref(tag);
     }
+
+    return tagTable;
+}
+
+void SourceEditor::createSharedData()
+{
+    s_sharedTagTable = createSharedTagTable();
 }
 
 void SourceEditor::destroySharedData()

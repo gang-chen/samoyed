@@ -130,7 +130,7 @@ File *SourceFile::create(const char *uri,
                          const char *mimeType,
                          const PropertyTree &options)
 {
-    return new SourceFile(uri, TYPE, mimeType, options);
+    return new SourceFile(uri, TYPE | TextFile::TYPE, mimeType, options);
 }
 
 bool SourceFile::isSupportedType(const char *mimeType)
@@ -247,6 +247,7 @@ void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
     {
         m_tu.swap(tu);
         highlightTokens();
+        updateStructure();
     }
 }
 
@@ -302,6 +303,12 @@ void SourceFile::highlightTokens()
                                    clang_getTokenKind(tokens[i]));
         }
     }
+}
+
+void SourceFile::updateStructure()
+{
+    if (!m_tu)
+        return;
 }
 
 }

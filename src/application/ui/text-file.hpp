@@ -72,13 +72,13 @@ public:
 
     static void installHistories();
 
-    static bool isSupportedType(const char *type);
+    static bool isSupportedType(const char *mimeType);
 
     static void registerType();
 
     static const PropertyTree &defaultOptions();
 
-    static const int TYPE = 0;
+    static const int TYPE = 1;
 
     virtual PropertyTree *options() const;
 

@@ -299,6 +299,13 @@ void Application::finishQuitting()
     assert(!m_lastProject);
     assert(!m_firstFile);
     assert(!m_lastFile);
+
+    // Close all windows.
+    for (Window *window = m_lastWindow, *prev; window; window = prev)
+    {
+        prev = window->previous();
+        window->close();
+    }
     assert(!m_firstWindow);
     assert(!m_lastWindow);
 
@@ -337,20 +344,21 @@ bool Application::quit()
     m_preferencesEditor = NULL;
 
     // Close all projects.
-    for (Project *project = m_firstProject, *next; project; project = next)
+    for (Project *project = m_lastProject, *prev; project; project = prev)
     {
-        next = project->next();
+        prev = project->previous();
         if (!project->close())
             return false;
     }
 
-    // Close all windows.
-    for (Window *window = m_lastWindow, *prev; window; window = prev)
+    // Close all files.
+    for (File *file = m_lastFile, *prev; file; file = prev)
     {
-        prev = window->previous();
-        if (!window->close())
+        prev = file->previous();
+        if (!file->close())
             return false;
     }
+
     return true;
 }
 
@@ -555,7 +563,7 @@ void Application::removeProject(Project &project)
 void Application::destroyProject(Project &project)
 {
     delete &project;
-    if (!m_firstProject && !m_firstFile && !m_firstWindow)
+    if (!m_firstProject && !m_firstFile)
         finishQuitting();
 }
 
@@ -590,7 +598,7 @@ void Application::removeFile(File &file)
 void Application::destroyFile(File &file)
 {
     delete &file;
-    if (!m_firstProject && !m_firstFile && !m_firstWindow)
+    if (!m_firstProject && !m_firstFile)
         finishQuitting();
 }
 
@@ -611,8 +619,6 @@ void Application::removeWindow(Window &window)
 void Application::destroyWindow(Window& window)
 {
     delete &window;
-    if (!m_firstProject && !m_firstFile && !m_firstWindow)
-        finishQuitting();
 }
 
 bool Application::makeUserDirectory()

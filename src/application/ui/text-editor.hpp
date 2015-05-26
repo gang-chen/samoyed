@@ -7,9 +7,10 @@
 #include "editor.hpp"
 #include <list>
 #include <string>
+#include <vector>
 #include <boost/shared_ptr.hpp>
 #include <gtk/gtk.h>
-#include <gtksourceview/gtksourceview.h>
+#include <gtksourceview/gtksource.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -115,6 +116,17 @@ public:
                                    Actions::ActionIndex index);
 
 protected:
+    class Folder
+    {
+    public:
+        Folder(): folded(false) {}
+        virtual ~Folder() {}
+        virtual int span() const = 0;
+        bool folded;
+    };
+
+    static GtkTextTagTable *createSharedTagTable();
+
     TextEditor(TextFile &file, Project *project);
 
     bool setup(GtkTextTagTable *tagTable, bool highlightSyntax);
@@ -124,6 +136,10 @@ protected:
     static gboolean onFocusIn(GtkWidget *widget,
                               GdkEventFocus *event,
                               TextEditor *editor);
+
+    void onFoldersUpdated();
+
+    std::vector<boost::shared_ptr<Folder> > m_folders;
 
 private:
     static GtkTextTagTable *s_sharedTagTable;
@@ -135,6 +151,22 @@ private:
     static void remove(GtkTextBuffer *buffer,
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
+
+    static void activateFolder(GtkSourceGutterRenderer *renderer,
+                               GtkTextIter *iter,
+                               GdkRectangle *area,
+                               GdkEvent *event,
+                               TextEditor *editor);
+    static gboolean queryFolderActivatable(GtkSourceGutterRenderer *renderer,
+                                           GtkTextIter *iter,
+                                           GdkRectangle *area,
+                                           GdkEvent *event,
+                                           TextEditor *editor);
+    static void queryFolderData(GtkSourceGutterRenderer *renderer,
+                                GtkTextIter *begin,
+                                GtkTextIter *end,
+                                GtkSourceGutterRendererState state,
+                                TextEditor *editor);
 
     static void setupPreferencesEditor(GtkGrid *grid);
 
@@ -148,12 +180,18 @@ private:
                                          gpointer data);
     static void onIndentWidthChanged(GtkSpinButton *spin, gpointer data);
     static void onIndentToggled(GtkToggleButton *toggle, gpointer data);
+    static void onFoldToggled(GtkToggleButton *toggle, gpointer data);
+
+    void enableFolding();
+    void disableFolding();
 
     bool m_fileChange;
     bool m_followCursor;
 
     int m_presetCursorLine;
     int m_presetCursorColumn;
+
+    GtkSourceGutterRenderer *m_foldersRenderer;
 };
 
 }

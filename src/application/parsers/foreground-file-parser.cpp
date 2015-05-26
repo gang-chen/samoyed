@@ -24,7 +24,7 @@ const int SLOW_DOWN_CYCLES = 100000;
 Samoyed::SourceFile *findSourceFile(const char *fileUri)
 {
     Samoyed::File *file = Samoyed::Application::instance().findFile(fileUri);
-    if (file && file->type() == Samoyed::SourceFile::TYPE)
+    if (file && (file->type() & Samoyed::SourceFile::TYPE))
         return static_cast<Samoyed::SourceFile *>(file);
     return NULL;
 }
@@ -290,7 +290,7 @@ void ForegroundFileParser::collectUnsavedFiles(UnsavedFiles &unsavedFiles)
          file;
          file = file->next())
     {
-        if (file->edited() && file->type() == SourceFile::TYPE)
+        if (file->edited() && (file->type() & SourceFile::TYPE))
             unsavedFiles.numUnsavedFiles++;
     }
     if (unsavedFiles.numUnsavedFiles)
@@ -302,7 +302,7 @@ void ForegroundFileParser::collectUnsavedFiles(UnsavedFiles &unsavedFiles)
              file;
              file = file->next())
         {
-            if (file->edited() && file->type() == SourceFile::TYPE)
+            if (file->edited() && (file->type() & SourceFile::TYPE))
             {
                 dest->Filename = g_filename_from_uri(file->uri(), NULL, NULL);
                 unsavedFiles.textPtrs.push_back(

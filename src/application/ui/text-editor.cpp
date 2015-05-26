@@ -22,17 +22,16 @@
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
-#include <gtksourceview/gtksourcebuffer.h>
-#include <gtksourceview/gtksourceview.h>
-#include <gtksourceview/gtksourcelanguage.h>
-#include <gtksourceview/gtksourcelanguagemanager.h>
-#include <gtksourceview/gtksourceundomanager.h>
+#include <gtksourceview/gtksource.h>
 #include <libxml/tree.h>
 
 #define EDITOR "editor"
 #define TEXT_EDITOR "text-editor"
 #define CURSOR_LINE "cursor-line"
 #define CURSOR_COLUMN "cursor-column"
+
+#define INVISIBLE "invisible"
+
 #define FONT "font"
 #define TAB_WIDTH "tab-width"
 #define INSERT_SPACES_INSTEAD_OF_TABS "insert-spaces-instead-of-tabs"
@@ -40,25 +39,39 @@
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define INDENT "indent"
 #define INDENT_WIDTH "indent-width"
+#define FOLD_STRUCTURED_TEXT "fold-structured-text"
 
 namespace
 {
 
 const double SCROLL_MARGIN = 0.02;
 
+const int FOLDER_POSITION = -10;
+
 const std::string DEFAULT_FONT("Monospace 10");
-
 const int DEFAULT_TAB_WIDTH = 8;
-
 const bool DEFAULT_INSERT_SPACES_INSTEAD_OF_TABS = true;
-
 const bool DEFAULT_SHOW_LINE_NUMBERS = true;
-
 const bool DEFAULT_HIGHLIGHT_SYNTAX = true;
-
 const bool DEFAULT_INDENT = true;
-
 const int DEFAULT_INDENT_WIDTH = 4;
+const bool DEFAULT_FOLD_STRUCTURED_TEXT = true;
+
+int measureLineHeight(GtkSourceView *view)
+{
+    PangoLayout *layout;
+    gint height = 12;
+
+    layout = gtk_widget_create_pango_layout(GTK_WIDGET(view), "QWERTY");
+
+    if (layout)
+    {
+        pango_layout_get_pixel_size(layout, NULL, &height);
+        g_object_unref(layout);
+    }
+
+    return height - 2;
+}
 
 void onCursorChanged(GtkTextBuffer *buffer, Samoyed::TextEditor *editor)
 {
@@ -218,9 +231,20 @@ namespace Samoyed
 
 GtkTextTagTable *TextEditor::s_sharedTagTable = NULL;
 
+GtkTextTagTable *TextEditor::createSharedTagTable()
+{
+    GtkTextTagTable *tagTable = gtk_text_tag_table_new();
+    GtkTextTag *tag;
+    tag = gtk_text_tag_new(INVISIBLE);
+    g_object_set(tag, "invisible", TRUE, NULL);
+    gtk_text_tag_table_add(tagTable, tag);
+    g_object_unref(tag);
+    return tagTable;
+}
+
 void TextEditor::createSharedData()
 {
-    s_sharedTagTable = gtk_text_tag_table_new();
+    s_sharedTagTable = createSharedTagTable();
 }
 
 void TextEditor::destroySharedData()
@@ -396,7 +420,8 @@ TextEditor::TextEditor(TextFile &file, Project *project):
     m_fileChange(false),
     m_followCursor(false),
     m_presetCursorLine(0),
-    m_presetCursorColumn(0)
+    m_presetCursorColumn(0),
+    m_foldersRenderer(NULL)
 {
 }
 
@@ -404,6 +429,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
 {
     if (!Editor::setup())
         return false;
+
     GtkSourceBuffer *buffer =
         gtk_source_buffer_new(tagTable ? tagTable : s_sharedTagTable);
     SourceUndoManager *undo = SOURCE_UNDO_MANAGER(
@@ -419,6 +445,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
     g_object_unref(buffer);
     gtk_container_add(GTK_CONTAINER(sw), view);
     setGtkWidget(sw);
+
     const PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
     setFont(view, prefs.get<std::string>(FONT).c_str());
@@ -447,7 +474,11 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
             buffer,
             prefs.get<bool>(HIGHLIGHT_SYNTAX));
     }
+    if (prefs.get<bool>(FOLD_STRUCTURED_TEXT) && file().structured())
+        enableFolding();
+
     gtk_widget_show_all(sw);
+
     g_signal_connect(view, "focus-in-event",
                      G_CALLBACK(onFocusIn), this);
     g_signal_connect(buffer, "changed",
@@ -646,6 +677,7 @@ void TextEditor::onFileChanged(const File::Change &change)
         TextEditor *source = static_cast<TextEditor *>(file().editors());
         if (source == this)
             source = static_cast<TextEditor *>(source->nextInFile());
+        assert(source);
         GtkTextBuffer *sourceBuffer = gtk_text_view_get_buffer(
             GTK_TEXT_VIEW(source->gtkSourceView()));
         assert(gtk_text_buffer_get_tag_table(buffer) ==
@@ -653,15 +685,33 @@ void TextEditor::onFileChanged(const File::Change &change)
         GtkTextIter begin, end, sourceBegin, sourceEnd;
         gtk_text_buffer_get_start_iter(buffer, &begin);
         gtk_text_buffer_get_end_iter(buffer, &end);
-        gtk_text_buffer_delete(buffer, &begin, &end);
-        gtk_text_buffer_get_end_iter(buffer, &end);
         gtk_text_buffer_get_start_iter(sourceBuffer, &sourceBegin);
         gtk_text_buffer_get_end_iter(sourceBuffer, &sourceEnd);
+
+        // Resize the folder vector before changing the buffer.
+        if (m_foldersRenderer)
+        {
+            m_folders.clear();
+            m_folders.resize(gtk_text_buffer_get_line_count(sourceBuffer));
+        }
+
+        gtk_text_buffer_delete(buffer, &begin, &end);
+        gtk_text_buffer_get_end_iter(buffer, &end);
         gtk_text_buffer_insert_range(buffer, &end, &sourceBegin, &sourceEnd);
     }
     else if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
         const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
+
+        // Resize the folder vector before changing the buffer.
+        if (m_foldersRenderer)
+        {
+            if (ins.line < ins.newLine)
+                m_folders.insert(m_folders.begin() + ins.line,
+                                 ins.newLine - ins.line,
+                                 boost::shared_ptr<Folder>());
+        }
+
         GtkTextIter iter;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &iter,
                                                 ins.line, ins.column);
@@ -672,6 +722,15 @@ void TextEditor::onFileChanged(const File::Change &change)
     else
     {
         const TextFile::Change::Value::Removal &rem = tc.value.removal;
+
+        // Resize the folder vector before changing the buffer.
+        if (m_foldersRenderer)
+        {
+            if (rem.beginLine < rem.endLine)
+                m_folders.erase(m_folders.begin() + rem.beginLine,
+                                m_folders.begin() + rem.endLine);
+        }
+
         GtkTextIter begin, end;
         gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
                                                 rem.beginLine, rem.beginColumn);
@@ -784,6 +843,7 @@ void TextEditor::installPreferences()
     prefs.addChild(HIGHLIGHT_SYNTAX, DEFAULT_HIGHLIGHT_SYNTAX);
     prefs.addChild(INDENT, DEFAULT_INDENT);
     prefs.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
+    prefs.addChild(FOLD_STRUCTURED_TEXT, DEFAULT_FOLD_STRUCTURED_TEXT);
 
     PreferencesEditor::addCategory(TEXT_EDITOR, _("_Text Editor"));
     PreferencesEditor::registerPreferences(TEXT_EDITOR, setupPreferencesEditor);
@@ -801,6 +861,103 @@ void TextEditor::redo()
     m_followCursor = true;
     file().redo();
     m_followCursor = false;
+}
+
+void TextEditor::onFoldersUpdated()
+{
+    gtk_source_gutter_renderer_queue_draw(m_foldersRenderer);
+}
+
+void TextEditor::activateFolder(GtkSourceGutterRenderer *renderer,
+                                GtkTextIter *iter,
+                                GdkRectangle *area,
+                                GdkEvent *event,
+                                TextEditor *editor)
+{
+    int line = gtk_text_iter_get_line(iter);
+    Folder *folder = editor->m_folders[line].get();
+    if (!folder)
+        return;
+
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(editor->gtkSourceView()));
+    int span = folder->span();
+    if (folder->folded)
+    {
+        // Expand it.
+        GtkTextIter begin, end;
+
+        // Remove the invisible tag.
+        gtk_text_buffer_get_iter_at_line(buffer, &begin, line);
+        gtk_text_buffer_get_iter_at_line(buffer, &end, line + span);
+        gtk_text_buffer_remove_tag_by_name(buffer, INVISIBLE, &begin, &end);
+
+        // Check the states of the folders in the span and apply the invisible
+        // tag if folded.
+        int i = line + 1;
+        while (i < line + span)
+        {
+            if (editor->m_folders[i] && editor->m_folders[i]->folded)
+            {
+                int sp = editor->m_folders[i]->span();
+                gtk_text_buffer_get_iter_at_line(buffer, &begin, i);
+                gtk_text_buffer_get_iter_at_line(buffer, &end, i + sp);
+                gtk_text_buffer_apply_tag_by_name(buffer, INVISIBLE,
+                                                  &begin, &end);
+                i += sp;
+            }
+            else
+                i++;
+        }
+
+        folder->folded = false;
+    }
+    else
+    {
+        // Fold it.
+        GtkTextIter begin, end;
+
+        // Clean up the invisible tag in the span.
+        gtk_text_buffer_get_iter_at_line(buffer, &begin, line);
+        gtk_text_buffer_get_iter_at_line(buffer, &end, line + span);
+        gtk_text_buffer_remove_tag_by_name(buffer, INVISIBLE, &begin, &end);
+
+        // Apply the invisible tag.
+        gtk_text_buffer_apply_tag_by_name(buffer, INVISIBLE, &begin, &end);
+
+        folder->folded = true;
+    }
+}
+
+gboolean TextEditor::queryFolderActivatable(GtkSourceGutterRenderer *renderer,
+                                            GtkTextIter *iter,
+                                            GdkRectangle *area,
+                                            GdkEvent *event,
+                                            TextEditor *editor)
+{
+    if (editor->m_folders[gtk_text_iter_get_line(iter)])
+        return TRUE;
+    return FALSE;
+}
+
+void TextEditor::queryFolderData(GtkSourceGutterRenderer *renderer,
+                                 GtkTextIter *begin,
+                                 GtkTextIter *end,
+                                 GtkSourceGutterRendererState state,
+                                 TextEditor *editor)
+{
+    int line = gtk_text_iter_get_line(begin);
+    if (editor->m_folders[line])
+    {
+        if (editor->m_folders[line]->folded)
+            gtk_source_gutter_renderer_pixbuf_set_icon_name(
+                GTK_SOURCE_GUTTER_RENDERER_PIXBUF(renderer),
+                "pan-end-symbolic");
+        else
+            gtk_source_gutter_renderer_pixbuf_set_icon_name(
+                GTK_SOURCE_GUTTER_RENDERER_PIXBUF(renderer),
+                "pan-down-symbolic");
+    }
 }
 
 void TextEditor::activateAction(Window &window,
@@ -851,7 +1008,7 @@ void TextEditor::onFontSet(GtkFontButton *button, gpointer data)
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -876,7 +1033,7 @@ void TextEditor::onTabWidthChanged(GtkSpinButton *spin, gpointer data)
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -902,7 +1059,7 @@ void TextEditor::onInsertSpacesInsteadOfTabsToggled(GtkToggleButton *toggle,
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -928,7 +1085,7 @@ void TextEditor::onShowLineNumbersToggled(GtkToggleButton *toggle,
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -954,7 +1111,7 @@ void TextEditor::onHighlightSyntaxToggled(GtkToggleButton *toggle,
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -981,7 +1138,7 @@ void TextEditor::onIndentWidthChanged(GtkSpinButton *spin, gpointer data)
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -1006,7 +1163,7 @@ void TextEditor::onIndentToggled(GtkToggleButton *toggle, gpointer data)
          file;
          file = file->next())
     {
-        if (TextFile::isSupportedType(file->mimeType()))
+        if (file->type() & TextFile::TYPE)
         {
             for (Editor *editor = file->editors();
                  editor;
@@ -1014,6 +1171,85 @@ void TextEditor::onIndentToggled(GtkToggleButton *toggle, gpointer data)
                 gtk_source_view_set_auto_indent(
                     static_cast<TextEditor *>(editor)->gtkSourceView(),
                     indent);
+        }
+    }
+}
+
+void TextEditor::enableFolding()
+{
+    if (!m_foldersRenderer)
+    {
+        m_folders.resize(lineCount());
+
+        GtkSourceView *view = gtkSourceView();
+        GtkSourceGutter *gutter =
+            gtk_source_view_get_gutter(view,
+                                       GTK_TEXT_WINDOW_LEFT);
+        m_foldersRenderer = gtk_source_gutter_renderer_pixbuf_new();
+        gtk_source_gutter_insert(gutter,
+                                 m_foldersRenderer,
+                                 FOLDER_POSITION);
+        g_signal_connect(m_foldersRenderer, "activate",
+                         G_CALLBACK(activateFolder), this);
+        g_signal_connect(m_foldersRenderer, "query-activatable",
+                         G_CALLBACK(queryFolderActivatable), this);
+        g_signal_connect(m_foldersRenderer, "query-data",
+                         G_CALLBACK(queryFolderData), this);
+        gtk_source_gutter_renderer_set_alignment_mode(
+            m_foldersRenderer,
+            GTK_SOURCE_GUTTER_RENDERER_ALIGNMENT_MODE_FIRST);
+        gtk_source_gutter_renderer_set_size(m_foldersRenderer,
+                                            measureLineHeight(view));
+    }
+}
+
+void TextEditor::disableFolding()
+{
+    if (m_foldersRenderer)
+    {
+        GtkSourceView *view = gtkSourceView();
+        GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(view));
+
+        // Expand all folders.
+        GtkTextIter begin, end;
+        gtk_text_buffer_get_start_iter(buffer, &begin);
+        gtk_text_buffer_get_end_iter(buffer, &end);
+        gtk_text_buffer_remove_tag_by_name(buffer, INVISIBLE, &begin, &end);
+
+        GtkSourceGutter *gutter =
+            gtk_source_view_get_gutter(view,
+                                       GTK_TEXT_WINDOW_LEFT);
+        gtk_source_gutter_remove(gutter, m_foldersRenderer);
+        m_foldersRenderer = NULL;
+    }
+}
+
+void TextEditor::onFoldToggled(GtkToggleButton *toggle, gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(FOLD_STRUCTURED_TEXT,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+    bool fold = prefs.get<bool>(FOLD_STRUCTURED_TEXT);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if ((file->type() & TextFile::TYPE) && file->structured())
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+            {
+                if (fold)
+                    static_cast<TextEditor *>(editor)->enableFolding();
+                else
+                    static_cast<TextEditor *>(editor)->disableFolding();
+            }
+            if (fold)
+                file->updateStructure();
         }
     }
 }
@@ -1078,7 +1314,7 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     GtkWidget *highlight = gtk_check_button_new_with_mnemonic(
         _("_Highlight syntax"));
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(highlight),
-                                 prefs.get<bool>(SHOW_LINE_NUMBERS));
+                                 prefs.get<bool>(HIGHLIGHT_SYNTAX));
     g_signal_connect(highlight, "toggled",
                      G_CALLBACK(onHighlightSyntaxToggled), NULL);
     gtk_grid_attach_next_to(grid, highlight, lineNumbers,
@@ -1107,6 +1343,16 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_grid_attach_next_to(grid, indentLine, highlight,
                             GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(indentLine);
+
+    GtkWidget *fold = gtk_check_button_new_with_mnemonic(
+        _("Fol_d structured text"));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(fold),
+                                 prefs.get<bool>(FOLD_STRUCTURED_TEXT));
+    g_signal_connect(fold, "toggled",
+                     G_CALLBACK(onFoldToggled), NULL);
+    gtk_grid_attach_next_to(grid, fold, indentLine,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(fold);
 }
 
 }
