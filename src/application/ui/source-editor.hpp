@@ -43,7 +43,7 @@ public:
     /**
      * Create the data that will be shared by all source editors.  It is
      * required that this function be called before any source editor or
-     * derived editor is created.  This function creates a tag table.
+     * derived editor is created.  This function creates the shared tag table.
      */
     static void createSharedData();
 
@@ -57,10 +57,18 @@ public:
                         int endLine, int endColumn,
                         CXTokenKind tokenKind);
 
-    void cleanTokens(int beginLine, int beginColumn,
-                     int endLine, int endColumn);
+    void unhighlightAllTokens(int beginLine, int beginColumn,
+                              int endLine, int endColumn);
 
 protected:
+    class Folder: public TextEditor::Folder
+    {
+    public:
+        Folder(int sign): signature(sign) {}
+
+        int signature;
+    };
+
     static GtkTextTagTable *createSharedTagTable();
 
     SourceEditor(SourceFile &file, Project *project);
@@ -68,6 +76,11 @@ protected:
     bool setup();
 
     bool restore(XmlElement &xmlElement);
+
+    virtual int folderSpan(const Folder &folder, int line) const;
+
+    virtual Folder *cloneFolder(const Folder &folder) const
+    { return new Folder(folder); }
 
 private:
     static GtkTextTagTable *s_sharedTagTable;

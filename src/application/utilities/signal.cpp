@@ -30,7 +30,6 @@ std::list<Samoyed::Signal::SignalHandler> terminationHandlers;
 
 #ifndef OS_WINDOWS
 
-struct sigaction savedFpeSignalAction;
 struct sigaction savedIllSignalAction;
 struct sigaction savedSegvSignalAction;
 struct sigaction savedBusSignalAction;
@@ -47,11 +46,17 @@ volatile bool terminating = false;
 
 LONG CALLBACK onCrashed(PEXCEPTION_POINTERS exceptionPointers)
 {
-    for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
-            crashHandlers.begin();
-         i != crashHandlers.end();
-         ++i)
-        (*i)(exceptionPointers->ExceptionRecord->ExceptionCode);
+    switch (exceptionPointers->ExceptionRecord->ExceptionCode)
+    {
+    case EXCEPTION_ACCESS_VIOLATION:
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+        for (std::list<Samoyed::Signal::SignalHandler>::const_iterator i =
+                crashHandlers.begin();
+             i != crashHandlers.end();
+             ++i)
+            (*i)(exceptionPointers->ExceptionRecord->ExceptionCode);
+    }
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
@@ -64,9 +69,6 @@ void onCrashed(int signalNumber)
     crashing = true;
     switch (signalNumber)
     {
-    case SIGFPE:
-        sigaction(SIGFPE, &savedFpeSignalAction, 0);
-        break;
     case SIGILL:
         sigaction(SIGILL, &savedIllSignalAction, 0);
         break;
@@ -122,12 +124,11 @@ void Signal::registerCrashHandler(SignalHandler handler)
 #ifdef OS_WINDOWS
         AddVectoredExceptionHandler(1, onCrashed);
 #else
-        // Catch SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP and SIGSYS.
+        // Catch SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP and SIGSYS.
         struct sigaction newAction;
         newAction.sa_handler = onCrashed;
         sigemptyset(&newAction.sa_mask);
         newAction.sa_flags = 0;
-        sigaction(SIGFPE, &newAction, &savedFpeSignalAction);
         sigaction(SIGILL, &newAction, &savedIllSignalAction);
         sigaction(SIGSEGV, &newAction, &savedSegvSignalAction);
         sigaction(SIGBUS, &newAction, &savedBusSignalAction);
@@ -171,8 +172,14 @@ int i = 0;
 void myOnCrashed(int sig)
 {
     printf("Crashed at %d!\n", i);
+#ifdef OS_WINDOWS
+    if (sig == EXCEPTION_ACCESS_VIOLATION)
+        printf("Segmentation fault!\n");
+#else
     if (sig == SIGSEGV)
         printf("Segmentation fault!\n");
+#endif
+    fflush(stdout);
 }
 
 void myOnKilled(int sig)
@@ -184,18 +191,21 @@ void myOnKilled(int sig)
 
 int main()
 {
-    int* p = 0;
+    int *p = 0;
     int a;
+
     Samoyed::Signal::registerCrashHandler(myOnCrashed);
     Samoyed::Signal::registerTerminationHandler(myOnKilled);
-    for ( ; i < 100; ++i)
+    for (; i < 100; ++i)
     {
-        printf("Type an integer (0 - segmentation fault; 1 - termination):\n");
+        printf("Type an integer:\n"
+               "  0 - segmentation fault;\n"
+               "  1 - termination (Linux only)\n");
         scanf("%d", &a);
         if (a == 0)
             *p = 0;
 #ifndef OS_WINDOWS
-        if (a == 1)
+        else if (a == 1)
             kill(getpid(), SIGTERM);
 #endif
     }

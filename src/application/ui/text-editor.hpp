@@ -54,7 +54,7 @@ public:
     /**
      * Create the data that will be shared by all text editors.  It is required
      * that this function be called before any text editor or derived editor is
-     * created.  This function creates a tag table.
+     * created.  This function creates the shared tag table.
      */
     static void createSharedData();
 
@@ -121,7 +121,7 @@ protected:
     public:
         Folder(): folded(false) {}
         virtual ~Folder() {}
-        virtual int span() const = 0;
+
         bool folded;
     };
 
@@ -129,7 +129,7 @@ protected:
 
     TextEditor(TextFile &file, Project *project);
 
-    bool setup(GtkTextTagTable *tagTable, bool highlightSyntax);
+    bool setup(GtkTextTagTable *tagTable);
 
     bool restore(XmlElement &xmlElement, GtkTextTagTable *tagTable);
 
@@ -138,6 +138,12 @@ protected:
                               TextEditor *editor);
 
     void onFoldersUpdated();
+
+    virtual int folderSpan(const Folder &folder, int line) const
+    { return 0; }
+
+    virtual Folder *cloneFolder(const Folder &folder) const
+    { return NULL; }
 
     std::vector<boost::shared_ptr<Folder> > m_folders;
 

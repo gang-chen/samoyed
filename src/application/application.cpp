@@ -74,8 +74,6 @@ Application::Application():
     m_histories(NULL),
     m_foregroundFileParser(NULL),
     m_session(NULL),
-    m_createSession(false),
-    m_switchSession(false),
     m_firstProject(NULL),
     m_lastProject(NULL),
     m_firstFile(NULL),
@@ -83,6 +81,9 @@ Application::Application():
     m_firstWindow(NULL),
     m_lastWindow(NULL),
     m_currentWindow(NULL),
+    m_quitting(false),
+    m_createSession(false),
+    m_switchSession(false),
     m_sessionName(NULL),
     m_newSessionName(NULL),
     m_chooseSession(0),
@@ -294,11 +295,14 @@ gboolean Application::shutDown(gpointer app)
 
 void Application::finishQuitting()
 {
+    assert(m_quitting);
     assert(m_session);
     assert(!m_firstProject);
     assert(!m_lastProject);
     assert(!m_firstFile);
     assert(!m_lastFile);
+
+    m_quitting = false;
 
     // Close all windows.
     for (Window *window = m_lastWindow, *prev; window; window = prev)
@@ -334,6 +338,11 @@ bool Application::quit()
 {
     assert(m_session);
 
+    // Mark.
+    if (m_quitting)
+        return true;
+    m_quitting = true;
+
     // Save the current session.  If the user cancels quitting the session,
     // cancel quitting.
     if (!m_session->save())
@@ -342,6 +351,13 @@ bool Application::quit()
     // Destroy the preferences editor for this session.
     delete m_preferencesEditor;
     m_preferencesEditor = NULL;
+
+    // If no project or file is open, quit immediately.
+    if (!m_firstProject && !m_firstFile)
+    {
+        finishQuitting();
+        return true;
+    }
 
     // Close all projects.
     for (Project *project = m_lastProject, *prev; project; project = prev)
@@ -563,7 +579,7 @@ void Application::removeProject(Project &project)
 void Application::destroyProject(Project &project)
 {
     delete &project;
-    if (!m_firstProject && !m_firstFile)
+    if (m_quitting && !m_firstProject && !m_firstFile)
         finishQuitting();
 }
 
@@ -598,7 +614,7 @@ void Application::removeFile(File &file)
 void Application::destroyFile(File &file)
 {
     delete &file;
-    if (!m_firstProject && !m_firstFile)
+    if (m_quitting && !m_firstProject && !m_firstFile)
         finishQuitting();
 }
 

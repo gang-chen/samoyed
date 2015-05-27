@@ -425,7 +425,7 @@ TextEditor::TextEditor(TextFile &file, Project *project):
 {
 }
 
-bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
+bool TextEditor::setup(GtkTextTagTable *tagTable)
 {
     if (!Editor::setup())
         return false;
@@ -463,7 +463,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
     gtk_source_view_set_show_line_numbers(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(SHOW_LINE_NUMBERS));
-    if (highlightSyntax)
+    if (!static_cast<TextFile &>(file()).supportSyntaxHighlight())
     {
         char *fileType = g_content_type_from_mime_type(file().mimeType());
         GtkSourceLanguage *lang = gtk_source_language_manager_guess_language(
@@ -499,7 +499,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable, bool highlightSyntax)
 TextEditor *TextEditor::create(TextFile &file, Project *project)
 {
     TextEditor *editor = new TextEditor(file, project);
-    if (!editor->setup(NULL, true))
+    if (!editor->setup(NULL))
     {
         editor->close();
         return NULL;
@@ -688,16 +688,28 @@ void TextEditor::onFileChanged(const File::Change &change)
         gtk_text_buffer_get_start_iter(sourceBuffer, &sourceBegin);
         gtk_text_buffer_get_end_iter(sourceBuffer, &sourceEnd);
 
-        // Resize the folder vector before changing the buffer.
+        // Copy the folder vector before changing the buffer.
         if (m_foldersRenderer)
         {
             m_folders.clear();
-            m_folders.resize(gtk_text_buffer_get_line_count(sourceBuffer));
+            m_folders.resize(source->m_folders.size());
+            for (unsigned i = 0; i < m_folders.size(); ++i)
+            {
+                if (source->m_folders[i])
+                {
+                    m_folders[i].reset(
+                        cloneFolder(*source->m_folders[i].get()));
+                    m_folders[i]->folded = false;
+                }
+            }
         }
 
         gtk_text_buffer_delete(buffer, &begin, &end);
         gtk_text_buffer_get_end_iter(buffer, &end);
         gtk_text_buffer_insert_range(buffer, &end, &sourceBegin, &sourceEnd);
+
+        if (m_foldersRenderer)
+            gtk_source_gutter_renderer_queue_draw(m_foldersRenderer);
     }
     else if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
@@ -874,6 +886,10 @@ void TextEditor::activateFolder(GtkSourceGutterRenderer *renderer,
                                 GdkEvent *event,
                                 TextEditor *editor)
 {
+    // Disallow folding temporarily when the structure is not updated.
+    if (!editor->file().structureUpdated())
+        return;
+
     int line = gtk_text_iter_get_line(iter);
     Folder *folder = editor->m_folders[line].get();
     if (!folder)
@@ -881,7 +897,7 @@ void TextEditor::activateFolder(GtkSourceGutterRenderer *renderer,
 
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(editor->gtkSourceView()));
-    int span = folder->span();
+    int span = editor->folderSpan(*folder, line);
     if (folder->folded)
     {
         // Expand it.
@@ -899,7 +915,7 @@ void TextEditor::activateFolder(GtkSourceGutterRenderer *renderer,
         {
             if (editor->m_folders[i] && editor->m_folders[i]->folded)
             {
-                int sp = editor->m_folders[i]->span();
+                int sp = editor->folderSpan(*editor->m_folders[i].get(), i);
                 gtk_text_buffer_get_iter_at_line(buffer, &begin, i);
                 gtk_text_buffer_get_iter_at_line(buffer, &end, i + sp);
                 gtk_text_buffer_apply_tag_by_name(buffer, INVISIBLE,
@@ -935,6 +951,10 @@ gboolean TextEditor::queryFolderActivatable(GtkSourceGutterRenderer *renderer,
                                             GdkEvent *event,
                                             TextEditor *editor)
 {
+    // Disallow folding temporarily when the structure is not updated.
+    if (!editor->file().structureUpdated())
+        return FALSE;
+
     if (editor->m_folders[gtk_text_iter_get_line(iter)])
         return TRUE;
     return FALSE;
@@ -1113,14 +1133,24 @@ void TextEditor::onHighlightSyntaxToggled(GtkToggleButton *toggle,
     {
         if (file->type() & TextFile::TYPE)
         {
-            for (Editor *editor = file->editors();
-                 editor;
-                 editor = editor->nextInFile())
-                gtk_source_buffer_set_highlight_syntax(
-                    GTK_SOURCE_BUFFER(gtk_text_view_get_buffer(
-                        GTK_TEXT_VIEW(static_cast<TextEditor *>(editor)->
-                        gtkSourceView()))),
-                    highlight);
+            if (static_cast<TextFile *>(file)->supportSyntaxHighlight())
+            {
+                if (highlight)
+                    static_cast<TextFile *>(file)->highlightSyntax();
+                else
+                    static_cast<TextFile *>(file)->unhighlightSyntax();
+            }
+            else
+            {
+                for (Editor *editor = file->editors();
+                     editor;
+                     editor = editor->nextInFile())
+                    gtk_source_buffer_set_highlight_syntax(
+                        GTK_SOURCE_BUFFER(gtk_text_view_get_buffer(
+                            GTK_TEXT_VIEW(static_cast<TextEditor *>(editor)->
+                            gtkSourceView()))),
+                        highlight);
+            }
         }
     }
 }

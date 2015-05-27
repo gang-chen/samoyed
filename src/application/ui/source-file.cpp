@@ -1,4 +1,4 @@
-// Opened source file.
+// Open source file.
 // Copyright (C) 2012 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
@@ -21,6 +21,10 @@
 
 #define TEXT_FILE_OPTIONS "text-file-options"
 #define SOURCE_FILE_OPTIONS "source-file-options"
+
+#define TEXT_EDITOR "text-editor"
+#define HIGHLIGHT_SYNTAX "highlight-syntax"
+#define FOLD_STRUCTURED_TEXT "fold-structured-text"
 
 namespace
 {
@@ -118,7 +122,8 @@ SourceFile::SourceFile(const char *uri,
              mimeType,
              strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
              options.child(TEXT_FILE_OPTIONS) : options),
-    m_needReparse(false)
+    m_needReparse(false),
+    m_structureUpdated(false)
 {
 }
 
@@ -192,6 +197,7 @@ void SourceFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
     }
     else
         Application::instance().foregroundFileParser().parse(uri());
+    m_structureUpdated = false;
 }
 
 void SourceFile::onChanged(const File::Change &change, bool loading)
@@ -207,6 +213,7 @@ void SourceFile::onChanged(const File::Change &change, bool loading)
     }
     else
         m_needReparse = true;
+    m_structureUpdated = false;
 }
 
 void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
@@ -246,7 +253,7 @@ void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
     else
     {
         m_tu.swap(tu);
-        highlightTokens();
+        highlightSyntax();
         updateStructure();
     }
 }
@@ -262,15 +269,17 @@ SourceFile::onCodeCompletionDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
     }
 }
 
-void SourceFile::highlightTokens()
+void SourceFile::highlightSyntax()
 {
-    for (SourceEditor *editor = static_cast<SourceEditor *>(editors());
-         editor;
-         editor = static_cast<SourceEditor *>(editor->nextInFile()))
-        editor->cleanTokens(0, 0, -1, -1);
+    if (!Application::instance().preferences().child(TEXT_EDITOR).
+        get<bool>(HIGHLIGHT_SYNTAX))
+        return;
 
     if (!m_tu)
         return;
+
+    for (Editor *editor = editors(); editor; editor = editor->nextInFile())
+        static_cast<SourceEditor *>(editor)->unhighlightAllTokens(0, 0, -1, -1);
 
     CXTranslationUnit tu = m_tu.get();
     char *fileName = g_filename_from_uri(uri(), NULL, NULL);
@@ -294,21 +303,32 @@ void SourceFile::highlightTokens()
         unsigned int endLine, endColumn;
         clang_getFileLocation(end, NULL, &endLine, &endColumn, NULL);
 
-        for (SourceEditor *editor = static_cast<SourceEditor *>(editors());
-             editor;
-             editor = static_cast<SourceEditor *>(editor->nextInFile()))
+        for (Editor *editor = editors(); editor; editor = editor->nextInFile())
         {
-            editor->highlightToken(beginLine - 1, beginColumn - 1,
-                                   endLine - 1, endColumn - 1,
-                                   clang_getTokenKind(tokens[i]));
+            static_cast<SourceEditor *>(editor)->highlightToken(
+                beginLine - 1, beginColumn - 1,
+                endLine - 1, endColumn - 1,
+                clang_getTokenKind(tokens[i]));
         }
     }
 }
 
+void SourceFile::unhighlightSyntax()
+{
+    for (Editor *editor = editors(); editor; editor = editor->nextInFile())
+        static_cast<SourceEditor *>(editor)->unhighlightAllTokens(0, 0, -1, -1);
+}
+
 void SourceFile::updateStructure()
 {
+    if (!Application::instance().preferences().child(TEXT_EDITOR).
+        get<bool>(FOLD_STRUCTURED_TEXT))
+        return;
+
     if (!m_tu)
         return;
+
+    m_structureUpdated = true;
 }
 
 }

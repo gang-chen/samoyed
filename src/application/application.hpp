@@ -66,6 +66,11 @@ public:
     bool quit();
 
     /**
+     * @return True iff we are quitting the current session.
+     */
+    bool quitting() const { return m_quitting; }
+
+    /**
      * Request to start a new session.
      */
     void createSession();
@@ -221,11 +226,6 @@ private:
 
     Session *m_session;
 
-    // We are quitting the current session.  Will we create a new session,
-    // switch to another session, or quit this application?
-    bool m_createSession;
-    bool m_switchSession;
-
     // Global data.
     ProjectTable m_projectTable;
     Project *m_firstProject;
@@ -238,6 +238,14 @@ private:
     Window *m_firstWindow;
     Window *m_lastWindow;
     Window *m_currentWindow;
+
+    // Quitting the current session?
+    bool m_quitting;
+
+    // We are quitting the current session.  Will we create a new session,
+    // switch to another session, or quit this application?
+    bool m_createSession;
+    bool m_switchSession;
 
     // Command line options.
     char *m_sessionName;

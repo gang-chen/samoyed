@@ -191,7 +191,7 @@ SourceEditor::SourceEditor(SourceFile &file, Project *project):
 
 bool SourceEditor::setup()
 {
-    if (!TextEditor::setup(s_sharedTagTable, false))
+    if (!TextEditor::setup(s_sharedTagTable))
         return false;
     return true;
 }
@@ -238,8 +238,8 @@ void SourceEditor::highlightToken(int beginLine, int beginColumn,
                                       &begin, &end);
 }
 
-void SourceEditor::cleanTokens(int beginLine, int beginColumn,
-                               int endLine, int endColumn)
+void SourceEditor::unhighlightAllTokens(int beginLine, int beginColumn,
+                                        int endLine, int endColumn)
 {
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtkSourceView()));
@@ -255,6 +255,11 @@ void SourceEditor::cleanTokens(int beginLine, int beginColumn,
         gtk_text_buffer_remove_tag_by_name(buffer,
                                            TOKEN_KIND_NAMES[i],
                                            &begin, &end);
+}
+
+int SourceEditor::folderSpan(const Folder &folder, int line) const
+{
+    return 0;
 }
 
 }

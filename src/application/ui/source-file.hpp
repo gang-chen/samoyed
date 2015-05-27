@@ -35,7 +35,15 @@ public:
 
     virtual bool structured() const { return true; }
 
+    virtual bool structreUpdated() const { return m_structureUpdated; }
+
     virtual void updateStructure();
+
+    virtual bool supportSyntaxHighlight() const { return true; }
+
+    virtual void highlightSyntax();
+
+    virtual void unhighlightSyntax();
 
     void onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
                      int error);
@@ -84,6 +92,8 @@ private:
     boost::shared_ptr<CXTranslationUnitImpl> m_tu;
 
     bool m_needReparse;
+
+    bool m_structureUpdated;
 };
 
 }

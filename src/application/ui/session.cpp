@@ -452,6 +452,9 @@ Session::UnsavedFilesReader::UnsavedFilesReader(Scheduler &scheduler,
 // Don't report any error.
 bool Session::UnsavedFilesReader::step()
 {
+    if (!g_file_test(m_fileName.c_str(), G_FILE_TEST_EXISTS))
+        return true;
+
     xmlDocPtr doc = xmlParseFile(m_fileName.c_str());
     if (!doc)
     {

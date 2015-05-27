@@ -136,6 +136,12 @@ public:
      */
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
+    virtual bool supportSyntaxHighlight() const { return false; }
+
+    virtual void highlightSyntax() {}
+
+    virtual void unhighlightSyntax() {}
+
 protected:
     class EditPrimitive: public File::EditPrimitive
     {
