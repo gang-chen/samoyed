@@ -7,7 +7,6 @@
 #include "editor.hpp"
 #include <list>
 #include <string>
-#include <vector>
 #include <boost/shared_ptr.hpp>
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
@@ -68,7 +67,7 @@ public:
 
     virtual void grabFocus();
 
-    virtual void onFileChanged(const File::Change &change);
+    virtual void onFileChanged(const File::Change &change, bool loading);
 
     virtual bool frozen() const;
 
@@ -116,15 +115,6 @@ public:
                                    Actions::ActionIndex index);
 
 protected:
-    class Folder
-    {
-    public:
-        Folder(): folded(false) {}
-        virtual ~Folder() {}
-
-        bool folded;
-    };
-
     static GtkTextTagTable *createSharedTagTable();
 
     TextEditor(TextFile &file, Project *project);
@@ -137,19 +127,7 @@ protected:
                               GdkEventFocus *event,
                               TextEditor *editor);
 
-    void onFoldersUpdated();
-
-    virtual int folderSpan(const Folder &folder, int line) const
-    { return 0; }
-
-    virtual Folder *cloneFolder(const Folder &folder) const
-    { return NULL; }
-
-    std::vector<boost::shared_ptr<Folder> > m_folders;
-
 private:
-    static GtkTextTagTable *s_sharedTagTable;
-
     static void insert(GtkTextBuffer *buffer, GtkTextIter *location,
                        char *text, int length,
                        TextEditor *editor);
@@ -157,22 +135,6 @@ private:
     static void remove(GtkTextBuffer *buffer,
                        GtkTextIter *begin, GtkTextIter *end,
                        TextEditor *editor);
-
-    static void activateFolder(GtkSourceGutterRenderer *renderer,
-                               GtkTextIter *iter,
-                               GdkRectangle *area,
-                               GdkEvent *event,
-                               TextEditor *editor);
-    static gboolean queryFolderActivatable(GtkSourceGutterRenderer *renderer,
-                                           GtkTextIter *iter,
-                                           GdkRectangle *area,
-                                           GdkEvent *event,
-                                           TextEditor *editor);
-    static void queryFolderData(GtkSourceGutterRenderer *renderer,
-                                GtkTextIter *begin,
-                                GtkTextIter *end,
-                                GtkSourceGutterRendererState state,
-                                TextEditor *editor);
 
     static void setupPreferencesEditor(GtkGrid *grid);
 
@@ -186,18 +148,14 @@ private:
                                          gpointer data);
     static void onIndentWidthChanged(GtkSpinButton *spin, gpointer data);
     static void onIndentToggled(GtkToggleButton *toggle, gpointer data);
-    static void onFoldToggled(GtkToggleButton *toggle, gpointer data);
 
-    void enableFolding();
-    void disableFolding();
+    static GtkTextTagTable *s_sharedTagTable;
 
     bool m_fileChange;
     bool m_followCursor;
 
     int m_presetCursorLine;
     int m_presetCursorColumn;
-
-    GtkSourceGutterRenderer *m_foldersRenderer;
 };
 
 }

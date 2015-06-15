@@ -205,9 +205,12 @@ bool Editor::setup()
     if (!Widget::setup(id.c_str()))
         return false;
     char *fileName = g_filename_from_uri(m_file.uri(), NULL, NULL);
-    char *title = g_filename_display_basename(fileName);
-    setTitle(title);
-    g_free(title);
+    char *baseName = g_filename_display_basename(fileName);
+    std::string title(baseName);
+    if (m_file.edited())
+        title.insert(0, "* ");
+    setTitle(title.c_str());
+    g_free(baseName);
     g_free(fileName);
     setDescription(m_file.uri());
     return true;

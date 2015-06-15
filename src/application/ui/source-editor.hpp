@@ -5,9 +5,11 @@
 #define SMYD_SOURCE_EDITOR_HPP
 
 #include "text-editor.hpp"
+#include "source-file.hpp"
 #include "utilities/property-tree.hpp"
 #include <list>
 #include <string>
+#include <vector>
 #include <gtk/gtk.h>
 #include <libxml/tree.h>
 #include <clang-c/Index.h>
@@ -40,6 +42,17 @@ public:
         bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
     };
 
+    enum TokenKind
+    {
+        TOKEN_KIND_PUNCTUATION,
+        TOKEN_KIND_KEYWORD,
+        TOKEN_KIND_IDENTIFIER,
+        TOKEN_KIND_LITERAL,
+        TOKEN_KIND_COMMENT
+    };
+
+    static TokenKind clangTokenKind2TokenKind(CXTokenKind kind);
+
     /**
      * Create the data that will be shared by all source editors.  It is
      * required that this function be called before any source editor or
@@ -51,24 +64,22 @@ public:
 
     static SourceEditor *create(SourceFile &file, Project *project);
 
+    static void installPreferences();
+
     virtual Widget::XmlElement *save() const;
 
     void highlightToken(int beginLine, int beginColumn,
                         int endLine, int endColumn,
-                        CXTokenKind tokenKind);
+                        TokenKind tokenKind);
 
     void unhighlightAllTokens(int beginLine, int beginColumn,
                               int endLine, int endColumn);
 
+    virtual void onFileChanged(const File::Change &change, bool loading);
+
+    void onFileStructureUpdated();
+
 protected:
-    class Folder: public TextEditor::Folder
-    {
-    public:
-        Folder(int sign): signature(sign) {}
-
-        int signature;
-    };
-
     static GtkTextTagTable *createSharedTagTable();
 
     SourceEditor(SourceFile &file, Project *project);
@@ -77,13 +88,48 @@ protected:
 
     bool restore(XmlElement &xmlElement);
 
-    virtual int folderSpan(const Folder &folder, int line) const;
-
-    virtual Folder *cloneFolder(const Folder &folder) const
-    { return new Folder(folder); }
-
 private:
+    struct FolderData
+    {
+        FolderData(): hasFolder(false), folded(false) {}
+        void reset() { hasFolder = false; folded = false; }
+        bool hasFolder;
+        bool folded;
+        SourceFile::StructureNode::Kind structureNodeKind;
+    };
+
+    bool onFileStructureNodeUpdated(const SourceFile::StructureNode *node);
+
+    void applyInvisibleTag(const SourceFile::StructureNode *node);
+
+    static void activateFolder(GtkSourceGutterRenderer *renderer,
+                               GtkTextIter *iter,
+                               GdkRectangle *area,
+                               GdkEvent *event,
+                               SourceEditor *editor);
+    static gboolean queryFolderActivatable(GtkSourceGutterRenderer *renderer,
+                                           GtkTextIter *iter,
+                                           GdkRectangle *area,
+                                           GdkEvent *event,
+                                           SourceEditor *editor);
+    static void queryFolderData(GtkSourceGutterRenderer *renderer,
+                                GtkTextIter *begin,
+                                GtkTextIter *end,
+                                GtkSourceGutterRendererState state,
+                                SourceEditor *editor);
+
+    static void setupPreferencesEditor(GtkGrid *grid);
+
+    void enableFolding();
+    void disableFolding();
+
+    static void onFoldToggled(GtkToggleButton *toggle, gpointer data);
+
     static GtkTextTagTable *s_sharedTagTable;
+
+    GtkSourceGutterRenderer *m_foldersRenderer;
+
+    std::vector<FolderData> m_foldersData;
 };
 
 }

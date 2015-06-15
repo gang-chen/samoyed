@@ -65,6 +65,54 @@ const MimeTypeSet mimeTypeSets[] =
     }
 };
 
+struct StructureUpdateParam
+{
+    StructureUpdateParam(Samoyed::SourceFile &file):
+        file(file),
+        parentNode(NULL)
+    {}
+    Samoyed::SourceFile &file;
+    Samoyed::SourceFile::StructureNode *parentNode;
+};
+
+void buildStructureNodeCache(
+    std::vector<const Samoyed::SourceFile::StructureNode *> &cache,
+    const Samoyed::SourceFile::StructureNode *node)
+{
+    if (!node->children())
+    {
+        for (int line = node->beginLine(); line <= node->endLine(); line++)
+            cache[line] = node;
+    }
+    else
+    {
+        for (int line = node->beginLine();
+             line < node->children()->beginLine();
+             line++)
+            cache[line] = node;
+        for (const Samoyed::SourceFile::StructureNode *child = node->children();
+             child;
+             child = child->next())
+        {
+            buildStructureNodeCache(cache, child);
+            if (child->next())
+            {
+                for (int line = child->endLine() + 1;
+                     line < child->next()->beginLine();
+                     line++)
+                    cache[line] = node;
+            }
+            else
+            {
+                for (int line = child->endLine() + 1;
+                     line <= node->endLine();
+                     line++)
+                    cache[line] = node;
+            }
+        }
+    }
+}
+
 }
 
 namespace Samoyed
@@ -112,6 +160,14 @@ void SourceFile::describeOptions(const PropertyTree &options,
                               desc);
 }
 
+SourceFile::StructureNode::~StructureNode()
+{
+    while (m_firstChild)
+        delete m_firstChild;
+    if (m_parent)
+        removeFromList(m_parent->m_firstChild, m_parent->m_lastChild);
+}
+
 // It is possible that options for text files are given.
 SourceFile::SourceFile(const char *uri,
                        int type,
@@ -123,12 +179,15 @@ SourceFile::SourceFile(const char *uri,
              strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
              options.child(TEXT_FILE_OPTIONS) : options),
     m_needReparse(false),
-    m_structureUpdated(false)
+    m_structureUpdated(false),
+    m_structureRoot(NULL)
 {
+    // We do not start parsing now.  We will do it after the file is loaded.
 }
 
 SourceFile::~SourceFile()
 {
+    delete m_structureRoot;
 }
 
 File *SourceFile::create(const char *uri,
@@ -197,14 +256,19 @@ void SourceFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
     }
     else
         Application::instance().foregroundFileParser().parse(uri());
-    m_structureUpdated = false;
 }
 
 void SourceFile::onChanged(const File::Change &change, bool loading)
 {
     TextFile::onChanged(change, loading);
+
+    m_structureUpdated = false;
+
+    // We do not start parsing during loading.  We will do it after the file is
+    // loaded.
     if (loading)
         return;
+
     if (m_tu)
     {
         boost::shared_ptr<CXTranslationUnitImpl> tu;
@@ -213,7 +277,6 @@ void SourceFile::onChanged(const File::Change &change, bool loading)
     }
     else
         m_needReparse = true;
-    m_structureUpdated = false;
 }
 
 void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
@@ -275,6 +338,8 @@ void SourceFile::highlightSyntax()
         get<bool>(HIGHLIGHT_SYNTAX))
         return;
 
+    // Need to wait for the parsed translation unit.  This function returns
+    // immediately and will be called when parsing is completed.
     if (!m_tu)
         return;
 
@@ -308,7 +373,8 @@ void SourceFile::highlightSyntax()
             static_cast<SourceEditor *>(editor)->highlightToken(
                 beginLine - 1, beginColumn - 1,
                 endLine - 1, endColumn - 1,
-                clang_getTokenKind(tokens[i]));
+                SourceEditor::clangTokenKind2TokenKind(
+                    clang_getTokenKind(tokens[i])));
         }
     }
 }
@@ -319,16 +385,110 @@ void SourceFile::unhighlightSyntax()
         static_cast<SourceEditor *>(editor)->unhighlightAllTokens(0, 0, -1, -1);
 }
 
+CXChildVisitResult SourceFile::updateStructureForAst(CXCursor ast,
+                                                     CXCursor parent,
+                                                     CXClientData data)
+{
+    StructureUpdateParam *param = static_cast<StructureUpdateParam *>(data);
+
+    char *fileName = g_filename_from_uri(param->file.uri(), NULL, NULL);
+    CXFile thisFile = clang_getFile(param->file.m_tu.get(), fileName);
+    g_free(fileName);
+
+    CXSourceRange range = clang_getCursorExtent(ast);
+    CXSourceLocation begin = clang_getRangeStart(range);
+    CXFile file;
+    unsigned int beginLine;
+    clang_getFileLocation(begin, &file, &beginLine, NULL, NULL);
+    if (file != thisFile)
+        return CXChildVisit_Continue;
+    CXSourceLocation end = clang_getRangeEnd(range);
+    unsigned int endLine;
+    clang_getFileLocation(end, &file, &endLine, NULL, NULL);
+    if (file != thisFile)
+        return CXChildVisit_Continue;
+
+    CXCursorKind kind = clang_getCursorKind(ast);
+    if (kind == CXCursor_StructDecl ||
+        kind == CXCursor_UnionDecl ||
+        kind == CXCursor_ClassDecl ||
+        kind == CXCursor_EnumDecl ||
+        kind == CXCursor_Namespace ||
+        kind == CXCursor_CompoundStmt ||
+        kind == CXCursor_IfStmt ||
+        kind == CXCursor_SwitchStmt ||
+        kind == CXCursor_WhileStmt ||
+        kind == CXCursor_DoStmt ||
+        kind == CXCursor_ForStmt ||
+        kind == CXCursor_CXXCatchStmt ||
+        kind == CXCursor_CXXTryStmt ||
+        kind == CXCursor_TranslationUnit)
+    {
+        beginLine--;
+        endLine--;
+
+        StructureNode *node = new StructureNode;
+        node->m_kind = static_cast<StructureNode::Kind>(kind);
+        node->m_beginLine = beginLine;
+        node->m_endLine = endLine;
+        if (param->parentNode)
+        {
+            node->m_parent = param->parentNode;
+            node->addToList(node->m_parent->m_firstChild,
+                            node->m_parent->m_lastChild);
+        }
+        else
+            param->file.m_structureRoot = node;
+
+        param->parentNode = node;
+        clang_visitChildren(ast,
+                            updateStructureForAst,
+                            data);
+        param->parentNode = node->m_parent;
+    }
+    else
+    {
+        clang_visitChildren(ast,
+                            updateStructureForAst,
+                            data);
+    }
+    return CXChildVisit_Continue;
+}
+
 void SourceFile::updateStructure()
 {
     if (!Application::instance().preferences().child(TEXT_EDITOR).
         get<bool>(FOLD_STRUCTURED_TEXT))
         return;
 
+    if (m_structureUpdated)
+        return;
+
+    // Need to wait for the parsed translation unit.  This function returns
+    // immediately and will be called when parsing is completed.
     if (!m_tu)
         return;
 
+    // Build the new structure.
+    delete m_structureRoot;
+    m_structureRoot = NULL;
+    StructureUpdateParam param(*this);
+    CXCursor ast = clang_getTranslationUnitCursor(m_tu.get());
+    updateStructureForAst(ast, clang_getNullCursor(), &param);
+
+    // Build the cache.
+    m_structureNodes.resize(lineCount(), NULL);
+    for (std::vector<const StructureNode *>::iterator iter =
+         m_structureNodes.begin();
+         iter != m_structureNodes.end();
+         ++iter)
+        *iter = NULL;
+    buildStructureNodeCache(m_structureNodes, m_structureRoot);
     m_structureUpdated = true;
+
+    // Notify editors.
+    for (Editor *editor = editors(); editor; editor = editor->nextInFile())
+        static_cast<SourceEditor *>(editor)->onFileStructureUpdated();
 }
 
 }

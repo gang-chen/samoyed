@@ -26,7 +26,7 @@ public:
     {
         enum Type
         {
-            TYPE_INSERTION = TYPE_INIT + 1,
+            TYPE_INSERTION,
             TYPE_REMOVAL
         };
         union Value
@@ -136,7 +136,11 @@ public:
      */
     bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
 
-    virtual bool supportSyntaxHighlight() const { return false; }
+    /**
+     * @return True iff this type of files provide the syntax highlighting
+     * functionality.
+     */
+    virtual bool provideSyntaxHighlighting() const { return false; }
 
     virtual void highlightSyntax() {}
 

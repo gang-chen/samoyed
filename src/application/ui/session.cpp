@@ -266,8 +266,9 @@ XmlElementSession *parseSessionFile(const char *fileName,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to restore session \"%s\"."),
-            sessionName);
+            _("Samoyed failed to restore session \"%s\". Samoyed will start a "
+              "new session named \"%s\"."),
+            sessionName, sessionName);
         xmlErrorPtr error = xmlGetLastError();
         if (error)
             Samoyed::gtkMessageDialogAddDetails(
@@ -297,8 +298,9 @@ XmlElementSession *parseSessionFile(const char *fileName,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to restore session \"%s\"."),
-            sessionName);
+            _("Samoyed failed to restore session \"%s\". Samoyed will start a "
+              "new session named \"%s\"."),
+            sessionName, sessionName);
         Samoyed::gtkMessageDialogAddDetails(
             dialog,
             _("Session file \"%s\" is empty."),
@@ -321,8 +323,9 @@ XmlElementSession *parseSessionFile(const char *fileName,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to restore session \"%s\"."),
-            sessionName);
+            _("Samoyed failed to restore session \"%s\". Samoyed will start a "
+              "new session named \"%s\"."),
+            sessionName, sessionName);
         if (errors.empty())
             Samoyed::gtkMessageDialogAddDetails(
                 dialog,
@@ -1187,19 +1190,11 @@ Session *Session::restore(const char *name)
         return NULL;
     }
 
+    // If the session directory does not exist, create the session.
     std::string sessionDirName(Application::instance().userDirectoryName());
     sessionDirName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
     sessionDirName += name;
-
-    std::string sessionFileName(Application::instance().userDirectoryName());
-    sessionFileName += G_DIR_SEPARATOR_S "sessions" G_DIR_SEPARATOR_S;
-    sessionFileName += name;
-    sessionFileName += G_DIR_SEPARATOR_S "session.xml";
-
-    // If the session directory or the session file does not exist, create the
-    // session.
-    if (!g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS) ||
-        !g_file_test(sessionFileName.c_str(), G_FILE_TEST_EXISTS))
+    if (!g_file_test(sessionDirName.c_str(), G_FILE_TEST_EXISTS))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,
@@ -1222,6 +1217,8 @@ Session *Session::restore(const char *name)
     Application::instance().histories().resetAll();
 
     // Read the session file and restore the session.
+    std::string sessionFileName(sessionDirName);
+    sessionFileName += G_DIR_SEPARATOR_S "session.xml";
     XmlElementSession *s = parseSessionFile(sessionFileName.c_str(), name);
     if (!s || !s->restoreSession())
     {

@@ -59,10 +59,6 @@ public:
      */
     struct Change
     {
-        enum Type
-        {
-            TYPE_INIT
-        };
         int type;
         Change(int type): type(type) {}
         virtual ~Change() {}
@@ -270,12 +266,6 @@ public:
     boost::signals2::connection
     addChangedCallback(const Changed::slot_type &callback)
     { return m_changed.connect(callback); }
-
-    virtual bool structured() const { return false; }
-
-    virtual bool structureUpdated() const { return false; }
-
-    virtual void updateStructure() {}
 
 protected:
     class EditPrimitive;

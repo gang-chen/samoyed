@@ -494,16 +494,6 @@ Editor *File::createEditor(Project *project)
         m_closing = false;
     }
 
-    // If the file is loaded, initialize the editor with the current contents.
-    if (!loading())
-    {
-        assert(m_firstEditor != editor);
-        assert(m_lastEditor == editor);
-        editor->onFileChanged(Change(Change::TYPE_INIT));
-        if (edited())
-            editor->onFileEditedStateChanged();
-    }
-
     return editor;
 }
 
@@ -978,7 +968,7 @@ void File::onChanged(const Change &change, bool loading)
     // contents, since some derived files actually store their contents in the
     // corresponding editors and the editors actually perform the changes.
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
-        editor->onFileChanged(change);
+        editor->onFileChanged(change, loading);
     m_changed(*this, change, loading);
 }
 

@@ -196,6 +196,7 @@ gboolean Application::startUp(gpointer app)
     // Initialize the preferences with the default values.
     a->m_preferences = new PropertyTree(PREFERENCES);
     TextEditor::installPreferences();
+    SourceEditor::installPreferences();
 
     // Initialize the histories with the default values.
     a->m_histories = new PropertyTree(HISTORIES);
