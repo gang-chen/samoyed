@@ -89,12 +89,12 @@ public:
                                  int endLine, int endColumn) const;
 
     void getCursor(int &line, int &column) const;
-    bool setCursor(int line, int column);
+    virtual bool setCursor(int line, int column);
 
     void getSelectedRange(int &line, int &column,
                           int &line2, int &column2) const;
-    bool selectRange(int line, int column,
-                     int line2, int column2);
+    virtual bool selectRange(int line, int column,
+                             int line2, int column2);
 
     void onFileLoaded();
 

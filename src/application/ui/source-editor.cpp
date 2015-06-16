@@ -340,7 +340,7 @@ void SourceEditor::onFileChanged(const File::Change &change, bool loading)
     if (tc.type == TextFile::Change::TYPE_INSERTION)
     {
         const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
-        if (m_foldersRenderer)
+        if (foldingEnabled())
         {
             if (ins.line < ins.newLine)
                 m_foldersData.insert(m_foldersData.begin() + ins.line,
@@ -351,7 +351,7 @@ void SourceEditor::onFileChanged(const File::Change &change, bool loading)
     else
     {
         const TextFile::Change::Value::Removal &rem = tc.value.removal;
-        if (m_foldersRenderer)
+        if (foldingEnabled())
         {
             if (rem.beginLine < rem.endLine)
                 m_foldersData.erase(m_foldersData.begin() + rem.beginLine,
@@ -449,51 +449,123 @@ void SourceEditor::onFileStructureUpdated()
     }
 }
 
+bool SourceEditor::hasFolder(int line) const
+{
+    if (!foldingEnabled())
+        return true;
+    return m_foldersData[line].hasFolder;
+}
+
+bool SourceEditor::folded(int line) const
+{
+    if (!foldingEnabled())
+        return true;
+    return m_foldersData[line].folded;
+}
+
+void SourceEditor::fold(int line)
+{
+    if (!foldingEnabled())
+        return;
+
+    if (!m_foldersData[line].hasFolder)
+        return;
+
+    if (m_foldersData[line].folded)
+        return;
+
+    const SourceFile::StructureNode *node =
+        static_cast<SourceFile &>(file()).structureNodeAt(line);
+    assert(node && node->beginLine() == line);
+
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtkSourceView()));
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_iter_at_line(buffer, &begin, line + 1);
+    gtk_text_buffer_get_iter_at_line(buffer, &end, node->endLine());
+    gtk_text_buffer_apply_tag(buffer, tagInvisible, &begin, &end);
+    m_foldersData[line].folded = true;
+}
+
+void SourceEditor::expand(int line)
+{
+    if (!foldingEnabled())
+        return;
+
+    if (!m_foldersData[line].hasFolder)
+        return;
+
+    if (!m_foldersData[line].folded)
+        return;
+
+    const SourceFile::StructureNode *node =
+        static_cast<SourceFile &>(file()).structureNodeAt(line);
+    assert(node && node->beginLine() == line);
+
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(gtkSourceView()));
+    GtkTextIter begin, end;
+    gtk_text_buffer_get_iter_at_line(buffer, &begin, line + 1);
+    gtk_text_buffer_get_iter_at_line(buffer, &end, node->endLine());
+    gtk_text_buffer_remove_tag(buffer, tagInvisible, &begin, &end);
+    m_foldersData[line].folded = false;
+
+    // Check the states of the folders under this structure and apply the
+    // invisible tag if folded.
+    applyInvisibleTag(node);
+}
+
+bool SourceEditor::lineVisible(int line) const
+{
+    if (!foldingEnabled())
+        return true;
+
+    for (const SourceFile::StructureNode *node =
+         static_cast<const SourceFile &>(file()).structureNodeAt(line);
+         node;
+         node = node->parent())
+    {
+        if (m_foldersData[node->beginLine()].folded &&
+            line > node->beginLine() && line < node->endLine())
+            return false;
+    }
+    return true;
+}
+
+void SourceEditor::showLine(int line)
+{
+    if (!foldingEnabled())
+        return;
+
+    for (const SourceFile::StructureNode *node =
+         static_cast<SourceFile &>(file()).structureNodeAt(line);
+         node;
+         node = node->parent())
+    {
+        if (m_foldersData[node->beginLine()].folded &&
+            line > node->beginLine() && line < node->endLine())
+            expand(node->beginLine());
+    }
+}
+
 void SourceEditor::activateFolder(GtkSourceGutterRenderer *renderer,
                                   GtkTextIter *iter,
                                   GdkRectangle *area,
                                   GdkEvent *event,
                                   SourceEditor *editor)
 {
-    SourceFile &file = static_cast<SourceFile &>(editor->file());
-
     // Disallow folding temporarily when the structure is not updated.
-    if (!file.structureUpdated())
+    if (!static_cast<SourceFile &>(editor->file()).structureUpdated())
         return;
 
     int line = gtk_text_iter_get_line(iter);
-    if (!editor->m_foldersData[line].hasFolder)
+    if (!editor->hasFolder(line))
         return;
 
-    const SourceFile::StructureNode *node = file.structureNodeAt(line);
-    assert(node && node->beginLine() == line);
-    int endLine = node->endLine();
-
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
-        GTK_TEXT_VIEW(editor->gtkSourceView()));
-    GtkTextIter begin, end;
-    gtk_text_buffer_get_iter_at_line(buffer, &begin, line + 1);
-    gtk_text_buffer_get_iter_at_line(buffer, &end, endLine);
-
-    if (editor->m_foldersData[line].folded)
-    {
-        // Expand it.
-        gtk_text_buffer_remove_tag(buffer, tagInvisible, &begin, &end);
-        editor->m_foldersData[line].folded = false;
-
-        // Check the states of the folders under this structure and apply the
-        // invisible tag if folded.
-        for (const SourceFile::StructureNode *child = node->children();
-             child;
-             child = child->next())
-            editor->applyInvisibleTag(child);
-    }
+    if (editor->folded(line))
+        editor->expand(line);
     else
-    {
-        // Fold it.
-        gtk_text_buffer_apply_tag(buffer, tagInvisible, &begin, &end);
-        editor->m_foldersData[line].folded = true;
-    }
+        editor->fold(line);
 }
 
 gboolean SourceEditor::queryFolderActivatable(GtkSourceGutterRenderer *renderer,
@@ -502,14 +574,11 @@ gboolean SourceEditor::queryFolderActivatable(GtkSourceGutterRenderer *renderer,
                                               GdkEvent *event,
                                               SourceEditor *editor)
 {
-    SourceFile &file = static_cast<SourceFile &>(editor->file());
-
     // Disallow folding temporarily when the structure is not updated.
-    if (!file.structureUpdated())
+    if (!static_cast<SourceFile &>(editor->file()).structureUpdated())
         return FALSE;
 
-    int line = gtk_text_iter_get_line(iter);
-    return editor->m_foldersData[line].hasFolder;
+    return editor->hasFolder(gtk_text_iter_get_line(iter));
 }
 
 void SourceEditor::queryFolderData(GtkSourceGutterRenderer *renderer,
@@ -519,9 +588,9 @@ void SourceEditor::queryFolderData(GtkSourceGutterRenderer *renderer,
                                    SourceEditor *editor)
 {
     int line = gtk_text_iter_get_line(begin);
-    if (editor->m_foldersData[line].hasFolder)
+    if (editor->hasFolder(line))
     {
-        if (editor->m_foldersData[line].folded)
+        if (editor->folded(line))
             gtk_source_gutter_renderer_pixbuf_set_icon_name(
                 GTK_SOURCE_GUTTER_RENDERER_PIXBUF(renderer),
                 "pan-end-symbolic");
@@ -538,7 +607,7 @@ void SourceEditor::queryFolderData(GtkSourceGutterRenderer *renderer,
 
 void SourceEditor::enableFolding()
 {
-    if (!m_foldersRenderer)
+    if (!foldingEnabled())
     {
         m_foldersData.resize(lineCount());
 
@@ -566,7 +635,7 @@ void SourceEditor::enableFolding()
 
 void SourceEditor::disableFolding()
 {
-    if (m_foldersRenderer)
+    if (foldingEnabled())
     {
         m_foldersData.clear();
 
@@ -612,7 +681,18 @@ void SourceEditor::onFoldToggled(GtkToggleButton *toggle, gpointer data)
                     static_cast<SourceEditor *>(editor)->disableFolding();
             }
             if (fold)
-                static_cast<SourceFile *>(file)->updateStructure();
+            {
+                if (static_cast<SourceFile *>(file)->structureUpdated())
+                {
+                    for (Editor *editor = file->editors();
+                         editor;
+                         editor = editor->nextInFile())
+                        static_cast<SourceEditor *>(editor)->
+                            onFileStructureUpdated();
+                }
+                else
+                    static_cast<SourceFile *>(file)->updateStructure();
+            }
         }
     }
 }
@@ -639,6 +719,31 @@ void SourceEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_grid_attach_next_to(grid, fold, NULL,
                             GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(fold);
+}
+
+bool SourceEditor::setCursor(int line, int column)
+{
+    // Copied from TextEditor::setCursor().
+    if (file().loading())
+        return TextEditor::setCursor(line, column);
+    if (!isValidCursor(line, column))
+        return false;
+
+    // Show the cursor line.
+    showLine(line);
+    return TextEditor::setCursor(line, column);
+}
+
+bool SourceEditor::selectRange(int line, int column,
+                               int line2, int column2)
+{
+    if (!isValidCursor(line, column) || !isValidCursor(line2, column2))
+        return false;
+
+    // Show the lines in the range.
+    for (int l = line; l <= line2; l++)
+        showLine(l);
+    return TextEditor::selectRange(line, column, line2, column2);
 }
 
 }

@@ -235,8 +235,7 @@ bool TextFinderBar::search(bool next)
     GtkTextBuffer *buffer =
         gtk_text_view_get_buffer(GTK_TEXT_VIEW(m_editor.gtkSourceView()));
     GtkTextIter start, matchBegin, matchEnd;
-    unsigned int flags = GTK_TEXT_SEARCH_VISIBLE_ONLY |
-        GTK_TEXT_SEARCH_TEXT_ONLY;
+    unsigned int flags = GTK_TEXT_SEARCH_TEXT_ONLY;
     if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(m_matchCase)))
         flags |= GTK_TEXT_SEARCH_CASE_INSENSITIVE;
 

@@ -79,6 +79,25 @@ public:
 
     void onFileStructureUpdated();
 
+    bool foldingEnabled() const { return m_foldersRenderer; }
+
+    bool hasFolder(int line) const;
+
+    bool folded(int line) const;
+
+    void fold(int line);
+
+    void expand(int line);
+
+    bool lineVisible(int line) const;
+
+    void showLine(int line);
+
+    virtual bool setCursor(int line, int column);
+
+    virtual bool selectRange(int line, int column,
+                             int line2, int column2);
+
 protected:
     static GtkTextTagTable *createSharedTagTable();
 
