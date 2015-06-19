@@ -67,7 +67,7 @@ public:
 
     bool close();
 
-    void cancelClosing() { m_closing = false; }
+    void cancelClosing();
 
     XmlElement *save() const;
 

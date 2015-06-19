@@ -300,13 +300,13 @@ void SourceEditor::highlightToken(int beginLine, int beginColumn,
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtkSourceView()));
     GtkTextIter begin, end;
-    gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
-                                            beginLine, beginColumn);
+    gtk_text_buffer_get_iter_at_line_index(buffer, &begin,
+                                           beginLine, beginColumn);
     if (endLine == -1 && endColumn == -1)
         gtk_text_buffer_get_end_iter(buffer, &end);
     else
-        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
-                                                endLine, endColumn);
+        gtk_text_buffer_get_iter_at_line_index(buffer, &end,
+                                               endLine, endColumn);
     gtk_text_buffer_apply_tag(buffer,
                               tokenTags[tokenKind],
                               &begin, &end);
@@ -318,21 +318,21 @@ void SourceEditor::unhighlightAllTokens(int beginLine, int beginColumn,
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(gtkSourceView()));
     GtkTextIter begin, end;
-    gtk_text_buffer_get_iter_at_line_offset(buffer, &begin,
-                                            beginLine, beginColumn);
+    gtk_text_buffer_get_iter_at_line_index(buffer, &begin,
+                                           beginLine, beginColumn);
     if (endLine == -1 && endColumn == -1)
         gtk_text_buffer_get_end_iter(buffer, &end);
     else
-        gtk_text_buffer_get_iter_at_line_offset(buffer, &end,
-                                                endLine, endColumn);
+        gtk_text_buffer_get_iter_at_line_index(buffer, &end,
+                                               endLine, endColumn);
     for (int i = 0; i < N_TOKEN_KINDS; ++i)
         gtk_text_buffer_remove_tag(buffer, tokenTags[i],
                                    &begin, &end);
 }
 
-void SourceEditor::onFileChanged(const File::Change &change, bool loading)
+void SourceEditor::onFileChanged(const File::Change &change)
 {
-    TextEditor::onFileChanged(change, loading);
+    TextEditor::onFileChanged(change);
 
     // Resize the folder data vector.
     const TextFile::Change &tc =
@@ -344,8 +344,8 @@ void SourceEditor::onFileChanged(const File::Change &change, bool loading)
         {
             if (ins.line < ins.newLine)
                 m_foldersData.insert(m_foldersData.begin() + ins.line,
-                                       ins.newLine - ins.line,
-                                       FolderData());
+                                     ins.newLine - ins.line,
+                                     FolderData());
         }
     }
     else
@@ -474,6 +474,9 @@ void SourceEditor::fold(int line)
     if (m_foldersData[line].folded)
         return;
 
+    if (!static_cast<SourceFile &>(file()).structureUpdated())
+        return;
+
     const SourceFile::StructureNode *node =
         static_cast<SourceFile &>(file()).structureNodeAt(line);
     assert(node && node->beginLine() == line);
@@ -498,6 +501,9 @@ void SourceEditor::expand(int line)
     if (!m_foldersData[line].folded)
         return;
 
+    if (!static_cast<SourceFile &>(file()).structureUpdated())
+        return;
+
     const SourceFile::StructureNode *node =
         static_cast<SourceFile &>(file()).structureNodeAt(line);
     assert(node && node->beginLine() == line);
@@ -520,6 +526,10 @@ bool SourceEditor::lineVisible(int line) const
     if (!foldingEnabled())
         return true;
 
+    // Actually we do not know the line is visible or not.
+    if (!static_cast<const SourceFile &>(file()).structureUpdated())
+        return true;
+
     for (const SourceFile::StructureNode *node =
          static_cast<const SourceFile &>(file()).structureNodeAt(line);
          node;
@@ -535,6 +545,9 @@ bool SourceEditor::lineVisible(int line) const
 void SourceEditor::showLine(int line)
 {
     if (!foldingEnabled())
+        return;
+
+    if (!static_cast<SourceFile &>(file()).structureUpdated())
         return;
 
     for (const SourceFile::StructureNode *node =

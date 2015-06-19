@@ -38,8 +38,6 @@ void computeLineColumnAfterInsertion(int line, int column,
 {
     // Compute the new position after insertion.
     int nLines = 0, nColumns = 0;
-    if (length == -1)
-        length = strlen(text);
     const char *cp = Samoyed::Utf8::begin(text + length - 1);
     while (cp >= text)
     {
@@ -410,7 +408,7 @@ FileSaver *TextFile::createSaver(unsigned int priority)
                              encoding());
 }
 
-void TextFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
+void TextFile::copyLoadedContents(const boost::shared_ptr<FileLoader> &loader)
 {
     TextFileLoader &ld = static_cast<TextFileLoader &>(*loader);
 
@@ -419,7 +417,7 @@ void TextFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
     if (characterCount() > 0)
     {
         static_cast<const TextEditor *>(editors())->endCursor(line, column);
-        onChanged(Change(0, 0, line, column), true);
+        onChanged(Change(0, 0, line, column));
     }
     const std::list<std::string> &buffer = ld.buffer();
     line = 0;
@@ -428,21 +426,17 @@ void TextFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
          it != buffer.end();
          ++it)
     {
-        computeLineColumnAfterInsertion(line, column,
-                                        it->c_str(), it->length(),
-                                        newLine, newColumn);
-        onChanged(Change(line, column, it->c_str(), it->length(),
-                         newLine, newColumn),
-                  true);
-        line = newLine;
-        column = newColumn;
+        if (it->length())
+        {
+            computeLineColumnAfterInsertion(line, column,
+                                            it->c_str(), it->length(),
+                                            newLine, newColumn);
+            onChanged(Change(line, column, it->c_str(), it->length(),
+                             newLine, newColumn));
+            line = newLine;
+            column = newColumn;
+        }
     }
-
-    // Notify editors.
-    for (TextEditor *editor = static_cast<TextEditor *>(editors());
-         editor;
-         editor = static_cast<TextEditor *>(editor->nextInFile()))
-        editor->onFileLoaded();
 }
 
 bool TextFile::insert(int line, int column, const char *text, int length,
@@ -452,10 +446,15 @@ bool TextFile::insert(int line, int column, const char *text, int length,
         static_cast<TextEditor *>(editors())->endCursor(line, column);
     if (!static_cast<TextEditor *>(editors())->isValidCursor(line, column))
         return false;
+    if (length == -1)
+        length = strlen(text);
+    if (length == 0)
+        return true;
+
     Change *chng;
     Removal *undo = insertOnly(line, column, text, length, chng);
     saveUndo(undo);
-    onChanged(*chng, false);
+    onChanged(*chng);
     if (newLine)
         *newLine =
             static_cast<TextFile::Change *>(chng)->value.insertion.newLine;
@@ -477,6 +476,9 @@ bool TextFile::remove(int beginLine, int beginColumn,
                                                              endColumn))
         return false;
 
+    if (beginLine == endLine && beginColumn == endColumn)
+        return true;
+
     // Order the two positions.
     if (beginLine > endLine)
     {
@@ -491,7 +493,7 @@ bool TextFile::remove(int beginLine, int beginColumn,
                                  endLine, endColumn,
                                  chng);
     saveUndo(undo);
-    onChanged(*chng, false);
+    onChanged(*chng);
     delete chng;
     return true;
 }

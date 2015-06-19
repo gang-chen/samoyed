@@ -68,14 +68,22 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
+    /**
+     * @param beginColumn The byte index of the beginning of the token.
+     * @param endColumn The byte index of the end of the token.
+     */
     void highlightToken(int beginLine, int beginColumn,
                         int endLine, int endColumn,
                         TokenKind tokenKind);
 
+    /**
+     * @param beginColumn The byte index of the beginning of the range.
+     * @param endColumn The byte index of the end of the range.
+     */
     void unhighlightAllTokens(int beginLine, int beginColumn,
                               int endLine, int endColumn);
 
-    virtual void onFileChanged(const File::Change &change, bool loading);
+    virtual void onFileChanged(const File::Change &change);
 
     void onFileStructureUpdated();
 

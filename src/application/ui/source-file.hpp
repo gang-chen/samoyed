@@ -8,6 +8,7 @@
 #include "utilities/miscellaneous.hpp"
 #include "utilities/property-tree.hpp"
 #include <assert.h>
+#include <set>
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
@@ -88,6 +89,13 @@ public:
 
     virtual void unhighlightSyntax();
 
+    void indent(int beginLine, int endLine);
+
+    bool parsed() const { return !m_parsing && !m_parsePending; }
+
+    const boost::shared_ptr<CXTranslationUnitImpl> parsedTranslationUnit() const
+    { return m_tu; }
+
     bool structureUpdated() const { return m_structureUpdated; }
 
     void updateStructure();
@@ -135,14 +143,22 @@ protected:
 
     virtual Editor *createEditorInternally(Project *project);
 
-    virtual void onLoaded(const boost::shared_ptr<FileLoader> &loader);
+    virtual void onLoaded();
 
-    virtual void onChanged(const File::Change &change, bool loading);
+    virtual void onChanged(const File::Change &change);
 
 private:
     static File *create(const char *uri,
                         const char *mimeType,
                         const PropertyTree &options);
+
+    bool parse();
+
+    int calculateIndentSize(int line, const std::map<int, int> &indentSizes);
+
+    void doIndent(int line, int indentSize);
+
+    void indentInternally();
 
     static CXChildVisitResult updateStructureForAst(CXCursor ast,
                                                     CXCursor parent,
@@ -150,9 +166,12 @@ private:
 
     static PropertyTree s_defaultOptions;
 
+    bool m_parsing;
+    bool m_parsePending;
+
     boost::shared_ptr<CXTranslationUnitImpl> m_tu;
 
-    bool m_needReparse;
+    std::set<int> m_indentLines;
 
     bool m_structureUpdated;
 

@@ -326,10 +326,9 @@ void TextEditSaver::onFileSaved()
     m_initText = static_cast<TextFile &>(m_file).text(0, 0, -1, -1);
 }
 
-void TextEditSaver::onFileChanged(const File::Change &change,
-                                  bool loading)
+void TextEditSaver::onFileChanged(const File::Change &change)
 {
-    if (loading)
+    if (m_file.loading())
         return;
     if (!m_replayFileCreated)
     {

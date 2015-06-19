@@ -645,6 +645,13 @@ bool File::close()
     return true;
 }
 
+void File::cancelClosing()
+{
+    m_closing = false;
+    if (Application::instance().quitting())
+        Application::instance().cancelQuitting();
+}
+
 void File::addEditor(Editor &editor)
 {
     editor.addToListInFile(m_firstEditor, m_lastEditor);
@@ -693,8 +700,7 @@ void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
     resetEditCount();
     m_undoHistory.clear();
     m_redoHistory.clear();
-    onLoaded(m_loader);
-    m_loaded(*this);
+    copyLoadedContents(m_loader);
 
     // If any error was encountered, report it.
     if (m_loader->error())
@@ -720,6 +726,7 @@ void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
             m_loaderCanceledConn.disconnect();
             m_loader.reset();
             unfreezeInternally();
+            onLoaded();
             close();
             return;
         }
@@ -730,6 +737,7 @@ void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
     m_loaderCanceledConn.disconnect();
     m_loader.reset();
     unfreezeInternally();
+    onLoaded();
 }
 
 void File::onLoaderCanceled(const boost::shared_ptr<Worker> &worker)
@@ -744,9 +752,6 @@ void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
     // If any error was encountered, report it.
     if (m_saver->error())
     {
-        onSaved(m_saver);
-        m_saved(*this);
-
         // Cancel closing the editor waiting for the completion of the close
         // operation.
         if (m_closing)
@@ -778,8 +783,6 @@ void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
     {
         m_modifiedTime = m_saver->modifiedTime();
         resetEditCount();
-        onSaved(m_saver);
-        m_saved(*this);
     }
 
     // Clean up.
@@ -787,6 +790,7 @@ void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
     m_saverCanceledConn.disconnect();
     m_saver.reset();
     unfreezeInternally();
+    onSaved();
 
     // Now we can close this file, if requested.
     if (m_closing)
@@ -873,7 +877,7 @@ void File::undo()
          it != changes.end();
          ++it)
     {
-        onChanged(**it, false);
+        onChanged(**it);
         delete *it;
     }
     delete edit;
@@ -892,7 +896,7 @@ void File::redo()
          it != changes.end();
          ++it)
     {
-        onChanged(**it, false);
+        onChanged(**it);
         delete *it;
     }
     delete edit;
@@ -962,14 +966,28 @@ void File::unfreezeInternally()
     }
 }
 
-void File::onChanged(const Change &change, bool loading)
+void File::onChanged(const Change &change)
 {
     // First notify editors so that the other observers can see the changed
     // contents, since some derived files actually store their contents in the
     // corresponding editors and the editors actually perform the changes.
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
-        editor->onFileChanged(change, loading);
-    m_changed(*this, change, loading);
+        editor->onFileChanged(change);
+    m_changed(*this, change);
+}
+
+void File::onLoaded()
+{
+    for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
+        editor->onFileLoaded();
+    m_loaded(*this);
+}
+
+void File::onSaved()
+{
+    for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
+        editor->onFileSaved();
+    m_saved(*this);
 }
 
 void File::resetEditCount()

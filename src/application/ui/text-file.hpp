@@ -260,7 +260,8 @@ protected:
 
     virtual FileSaver *createSaver(unsigned int priority);
 
-    virtual void onLoaded(const boost::shared_ptr<FileLoader> &loader);
+    virtual void
+        copyLoadedContents(const boost::shared_ptr<FileLoader> &loader);
 
 private:
     static File *create(const char *uri,

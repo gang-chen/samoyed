@@ -33,8 +33,7 @@ public:
     virtual void onCloseFile();
     virtual void onFileLoaded();
     virtual void onFileSaved();
-    virtual void onFileChanged(const File::Change &change,
-                               bool loading);
+    virtual void onFileChanged(const File::Change &change);
 
 private:
     class ReplayFileOperation

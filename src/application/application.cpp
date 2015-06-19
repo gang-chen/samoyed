@@ -347,7 +347,10 @@ bool Application::quit()
     // Save the current session.  If the user cancels quitting the session,
     // cancel quitting.
     if (!m_session->save())
+    {
+        m_quitting = false;
         return false;
+    }
 
     // Destroy the preferences editor for this session.
     delete m_preferencesEditor;
@@ -365,7 +368,10 @@ bool Application::quit()
     {
         prev = project->previous();
         if (!project->close())
+        {
+            m_quitting = false;
             return false;
+        }
     }
 
     // Close all files.
@@ -373,7 +379,10 @@ bool Application::quit()
     {
         prev = file->previous();
         if (!file->close())
+        {
+            m_quitting = false;
             return false;
+        }
     }
 
     return true;

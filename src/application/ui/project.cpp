@@ -138,6 +138,13 @@ bool Project::close()
     return true;
 }
 
+void Project::cancelClosing()
+{
+    m_closing = false;
+    if (Application::instance().quitting())
+        Application::instance().cancelQuitting();
+}
+
 Project::XmlElement *Project::save() const
 {
     return new XmlElement(*this);

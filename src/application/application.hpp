@@ -70,6 +70,8 @@ public:
      */
     bool quitting() const { return m_quitting; }
 
+    void cancelQuitting() { m_quitting = false; }
+
     /**
      * Request to start a new session.
      */

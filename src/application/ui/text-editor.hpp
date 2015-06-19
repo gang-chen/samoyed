@@ -67,7 +67,7 @@ public:
 
     virtual void grabFocus();
 
-    virtual void onFileChanged(const File::Change &change, bool loading);
+    virtual void onFileChanged(const File::Change &change);
 
     virtual bool frozen() const;
 
@@ -96,7 +96,7 @@ public:
     virtual bool selectRange(int line, int column,
                              int line2, int column2);
 
-    void onFileLoaded();
+    virtual void onFileLoaded();
 
     GtkSourceView *gtkSourceView() const
     {

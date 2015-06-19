@@ -66,11 +66,9 @@ public:
 
     /**
      * @param change The change that was made.
-     * @param loading True iff the change was due to file loading.
      */
     typedef boost::signals2::signal<void (File &file,
-                                          const Change &change,
-                                          bool loading)> Changed;
+                                          const Change &change)> Changed;
 
     static void installHistories();
 
@@ -123,7 +121,7 @@ public:
      */
     bool close();
 
-    void cancelClosing() { m_closing = false; }
+    void cancelClosing();
 
     /**
      * This function can be called by the application instance only.
@@ -386,7 +384,7 @@ protected:
      * This function is called by a derived class to notify all editors and
      * observers after changed.
      */
-    virtual void onChanged(const Change &change, bool loading);
+    virtual void onChanged(const Change &change);
 
     /**
      * This function is called by a derived class to save the reverse edit of a
@@ -400,9 +398,12 @@ protected:
 
     virtual FileSaver *createSaver(unsigned int priority) = 0;
 
-    virtual void onLoaded(const boost::shared_ptr<FileLoader> &loader) = 0;
+    virtual void
+        copyLoadedContents(const boost::shared_ptr<FileLoader> &loader) = 0;
 
-    virtual void onSaved(const boost::shared_ptr<FileSaver> &saver) {}
+    virtual void onLoaded();
+
+    virtual void onSaved();
 
 private:
     struct TypeRecord

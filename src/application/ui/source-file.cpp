@@ -13,6 +13,7 @@
 #include "utilities/property-tree.hpp"
 #include <utility>
 #include <list>
+#include <map>
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include <glib.h>
@@ -23,6 +24,10 @@
 #define SOURCE_FILE_OPTIONS "source-file-options"
 
 #define TEXT_EDITOR "text-editor"
+#define TAB_WIDTH "tab-width"
+#define INSERT_SPACES_INSTEAD_OF_TABS "insert-spaces-instead-of-tabs"
+#define INDENT "indent"
+#define INDENT_WIDTH "indent-width"
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define FOLD_STRUCTURED_TEXT "fold-structured-text"
 
@@ -74,6 +79,46 @@ struct StructureUpdateParam
     Samoyed::SourceFile &file;
     Samoyed::SourceFile::StructureNode *parentNode;
 };
+
+gboolean isNonBlankChar(gunichar ch, gpointer data)
+{
+    if (ch == L' ' || ch == L'\t')
+        return FALSE;
+    return TRUE;
+}
+
+gboolean countBlankCharWidth(gunichar ch, gpointer data)
+{
+    if (ch == L' ')
+    {
+        *static_cast<int *>(data) += 1;
+        return FALSE;
+    }
+    if (ch == L'\t')
+    {
+        *static_cast<int *>(data) += Samoyed::Application::instance().
+            preferences().child(TEXT_EDITOR).get<int>(TAB_WIDTH);
+        return FALSE;
+    }
+    return TRUE;
+}
+
+int countIndentSize(GtkTextBuffer *buffer, CXCursor ast)
+{
+    CXSourceRange range = clang_getCursorExtent(ast);
+    CXSourceLocation begin = clang_getRangeStart(range);
+    unsigned int beginLine, beginColumn;
+    clang_getFileLocation(begin, NULL, &beginLine, &beginColumn, NULL);
+    GtkTextIter iter, limit;
+    gtk_text_buffer_get_iter_at_line(buffer, &iter, beginLine - 1);
+    gtk_text_buffer_get_iter_at_line_index(buffer, &limit,
+                                           beginLine - 1, beginColumn - 1);
+    int indentSize = 0;
+    if (!countBlankCharWidth(gtk_text_iter_get_char(&iter), &indentSize))
+        gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
+                                        &indentSize, &limit);
+    return indentSize;
+}
 
 void buildStructureNodeCache(
     std::vector<const Samoyed::SourceFile::StructureNode *> &cache,
@@ -178,7 +223,8 @@ SourceFile::SourceFile(const char *uri,
              mimeType,
              strcmp(options.name(), SOURCE_FILE_OPTIONS) == 0 ?
              options.child(TEXT_FILE_OPTIONS) : options),
-    m_needReparse(false),
+    m_parsing(false),
+    m_parsePending(true),
     m_structureUpdated(false),
     m_structureRoot(NULL)
 {
@@ -245,43 +291,125 @@ Editor *SourceFile::createEditorInternally(Project *project)
     return SourceEditor::create(*this, project);
 }
 
-void SourceFile::onLoaded(const boost::shared_ptr<FileLoader> &loader)
+bool SourceFile::parse()
 {
-    TextFile::onLoaded(loader);
-    if (m_tu)
+    if (!m_parsing && m_parsePending)
     {
-        boost::shared_ptr<CXTranslationUnitImpl> tu;
-        tu.swap(m_tu);
-        Application::instance().foregroundFileParser().reparse(uri(), tu);
+        m_parsePending = false;
+        m_parsing = true;
+        if (m_tu)
+        {
+            boost::shared_ptr<CXTranslationUnitImpl> tu;
+            tu.swap(m_tu);
+            Application::instance().foregroundFileParser().reparse(uri(), tu);
+        }
+        else
+            Application::instance().foregroundFileParser().parse(uri());
+        return true;
     }
-    else
-        Application::instance().foregroundFileParser().parse(uri());
+    return false;
 }
 
-void SourceFile::onChanged(const File::Change &change, bool loading)
+void SourceFile::onLoaded()
 {
-    TextFile::onChanged(change, loading);
+    TextFile::onLoaded();
 
+    // Actually, we should clear the set of line numbers to indent before
+    // loading.  But since it is not used during loading, we do it after
+    // loading.
+    m_indentLines.clear();
+
+    // Start parsing if pending.
+    parse();
+
+    // Process the parsed translation unit if it is up-to-date.
+    if (parsed())
+    {
+        highlightSyntax();
+        updateStructure();
+    }
+}
+
+void SourceFile::onChanged(const File::Change &change)
+{
+    TextFile::onChanged(change);
+
+    m_parsePending = true;
     m_structureUpdated = false;
+
+    if (Application::instance().preferences().child(TEXT_EDITOR).
+        get<bool>(INDENT) &&
+        !loading())
+    {
+        const TextFile::Change &tc =
+            static_cast<const TextFile::Change &>(change);
+        if (tc.type == Change::TYPE_INSERTION)
+        {
+            const TextFile::Change::Value::Insertion &ins = tc.value.insertion;
+            if (ins.line < ins.newLine)
+            {
+                // Shift the line numbers greater than ins.line.
+                std::set<int>::iterator iter =
+                     m_indentLines.upper_bound(ins.line);
+                std::set<int> copy(iter, m_indentLines.end());
+                m_indentLines.erase(iter, m_indentLines.end());
+                int dLines = ins.newLine - ins.line;
+                for (std::set<int>::const_iterator iter = copy.begin();
+                     iter != copy.end();
+                     ++iter)
+                    m_indentLines.insert(*iter + dLines);
+
+                // Add the line numbers in [ins.line, ins.newLine].
+                indent(ins.line, ins.newLine + 1);
+            }
+        }
+        else
+        {
+            const TextFile::Change::Value::Removal &rem = tc.value.removal;
+            if (rem.beginLine < rem.endLine)
+            {
+                // Replace the line numbers in [rem.beginLine, rem.endLine] with
+                // one line number rem.beginLine.
+                std::set<int>::iterator begin =
+                    m_indentLines.lower_bound(rem.beginLine);
+                if (begin != m_indentLines.end() && *begin <= rem.endLine)
+                {
+                    std::set<int>::iterator end = begin;
+                    for (;
+                         end != m_indentLines.end() && *end <= rem.endLine;
+                         ++end)
+                        ;
+                    m_indentLines.erase(begin, end);
+                    m_indentLines.insert(rem.beginLine);
+                }
+
+                // Shift the line numbers greater than rem.endLine.
+                std::set<int>::iterator iter =
+                     m_indentLines.upper_bound(rem.endLine);
+                std::set<int> copy(iter, m_indentLines.end());
+                m_indentLines.erase(iter, m_indentLines.end());
+                int dLines = rem.endLine - rem.beginLine;
+                for (std::set<int>::const_iterator iter = copy.begin();
+                     iter != copy.end();
+                     ++iter)
+                    m_indentLines.insert(*iter + dLines);
+            }
+        }
+    }
 
     // We do not start parsing during loading.  We will do it after the file is
     // loaded.
-    if (loading)
-        return;
-
-    if (m_tu)
-    {
-        boost::shared_ptr<CXTranslationUnitImpl> tu;
-        tu.swap(m_tu);
-        Application::instance().foregroundFileParser().reparse(uri(), tu);
-    }
-    else
-        m_needReparse = true;
+    if (!loading())
+        parse();
 }
 
 void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
                              int error)
 {
+    assert(m_parsing);
+    m_parsing = false;
+    m_tu.swap(tu);
+
     if (error)
     {
         // Do not disturb the user.  Log this Clang error.
@@ -305,19 +433,22 @@ void SourceFile::onParseDone(boost::shared_ptr<CXTranslationUnitImpl> tu,
             break;
         }
     }
-    if (m_needReparse)
+
+    // We do not process the parsed translation unit since the source code may
+    // be changed during loading.
+    if (loading())
+        return;
+
+    // Start parsing if pending.
+    parse();
+
+    // Process the parsed translation unit if it is up-to-date.
+    if (parsed())
     {
-        if (tu)
-            Application::instance().foregroundFileParser().reparse(uri(), tu);
-        else
-            Application::instance().foregroundFileParser().parse(uri());
-        m_needReparse = false;
-    }
-    else
-    {
-        m_tu.swap(tu);
         highlightSyntax();
         updateStructure();
+        if (!m_indentLines.empty())
+            indentInternally();
     }
 }
 
@@ -340,7 +471,7 @@ void SourceFile::highlightSyntax()
 
     // Need to wait for the parsed translation unit.  This function returns
     // immediately and will be called when parsing is completed.
-    if (!m_tu)
+    if (!parsed() || !m_tu)
         return;
 
     for (Editor *editor = editors(); editor; editor = editor->nextInFile())
@@ -377,12 +508,122 @@ void SourceFile::highlightSyntax()
                     clang_getTokenKind(tokens[i])));
         }
     }
+    clang_disposeTokens(tu, tokens, numTokens);
 }
 
 void SourceFile::unhighlightSyntax()
 {
     for (Editor *editor = editors(); editor; editor = editor->nextInFile())
         static_cast<SourceEditor *>(editor)->unhighlightAllTokens(0, 0, -1, -1);
+}
+
+int SourceFile::calculateIndentSize(int line,
+                                    const std::map<int, int> &indentSizes)
+{
+    int indentWidth = Application::instance().preferences().child(TEXT_EDITOR).
+        get<int>(INDENT_WIDTH);
+
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(static_cast<TextEditor *>(editors())->gtkSourceView()));
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_line(buffer, &iter, line);
+    if (!isNonBlankChar(gtk_text_iter_get_char(&iter), NULL))
+        gtk_text_iter_forward_find_char(&iter, isNonBlankChar,
+                                        NULL, NULL);
+
+    char *fileName = g_filename_from_uri(uri(), NULL, NULL);
+    CXFile file = clang_getFile(m_tu.get(), fileName);
+    g_free(fileName);
+    CXSourceLocation loc =
+        clang_getLocation(m_tu.get(), file, line + 1,
+                          gtk_text_iter_get_line_index(&iter) + 1);
+    CXCursor ast = clang_getCursor(m_tu.get(), loc);
+    CXSourceRange range = clang_getCursorExtent(ast);
+    CXSourceLocation begin = clang_getRangeStart(range);
+    bool atAst = clang_equalLocations(loc, begin);
+
+    CXCursorKind kind = clang_getCursorKind(ast);
+    if (clang_isDeclaration(kind))
+    {
+        if (atAst)
+        {
+            ast = clang_getCursorLexicalParent(ast);
+            if (clang_isTranslationUnit(clang_getCursorKind(ast)))
+                return 0;
+            return countIndentSize(buffer, ast) + indentWidth;
+        }
+        return countIndentSize(buffer, ast) + indentWidth;
+    }
+    /*
+    if (clang_isReference(kind))
+    if (clang_isExpression(kind))
+    if (clang_isStatement(kind))
+    */
+    if (clang_isTranslationUnit(kind))
+        return 0;
+
+    if (line == 0)
+        return 0;
+    gtk_text_buffer_get_iter_at_line(buffer, &iter, line - 1);
+    int indentSize = 0;
+    if (!countBlankCharWidth(gtk_text_iter_get_char(&iter), &indentSize))
+        gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
+                                        &indentSize, NULL);
+    return indentSize;
+}
+
+void SourceFile::doIndent(int line, int indentSize)
+{
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(
+        GTK_TEXT_VIEW(static_cast<TextEditor *>(editors())->gtkSourceView()));
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_line(buffer, &iter, line);
+    int oldIndentSize = 0;
+    if (!countBlankCharWidth(gtk_text_iter_get_char(&iter), &oldIndentSize))
+        gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
+                                        &oldIndentSize, NULL);
+    if (oldIndentSize == indentSize)
+        return;
+    std::string inserted;
+    if (!Application::instance().preferences().child(TEXT_EDITOR).
+        get<bool>(INSERT_SPACES_INSTEAD_OF_TABS))
+    {
+        int tabWidth = Application::instance().preferences().child(TEXT_EDITOR).
+            get<int>(TAB_WIDTH);
+        int nTabs = indentSize / tabWidth;
+        int nSpaces = indentSize % tabWidth;
+        inserted.append(nTabs, '\t');
+        inserted.append(nSpaces, ' ');
+    }
+    else
+        inserted.append(indentSize, ' ');
+    beginEditGroup();
+    remove(line, 0, line, gtk_text_iter_get_line_offset(&iter));
+    insert(line, 0, inserted.c_str(), inserted.length(), NULL, NULL);
+    endEditGroup();
+}
+
+void SourceFile::indentInternally()
+{
+    if (!parsed() || !m_tu)
+        return;
+    std::map<int, int> indentSizes;
+    for (std::set<int>::const_iterator iter = m_indentLines.begin();
+         iter != m_indentLines.end();
+         ++iter)
+        indentSizes[*iter] = calculateIndentSize(*iter, indentSizes);
+    for (std::map<int, int>::const_iterator iter = indentSizes.begin();
+         iter != indentSizes.end();
+         ++iter)
+        doIndent(iter->first, iter->second);
+    m_indentLines.clear();
+}
+
+void SourceFile::indent(int beginLine, int endLine)
+{
+    for (int line = beginLine; line < endLine; line++)
+        m_indentLines.insert(line);
+    indentInternally();
 }
 
 CXChildVisitResult SourceFile::updateStructureForAst(CXCursor ast,
@@ -466,7 +707,7 @@ void SourceFile::updateStructure()
 
     // Need to wait for the parsed translation unit.  This function returns
     // immediately and will be called when parsing is completed.
-    if (!m_tu)
+    if (!parsed() || !m_tu)
         return;
 
     // Build the new structure.

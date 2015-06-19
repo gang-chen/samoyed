@@ -661,7 +661,7 @@ bool TextEditor::selectRange(int line, int column,
     return true;
 }
 
-void TextEditor::onFileChanged(const File::Change &change, bool loading)
+void TextEditor::onFileChanged(const File::Change &change)
 {
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
