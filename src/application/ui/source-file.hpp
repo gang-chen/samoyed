@@ -89,7 +89,7 @@ public:
 
     virtual void unhighlightSyntax();
 
-    void indent(int beginLine, int endLine);
+    void indent(int beginLine, int endLine, int cursorLine);
 
     bool parsed() const { return !m_parsing && !m_parsePending; }
 
@@ -145,7 +145,7 @@ protected:
 
     virtual void onLoaded();
 
-    virtual void onChanged(const File::Change &change);
+    virtual void onChanged(const File::Change &change, bool interactive);
 
 private:
     static File *create(const char *uri,
@@ -172,6 +172,8 @@ private:
     boost::shared_ptr<CXTranslationUnitImpl> m_tu;
 
     std::set<int> m_indentLines;
+
+    int m_cursorIndentLine;
 
     bool m_structureUpdated;
 

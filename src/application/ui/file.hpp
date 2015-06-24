@@ -66,9 +66,11 @@ public:
 
     /**
      * @param change The change that was made.
+     * @param interactive True iff the change is directly input by the user.
      */
     typedef boost::signals2::signal<void (File &file,
-                                          const Change &change)> Changed;
+                                          const Change &change,
+                                          bool interactive)> Changed;
 
     static void installHistories();
 
@@ -384,7 +386,7 @@ protected:
      * This function is called by a derived class to notify all editors and
      * observers after changed.
      */
-    virtual void onChanged(const Change &change);
+    virtual void onChanged(const Change &change, bool interactive);
 
     /**
      * This function is called by a derived class to save the reverse edit of a

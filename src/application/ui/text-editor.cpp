@@ -661,7 +661,7 @@ bool TextEditor::selectRange(int line, int column,
     return true;
 }
 
-void TextEditor::onFileChanged(const File::Change &change)
+void TextEditor::onFileChanged(const File::Change &change, bool interactive)
 {
     const TextFile::Change &tc =
         static_cast<const TextFile::Change &>(change);
@@ -706,7 +706,8 @@ void TextEditor::insert(GtkTextBuffer *buffer, GtkTextIter *location,
         gtk_text_iter_get_line(location),
         gtk_text_iter_get_line_offset(location),
         text, length,
-        &newLine, &newColumn);
+        &newLine, &newColumn,
+        true);
 
     // Validate the iterator and stop this signal emission.
     gtk_text_buffer_get_iter_at_line_offset(buffer, location,
@@ -729,7 +730,8 @@ void TextEditor::remove(GtkTextBuffer *buffer,
         newLine,
         newColumn,
         gtk_text_iter_get_line(end),
-        gtk_text_iter_get_line_offset(end));
+        gtk_text_iter_get_line_offset(end),
+        true);
 
     // Validate the iterators and stop this signal emission.
     gtk_text_buffer_get_iter_at_line_offset(buffer, begin,

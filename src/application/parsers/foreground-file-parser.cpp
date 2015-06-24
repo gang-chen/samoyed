@@ -113,7 +113,9 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             0,
             m_unsavedFiles.unsavedFiles,
             m_unsavedFiles.numUnsavedFiles,
-            clang_defaultEditingTranslationUnitOptions(),
+            clang_defaultEditingTranslationUnitOptions() |
+            CXTranslationUnit_DetailedPreprocessingRecord |
+            CXTranslationUnit_IncludeBriefCommentsInCodeCompletion,
             &tu);
         m_tu.reset(tu, clang_disposeTranslationUnit);
         if (error)
@@ -131,7 +133,9 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_tu.get(),
             m_unsavedFiles.numUnsavedFiles,
             m_unsavedFiles.unsavedFiles,
-            clang_defaultReparseOptions(m_tu.get()));
+            clang_defaultReparseOptions(m_tu.get()) |
+            CXTranslationUnit_DetailedPreprocessingRecord |
+            CXTranslationUnit_IncludeBriefCommentsInCodeCompletion);
         if (error)
             m_tu.reset();
         Window::removeMessage(desc);
@@ -150,7 +154,9 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_codeCompletionColumn,
             m_unsavedFiles.unsavedFiles,
             m_unsavedFiles.numUnsavedFiles,
-            clang_defaultCodeCompleteOptions());
+            clang_defaultCodeCompleteOptions() |
+            CXTranslationUnit_DetailedPreprocessingRecord |
+            CXTranslationUnit_IncludeBriefCommentsInCodeCompletion);
         if (!results)
             m_tu.reset();
         Window::removeMessage(desc);

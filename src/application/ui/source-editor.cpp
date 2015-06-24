@@ -330,9 +330,9 @@ void SourceEditor::unhighlightAllTokens(int beginLine, int beginColumn,
                                    &begin, &end);
 }
 
-void SourceEditor::onFileChanged(const File::Change &change)
+void SourceEditor::onFileChanged(const File::Change &change, bool interactive)
 {
-    TextEditor::onFileChanged(change);
+    TextEditor::onFileChanged(change, interactive);
 
     // Resize the folder data vector.
     const TextFile::Change &tc =

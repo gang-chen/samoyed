@@ -83,7 +83,7 @@ public:
     /**
      * This function is called by the file when it is changed.
      */
-    virtual void onFileChanged(const File::Change &change) {}
+    virtual void onFileChanged(const File::Change &change, bool interactive) {}
 
     virtual void onFileLoaded() {}
 

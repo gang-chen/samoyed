@@ -83,7 +83,7 @@ public:
     void unhighlightAllTokens(int beginLine, int beginColumn,
                               int endLine, int endColumn);
 
-    virtual void onFileChanged(const File::Change &change);
+    virtual void onFileChanged(const File::Change &change, bool interactive);
 
     void onFileStructureUpdated();
 

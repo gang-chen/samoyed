@@ -117,10 +117,12 @@ public:
      * insertion, or NULL if not needed.
      * @param newColumn The holder of the column number of the position after
      * the insertion, or NULL if not needed.
+     * @param interactive True iff the insertion is directly from the user.
      * @return True iff inserted successfully.
      */
     bool insert(int line, int column, const char *text, int length,
-                int *newLine, int *newColumn);
+                int *newLine, int *newColumn,
+                bool interactive);
 
     /**
      * @param beginLine The line number of the first character to be removed,
@@ -132,9 +134,11 @@ public:
      * @param endColumn The column number of the exclusive last character to be
      * removed, the character index, starting from 0; or -1 to remove the text
      * until the last column.
+     * @param interactive True iff the removal is directly from the user.
      * @return True iff removed successfully.
      */
-    bool remove(int beginLine, int beginColumn, int endLine, int endColumn);
+    bool remove(int beginLine, int beginColumn, int endLine, int endColumn,
+                bool interactive);
 
     /**
      * @return True iff this type of files provide the syntax highlighting

@@ -417,7 +417,7 @@ void TextFile::copyLoadedContents(const boost::shared_ptr<FileLoader> &loader)
     if (characterCount() > 0)
     {
         static_cast<const TextEditor *>(editors())->endCursor(line, column);
-        onChanged(Change(0, 0, line, column));
+        onChanged(Change(0, 0, line, column), false);
     }
     const std::list<std::string> &buffer = ld.buffer();
     line = 0;
@@ -432,7 +432,8 @@ void TextFile::copyLoadedContents(const boost::shared_ptr<FileLoader> &loader)
                                             it->c_str(), it->length(),
                                             newLine, newColumn);
             onChanged(Change(line, column, it->c_str(), it->length(),
-                             newLine, newColumn));
+                             newLine, newColumn),
+                      false);
             line = newLine;
             column = newColumn;
         }
@@ -440,7 +441,8 @@ void TextFile::copyLoadedContents(const boost::shared_ptr<FileLoader> &loader)
 }
 
 bool TextFile::insert(int line, int column, const char *text, int length,
-                      int *newLine, int *newColumn)
+                      int *newLine, int *newColumn,
+                      bool interactive)
 {
     if (line == -1 && column == -1)
         static_cast<TextEditor *>(editors())->endCursor(line, column);
@@ -454,7 +456,7 @@ bool TextFile::insert(int line, int column, const char *text, int length,
     Change *chng;
     Removal *undo = insertOnly(line, column, text, length, chng);
     saveUndo(undo);
-    onChanged(*chng);
+    onChanged(*chng, interactive);
     if (newLine)
         *newLine =
             static_cast<TextFile::Change *>(chng)->value.insertion.newLine;
@@ -466,7 +468,8 @@ bool TextFile::insert(int line, int column, const char *text, int length,
 }
 
 bool TextFile::remove(int beginLine, int beginColumn,
-                      int endLine, int endColumn)
+                      int endLine, int endColumn,
+                      bool interactive)
 {
     if (endLine == -1 && endColumn == -1)
         static_cast<TextEditor *>(editors())->endCursor(endLine, endColumn);
@@ -493,7 +496,7 @@ bool TextFile::remove(int beginLine, int beginColumn,
                                  endLine, endColumn,
                                  chng);
     saveUndo(undo);
-    onChanged(*chng);
+    onChanged(*chng, interactive);
     delete chng;
     return true;
 }

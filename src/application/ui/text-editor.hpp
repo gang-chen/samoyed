@@ -67,7 +67,7 @@ public:
 
     virtual void grabFocus();
 
-    virtual void onFileChanged(const File::Change &change);
+    virtual void onFileChanged(const File::Change &change, bool interactive);
 
     virtual bool frozen() const;
 

@@ -326,7 +326,7 @@ void TextEditSaver::onFileSaved()
     m_initText = static_cast<TextFile &>(m_file).text(0, 0, -1, -1);
 }
 
-void TextEditSaver::onFileChanged(const File::Change &change)
+void TextEditSaver::onFileChanged(const File::Change &change, bool interactive)
 {
     if (m_file.loading())
         return;

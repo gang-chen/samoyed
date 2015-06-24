@@ -24,7 +24,7 @@ public:
     virtual void onCloseFile() {}
     virtual void onFileLoaded() {}
     virtual void onFileSaved() {}
-    virtual void onFileChanged(const File::Change &change) {}
+    virtual void onFileChanged(const File::Change &change, bool interactive) {}
 
 protected:
     File &m_file;

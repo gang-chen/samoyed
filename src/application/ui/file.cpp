@@ -877,7 +877,7 @@ void File::undo()
          it != changes.end();
          ++it)
     {
-        onChanged(**it);
+        onChanged(**it, false);
         delete *it;
     }
     delete edit;
@@ -896,7 +896,7 @@ void File::redo()
          it != changes.end();
          ++it)
     {
-        onChanged(**it);
+        onChanged(**it, false);
         delete *it;
     }
     delete edit;
@@ -966,14 +966,14 @@ void File::unfreezeInternally()
     }
 }
 
-void File::onChanged(const Change &change)
+void File::onChanged(const Change &change, bool interactive)
 {
     // First notify editors so that the other observers can see the changed
     // contents, since some derived files actually store their contents in the
     // corresponding editors and the editors actually perform the changes.
     for (Editor *editor = m_firstEditor; editor; editor = editor->nextInFile())
-        editor->onFileChanged(change);
-    m_changed(*this, change);
+        editor->onFileChanged(change, interactive);
+    m_changed(*this, change, interactive);
 }
 
 void File::onLoaded()

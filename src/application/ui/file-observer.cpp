@@ -20,7 +20,7 @@ void FileObserver::activate()
     m_savedConnection = m_file.addSavedCallback(boost::bind(
         &FileObserver::onFileSaved, this));
     m_changedConnection = m_file.addChangedCallback(boost::bind(
-        &FileObserver::onFileChanged, this, _2));
+        &FileObserver::onFileChanged, this, _2, _3));
 }
 
 void FileObserver::deactivate()

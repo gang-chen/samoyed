@@ -200,8 +200,8 @@ bool TextInit::replay(TextFile &file, const char *&byteCode, int &length)
 
         if (response == GTK_RESPONSE_YES)
         {
-            file.remove(0, 0, -1, -1);
-            file.insert(0, 0, byteCode, len, NULL, NULL);
+            file.remove(0, 0, -1, -1, false);
+            file.insert(0, 0, byteCode, len, NULL, NULL, false);
         }
         else
         {
@@ -228,7 +228,7 @@ bool TextInsertion::replay(TextFile &file, const char *&byteCode, int &length)
         return false;
     if (length < len)
         return false;
-    if (!file.insert(line, column, byteCode, len, NULL, NULL))
+    if (!file.insert(line, column, byteCode, len, NULL, NULL, false))
         return false;
     byteCode += len;
     length -= len;
@@ -248,7 +248,7 @@ bool TextRemoval::replay(TextFile &file, const char *&byteCode, int &length)
         return false;
     if (!readInteger(endColumn, byteCode, length))
         return false;
-    if (!file.remove(beginLine, beginColumn, endLine, endColumn))
+    if (!file.remove(beginLine, beginColumn, endLine, endColumn, false))
         return false;
     return true;
 }
