@@ -818,35 +818,58 @@ void TextEditor::activateAction(Window &window,
                                 GtkAction *action,
                                 Actions::ActionIndex index)
 {
-    if (index == Actions::ACTION_UNDO)
+    switch (index)
     {
+    case Actions::ACTION_UNDO:
         if (file().undoable())
             undo();
-    }
-    else if (index == Actions::ACTION_REDO)
-    {
+        return;
+    case Actions::ACTION_REDO:
         if (file().redoable())
             redo();
-    }
-    else if (index == Actions::ACTION_CUT)
+        return;
+    case Actions::ACTION_CUT:
         g_signal_emit_by_name(gtkSourceView(), "cut-clipboard");
-    else if (index == Actions::ACTION_COPY)
+        return;
+    case Actions::ACTION_COPY:
         g_signal_emit_by_name(gtkSourceView(), "copy-clipboard");
-    else if (index == Actions::ACTION_PASTE)
+        return;
+    case Actions::ACTION_PASTE:
         g_signal_emit_by_name(gtkSourceView(), "paste-clipboard");
-    else if (index == Actions::ACTION_DELETE)
+        return;
+    case Actions::ACTION_DELETE:
         g_signal_emit_by_name(gtkSourceView(),
                               "delete-from-cursor",
                               GTK_DELETE_CHARS,
                               0,
                               NULL);
+        return;
+    }
+    Editor::activateAction(window, action, index);
 }
 
 bool TextEditor::isActionSensitive(Window &window,
                                    GtkAction *action,
                                    Actions::ActionIndex index)
 {
-    return true;
+    switch (index)
+    {
+    case Actions::ACTION_UNDO:
+        return file().undoable();
+    case Actions::ACTION_REDO:
+        return file().redoable();
+    case Actions::ACTION_CUT:
+    case Actions::ACTION_COPY:
+    case Actions::ACTION_DELETE:
+        {
+            int line, column, line2, column2;
+            getSelectedRange(line, column, line2, column2);
+            return line != line2 || column != column2;
+        }
+    case Actions::ACTION_PASTE:
+        return true;
+    }
+    return Editor::isActionSensitive(window, action, index);
 }
 
 void TextEditor::onFontSet(GtkFontButton *button, gpointer data)

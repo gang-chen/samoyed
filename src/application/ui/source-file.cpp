@@ -161,6 +161,8 @@ int countIndentSizeUntil(GtkTextBuffer *buffer, CXCursor ast,
 struct GetAstParam
 {
     CXSourceLocation loc;
+    CXFile file;
+    unsigned offset;
     CXCursor ast;
 };
 
@@ -171,26 +173,53 @@ CXChildVisitResult getAstRecursively(CXCursor ast,
     GetAstParam *param = static_cast<GetAstParam *>(data);
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation begin = clang_getRangeStart(range);
-    if (clang_equalLocations(param->loc, begin))
+    CXFile file;
+    unsigned offset;
+    clang_getFileLocation(begin, &file, NULL, NULL, &offset);
+    // Do not use clang_equalLocations(begin, param->loc), because it may return
+    // false even if the two locations are equal (when the locations are within
+    // a macro expansion).
+    if (file == param->file && offset == param->offset)
     {
+        // Skip macro expansions.
+        if (clang_getCursorKind(ast) == CXCursor_MacroExpansion)
+            return CXChildVisit_Continue;
         param->ast = ast;
         return CXChildVisit_Break;
     }
     CXSourceLocation end = clang_getRangeEnd(range);
-    unsigned refOffset, offset;
-    clang_getFileLocation(param->loc, NULL, NULL, NULL, &refOffset);
-    clang_getFileLocation(end, NULL, NULL, NULL, &offset);
-    if (offset <= refOffset)
+    clang_getFileLocation(end, &file, NULL, NULL, &offset);
+    if (file != param->file || offset <= param->offset)
         return CXChildVisit_Continue;
+    param->ast = ast;
     return CXChildVisit_Recurse;
 }
 
+// Get the topmost AST starting from the location, or the lowest AST covering
+// the location.
 CXCursor getAst(CXTranslationUnit tu, CXSourceLocation loc)
 {
     CXCursor ast = clang_getCursor(tu, loc);
+    if (clang_Cursor_isNull(ast) ||
+        clang_isInvalid(clang_getCursorKind(ast)))
+        return clang_getTranslationUnitCursor(tu);
+    if (clang_getCursorKind(ast) == CXCursor_TranslationUnit)
+        return ast;
+    if (clang_getCursorKind(ast) == CXCursor_MacroExpansion)
+    {
+        // Need to look into the expansion and get the AST from the expanded
+        // code.
+        ast = clang_getTranslationUnitCursor(tu);
+        GetAstParam param;
+        param.loc = loc;
+        param.ast = ast;
+        clang_getFileLocation(loc, &param.file, NULL, NULL, &param.offset);
+        clang_visitChildren(ast, getAstRecursively, &param);
+        return param.ast;
+    }
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation begin = clang_getRangeStart(range);
-    if (!clang_equalLocations(loc, begin))
+    if (!clang_equalLocations(begin, loc))
         return ast;
     for (;;)
     {
@@ -198,15 +227,20 @@ CXCursor getAst(CXTranslationUnit tu, CXSourceLocation loc)
         if (clang_isInvalid(clang_getCursorKind(p)))
             p = clang_getCursorSemanticParent(ast);
         if (clang_Cursor_isNull(p))
-            return ast;
+        {
+            ast = clang_getTranslationUnitCursor(tu);
+            break;
+        }
         ast = p;
         range = clang_getCursorExtent(ast);
         begin = clang_getRangeStart(range);
-        if (!clang_equalLocations(loc, begin))
+        if (!clang_equalLocations(begin, loc))
             break;
     }
     GetAstParam param;
     param.loc = loc;
+    param.ast = ast;
+    clang_getFileLocation(loc, &param.file, NULL, NULL, &param.offset);
     clang_visitChildren(ast, getAstRecursively, &param);
     return param.ast;
 }
@@ -218,39 +252,50 @@ CXChildVisitResult getAstParentRecursively(CXCursor ast,
     GetAstParam *param = static_cast<GetAstParam *>(data);
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation begin = clang_getRangeStart(range);
-    if (clang_equalLocations(param->loc, begin))
+    if (clang_equalLocations(begin, param->loc))
     {
         param->ast = parent;
         return CXChildVisit_Break;
     }
     CXSourceLocation end = clang_getRangeEnd(range);
-    unsigned refOffset, offset;
-    clang_getFileLocation(param->loc, NULL, NULL, NULL, &refOffset);
-    clang_getFileLocation(end, NULL, NULL, NULL, &offset);
-    if (offset <= refOffset)
+    CXFile file;
+    unsigned offset;
+    clang_getFileLocation(end, &file, NULL, NULL, &offset);
+    if (file != param->file || offset <= param->offset)
         return CXChildVisit_Continue;
+    param->ast = parent;
     return CXChildVisit_Recurse;
 }
 
-CXCursor getAstParent(CXCursor ast)
+// Get the lowest ancestor covering the AST.
+CXCursor getAstParent(CXTranslationUnit tu, CXCursor ast)
 {
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation loc = clang_getRangeStart(range);
+    assert(!clang_Cursor_isNull(ast));
+    assert(!clang_isInvalid(clang_getCursorKind(ast)));
+    if (clang_getCursorKind(ast) == CXCursor_TranslationUnit)
+        return clang_getNullCursor();
     for (;;)
     {
         CXCursor p = clang_getCursorLexicalParent(ast);
         if (clang_isInvalid(clang_getCursorKind(p)))
             p = clang_getCursorSemanticParent(ast);
         if (clang_Cursor_isNull(p))
-            return ast;
+        {
+            ast = clang_getTranslationUnitCursor(tu);
+            break;
+        }
         ast = p;
         range = clang_getCursorExtent(ast);
         CXSourceLocation begin = clang_getRangeStart(range);
-        if (!clang_equalLocations(loc, begin))
+        if (!clang_equalLocations(begin, loc))
             break;
     }
     GetAstParam param;
     param.loc = loc;
+    param.ast = ast;
+    clang_getFileLocation(loc, &param.file, NULL, NULL, &param.offset);
     clang_visitChildren(ast, getAstParentRecursively, &param);
     return param.ast;
 }
@@ -275,13 +320,22 @@ bool checkToken(GtkTextBuffer *buffer,
     CXToken *tokens;
     unsigned numTokens;
     clang_tokenize(tu, range, &tokens, &numTokens);
-    if (numTokens == 0)
-        return false;
-    if (clang_getTokenKind(tokens[0]) != kind)
-        return false;
-    CXString s = clang_getTokenSpelling(tu, tokens[0]);
-    bool equal = strcmp(clang_getCString(s), text) == 0;
-    clang_disposeString(s);
+    bool equal = false;
+    if (numTokens)
+    {
+        if (clang_getTokenKind(tokens[0]) == kind)
+        {
+            CXString s = clang_getTokenSpelling(tu, tokens[0]);
+            if (strcmp(clang_getCString(s), text) == 0)
+            {
+                // Need to check the location.
+                CXSourceRange tokenRange = clang_getTokenExtent(tu, tokens[0]);
+                if (clang_equalLocations(clang_getRangeStart(tokenRange), loc))
+                    equal = true;
+            }
+            clang_disposeString(s);
+        }
+    }
     clang_disposeTokens(tu, tokens, numTokens);
     return equal;
 }
@@ -698,6 +752,7 @@ int SourceFile::calculateIndentSize(int line,
     int indentWidth = Application::instance().preferences().child(TEXT_EDITOR).
         get<int>(INDENT_WIDTH);
 
+    // Get the beginning of the line excluding blank characters.
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(static_cast<TextEditor *>(editors())->gtkSourceView()));
     GtkTextIter iter;
@@ -705,6 +760,7 @@ int SourceFile::calculateIndentSize(int line,
     if (!isNonBlankChar(gtk_text_iter_get_char(&iter), NULL))
         gtk_text_iter_forward_find_char(&iter, isNonBlankChar,
                                         NULL, NULL);
+
     // If this line is empty and the cursor is not in this line, do not indent
     // it.
     if (gtk_text_iter_ends_line(&iter))
@@ -713,27 +769,42 @@ int SourceFile::calculateIndentSize(int line,
             return 0;
     }
 
+    // Get the location.
     char *fileName = g_filename_from_uri(uri(), NULL, NULL);
     CXFile file = clang_getFile(m_tu.get(), fileName);
     g_free(fileName);
     CXSourceLocation loc =
         clang_getLocation(m_tu.get(), file, line + 1,
                           gtk_text_iter_get_line_index(&iter) + 1);
+
+    // If this is a preprocessing directive, do not indent the line.
+    if (checkToken(buffer, m_tu.get(), loc, CXToken_Punctuation, "#"))
+        return 0;
+
+    // Get the AST.
     CXCursor ast = getAst(m_tu.get(), loc);
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation begin = clang_getRangeStart(range);
-    bool atAst = clang_equalLocations(loc, begin);
+    // Do not use clang_equalLocations(begin, loc), because it may return false
+    // even if the two locations are equal (when the locations are within a
+    // macro expansion).
+    CXFile astFile;
+    unsigned offset, astOffset;
+    clang_getFileLocation(begin, &astFile, NULL, NULL, &astOffset);
+    clang_getFileLocation(loc, NULL, NULL, NULL, &offset);
+    bool atAst = astFile == file && astOffset == offset;
     CXCursorKind kind = clang_getCursorKind(ast);
 
     if (clang_isDeclaration(kind))
     {
         if (atAst)
         {
-            CXCursor parentAst = getAstParent(ast);
+            CXCursor parentAst = getAstParent(m_tu.get(), ast);
             CXCursorKind parentKind = clang_getCursorKind(parentAst);
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))
                 return 0;
+            // Do not indent in access specifiers.
             if (kind == CXCursor_CXXAccessSpecifier)
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             return countIndentSizeAt(buffer, parentAst, indentSizes) +
@@ -745,6 +816,9 @@ int SourceFile::calculateIndentSize(int line,
             kind == CXCursor_EnumDecl ||
             kind == CXCursor_Namespace)
         {
+            // Align "{" with the beginning of the declaration.
+            if (checkToken(buffer, m_tu.get(), loc, CXToken_Punctuation, "{"))
+                return countIndentSizeAt(buffer, ast, indentSizes);
             // Match "{" and "}".
             if (checkToken(buffer, m_tu.get(), loc, CXToken_Punctuation, "}"))
                 return countIndentSizeAt(buffer, ast, indentSizes);
@@ -756,7 +830,7 @@ int SourceFile::calculateIndentSize(int line,
     {
         if (atAst)
         {
-            CXCursor parentAst = getAstParent(ast);
+            CXCursor parentAst = getAstParent(m_tu.get(), ast);
             CXCursorKind parentKind = clang_getCursorKind(parentAst);
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))
@@ -771,7 +845,7 @@ int SourceFile::calculateIndentSize(int line,
     {
         if (atAst)
         {
-            CXCursor parentAst = getAstParent(ast);
+            CXCursor parentAst = getAstParent(m_tu.get(), ast);
             CXCursorKind parentKind = clang_getCursorKind(parentAst);
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))
@@ -788,11 +862,13 @@ int SourceFile::calculateIndentSize(int line,
         {
             if (kind == CXCursor_LabelStmt)
                 return 0;
-            CXCursor parentAst = getAstParent(ast);
+            CXCursor parentAst = getAstParent(m_tu.get(), ast);
             CXCursorKind parentKind = clang_getCursorKind(parentAst);
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))
                 return 0;
+            // If the compound statement is nested in another compound
+            // statement, indent it in.  Otherwise, do not indent it in.
             if (kind == CXCursor_CompoundStmt)
             {
                 if (parentKind == CXCursor_CompoundStmt)
@@ -800,6 +876,7 @@ int SourceFile::calculateIndentSize(int line,
                         indentWidth;
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             }
+            // Do not indent in case statements and default statements.
             if (kind == CXCursor_CaseStmt || kind == CXCursor_DefaultStmt)
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             if (kind == CXCursor_CXXCatchStmt &&
@@ -835,14 +912,17 @@ int SourceFile::calculateIndentSize(int line,
     if (clang_isTranslationUnit(kind))
         return 0;
 
-    if (clang_isPreprocessing(kind) && kind != CXCursor_MacroExpansion)
+    if (clang_isPreprocessing(kind))
+    {
+        assert(kind != CXCursor_MacroExpansion);
         return 0;
+    }
 
-    if (!clang_Cursor_isNull(ast))
+    if (!clang_Cursor_isNull(ast) && !clang_isInvalid(kind))
     {
         if (atAst)
         {
-            CXCursor parentAst = getAstParent(ast);
+            CXCursor parentAst = getAstParent(m_tu.get(), ast);
             CXCursorKind parentKind = clang_getCursorKind(parentAst);
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))

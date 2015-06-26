@@ -51,6 +51,8 @@
       <menuitem name="copy" action="copy"/>
       <menuitem name="paste" action="paste"/>
       <menuitem name="delete" action="delete"/>
+      <separator/>
+      <menuitem name="indent" action="indent"/>
     </menu>
 
     <menu name="search" action="search">

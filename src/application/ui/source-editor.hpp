@@ -106,6 +106,14 @@ public:
     virtual bool selectRange(int line, int column,
                              int line2, int column2);
 
+    virtual void activateAction(Window &window,
+                                GtkAction *action,
+                                Actions::ActionIndex index);
+
+    virtual bool isActionSensitive(Window &window,
+                                   GtkAction *action,
+                                   Actions::ActionIndex index);
+
 protected:
     static GtkTextTagTable *createSharedTagTable();
 

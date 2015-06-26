@@ -58,6 +58,7 @@ public:
         ACTION_COPY,
         ACTION_PASTE,
         ACTION_DELETE,
+        ACTION_INDENT,
 
         ACTION_CREATE_WINDOW,
         ACTION_WINDOW_LAYOUT,

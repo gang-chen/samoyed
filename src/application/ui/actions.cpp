@@ -195,6 +195,13 @@ void deleteObject(GtkAction *action, Samoyed::Window *window)
                                      Samoyed::Actions::ACTION_DELETE);
 }
 
+void indent(GtkAction *action, Samoyed::Window *window)
+{
+    window->current().activateAction(*window,
+                                     action,
+                                     Samoyed::Actions::ACTION_INDENT);
+}
+
 void createWindow(GtkAction *action, Samoyed::Window *window)
 {
     const char *sessionName = Samoyed::Application::instance().session().name();
@@ -411,6 +418,8 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Paste the object in the clipboard"), G_CALLBACK(paste) },
     { "delete", "edit-delete", N_("_Delete"), NULL,
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
+    { "indent", "edit-indent", N_("_Indent"), NULL,
+      N_("Indent the current line or the selected lines"), G_CALLBACK(indent) },
 
     // View menu.
     { "create-window", "window-new", N_("New _Window"), NULL,
@@ -584,6 +593,11 @@ gboolean Actions::updateSensitivity(gpointer)
             current.isActionSensitive(*window,
                                       actions.action(ACTION_DELETE),
                                       ACTION_DELETE));
+        gtk_action_set_sensitive(
+            actions.action(ACTION_INDENT),
+            current.isActionSensitive(*window,
+                                      actions.action(ACTION_INDENT),
+                                      ACTION_INDENT));
 
         window->updateActionsSensitivity();
     }

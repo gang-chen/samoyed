@@ -759,4 +759,47 @@ bool SourceEditor::selectRange(int line, int column,
     return TextEditor::selectRange(line, column, line2, column2);
 }
 
+void SourceEditor::activateAction(Window &window,
+                                  GtkAction *action,
+                                  Actions::ActionIndex index)
+{
+    switch (index)
+    {
+    case Actions::ACTION_INDENT:
+        {
+            int line, column, line2, column2;
+            getSelectedRange(line, column, line2, column2);
+            if (line == line2 && column == column2)
+                static_cast<SourceFile &>(file()).indent(line, line + 1, line);
+            else
+            {
+                if (line2 < line || (line2 == line && column2 < column))
+                {
+                    std::swap(line, line2);
+                    std::swap(column, column2);
+                }
+                if (column2 == 0)
+                    static_cast<SourceFile &>(file()).indent(line, line2, -1);
+                else
+                    static_cast<SourceFile &>(file()).
+                        indent(line, line2 + 1, -1);
+            }
+            return;
+        }
+    }
+    TextEditor::activateAction(window, action, index);
+}
+
+bool SourceEditor::isActionSensitive(Window &window,
+                                     GtkAction *action,
+                                     Actions::ActionIndex index)
+{
+    switch (index)
+    {
+    case Actions::ACTION_INDENT:
+        return true;
+    }
+    return TextEditor::isActionSensitive(window, action, index);
+}
+
 }
