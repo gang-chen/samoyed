@@ -87,17 +87,23 @@ gboolean isNonBlankChar(gunichar ch, gpointer data)
     return TRUE;
 }
 
+void tab(int &size, int tabWidth)
+{
+    size = tabWidth * ((size + 1) % tabWidth);
+}
+
 gboolean countBlankCharWidth(gunichar ch, gpointer data)
 {
     if (ch == L' ')
     {
-        *static_cast<int *>(data) += 1;
+        (*static_cast<int *>(data))++;
         return FALSE;
     }
     if (ch == L'\t')
     {
-        *static_cast<int *>(data) += Samoyed::Application::instance().
-            preferences().child(TEXT_EDITOR).get<int>(TAB_WIDTH);
+        tab(*static_cast<int *>(data),
+            Samoyed::Application::instance().
+            preferences().child(TEXT_EDITOR).get<int>(TAB_WIDTH));
         return FALSE;
     }
     return TRUE;
@@ -106,56 +112,12 @@ gboolean countBlankCharWidth(gunichar ch, gpointer data)
 gboolean countCharWidth(gunichar ch, gpointer data)
 {
     if (ch == L'\t')
-        *static_cast<int *>(data) += Samoyed::Application::instance().
-            preferences().child(TEXT_EDITOR).get<int>(TAB_WIDTH);
+        tab(*static_cast<int *>(data),
+            Samoyed::Application::instance().
+            preferences().child(TEXT_EDITOR).get<int>(TAB_WIDTH));
     else
-        *static_cast<int *>(data) += 1;
-    return TRUE;
-}
-
-int countIndentSizeAt(GtkTextBuffer *buffer, CXCursor ast,
-                      const std::map<int, int> &indentSizes)
-{
-    CXSourceRange range = clang_getCursorExtent(ast);
-    CXSourceLocation begin = clang_getRangeStart(range);
-    unsigned beginLine;
-    clang_getFileLocation(begin, NULL, &beginLine, NULL, NULL);
-    std::map<int, int>::const_iterator it = indentSizes.find(beginLine - 1);
-    if (it != indentSizes.end())
-        return it->second;
-    GtkTextIter iter;
-    gtk_text_buffer_get_iter_at_line(buffer, &iter, beginLine - 1);
-    int indentSize = 0;
-    if (!countBlankCharWidth(gtk_text_iter_get_char(&iter), &indentSize))
-        gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
-                                        &indentSize, NULL);
-    return indentSize;
-}
-
-int countIndentSizeUntil(GtkTextBuffer *buffer, CXCursor ast,
-                         const std::map<int, int> &indentSizes)
-{
-    CXSourceRange range = clang_getCursorExtent(ast);
-    CXSourceLocation begin = clang_getRangeStart(range);
-    unsigned beginLine, beginColumn;
-    clang_getFileLocation(begin, NULL, &beginLine, &beginColumn, NULL);
-    GtkTextIter iter, limit;
-    gtk_text_buffer_get_iter_at_line(buffer, &iter, beginLine - 1);
-    gtk_text_buffer_get_iter_at_line_index(buffer, &limit,
-                                           beginLine - 1, beginColumn - 1);
-    int oldIndentSize = 0, indentSize = 0;
-    if (!countCharWidth(gtk_text_iter_get_char(&iter), &indentSize))
-        gtk_text_iter_forward_find_char(&iter, countCharWidth,
-                                        &oldIndentSize, NULL);
-    std::map<int, int>::const_iterator it = indentSizes.find(beginLine - 1);
-    if (it != indentSizes.end())
-        indentSize = it->second;
-    else
-        indentSize = oldIndentSize;
-    if (!countCharWidth(gtk_text_iter_get_char(&iter), &indentSize))
-        gtk_text_iter_forward_find_char(&iter, countCharWidth,
-                                        &indentSize, &limit);
-    return indentSize;
+        (*static_cast<int *>(data))++;
+    return FALSE;
 }
 
 struct GetAstParam
@@ -187,6 +149,12 @@ CXChildVisitResult getAstRecursively(CXCursor ast,
         param->ast = ast;
         return CXChildVisit_Break;
     }
+    // If this AST passes the location, quit the search.  Note that
+    // preprocessing directives are in a separate sorted AST list from regular
+    // AST's.
+    if (file == param->file && offset > param->offset &&
+        !clang_isPreprocessing(clang_getCursorKind(ast)))
+        return CXChildVisit_Break;
     CXSourceLocation end = clang_getRangeEnd(range);
     clang_getFileLocation(end, &file, NULL, NULL, &offset);
     if (file != param->file || offset <= param->offset)
@@ -195,8 +163,8 @@ CXChildVisitResult getAstRecursively(CXCursor ast,
     return CXChildVisit_Recurse;
 }
 
-// Get the topmost AST starting from the location, or the lowest AST covering
-// the location.
+// Get the topmost AST starting from the location, or, if none, the lowest AST
+// covering the location.
 CXCursor getAst(CXTranslationUnit tu, CXSourceLocation loc)
 {
     CXCursor ast = clang_getCursor(tu, loc);
@@ -252,14 +220,21 @@ CXChildVisitResult getAstParentRecursively(CXCursor ast,
     GetAstParam *param = static_cast<GetAstParam *>(data);
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation begin = clang_getRangeStart(range);
+    CXFile file;
+    unsigned offset;
     if (clang_equalLocations(begin, param->loc))
     {
         param->ast = parent;
         return CXChildVisit_Break;
     }
+    // If this AST passes the location, quit the search.  Note that
+    // preprocessing directives are in a separate sorted AST list from regular
+    // AST's.
+    clang_getFileLocation(begin, &file, NULL, NULL, &offset);
+    if (file == param->file && offset > param->offset &&
+        !clang_isPreprocessing(clang_getCursorKind(ast)))
+        return CXChildVisit_Break;
     CXSourceLocation end = clang_getRangeEnd(range);
-    CXFile file;
-    unsigned offset;
     clang_getFileLocation(end, &file, NULL, NULL, &offset);
     if (file != param->file || offset <= param->offset)
         return CXChildVisit_Continue;
@@ -270,12 +245,12 @@ CXChildVisitResult getAstParentRecursively(CXCursor ast,
 // Get the lowest ancestor covering the AST.
 CXCursor getAstParent(CXTranslationUnit tu, CXCursor ast)
 {
-    CXSourceRange range = clang_getCursorExtent(ast);
-    CXSourceLocation loc = clang_getRangeStart(range);
     assert(!clang_Cursor_isNull(ast));
     assert(!clang_isInvalid(clang_getCursorKind(ast)));
     if (clang_getCursorKind(ast) == CXCursor_TranslationUnit)
         return clang_getNullCursor();
+    CXSourceRange range = clang_getCursorExtent(ast);
+    CXSourceLocation loc = clang_getRangeStart(range);
     for (;;)
     {
         CXCursor p = clang_getCursorLexicalParent(ast);
@@ -298,6 +273,61 @@ CXCursor getAstParent(CXTranslationUnit tu, CXCursor ast)
     clang_getFileLocation(loc, &param.file, NULL, NULL, &param.offset);
     clang_visitChildren(ast, getAstParentRecursively, &param);
     return param.ast;
+}
+
+int countIndentSizeAt(GtkTextBuffer *buffer, CXCursor ast,
+                      const std::map<int, int> &indentSizes)
+{
+    if (clang_getCursorKind(ast) == CXCursor_CompoundStmt)
+    {
+        // Because the "{" that starts the compound statement may be placed
+        // after the parent of the compound statement in the same line.  We
+        // should use the indentation size of the parent.  But if the compound
+        // statement is nested in another compound statement, we should use the
+        // indentation size of the inner one.
+        CXCursor p = clang_getCursorLexicalParent(ast);
+        if (clang_isInvalid(clang_getCursorKind(p)))
+            p = clang_getCursorSemanticParent(ast);
+        if (!clang_Cursor_isNull(p))
+        {
+            CXSourceRange range = clang_getCursorExtent(ast);
+            CXSourceLocation loc = clang_getRangeStart(range);
+            GetAstParam param;
+            param.loc = loc;
+            param.ast = p;
+            clang_getFileLocation(loc, &param.file, NULL, NULL, &param.offset);
+            clang_visitChildren(p, getAstParentRecursively, &param);
+            if (clang_getCursorKind(param.ast) != CXCursor_CompoundStmt)
+                ast = param.ast;
+        }
+    }
+
+    CXSourceRange range = clang_getCursorExtent(ast);
+    CXSourceLocation begin = clang_getRangeStart(range);
+    unsigned beginLine, beginColumn;
+    clang_getFileLocation(begin, NULL, &beginLine, &beginColumn, NULL);
+    GtkTextIter iter, limit;
+    gtk_text_buffer_get_iter_at_line(buffer, &iter, beginLine - 1);
+    gtk_text_buffer_get_iter_at_line_index(buffer, &limit,
+                                           beginLine - 1, beginColumn - 1);
+    int oldIndentSize = 0, indentSize = 0;
+    if (!countBlankCharWidth(gtk_text_iter_get_char(&iter), &oldIndentSize))
+        gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
+                                        &oldIndentSize, NULL);
+    std::map<int, int>::const_iterator it = indentSizes.find(beginLine - 1);
+    if (it != indentSizes.end())
+        indentSize = it->second;
+    else
+        indentSize = oldIndentSize;
+    if (gtk_text_iter_compare(&iter, &limit) < 0 &&
+        !countCharWidth(gtk_text_iter_get_char(&iter), &indentSize))
+    {
+        gtk_text_iter_forward_find_char(&iter, countCharWidth,
+                                        &indentSize, &limit);
+        // Need to substract the width of the first character of the AST.
+        indentSize--;
+    }
+    return indentSize;
 }
 
 bool checkToken(GtkTextBuffer *buffer,
@@ -376,6 +406,29 @@ void buildStructureNodeCache(
             }
         }
     }
+}
+
+CXChildVisitResult findFirstChild(CXCursor ast,
+                                 CXCursor parent,
+                                 CXClientData data)
+{
+    CXCursor *child = static_cast<CXCursor *>(data);
+    *child = ast;
+    return CXChildVisit_Break;
+}
+
+CXChildVisitResult findSecondChild(CXCursor ast,
+                                   CXCursor parent,
+                                   CXClientData data)
+{
+    CXCursor *child = static_cast<CXCursor *>(data);
+    if (clang_Cursor_isNull(*child))
+    {
+        *child = ast;
+        return CXChildVisit_Continue;
+    }
+    *child = ast;
+    return CXChildVisit_Break;
 }
 
 }
@@ -711,7 +764,7 @@ void SourceFile::highlightSyntax()
     gtk_text_buffer_get_end_iter(buffer, &iter);
     CXSourceLocation end =
         clang_getLocation(tu, file,
-                          gtk_text_iter_get_line(&iter),
+                          gtk_text_iter_get_line(&iter) + 1,
                           gtk_text_iter_get_line_index(&iter) + 1);
     CXSourceRange range = clang_getRange(begin, end);
     CXToken *tokens;
@@ -785,6 +838,7 @@ int SourceFile::calculateIndentSize(int line,
     CXCursor ast = getAst(m_tu.get(), loc);
     CXSourceRange range = clang_getCursorExtent(ast);
     CXSourceLocation begin = clang_getRangeStart(range);
+
     // Do not use clang_equalLocations(begin, loc), because it may return false
     // even if the two locations are equal (when the locations are within a
     // macro expansion).
@@ -807,6 +861,18 @@ int SourceFile::calculateIndentSize(int line,
             // Do not indent in access specifiers.
             if (kind == CXCursor_CXXAccessSpecifier)
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
+            if (kind == CXCursor_ParmDecl &&
+                (parentKind == CXCursor_FunctionDecl ||
+                 parentKind == CXCursor_CXXMethod))
+            {
+                // This is a parameter declaration in a function declaration.
+                // Align it with the first parameter.
+                CXCursor firstParam = clang_getNullCursor();
+                clang_visitChildren(parentAst, findFirstChild, &firstParam);
+                if (!clang_Cursor_isNull(firstParam) &&
+                    !clang_equalCursors(firstParam, ast))
+                    return countIndentSizeAt(buffer, firstParam, indentSizes);
+            }
             return countIndentSizeAt(buffer, parentAst, indentSizes) +
                 indentWidth;
         }
@@ -850,6 +916,20 @@ int SourceFile::calculateIndentSize(int line,
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))
                 return 0;
+            if (parentKind == CXCursor_CallExpr)
+            {
+                // This is a parameter in a function call.  Align it with the
+                // first parameter.
+                CXCursor firstParam = clang_getNullCursor();
+                clang_visitChildren(parentAst, findSecondChild, &firstParam);
+                if (!clang_Cursor_isNull(firstParam) &&
+                    !clang_equalCursors(firstParam, ast))
+                    return countIndentSizeAt(buffer, firstParam, indentSizes);
+            }
+            // If the expression is nested in another expression, do not indent
+            // it in.  Otherwise, indent it in.
+            if (clang_isExpression(parentKind))
+                return countIndentSizeAt(buffer, parentAst, indentSizes);
             return countIndentSizeAt(buffer, parentAst, indentSizes) +
                 indentWidth;
         }
@@ -933,7 +1013,7 @@ int SourceFile::calculateIndentSize(int line,
         return countIndentSizeAt(buffer, ast, indentSizes) + indentWidth;
     }
 
-    // Same as the last non-empty line.
+    // Align this line with the last non-empty line.
     for (line--; line >= 0; line--)
     {
         int indentSize = 0;
