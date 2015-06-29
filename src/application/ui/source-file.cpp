@@ -849,6 +849,27 @@ int SourceFile::calculateIndentSize(int line,
     bool atAst = astFile == file && astOffset == offset;
     CXCursorKind kind = clang_getCursorKind(ast);
 
+    if ((kind == CXCursor_StructDecl ||
+         kind == CXCursor_UnionDecl ||
+         kind == CXCursor_ClassDecl ||
+         kind == CXCursor_EnumDecl ||
+         kind == CXCursor_Namespace ||
+         kind == CXCursor_CompoundStmt) &&
+        checkToken(buffer, m_tu.get(), loc, CXToken_Punctuation, "}"))
+    {
+        // This "}" completes the declaration or the compound statement and
+        // completes the enclosing declarations or statements as well.  We need
+        // to indent these lines.  But if the beginning is not in this file, we
+        // do not know how to do it.
+        if (astFile == file)
+        {
+            unsigned beginLine;
+            clang_getFileLocation(begin, NULL, &beginLine, NULL, NULL);
+            for (int ln = beginLine - 1; ln < line; ln++)
+                m_indentLines.insert(ln);
+        }
+    }
+
     if (clang_isDeclaration(kind))
     {
         if (atAst)
@@ -1067,18 +1088,21 @@ void SourceFile::indentInternally()
     if (!parsed() || !m_tu)
         return;
     std::map<int, int> indentSizes;
-    for (std::set<int>::const_iterator iter = m_indentLines.begin();
-         iter != m_indentLines.end();
-         ++iter)
+    while (!m_indentLines.empty())
     {
-        int indentSize = calculateIndentSize(*iter, indentSizes);
-        indentSizes[*iter] = indentSize;
+        std::set<int>::iterator iter = m_indentLines.begin();
+        int line = *iter;
+        m_indentLines.erase(iter);
+        if (indentSizes.find(line) == indentSizes.end())
+        {
+            int indentSize = calculateIndentSize(line, indentSizes);
+            indentSizes[line] = indentSize;
+        }
     }
     for (std::map<int, int>::const_iterator iter = indentSizes.begin();
          iter != indentSizes.end();
          ++iter)
         doIndent(iter->first, iter->second);
-    m_indentLines.clear();
     m_cursorIndentLine = -1;
 }
 
