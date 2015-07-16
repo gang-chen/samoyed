@@ -6,7 +6,7 @@
 #endif
 #include "terminal-plugin.hpp"
 #include "terminal-view-extension.hpp"
-#include "ui/widget.hpp"
+#include "widget/widget.hpp"
 #include <string.h>
 
 namespace Samoyed

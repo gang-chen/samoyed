@@ -7,7 +7,7 @@
 #include "file-browser-plugin.hpp"
 #include "file-browser-view-extension.hpp"
 #include "file-browser-histories-extension.hpp"
-#include "ui/widget.hpp"
+#include "widget/widget.hpp"
 #include <string.h>
 
 namespace Samoyed

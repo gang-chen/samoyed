@@ -7,7 +7,7 @@
 #include "terminal.hpp"
 #include "terminal-view.hpp"
 #include "application.hpp"
-#include "ui/window.hpp"
+#include "window/window.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <stdio.h>
 #include <stdlib.h>

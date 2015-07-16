@@ -4,7 +4,7 @@
 #ifndef SMYD_TERM_TERMINAL_PLUGIN_HPP
 #define SMYD_TERM_TERMINAL_PLUGIN_HPP
 
-#include "utilities/plugin.hpp"
+#include "plugin/plugin.hpp"
 #include <set>
 
 namespace Samoyed

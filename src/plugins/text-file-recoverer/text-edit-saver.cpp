@@ -7,11 +7,11 @@
 #include "text-edit-saver.hpp"
 #include "text-edit.hpp"
 #include "text-file-recoverer-plugin.hpp"
+#include "editors/text-file.hpp"
+#include "session/session.hpp"
 #include "application.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/property-tree.hpp"
-#include "ui/text-file.hpp"
-#include "ui/session.hpp"
 #include <assert.h>
 #include <stdio.h>
 #include <string>

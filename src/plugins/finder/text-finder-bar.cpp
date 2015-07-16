@@ -5,7 +5,7 @@
 # include <config.h>
 #endif
 #include "text-finder-bar.hpp"
-#include "ui/text-editor.hpp"
+#include "editors/text-editor.hpp"
 #include "application.hpp"
 #include "utilities/property-tree.hpp"
 #include <string>

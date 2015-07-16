@@ -4,7 +4,7 @@
 #ifndef SMYD_FLBR_FILE_BROWSER_HISTORIES_EXTENSION_HPP
 #define SMYD_FLBR_FILE_BROWSER_HISTORIES_EXTENSION_HPP
 
-#include "ui/histories-extension.hpp"
+#include "session/histories-extension.hpp"
 
 namespace Samoyed
 {

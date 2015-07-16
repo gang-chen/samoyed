@@ -1,4 +1,4 @@
-SUBDIRS = parsers ui utilities
+SUBDIRS = editors parsers plugin project session utilities widget window
 
 pkglib_LTLIBRARIES = libsamoyed.la
 
@@ -18,10 +18,12 @@ libsamoyed_la_LDFLAGS = \
     $(SAMOYED_LDFLAGS)
 
 libsamoyed_la_LIBADD = \
+    editors/libeditors.la \
     parsers/libparsers.la \
-    ui/libui.la \
-    ui/bars/libbars.la \
-    ui/dialogs/libdialogs.la \
-    ui/windows/libwindows.la \
+    plugin/libplugin.la \
+    project/libproject.la \
+    session/libsession.la \
     utilities/libutilities.la \
+    widget/libwidget.la \
+    window/libwindow.la \
     $(SAMOYED_LIBS)

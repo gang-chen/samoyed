@@ -7,8 +7,8 @@
 #include "text-edit.hpp"
 #include "application.hpp"
 #include "utilities/utf8.hpp"
-#include "ui/text-file.hpp"
-#include "ui/window.hpp"
+#include "editors/text-file.hpp"
+#include "window/window.hpp"
 #include <stddef.h>
 #include <stdio.h>
 #include <glib/gi18n.h>

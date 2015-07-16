@@ -6,7 +6,7 @@
 #endif
 #include "text-file-observer-extension.hpp"
 #include "text-edit-saver.hpp"
-#include "ui/text-file.hpp"
+#include "editors/text-file.hpp"
 
 namespace Samoyed
 {

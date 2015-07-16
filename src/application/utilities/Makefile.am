@@ -1,12 +1,8 @@
 noinst_LTLIBRARIES = libutilities.la
 
 libutilities_la_SOURCES = \
-    extension.cpp \
-    extension-point-manager.cpp \
     lock-file.cpp \
     miscellaneous.cpp \
-    plugin.cpp \
-    plugin-manager.cpp \
     property-tree.cpp \
     raw-file-loader.cpp \
     signal.cpp \
@@ -14,15 +10,10 @@ libutilities_la_SOURCES = \
     text-file-saver.cpp \
     utf8.cpp \
     worker.cpp \
-    extension.hpp \
-    extension-point.hpp \
-    extension-point-manager.hpp \
     file-loader.hpp \
     file-saver.hpp \
     lock-file.hpp \
     miscellaneous.hpp \
-    plugin.hpp \
-    plugin-manager.hpp \
     property-tree.hpp \
     raw-file-loader.hpp \
     scheduler.hpp \

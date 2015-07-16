@@ -4,7 +4,7 @@
 #ifndef SMYD_TERM_TERMINAL_VIEW_HPP
 #define SMYD_TERM_TERMINAL_VIEW_HPP
 
-#include "ui/view.hpp"
+#include "widget/view.hpp"
 
 namespace Samoyed
 {

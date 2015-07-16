@@ -4,7 +4,7 @@
 #ifndef SMYD_FLBR_FILE_BROWSER_VIEW_HPP
 #define SMYD_FLBR_FILE_BROWSER_VIEW_HPP
 
-#include "ui/view.hpp"
+#include "widget/view.hpp"
 
 namespace Samoyed
 {

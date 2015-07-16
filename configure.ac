@@ -75,9 +75,10 @@ AC_PATH_PROG([GLIB_MKENUMS], [glib-mkenums])
 AC_CHECK_LIB([clang], [clang_createIndex])
 AC_CHECK_HEADERS([clang-c/Index.h])
 
-AX_PATH_BDB([6])
+AC_CHECK_LIB([sqlite3], [sqlite3_open])
+AC_CHECK_HEADERS([sqlite3.h])
 
-SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS $BDB_CPPFLAGS"
+SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
 AC_SUBST([SAMOYED_CPPFLAGS])
 
 if test "x$os_windows" = "xyes"; then
@@ -87,7 +88,7 @@ else
 fi
 AC_SUBST(SAMOYED_CXXFLAGS)
 
-SAMOYED_LIBS="$BOOST_CHRONO_LIB $BOOST_REGEX_LIB $BOOST_SYSTEM_LIB $BOOST_THREAD_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS $BDB_LIBS"
+SAMOYED_LIBS="$BOOST_CHRONO_LIB $BOOST_REGEX_LIB $BOOST_SYSTEM_LIB $BOOST_THREAD_LIB $GTK_LIBS $GMODULE_LIBS $XML_LIBS $GTKSOURCEVIEW_LIBS"
 AC_SUBST([SAMOYED_LIBS])
 
 SAMOYED_LDFLAGS="$BOOST_LDFLAGS $BDB_LDFLAGS -no-undefined -avoid-version"
@@ -135,12 +136,14 @@ libs/winpty/shared/Makefile
 po/Makefile.in
 src/Makefile
 src/application/Makefile
+src/application/editors/Makefile
 src/application/parsers/Makefile
-src/application/ui/Makefile
-src/application/ui/bars/Makefile
-src/application/ui/dialogs/Makefile
-src/application/ui/windows/Makefile
+src/application/plugin/Makefile
+src/application/project/Makefile
+src/application/session/Makefile
 src/application/utilities/Makefile
+src/application/widget/Makefile
+src/application/window/Makefile
 src/launcher/Makefile
 src/plugins/Makefile
 src/plugins/file-browser/Makefile

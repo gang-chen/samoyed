@@ -4,7 +4,7 @@
 #ifndef SMYD_TXRC_TEXT_FILE_RECOVERER_EXTENSION_HPP
 #define SMYD_TXRC_TEXT_FILE_RECOVERER_EXTENSION_HPP
 
-#include "ui/file-recoverer-extension.hpp"
+#include "editors/file-recoverer-extension.hpp"
 
 namespace Samoyed
 {

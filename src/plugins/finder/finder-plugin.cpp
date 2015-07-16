@@ -7,7 +7,7 @@
 #include "finder-plugin.hpp"
 #include "find-text-action-extension.hpp"
 #include "finder-histories-extension.hpp"
-#include "ui/widget.hpp"
+#include "widget/widget.hpp"
 #include <string.h>
 #include <gmodule.h>
 

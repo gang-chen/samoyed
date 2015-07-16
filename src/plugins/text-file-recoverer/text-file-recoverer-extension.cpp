@@ -7,7 +7,7 @@
 #include "text-file-recoverer-extension.hpp"
 #include "text-file-recoverer.hpp"
 #include "text-file-recoverer-plugin.hpp"
-#include "ui/text-file.hpp"
+#include "editors/text-file.hpp"
 #include <glib.h>
 #include <glib/gstdio.h>
 

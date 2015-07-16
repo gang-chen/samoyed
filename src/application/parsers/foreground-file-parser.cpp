@@ -6,8 +6,8 @@
 #endif
 #include "foreground-file-parser.hpp"
 #include "application.hpp"
-#include "ui/source-file.hpp"
-#include "ui/window.hpp"
+#include "editors/source-file.hpp"
+#include "window/window.hpp"
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/ref.hpp>

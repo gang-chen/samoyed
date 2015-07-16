@@ -4,7 +4,7 @@
 #ifndef SMYD_FIND_TEXT_FINDER_BAR_HPP
 #define SMYD_FIND_TEXT_FINDER_BAR_HPP
 
-#include "ui/bar.hpp"
+#include "widget/bar.hpp"
 #include <gtk/gtk.h>
 
 namespace Samoyed

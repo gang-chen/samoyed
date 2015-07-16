@@ -4,7 +4,7 @@
 #ifndef SMYD_TXRC_TEXT_EDIT_SAVER_HPP
 #define SMYD_TXRC_TEXT_EDIT_SAVER_HPP
 
-#include "ui/file-observer.hpp"
+#include "editors/file-observer.hpp"
 #include "utilities/worker.hpp"
 #include <stdio.h>
 #include <deque>

@@ -4,7 +4,7 @@
 #ifndef SMYD_TXRC_TEXT_FILE_RECOVERER_PLUGIN_HPP
 #define SMYD_TXRC_TEXT_FILE_RECOVERER_PLUGIN_HPP
 
-#include "utilities/plugin.hpp"
+#include "plugin/plugin.hpp"
 #include <set>
 #include <string>
 

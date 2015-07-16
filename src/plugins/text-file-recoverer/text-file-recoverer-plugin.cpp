@@ -10,8 +10,8 @@
 #include "text-file-recoverer-preferences-extension.hpp"
 #include "text-edit-saver.hpp"
 #include "text-file-recoverer.hpp"
+#include "plugin/plugin-manager.hpp"
 #include "application.hpp"
-#include "utilities/plugin-manager.hpp"
 #include <string.h>
 #include <glib.h>
 

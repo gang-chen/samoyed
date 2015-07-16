@@ -4,7 +4,7 @@
 #ifndef SMYD_FIND_FIND_TEXT_ACTION_EXTENSION_HPP
 #define SMYD_FIND_FIND_TEXT_ACTION_EXTENSION_HPP
 
-#include "ui/action-extension.hpp"
+#include "window/action-extension.hpp"
 
 namespace Samoyed
 {

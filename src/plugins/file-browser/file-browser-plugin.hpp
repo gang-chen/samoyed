@@ -4,7 +4,7 @@
 #ifndef SMYD_FLBR_FILE_BROWSER_PLUGIN_HPP
 #define SMYD_FLBR_FILE_BROWSER_PLUGIN_HPP
 
-#include "utilities/plugin.hpp"
+#include "plugin/plugin.hpp"
 #include <set>
 
 namespace Samoyed

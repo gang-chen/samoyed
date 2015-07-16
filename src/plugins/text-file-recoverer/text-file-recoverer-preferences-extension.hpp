@@ -4,7 +4,7 @@
 #ifndef SMYD_TXRC_TEXT_FILE_RECOVERER_PREFERENCES_EXTENSION_HPP
 #define SMYD_TXRC_TEXT_FILE_RECOVERER_PREFERENCES_EXTENSION_HPP
 
-#include "ui/preferences-extension.hpp"
+#include "session/preferences-extension.hpp"
 #include <gtk/gtk.h>
 
 namespace Samoyed

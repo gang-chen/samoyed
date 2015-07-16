@@ -7,11 +7,11 @@
 #include "text-file-recoverer.hpp"
 #include "text-edit.hpp"
 #include "text-file-recoverer-plugin.hpp"
+#include "editors/text-file.hpp"
+#include "window/window.hpp"
 #include "application.hpp"
 #include "utilities/scheduler.hpp"
 #include "utilities/miscellaneous.hpp"
-#include "ui/text-file.hpp"
-#include "ui/window.hpp"
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>

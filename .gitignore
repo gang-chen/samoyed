@@ -91,9 +91,8 @@ Makefile
 plugin.xml
 
 # Unit test builds.
-/src/application/ui/dialogs/session-chooser-dialog
-/src/application/ui/splash-screen
-/src/application/ui/windows/session-management-window
+/src/application/session/session-chooser-dialog
+/src/application/session/session-management-window
 /src/application/utilities/lock-file
 /src/application/utilities/miscellaneous
 /src/application/utilities/property-tree
@@ -103,6 +102,7 @@ plugin.xml
 /src/application/utilities/text-file-saver
 /src/application/utilities/utf8
 /src/application/utilities/worker
+/src/application/window/splash-screen
 
 # Generated files in gedit-file-browser.
 /libs/gedit-file-browser/gedit-file-browser-enum-types.h

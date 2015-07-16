@@ -4,7 +4,7 @@
 #ifndef SMYD_TXRC_TEXT_FILE_OBSERVER_EXTENSION_HPP
 #define SMYD_TXRC_TEXT_FILE_OBSERVER_EXTENSION_HPP
 
-#include "ui/file-observer-extension.hpp"
+#include "editors/file-observer-extension.hpp"
 
 namespace Samoyed
 {
