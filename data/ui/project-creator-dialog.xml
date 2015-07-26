@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkAssistant" id="assistant">
+    <property name="title">New Project</property>
+    <property name="visible">true</property>
+    <child>
+      <object class="GtkFileChooserButton" id="fc">
+        <property name="title">Location</property>
+        <property name="visible">true</property>
+      </object>
+    </child>
+  </object>
+</interface>

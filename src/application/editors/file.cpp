@@ -355,7 +355,7 @@ void File::openByDialog(Project *project,
 {
     GtkWidget *dialog =
         gtk_file_chooser_dialog_new(
-            _("Open file"),
+            _("Open File"),
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_FILE_CHOOSER_ACTION_OPEN,
             "_Cancel", GTK_RESPONSE_CANCEL,
@@ -714,7 +714,7 @@ void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
             GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_QUESTION,
+            GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,
             _("Samoyed failed to load file \"%s\". Close it?"),
             uri());
@@ -758,32 +758,52 @@ void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
     // If any error was encountered, report it.
     if (m_saver->error())
     {
-        // Cancel closing the editor waiting for the completion of the close
-        // operation.
         if (m_closing)
         {
-            m_closing = false;
-            assert(m_firstEditor);
-            assert(m_firstEditor == m_lastEditor);
-            assert(m_firstEditor->closing());
-            m_firstEditor->cancelClosing();
+            GtkWidget *dialog = gtk_message_dialog_new(
+                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_YES_NO,
+                _("Samoyed failed to save file \"%s\". Your edits will be "
+                  "discarded if you close the file. Continue to close it?"),
+                uri());
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("%s."),
+                m_saver->error()->message);
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_NO);
+            int response = gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+            if (response != GTK_RESPONSE_YES)
+            {
+                // Cancel closing the editor waiting for the completion of the
+                // close operation.
+                assert(m_firstEditor);
+                assert(m_firstEditor == m_lastEditor);
+                assert(m_firstEditor->closing());
+                m_firstEditor->cancelClosing();
+            }
         }
-
-        GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to save file \"%s\"."),
-            uri());
-        gtkMessageDialogAddDetails(
-            dialog,
-            _("%s."),
-            m_saver->error()->message);
-        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
-                                        GTK_RESPONSE_CLOSE);
-        gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
+        else
+        {
+            GtkWidget *dialog = gtk_message_dialog_new(
+                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                _("Samoyed failed to save file \"%s\"."),
+                uri());
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("%s."),
+                m_saver->error()->message);
+            gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                            GTK_RESPONSE_CLOSE);
+            gtk_dialog_run(GTK_DIALOG(dialog));
+            gtk_widget_destroy(dialog);
+        }
     }
     else
     {

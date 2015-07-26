@@ -1,4 +1,4 @@
-// Opened project.
+// Open project.
 // Copyright (C) 2012 Gang Chen.
 
 #ifndef SMYD_PROJECT_HPP
@@ -9,12 +9,14 @@
 #include <map>
 #include <string>
 #include <boost/utility.hpp>
+#include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
 
 class ProjectDb;
+class BuildSystem;
 class Editor;
 
 /**
@@ -28,6 +30,9 @@ class Editor;
 class Project: public boost::noncopyable
 {
 public:
+    typedef boost::signals2::signal<void (Project &project)> Opened;
+    typedef boost::signals2::signal<void (Project &project)> Close;
+
     class XmlElement
     {
     public:
@@ -50,17 +55,16 @@ public:
         std::string m_activeConfig;
     };
 
-    static Project *create(const char *uri);
+    static Project *create(const char *uri,
+                           const char *buildSystemExtensionId);
 
     static Project *open(const char *uri);
 
     static void remove(const char *uri);
 
-    static Project *createByDialog(const char *uri);
+    static Project *openByDialog();
 
-    static Project *openByDialog(const char *uri);
-
-    static void removeByDialog(const char *uri);
+    static void removeByDialog();
 
     /**
      * This function can be called by the application instance only.
@@ -77,11 +81,13 @@ public:
 
     const char *uri() const { return m_uri.c_str(); }
 
+    ProjectDb &db() { return *m_db; }
+
+    BuildSystem *buildSystem() { return m_buildSystem; }
+
     const char *activeConfiguration() const { return m_activeConfig.c_str(); }
     void setActiveConfiguration(const char *config)
     { m_activeConfig = config; }
-
-    ProjectDb &db() { return *m_db; }
 
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;
@@ -107,14 +113,19 @@ private:
     typedef std::multimap<ComparablePointer<const char>, Editor *>
         EditorTable;
 
-    bool openDb();
-    bool closeDb();
+    bool finishClosing();
+
+    void setBuildSystem(const char *buildSystemExtensionId);
+
+    bool readProjectXmlFile(xmlNodePtr node, std::list<std::string> *errors);
 
     const std::string m_uri;
 
     std::string m_activeConfig;
 
     ProjectDb *m_db;
+
+    BuildSystem *m_buildSystem;
 
     bool m_closing;
 

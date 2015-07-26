@@ -5,33 +5,34 @@
 # include <config.h>
 #endif
 #include "application.hpp"
+#include "build-system/build-systems-extension-point.hpp"
 #include "editors/file.hpp"
-#include "editors/text-file.hpp"
-#include "editors/source-file.hpp"
-#include "editors/text-editor.hpp"
-#include "editors/source-editor.hpp"
 #include "editors/file-observers-extension-point.hpp"
-#include "editors/file-recoverers-extension-point.hpp"
-#include "project/project.hpp"
-#include "window/window.hpp"
-#include "window/splash-screen.hpp"
-#include "window/actions-extension-point.hpp"
-#include "window/views-extension-point.hpp"
-#include "session/session.hpp"
-#include "session/session-chooser-dialog.hpp"
-#include "session/histories-extension-point.hpp"
-#include "session/preferences-extension-point.hpp"
-#include "session/preferences-editor.hpp"
+#include "editors/source-editor.hpp"
+#include "editors/source-file.hpp"
+#include "editors/text-file.hpp"
+#include "editors/text-editor.hpp"
+#include "parsers/foreground-file-parser.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "plugin/plugin-manager.hpp"
-#include "widget/view.hpp"
+#include "project/project.hpp"
+#include "session/file-recoverers-extension-point.hpp"
+#include "session/histories-extension-point.hpp"
+#include "session/preferences-editor.hpp"
+#include "session/preferences-extension-point.hpp"
+#include "session/session.hpp"
+#include "session/session-chooser-dialog.hpp"
+#include "utilities/miscellaneous.hpp"
+#include "utilities/property-tree.hpp"
+#include "utilities/scheduler.hpp"
 #include "widget/notebook.hpp"
 #include "widget/paned.hpp"
+#include "widget/view.hpp"
 #include "widget/widget-with-bars.hpp"
-#include "parsers/foreground-file-parser.hpp"
-#include "utilities/miscellaneous.hpp"
-#include "utilities/scheduler.hpp"
-#include "utilities/property-tree.hpp"
+#include "window/actions-extension-point.hpp"
+#include "window/splash-screen.hpp"
+#include "window/views-extension-point.hpp"
+#include "window/window.hpp"
 #include <assert.h>
 #include <utility>
 #include <string>
@@ -67,8 +68,11 @@ Application::Application():
     m_pluginManager(NULL),
     m_scheduler(NULL),
     m_actionsExtensionPoint(NULL),
+    m_buildSystemsExtensionPoint(NULL),
     m_fileObExtensionPoint(NULL),
     m_fileRecExtensionPoint(NULL),
+    m_historiesExtensionPoint(NULL),
+    m_preferencesExtensionPoint(NULL),
     m_viewsExtensionPoint(NULL),
     m_preferences(NULL),
     m_histories(NULL),
@@ -213,6 +217,7 @@ gboolean Application::startUp(gpointer app)
 
     // Create builtin extension points.
     a->m_actionsExtensionPoint = new ActionsExtensionPoint;
+    a->m_buildSystemsExtensionPoint = new BuildSystemsExtensionPoint;
     a->m_fileObExtensionPoint = new FileObserversExtensionPoint;
     a->m_fileRecExtensionPoint = new FileRecoverersExtensionPoint;
     a->m_historiesExtensionPoint = new HistoriesExtensionPoint;
@@ -259,11 +264,13 @@ gboolean Application::shutDown(gpointer app)
     assert(!a->m_splashScreen);
 
     delete a->m_actionsExtensionPoint;
+    delete a->m_buildSystemsExtensionPoint;
     delete a->m_fileObExtensionPoint;
     delete a->m_fileRecExtensionPoint;
     delete a->m_historiesExtensionPoint;
     delete a->m_preferencesExtensionPoint;
     delete a->m_viewsExtensionPoint;
+
     delete a->m_foregroundFileParser;
 
     // The real shut-down may happen later but should happen in the GTK+ main

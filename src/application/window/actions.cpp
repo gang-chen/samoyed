@@ -8,10 +8,11 @@
 #include "window.hpp"
 #include "editors/file.hpp"
 #include "editors/editor.hpp"
-#include "widget/notebook.hpp"
+#include "project/project-creator-dialog.hpp"
 #include "session/session.hpp"
 #include "session/session-management-window.hpp"
 #include "session/preferences-editor.hpp"
+#include "widget/notebook.hpp"
 #include "application.hpp"
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
@@ -49,6 +50,8 @@ void quitSession(GtkAction *action, Samoyed::Window *window)
 
 void createProject(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::ProjectCreatorDialog dialog;
+    dialog.run();
 }
 
 void openProject(GtkAction *action, Samoyed::Window *window)

@@ -118,6 +118,7 @@ data/plugins/file-browser/Makefile
 data/plugins/finder/Makefile
 data/plugins/terminal/Makefile
 data/plugins/text-file-recoverer/Makefile
+data/ui/Makefile
 libs/Makefile
 libs/boost/Makefile
 libs/boost/spirit/Makefile
@@ -136,6 +137,7 @@ libs/winpty/shared/Makefile
 po/Makefile.in
 src/Makefile
 src/application/Makefile
+src/application/build-system/Makefile
 src/application/editors/Makefile
 src/application/parsers/Makefile
 src/application/plugin/Makefile

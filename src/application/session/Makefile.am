@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libsession.la
 
 libsession_la_SOURCES = \
+    file-recoverers-extension-point.cpp \
     file-recovery-bar.cpp \
     histories-extension-point.cpp \
     preferences-editor.cpp \
@@ -8,6 +9,8 @@ libsession_la_SOURCES = \
     session.cpp \
     session-chooser-dialog.cpp \
     session-management-window.cpp \
+    file-recoverer-extension.hpp \
+    file-recoverers-extension-point.hpp \
     file-recovery-bar.hpp \
     histories-extension.hpp \
     histories-extension-point.hpp \

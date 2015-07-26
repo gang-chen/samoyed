@@ -1,4 +1,4 @@
-SUBDIRS = icons plugins
+SUBDIRS = icons plugins ui
 
 dist_pkgdata_DATA = \
     ui.xml \

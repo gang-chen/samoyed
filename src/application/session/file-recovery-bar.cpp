@@ -6,7 +6,7 @@
 #endif
 #include "file-recovery-bar.hpp"
 #include "session.hpp"
-#include "editors/file-recoverers-extension-point.hpp"
+#include "file-recoverers-extension-point.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "utilities/property-tree.hpp"
 #include "utilities/miscellaneous.hpp"

@@ -5,7 +5,6 @@ libeditors_la_SOURCES = \
     file.cpp \
     file-observer.cpp \
     file-observers-extension-point.cpp \
-    file-recoverers-extension-point.cpp \
     source-editor.cpp \
     source-file.cpp \
     text-editor.cpp \
@@ -15,8 +14,6 @@ libeditors_la_SOURCES = \
     file-observer.hpp \
     file-observer-extension.hpp \
     file-observers-extension-point.hpp \
-    file-recoverer-extension.hpp \
-    file-recoverers-extension-point.hpp \
     source-editor.hpp \
     source-file.hpp \
     text-editor.hpp \

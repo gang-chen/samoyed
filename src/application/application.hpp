@@ -18,6 +18,7 @@ class ExtensionPointManager;
 class PluginManager;
 class Scheduler;
 class ActionsExtensionPoint;
+class BuildSystemsExtensionPoint;
 class FileObserversExtensionPoint;
 class FileRecoverersExtensionPoint;
 class HistoriesExtensionPoint;
@@ -212,6 +213,7 @@ private:
 
     // Builtin extension points.
     ActionsExtensionPoint *m_actionsExtensionPoint;
+    BuildSystemsExtensionPoint *m_buildSystemsExtensionPoint;
     FileObserversExtensionPoint *m_fileObExtensionPoint;
     FileRecoverersExtensionPoint *m_fileRecExtensionPoint;
     HistoriesExtensionPoint *m_historiesExtensionPoint;

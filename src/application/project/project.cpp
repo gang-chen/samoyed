@@ -1,4 +1,4 @@
-// Opened project.
+// Open project.
 // Copyright (C) 2012 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
@@ -6,12 +6,17 @@
 #endif
 #include "project.hpp"
 #include "project-db.hpp"
+#include "build-system/build-system.hpp"
+#include "build-system/build-systems-extension-point.hpp"
 #include "editors/editor.hpp"
+#include "window/window.hpp"
+#include "plugin/extension-point-manager.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "application.hpp"
 #include <assert.h>
 #include <list>
 #include <map>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <glib.h>
@@ -20,8 +25,10 @@
 #include <sqlite3.h>
 
 #define PROJECT "project"
+#define BUILD_SYSTEM "build-system"
 #define URI "uri"
 #define ACTIVE_CONFIGURATION "active-configuration"
+#define BUILD_SYSTEMS "build-systems"
 
 namespace Samoyed
 {
@@ -108,7 +115,7 @@ Project *Project::XmlElement::restoreProject()
 {
     if (Application::instance().findProject(uri()))
         return NULL;
-    Project *project = new Project(uri());
+    Project *project = Project::open(uri());
     if (!project->restore(*this))
     {
         delete project;
@@ -117,34 +124,10 @@ Project *Project::XmlElement::restoreProject()
     return project;
 }
 
-bool Project::openDb()
-{
-    std::string dbUri(m_uri);
-    dbUri += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "project.db";
-    int error = ProjectDb::open(dbUri.c_str(), m_db);
-    if (error == SQLITE_OK)
-        return true;
-
-    // Report the error.
-    return false;
-}
-
-bool Project::closeDb()
-{
-    int error = m_db->close();
-    if (error == SQLITE_OK)
-    {
-        m_db = NULL;
-        return true;
-    }
-
-    // Report the error.
-    return false;
-}
-
 Project::Project(const char *uri):
     m_uri(uri),
-    m_db(NULL)
+    m_db(NULL),
+    m_buildSystem(NULL)
 {
     Application::instance().addProject(*this);
 }
@@ -152,7 +135,51 @@ Project::Project(const char *uri):
 Project::~Project()
 {
     assert(!m_db);
+    delete m_buildSystem;
     Application::instance().removeProject(*this);
+}
+
+Project *Project::create(const char *uri,
+                         const char *buildSystemExtensionId)
+{
+}
+
+bool Project::readProjectXmlFile(xmlNodePtr node,
+                                 std::list<std::string> *errors)
+{
+    char *value, *cp;
+    if (strcmp(reinterpret_cast<const char *>(node->name),
+               PROJECT) != 0)
+    {
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: Root element is \"%s\"; should be \"%s\".\n"),
+                node->line,
+                reinterpret_cast<const char *>(node->name),
+                PROJECT);
+            errors->push_back(cp);
+            g_free(cp);
+        }
+        return false;
+    }
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   BUILD_SYSTEM) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                setBuildSystem(value);
+                xmlFree(value);
+            }
+        }
+    }
+    return true;
 }
 
 Project *Project::open(const char *uri)
@@ -160,26 +187,191 @@ Project *Project::open(const char *uri)
     Project *project = Application::instance().findProject(uri);
     if (project)
         return project;
+
     project = new Project(uri);
-    if (!project->openDb())
+
+    // Read the project file.
+    std::string xmlUri(uri);
+    xmlUri += G_DIR_SEPARATOR_S "samoyed-project.xml";
+    GError *error = NULL;
+    char *xmlFileName = g_filename_from_uri(xmlUri.c_str(), NULL, &error);
+    if (error)
     {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open project \"%s\"."),
+              uri);
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to parse URI \"%s\". %s."),
+            uri, error->message);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(error);
         delete project;
         return NULL;
     }
+    xmlDocPtr doc = xmlParseFile(xmlFileName);
+    g_free(xmlFileName);
+    if (!doc)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open project \"%s\"."),
+              uri);
+        xmlErrorPtr error = xmlGetLastError();
+        if (error)
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to parse project file \"%s\". %s."),
+                  xmlUri.c_str(), error->message);
+        else
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed failed to parse project file \"%s\"."),
+                  xmlUri.c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        delete project;
+        return NULL;
+    }
+    xmlNodePtr node = xmlDocGetRootElement(doc);
+    if (!node)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open project \"%s\"."),
+              uri);
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Project file \"%s\" is empty."),
+            xmlUri.c_str());
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        xmlFreeDoc(doc);
+        delete project;
+        return NULL;
+    }
+    std::list<std::string> errors;
+    if (!project->readProjectXmlFile(node, &errors))
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open project \"%s\"."),
+              uri);
+        if (errors.empty())
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("Samoyed found errors in project file \"%s\"."),
+                xmlUri.c_str());
+        else
+        {
+            std::string e =
+                std::accumulate(errors.begin(), errors.end(), std::string());
+            gtkMessageDialogAddDetails(
+                dialog,
+                _("End errors in project file \"%s\":\n%s"),
+                xmlUri.c_str(), e.c_str());
+        }
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        xmlFreeDoc(doc);
+        delete project;
+        return NULL;
+    }
+    xmlFreeDoc(doc);
+
+    // Open the project database.
+    std::string dbUri(uri);
+    dbUri += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "project.db";
+    int dbError = ProjectDb::open(dbUri.c_str(), project->m_db);
+    if (dbError != SQLITE_OK)
+    {
+        // Report the error.
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to open project \"%s\"."),
+              uri);
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to open project database \"%s\". %s."),
+            dbUri.c_str(), sqlite3_errstr(dbError));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        delete project;
+        return NULL;
+    }
+
     return project;
+}
+
+bool Project::finishClosing()
+{
+    // Close the project database.
+    int dbError = m_db->close();
+    if (dbError != SQLITE_OK)
+    {
+        // Report the error.
+        GtkWidget *dialog = gtk_message_dialog_new(
+            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_YES_NO,
+            _("Samoyed failed to close project \"%s\". Force to close it?"),
+              uri());
+        std::string dbUri(uri());
+        dbUri += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "project.db";
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to close project database \"%s\". %s."),
+            dbUri.c_str(), sqlite3_errstr(dbError));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_NO);
+        int response = gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        if (response != GTK_RESPONSE_YES)
+        {
+            cancelClosing();
+            return false;
+        }
+    }
+    delete m_db;
+    m_db = NULL;
+
+    Application::instance().destroyProject(*this);
+    return true;
 }
 
 bool Project::close()
 {
     m_closing = true;
     if (!m_firstEditor)
-    {
-        // Close the database.
-        if (!closeDb())
-            return false;
-        Application::instance().destroyProject(*this);
-        return true;
-    }
+        return finishClosing();
 
     // Close all editors.
     for (Editor *editor = m_firstEditor, *next; editor; editor = next)
@@ -208,7 +400,7 @@ Project::XmlElement *Project::save() const
 
 bool Project::restore(XmlElement &xmlElement)
 {
-    m_activeConfig = xmlElement.activeConfiguration();
+    setActiveConfiguration(xmlElement.activeConfiguration());
     return true;
 }
 
@@ -251,12 +443,16 @@ void Project::destroyEditor(Editor &editor)
 {
     editor.destroyInProject();
     if (m_closing && !m_firstEditor)
-    {
-        if (!closeDb())
-            cancelClosing();
-        else
-            Application::instance().destroyProject(*this);
-    }
+        finishClosing();
+}
+
+void Project::setBuildSystem(const char *buildSystemExtensionId)
+{
+    delete m_buildSystem;
+    m_buildSystem =
+        static_cast<BuildSystemsExtensionPoint &>(Application::instance().
+        extensionPointManager().extensionPoint(BUILD_SYSTEMS)).
+        activateBuildSystem(buildSystemExtensionId, *this);
 }
 
 }

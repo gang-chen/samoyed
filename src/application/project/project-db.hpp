@@ -16,7 +16,6 @@ class ProjectDb
 public:
     struct File
     {
-    public:
         enum Type
         {
             TYPE_DIRECTORY,
@@ -28,7 +27,7 @@ public:
             TYPE_STATIC_LIBRARY
         };
 
-        std::string name;
+        std::string uri;
         Type type;
         std::string installDir;
         std::string properties;
@@ -36,32 +35,60 @@ public:
 
     struct Configuration
     {
-    public:
         std::string name;
         std::string description;
         std::string configCommands;
         std::string buildCommands;
         std::string installCommands;
+        std::string dryBuildCommands;
     };
+
+    struct Composition
+    {
+        std::string container;
+        std::string contained;
+    };
+
+    struct CompilationOptions
+    {
+        std::string fileUri;
+        std::string options;
+    };
+
+    struct Dependency
+    {
+        std::string dependent;
+        std::string dependency;
+    };
+
+    static int create(const char *uri, ProjectDb *&db);
 
     static int open(const char *uri, ProjectDb *&db);
 
+    ~ProjectDb();
+
     int close();
 
-    int addFile(const char *name, const File &file);
+    int addFile(const File &file);
 
-    int removeFile(const char *name);
+    int removeFile(const char *uri);
 
-    int readFile(const char *name, File &file);
+    int readFile(File &file);
 
-    int writeFile(const char *name, const File &file);
+    int writeFile(const File &file);
 
-    int matchFileNames(const char *pattern, std::list<std::string> &names);
+    int matchFileUris(const char *pattern, std::list<std::string> &uris);
+
+    int addConfiguration(const Configuration &config);
+
+    int removeConfiguration(const char *configName);
+
+    int readConfiguration(Configuration &config);
+
+    int writeConfiguration(const Configuration &config);
 
 private:
-    ProjectDb();
-
-    ~ProjectDb();
+    ProjectDb(): m_db(NULL) {}
 
     sqlite3 *m_db;
 };

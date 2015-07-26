@@ -6,8 +6,8 @@
 #endif
 #include "file-recoverers-extension-point.hpp"
 #include "file-recoverer-extension.hpp"
-#include "file.hpp"
-#include "editor.hpp"
+#include "editors/file.hpp"
+#include "editors/editor.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "plugin/plugin-manager.hpp"
 #include "window/window.hpp"

@@ -273,15 +273,13 @@ XmlElementSession *parseSessionFile(const char *fileName,
         if (error)
             Samoyed::gtkMessageDialogAddDetails(
                 dialog,
-                _("Samoyed failed to parse session file \"%s\" to restore "
-                  "session \"%s\". %s."),
-                fileName, sessionName, error->message);
+                _("Samoyed failed to parse session file \"%s\". %s."),
+                fileName, error->message);
         else
             Samoyed::gtkMessageDialogAddDetails(
                 dialog,
-                _("Samoyed failed to parse session file \"%s\" to restore "
-                  "session \"%s\"."),
-                fileName, sessionName);
+                _("Samoyed failed to parse session file \"%s\"."),
+                fileName);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
                                         GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));

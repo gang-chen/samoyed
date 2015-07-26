@@ -1,4 +1,13 @@
-SUBDIRS = editors parsers plugin project session utilities widget window
+SUBDIRS = \
+    build-system \
+    editors \
+    parsers \
+    plugin \
+    project \
+    session \
+    utilities \
+    widget \
+    window
 
 pkglib_LTLIBRARIES = libsamoyed.la
 
@@ -18,6 +27,7 @@ libsamoyed_la_LDFLAGS = \
     $(SAMOYED_LDFLAGS)
 
 libsamoyed_la_LIBADD = \
+    build-system/libbuildsystem.la \
     editors/libeditors.la \
     parsers/libparsers.la \
     plugin/libplugin.la \
