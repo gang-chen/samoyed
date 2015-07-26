@@ -85,38 +85,38 @@ Makefile
 *.so
 *.so.*
 *.exe
-/src/launcher/samoyed
+/launcher/src/samoyed
 
 # plugin.xml generated from plugin.xml.in.
 plugin.xml
 
 # Unit test builds.
-/src/application/session/session-chooser-dialog
-/src/application/session/session-management-window
-/src/application/utilities/lock-file
-/src/application/utilities/miscellaneous
-/src/application/utilities/property-tree
-/src/application/utilities/raw-file-loader
-/src/application/utilities/signal
-/src/application/utilities/text-file-loader
-/src/application/utilities/text-file-saver
-/src/application/utilities/utf8
-/src/application/utilities/worker
-/src/application/window/splash-screen
+/application/src/session/session-chooser-dialog
+/application/src/session/session-management-window
+/application/src/utilities/lock-file
+/application/src/utilities/miscellaneous
+/application/src/utilities/property-tree
+/application/src/utilities/raw-file-loader
+/application/src/utilities/signal
+/application/src/utilities/text-file-loader
+/application/src/utilities/text-file-saver
+/application/src/utilities/utf8
+/application/src/utilities/worker
+/application/src/window/splash-screen
 
 # Generated files in gedit-file-browser.
-/libs/gedit-file-browser/gedit-file-browser-enum-types.h
-/libs/gedit-file-browser/gedit-file-browser-enum-types.c
-/libs/gedit-file-browser/gedit-file-browser-marshal.h
-/libs/gedit-file-browser/gedit-file-browser-marshal.c
-/libs/gedit-file-browser/gedit-file-browser-resources.c
+/plugins/file-browser/libs/gedit-file-browser/gedit-file-browser-enum-types.h
+/plugins/file-browser/libs/gedit-file-browser/gedit-file-browser-enum-types.c
+/plugins/file-browser/libs/gedit-file-browser/gedit-file-browser-marshal.h
+/plugins/file-browser/libs/gedit-file-browser/gedit-file-browser-marshal.c
+/plugins/file-browser/libs/gedit-file-browser/gedit-file-browser-resources.c
 
 # Generated files in VTE.
-/libs/vte/vteseq-n.c
-/libs/vte/vteseq-list.h
-/libs/vte/box_drawing.h
-/libs/vte/marshal.c
-/libs/vte/marshal.h
-/libs/vte/vtetypebuiltins.c
-/libs/vte/vtetypebuiltins.h
-/libs/vte/stamp-vtetypebuiltins.h
+/plugins/terminal/libs/vte/vteseq-n.c
+/plugins/terminal/libs/vte/vteseq-list.h
+/plugins/terminal/libs/vte/box_drawing.h
+/plugins/terminal/libs/vte/marshal.c
+/plugins/terminal/libs/vte/marshal.h
+/plugins/terminal/libs/vte/vtetypebuiltins.c
+/plugins/terminal/libs/vte/vtetypebuiltins.h
+/plugins/terminal/libs/vte/stamp-vtetypebuiltins.h

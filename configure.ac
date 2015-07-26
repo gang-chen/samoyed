@@ -9,7 +9,7 @@ m4_define([samoyed_version],
 AC_INIT([Samoyed], [samoyed_version])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_SRCDIR([src/launcher/main.cpp])
+AC_CONFIG_SRCDIR([launcher/src/launcher.cpp])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_DEFINE([SAMOYED_MAJOR_VERSION], [samoyed_major_version], [Samoyed major version])
@@ -78,7 +78,7 @@ AC_CHECK_HEADERS([clang-c/Index.h])
 AC_CHECK_LIB([sqlite3], [sqlite3_open])
 AC_CHECK_HEADERS([sqlite3.h])
 
-SAMOYED_CPPFLAGS="-I\$(top_srcdir)/src/application -I\$(top_srcdir)/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
+SAMOYED_CPPFLAGS="-I\$(top_srcdir)/application/src -I\$(top_srcdir)/application/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS"
 AC_SUBST([SAMOYED_CPPFLAGS])
 
 if test "x$os_windows" = "xyes"; then
@@ -94,7 +94,7 @@ AC_SUBST([SAMOYED_LIBS])
 SAMOYED_LDFLAGS="$BOOST_LDFLAGS $BDB_LDFLAGS -no-undefined -avoid-version"
 AC_SUBST([SAMOYED_LDFLAGS])
 
-SAMOYED_LIBSAMOYED="\$(top_builddir)/src/application/libsamoyed.la"
+SAMOYED_LIBSAMOYED="\$(top_builddir)/application/src/libsamoyed.la"
 AC_SUBST([SAMOYED_LIBSAMOYED])
 
 SAMOYED_PLUGIN_LIBS="$SAMOYED_LIBSAMOYED $SAMOYED_LIBS"
@@ -105,53 +105,59 @@ AC_SUBST([SAMOYED_PLUGIN_LDFLAGS])
 
 AC_CONFIG_FILES([
 Makefile
-data/Makefile
-data/icons/Makefile
-data/icons/16x16/Makefile
-data/icons/16x16/apps/Makefile
-data/icons/32x32/Makefile
-data/icons/32x32/apps/Makefile
-data/icons/48x48/Makefile
-data/icons/48x48/apps/Makefile
-data/plugins/Makefile
-data/plugins/file-browser/Makefile
-data/plugins/finder/Makefile
-data/plugins/terminal/Makefile
-data/plugins/text-file-recoverer/Makefile
-data/ui/Makefile
-libs/Makefile
-libs/boost/Makefile
-libs/boost/spirit/Makefile
-libs/boost/spirit/home/Makefile
-libs/boost/spirit/home/support/Makefile
-libs/boost/spirit/home/support/detail/Makefile
-libs/boost/threadpool/Makefile
-libs/boost/threadpool/detail/Makefile
-libs/gedit-file-browser/Makefile
-libs/vte/Makefile
-libs/winpty/Makefile
-libs/winpty/agent/Makefile
-libs/winpty/include/Makefile
-libs/winpty/libwinpty/Makefile
-libs/winpty/shared/Makefile
+application/Makefile
+application/data/Makefile
+application/data/icons/Makefile
+application/data/icons/16x16/Makefile
+application/data/icons/16x16/apps/Makefile
+application/data/icons/32x32/Makefile
+application/data/icons/32x32/apps/Makefile
+application/data/icons/48x48/Makefile
+application/data/icons/48x48/apps/Makefile
+application/data/ui/Makefile
+application/libs/Makefile
+application/libs/boost/Makefile
+application/libs/boost/spirit/Makefile
+application/libs/boost/spirit/home/Makefile
+application/libs/boost/spirit/home/support/Makefile
+application/libs/boost/spirit/home/support/detail/Makefile
+application/libs/boost/threadpool/Makefile
+application/libs/boost/threadpool/detail/Makefile
+application/src/Makefile
+application/src/build-system/Makefile
+application/src/editors/Makefile
+application/src/parsers/Makefile
+application/src/plugin/Makefile
+application/src/project/Makefile
+application/src/session/Makefile
+application/src/utilities/Makefile
+application/src/widget/Makefile
+application/src/window/Makefile
+launcher/Makefile
+launcher/src/Makefile
+plugins/Makefile
+plugins/file-browser/Makefile
+plugins/file-browser/data/Makefile
+plugins/file-browser/libs/Makefile
+plugins/file-browser/libs/gedit-file-browser/Makefile
+plugins/file-browser/src/Makefile
+plugins/finder/Makefile
+plugins/finder/data/Makefile
+plugins/finder/src/Makefile
+plugins/terminal/Makefile
+plugins/terminal/data/Makefile
+plugins/terminal/libs/Makefile
+plugins/terminal/libs/vte/Makefile
+plugins/terminal/libs/winpty/Makefile
+plugins/terminal/libs/winpty/agent/Makefile
+plugins/terminal/libs/winpty/include/Makefile
+plugins/terminal/libs/winpty/libwinpty/Makefile
+plugins/terminal/libs/winpty/shared/Makefile
+plugins/terminal/src/Makefile
+plugins/text-file-recoverer/Makefile
+plugins/text-file-recoverer/data/Makefile
+plugins/text-file-recoverer/src/Makefile
 po/Makefile.in
-src/Makefile
-src/application/Makefile
-src/application/build-system/Makefile
-src/application/editors/Makefile
-src/application/parsers/Makefile
-src/application/plugin/Makefile
-src/application/project/Makefile
-src/application/session/Makefile
-src/application/utilities/Makefile
-src/application/widget/Makefile
-src/application/window/Makefile
-src/launcher/Makefile
-src/plugins/Makefile
-src/plugins/file-browser/Makefile
-src/plugins/finder/Makefile
-src/plugins/terminal/Makefile
-src/plugins/text-file-recoverer/Makefile
 tools/Makefile
 tools/windows-installer/Makefile
 ])

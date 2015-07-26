@@ -1,0 +1,1 @@
+SUBDIRS = gedit-file-browser
