@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkListStore" id="files">
+    <columns>
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkGrid" id="grid">
+    <property name="visible">true</property>
+    <property name="vexpand">false</property>
+    <property name="row-spacing">6</property>
+    <property name="column-spacing">6</property>
+    <property name="border-width">12</property>
+    <child>
+      <object class="GtkTreeView" id="file-list">
+        <property name="visible">true</property>
+        <property name="model">files</property>
+        <property name="headers-visible">false</property>
+        <property name="hexpand">true</property>
+        <property name="vexpand">true</property>
+        <child>
+          <object class="GtkTreeViewColumn" id="file-column">
+            <property name="title" translatable="yes">URIs</property>
+            <property name="expand">true</property>
+            <child>
+              <object class="GtkCellRendererText" id="file-renderer"/>
+              <attributes>
+                <attribute name="text">0</attribute>
+              </attributes>
+            </child>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">1</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="file-list-label">
+        <property name="visible">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Files that were edited but not saved in the last session:</property>
+        <property name="mnemonic-widget">file-list</property>
+        <property name="halign">start</property>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkButtonBox" id="button-box">
+        <property name="visible">true</property>
+        <property name="orientation">vertical</property>
+        <property name="homogeneous">true</property>
+        <property name="spacing">6</property>
+        <child>
+          <object class="GtkButton" id="recover-button">
+            <property name="visible">true</property>
+            <property name="use-underline">true</property>
+            <property name="label" translatable="yes">_Recover</property>
+            <property name="tooltip-text" translatable="yes">Open the file and replay the saved edits</property>
+          </object>
+          <packing>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="discard-button">
+            <property name="visible">true</property>
+            <property name="use-underline">true</property>
+            <property name="label" translatable="yes">_Discard</property>
+            <property name="tooltip-text" translatable="yes">Discard the edits and delete the replay file</property>
+          </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="close-button">
+            <property name="visible">true</property>
+            <property name="use-underline">true</property>
+            <property name="label" translatable="yes">_Close</property>
+            <property name="tooltip-text" translatable="yes">Close this file recovery bar</property>
+          </object>
+          <packing>
+            <property name="position">2</property>
+            <property name="secondary">true</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="left-attach">1</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">2</property>
+      </packing>
+    </child>
+  </object>
+</interface>

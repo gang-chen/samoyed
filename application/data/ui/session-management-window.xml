@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkListStore" id="sessions">
+    <columns>
+      <column type="gchararray"/>
+      <column type="gboolean"/>
+    </columns>
+  </object>
+  <object class="GtkWindow" id="session-management-window">
+    <property name="title" translatable="yes">Sessions</property>
+    <child>
+      <object class="GtkGrid" id="sessions-grid">
+        <property name="visible">true</property>
+        <property name="row-spacing">6</property>
+        <property name="border-width">12</property>
+        <child>
+          <object class="GtkTreeView" id="session-list">
+            <property name="visible">true</property>
+            <property name="model">sessions</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <child>
+              <object class="GtkTreeViewColumn" id="session-name-column">
+                <property name="title" translatable="yes">Names</property>
+                <property name="expand">true</property>
+                <child>
+                  <object class="GtkCellRendererText" id="session-name-renderer"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="session-locked-column">
+                <property name="title" translatable="yes">Locked</property>
+                <child>
+                  <object class="GtkCellRendererToggle" id="session-locked-renderer">
+                    <property name="activatable">false</property>
+                  </object>
+                  <attributes>
+                    <attribute name="active">1</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButtonBox" id="sessions-buttons">
+            <property name="visible">true</property>
+            <property name="layout-style">spread</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkButton" id="delete-session-button">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">_Delete</property>
+              </object>
+              <packing>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="rename-session-button">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">_Rename...</property>
+              </object>
+              <packing>
+                <property name="position">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

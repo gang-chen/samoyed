@@ -4,7 +4,7 @@
 /*
 UNIT TEST BUILD
 g++ session-management-window.cpp -DSMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST \
--I../.. `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall \
+-I.. `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall \
 -o session-management-window
 */
 
@@ -15,8 +15,8 @@ g++ session-management-window.cpp -DSMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST \
 #include "utilities/miscellaneous.hpp"
 #ifndef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
 # include "session.hpp"
-#endif
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
+# include "application.hpp"
+#else
 # include <stdio.h>
 #endif
 #include <string.h>
@@ -223,7 +223,7 @@ void SessionManagementWindow::onRenameSession(GtkButton *button,
     // Start editing.
     GtkTreePath *path;
     GtkTreeViewColumn *column;
-    gtk_widget_grab_focus(window->m_sessionList);
+    gtk_widget_grab_focus(GTK_WIDGET(window->m_sessionList));
     path = gtk_tree_model_get_path(model, &it);
     column = gtk_tree_view_get_column(GTK_TREE_VIEW(window->m_sessionList),
                                       NAME_COLUMN);
@@ -295,12 +295,21 @@ SessionManagementWindow::SessionManagementWindow(
     const boost::function<void (SessionManagementWindow &)> &onDestroy):
         m_onDestroy(onDestroy)
 {
+#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
+    std::string uiFile(".." G_DIR_SEPARATOR_S ".." G_DIR_SEPARATOR_S "data");
+#else
+    std::string uiFile(Application::instance().dataDirectoryName());
+#endif
+    uiFile += G_DIR_SEPARATOR_S "ui" G_DIR_SEPARATOR_S
+        "session-management-window.xml";
+    m_builder = gtk_builder_new_from_file(uiFile.c_str());
+
     // Read sessions.
     std::list<std::string> sessionNames;
     std::list<Samoyed::Session::LockState> sessionStates;
     readSessions(sessionNames, sessionStates);
-    GtkListStore *store = gtk_list_store_new(N_COLUMNS,
-                                             G_TYPE_STRING, G_TYPE_BOOLEAN);
+    GtkListStore *store =
+        GTK_LIST_STORE(gtk_builder_get_object(m_builder, "sessions"));
     GtkTreeIter it;
     std::list<std::string>::const_iterator it1 = sessionNames.begin();
     std::list<Samoyed::Session::LockState>::const_iterator it2 =
@@ -315,55 +324,26 @@ SessionManagementWindow::SessionManagementWindow(
                            -1);
     }
 
-    // Make the session list.
-    GtkCellRenderer *renderer;
-    GtkTreeViewColumn *column;
-    m_sessionList = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-    g_object_unref(store);
-    renderer = gtk_cell_renderer_text_new();
-    g_signal_connect(renderer, "edited", G_CALLBACK(onSessionRenamed), this);
-    column = gtk_tree_view_column_new_with_attributes(_("Name"),
-                                                      renderer,
-                                                      "text", NAME_COLUMN,
-                                                      NULL);
-    gtk_tree_view_column_set_cell_data_func(column, renderer,
-                                            setSessionNameEditable, NULL, NULL);
-    gtk_tree_view_column_set_expand(column, TRUE);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(m_sessionList), column);
-    renderer = gtk_cell_renderer_toggle_new();
-    gtk_cell_renderer_toggle_set_activatable(
-        GTK_CELL_RENDERER_TOGGLE(renderer), FALSE);
-    column = gtk_tree_view_column_new_with_attributes(_("Locked"),
-                                                      renderer,
-                                                      "active", LOCKED_COLUMN,
-                                                      NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(m_sessionList), column);
-    gtk_widget_set_hexpand(m_sessionList, TRUE);
-    gtk_widget_set_vexpand(m_sessionList, TRUE);
+    m_sessionList =
+        GTK_TREE_VIEW(gtk_builder_get_object(m_builder, "session-list"));
+    gtk_tree_view_column_set_cell_data_func(
+        GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(m_builder,
+                                                    "session-name-column")),
+        GTK_CELL_RENDERER(gtk_builder_get_object(m_builder,
+                                                 "session-name-renderer")),
+        setSessionNameEditable, NULL, NULL);
     g_signal_connect(m_sessionList, "key-press-event",
                      G_CALLBACK(onKeyPress), this);
 
-    GtkWidget *deleteButton = gtk_button_new_with_mnemonic(_("_Delete"));
-    g_signal_connect(deleteButton, "clicked",
+    g_signal_connect(gtk_builder_get_object(m_builder, "delete-session-button"),
+                     "clicked",
                      G_CALLBACK(onDeleteSession), this);
-    GtkWidget *renameButton = gtk_button_new_with_mnemonic(_("_Rename..."));
-    g_signal_connect(renameButton, "clicked",
+    g_signal_connect(gtk_builder_get_object(m_builder, "rename-session-button"),
+                     "clicked",
                      G_CALLBACK(onRenameSession), this);
 
-    m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    GtkWidget *grid = gtk_grid_new();
-    gtk_grid_attach(GTK_GRID(grid), m_sessionList, 0, 0, 1, 1);
-    GtkWidget *buttons = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_box_pack_start(GTK_BOX(buttons), deleteButton, FALSE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(buttons), renameButton, FALSE, TRUE, 0);
-    gtk_button_box_set_layout(GTK_BUTTON_BOX(buttons), GTK_BUTTONBOX_SPREAD);
-    gtk_box_set_spacing(GTK_BOX(buttons), CONTAINER_SPACING);
-    gtk_grid_attach(GTK_GRID(grid), buttons, 0, 1, 1, 1);
-    gtk_container_add(GTK_CONTAINER(m_window), grid);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
-    gtk_container_set_border_width(GTK_CONTAINER(grid), CONTAINER_BORDER_WIDTH);
-
-    gtk_window_set_title(GTK_WINDOW(m_window), _("Sessions"));
+    m_window = GTK_WIDGET(gtk_builder_get_object(m_builder,
+                                                 "session-management-window"));
     if (parent)
     {
         gtk_window_set_transient_for(GTK_WINDOW(m_window), parent);
@@ -371,13 +351,11 @@ SessionManagementWindow::SessionManagementWindow(
     }
     g_signal_connect(m_window, "destroy",
                      G_CALLBACK(onDestroyInternally), this);
-    gtk_widget_show_all(grid);
 }
 
 SessionManagementWindow::~SessionManagementWindow()
 {
-    if (m_window)
-        gtk_widget_destroy(m_window);
+    g_object_unref(m_builder);
 }
 
 void SessionManagementWindow::show()

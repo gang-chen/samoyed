@@ -1,13 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <object class="GtkAssistant" id="assistant">
-    <property name="title">New Project</property>
-    <property name="visible">true</property>
+  <object class="GtkAssistant" id="project-creator-dialog">
+    <property name="title" translatable="yes">New Project</property>
     <child>
-      <object class="GtkFileChooserButton" id="fc">
-        <property name="title">Location</property>
-        <property name="visible">true</property>
+      <object class="GtkLabel" id="kind-label">
+        <property name="label">Choose which kind of project to create:</property>
       </object>
+      <packing>
+        <property name="title" translatable="yes">Kind</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkFileChooserWidget" id="location-chooser">
+        <property name="action">create-folder</property>
+        <property name="create-folders">true</property>
+        <child>
+        <object class="GtkLabel" id="l-label">
+          <property name="label">le which kind of project to create:</property>
+        </object>
+        </child>
+      </object>
+      <packing>
+        <property name="title" translatable="yes">Location</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="summary-label">
+        <property name="label">Kind:</property>
+      </object>
+      <packing>
+        <property name="title" translatable="yes">Summary</property>
+        <property name="page-type">summary</property>
+      </packing>
     </child>
   </object>
 </interface>

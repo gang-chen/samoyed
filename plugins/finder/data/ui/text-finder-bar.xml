@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkListStore" id="pattern-completion-store">
+    <columns>
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkEntryCompletion" id="pattern-completion">
+    <property name="model">pattern-completion-store</property>
+    <property name="text-column">0</property>
+  </object>
+  <object class="GtkGrid" id="grid">
+    <property name="visible">true</property>
+    <property name="column-spacing">6</property>
+    <property name="margin-left">6</property>
+    <property name="margin-right">6</property>
+    <child>
+      <object class="GtkEntry" id="pattern-entry">
+        <property name="visible">true</property>
+        <property name="completion">pattern-completion</property>
+      </object>
+      <packing>
+        <property name="left-attach">1</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="pattern-label">
+        <property name="visible">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Find:</property>
+        <property name="mnemonic-widget">pattern-entry</property>
+      </object>
+      <packing>
+        <property name="left-attach">1</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkCheckButton" id="match-case-button">
+        <property name="visible">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">Match _case</property>
+      </object>
+      <packing>
+        <property name="left-attach">2</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkButton" id="next-button">
+        <property name="visible">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Next</property>
+        <property name="tooltip-text" translatable="yes">Find the next occurrence</property>
+      </object>
+      <packing>
+        <property name="left-attach">3</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkButton" id="previous-button">
+        <property name="visible">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Previous</property>
+        <property name="tooltip-text" translatable="yes">Find the previous occurrence</property>
+      </object>
+      <packing>
+        <property name="left-attach">4</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="message-label">
+        <property name="visible">true</property>
+        <property name="single-line-mode">true</property>
+        <property name="ellipsize">end</property>
+        <property name="hexpand">true</property>
+        <property name="halign">start</property>
+      </object>
+      <packing>
+        <property name="left-attach">5</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkButton" id="close-button">
+        <property name="visible">true</property>
+        <property name="relief">none</property>
+        <property name="tooltip-text" translatable="yes">Close this bar</property>
+        <child>
+          <object class="GtkImage" id="close-image">
+            <property name="visible">true</property>
+            <property name="icon-name">window-close</property>
+            <property name="icon-size">menu</property>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="left-attach">6</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+  </object>
+</interface>

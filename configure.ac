@@ -143,6 +143,7 @@ plugins/file-browser/libs/gedit-file-browser/Makefile
 plugins/file-browser/src/Makefile
 plugins/finder/Makefile
 plugins/finder/data/Makefile
+plugins/finder/data/ui/Makefile
 plugins/finder/src/Makefile
 plugins/terminal/Makefile
 plugins/terminal/data/Makefile

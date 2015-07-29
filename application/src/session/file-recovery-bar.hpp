@@ -39,7 +39,8 @@ private:
 
     Session::UnsavedFileTable m_files;
 
-    GtkWidget *m_fileList;
+    GtkBuilder *m_builder;
+    GtkTreeView *m_fileList;
 };
 
 }

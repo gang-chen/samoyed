@@ -44,8 +44,9 @@ private:
     static void onDestroyInternally(GtkWidget *widget,
                                     SessionManagementWindow *window);
 
+    GtkBuilder *m_builder;
     GtkWidget *m_window;
-    GtkWidget *m_sessionList;
+    GtkTreeView *m_sessionList;
 
     boost::function<void (SessionManagementWindow &)> m_onDestroy;
 };

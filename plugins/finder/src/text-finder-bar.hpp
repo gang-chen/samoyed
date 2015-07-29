@@ -41,13 +41,17 @@ private:
 
     TextFinderBar(TextEditor &editor, bool nextByDefault);
 
+    ~TextFinderBar();
+
     bool setup();
 
     bool search(bool next);
 
-    GtkWidget *m_pattern;
-    GtkWidget *m_matchCase;
-    GtkWidget *m_message;
+    GtkBuilder *m_builder;
+
+    GtkEntry *m_patternEntry;
+    GtkToggleButton *m_matchCaseButton;
+    GtkLabel *m_messageLabel;
 
     bool m_nextByDefault;
 

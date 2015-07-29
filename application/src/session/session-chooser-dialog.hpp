@@ -21,10 +21,9 @@ public:
         ACTION_RESTORE
     };
 
-    SessionChooserDialog(Action action, GtkWindow *parent):
-        m_action(action),
-        m_parent(parent)
-    {}
+    SessionChooserDialog(Action action, GtkWindow *parent);
+
+    ~SessionChooserDialog();
 
     void run();
 
@@ -33,11 +32,35 @@ public:
     const char *sessionName() const { return m_sessionName.c_str(); }
 
 private:
+    static void onNewSessionResponse(GtkDialog *gtkDialog,
+                                     gint response,
+                                     SessionChooserDialog *dialog);
+
+    static void onRestoreSessionResponse(GtkDialog *gtkDialog,
+                                         gint response,
+                                         SessionChooserDialog *dialog);
+
+    static void onSessionListRowActivated(GtkTreeView *list,
+                                          GtkTreeIter *iter,
+                                          GtkTreePath *path,
+                                          SessionChooserDialog *dialog);
+
+    void buildNewSessionDialog();
+    void buildRestoreSessionDialog();
+
     Action m_action;
 
     std::string m_sessionName;
 
     GtkWindow *m_parent;
+
+    GtkBuilder *m_builder;
+
+    GtkDialog *m_newSessionDialog;
+    GtkEntry *m_newSessionNameEntry;
+
+    GtkDialog *m_restoreSessionDialog;
+    GtkTreeView *m_sessionList;
 };
 
 }
