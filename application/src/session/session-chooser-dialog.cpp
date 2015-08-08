@@ -239,6 +239,10 @@ SessionChooserDialog::SessionChooserDialog(Action action, GtkWindow *parent):
 
 SessionChooserDialog::~SessionChooserDialog()
 {
+    gtk_widget_destroy(GTK_WIDGET(
+        gtk_builder_get_object(m_builder, "new-session-dialog")));
+    gtk_widget_destroy(GTK_WIDGET(
+        gtk_builder_get_object(m_builder, "restore-session-dialog")));
     g_object_unref(m_builder);
 }
 

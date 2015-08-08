@@ -50,7 +50,7 @@ void quitSession(GtkAction *action, Samoyed::Window *window)
 
 void createProject(GtkAction *action, Samoyed::Window *window)
 {
-    Samoyed::ProjectCreatorDialog dialog;
+    Samoyed::ProjectCreatorDialog dialog(GTK_WINDOW(window->gtkWidget()));
     dialog.run();
 }
 

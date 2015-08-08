@@ -92,6 +92,14 @@ void setSessionNameEditable(GtkTreeViewColumn *column,
     g_object_set(renderer, "editable", !locked, NULL);
 }
 
+gboolean onDeleteEvent(GtkWidget *widget,
+                       GdkEvent *event,
+                       Samoyed::SessionManagementWindow *window)
+{
+    delete window;
+    return TRUE;
+}
+
 }
 
 namespace Samoyed
@@ -108,7 +116,7 @@ void SessionManagementWindow::deleteSelectedSession(bool confirm)
     if (!gtk_tree_selection_get_selected(selection, &model, &it))
     {
         GtkWidget *d = gtk_message_dialog_new(
-            GTK_WINDOW(m_window),
+            m_window,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -128,7 +136,7 @@ void SessionManagementWindow::deleteSelectedSession(bool confirm)
     if (locked)
     {
         GtkWidget *d = gtk_message_dialog_new(
-            GTK_WINDOW(m_window),
+            m_window,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -144,7 +152,7 @@ void SessionManagementWindow::deleteSelectedSession(bool confirm)
     if (confirm)
     {
         GtkWidget *d = gtk_message_dialog_new(
-            GTK_WINDOW(m_window),
+            m_window,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
@@ -188,7 +196,7 @@ void SessionManagementWindow::onRenameSession(GtkButton *button,
     if (!gtk_tree_selection_get_selected(selection, &model, &it))
     {
         GtkWidget *d = gtk_message_dialog_new(
-            GTK_WINDOW(window->m_window),
+            window->m_window,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -207,7 +215,7 @@ void SessionManagementWindow::onRenameSession(GtkButton *button,
         char *sessionName;
         gtk_tree_model_get(model, &it, NAME_COLUMN, &sessionName, -1);
         GtkWidget *d = gtk_message_dialog_new(
-            GTK_WINDOW(window->m_window),
+            window->m_window,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -279,21 +287,10 @@ gboolean SessionManagementWindow::onKeyPress(GtkWidget *widget,
     return FALSE;
 }
 
-void
-SessionManagementWindow::onDestroyInternally(GtkWidget *widget,
-                                             SessionManagementWindow *window)
-{
-    window->m_window = NULL;
-    if (window->m_onDestroy)
-        window->m_onDestroy(*window);
-    else
-        delete window;
-}
-
 SessionManagementWindow::SessionManagementWindow(
     GtkWindow *parent,
-    const boost::function<void (SessionManagementWindow &)> &onDestroy):
-        m_onDestroy(onDestroy)
+    const boost::function<void (SessionManagementWindow &)> &onDestroyed):
+        m_onDestroyed(onDestroyed)
 {
 #ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
     std::string uiFile(".." G_DIR_SEPARATOR_S ".." G_DIR_SEPARATOR_S "data");
@@ -342,30 +339,33 @@ SessionManagementWindow::SessionManagementWindow(
                      "clicked",
                      G_CALLBACK(onRenameSession), this);
 
-    m_window = GTK_WIDGET(gtk_builder_get_object(m_builder,
+    m_window = GTK_WINDOW(gtk_builder_get_object(m_builder,
                                                  "session-management-window"));
     if (parent)
     {
-        gtk_window_set_transient_for(GTK_WINDOW(m_window), parent);
-        gtk_window_set_destroy_with_parent(GTK_WINDOW(m_window), TRUE);
+        gtk_window_set_transient_for(m_window, parent);
+        gtk_window_set_destroy_with_parent(m_window, TRUE);
     }
-    g_signal_connect(m_window, "destroy",
-                     G_CALLBACK(onDestroyInternally), this);
+    g_signal_connect(m_window, "delete-event",
+                     G_CALLBACK(onDeleteEvent), this);
 }
 
 SessionManagementWindow::~SessionManagementWindow()
 {
+    gtk_widget_destroy(GTK_WIDGET(m_window));
     g_object_unref(m_builder);
+    if (m_onDestroyed)
+        m_onDestroyed(*this);
 }
 
 void SessionManagementWindow::show()
 {
-    gtk_widget_show(m_window);
+    gtk_widget_show(GTK_WIDGET(m_window));
 }
 
 void SessionManagementWindow::hide()
 {
-    gtk_widget_hide(m_window);
+    gtk_widget_hide(GTK_WIDGET(m_window));
 }
 
 }
@@ -375,9 +375,8 @@ void SessionManagementWindow::hide()
 namespace
 {
 
-void deleteWindow(Samoyed::SessionManagementWindow &window)
+void onWindowDestroyed(Samoyed::SessionManagementWindow &window)
 {
-    delete &window;
     gtk_main_quit();
 }
 
@@ -389,7 +388,7 @@ int main(int argc, char *argv[])
     Samoyed::SessionManagementWindow *window1, *window2;
     window1 = new Samoyed::SessionManagementWindow(NULL, NULL);
     window1->show();
-    window2 = new Samoyed::SessionManagementWindow(NULL, deleteWindow);
+    window2 = new Samoyed::SessionManagementWindow(NULL, onWindowDestroyed);
     window2->show();
     gtk_main();
     return 0;

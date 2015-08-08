@@ -16,7 +16,7 @@ class SessionManagementWindow: public boost::noncopyable
 public:
     SessionManagementWindow(
         GtkWindow *parent,
-        const boost::function<void (SessionManagementWindow &)> &onDestroy);
+        const boost::function<void (SessionManagementWindow &)> &onDestroyed);
     ~SessionManagementWindow();
 
     void show();
@@ -41,14 +41,11 @@ private:
                                GdkEventKey *event,
                                SessionManagementWindow *window);
 
-    static void onDestroyInternally(GtkWidget *widget,
-                                    SessionManagementWindow *window);
-
     GtkBuilder *m_builder;
-    GtkWidget *m_window;
+    GtkWindow *m_window;
     GtkTreeView *m_sessionList;
 
-    boost::function<void (SessionManagementWindow &)> m_onDestroy;
+    boost::function<void (SessionManagementWindow &)> m_onDestroyed;
 };
 
 }
