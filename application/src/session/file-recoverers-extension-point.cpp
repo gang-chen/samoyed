@@ -121,7 +121,7 @@ void FileRecoverersExtensionPoint::recoverFile(const char *fileUri,
                     if (!fileEditor.second->parent())
                     {
                         Window &window =
-                            Application::instance().currentWindow();
+                            *Application::instance().currentWindow();
                         Notebook &editorGroup = window.currentEditorGroup();
                         window.addEditorToEditorGroup(
                                 *fileEditor.second,

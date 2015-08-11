@@ -108,13 +108,11 @@ void Plugin::onCompleted()
 
 void Plugin::destroy()
 {
-    for (ExtensionTable::iterator it = m_extensionTable.begin();
-         it != m_extensionTable.end();)
+    ExtensionTable::iterator it;
+    while ((it = m_extensionTable.begin()) != m_extensionTable.end())
     {
-        ExtensionTable::iterator it2 = it;
-        ++it;
-        Extension *ext = it2->second;
-        m_extensionTable.erase(it2);
+        Extension *ext = it->second;
+        m_extensionTable.erase(it);
         delete ext;
     }
     GModule *module = m_module;

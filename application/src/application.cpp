@@ -80,6 +80,7 @@ Application::Application():
     m_session(NULL),
     m_firstProject(NULL),
     m_lastProject(NULL),
+    m_currentProject(NULL),
     m_firstFile(NULL),
     m_lastFile(NULL),
     m_firstWindow(NULL),
@@ -256,6 +257,7 @@ gboolean Application::shutDown(gpointer app)
     assert(!a->m_switchSession);
     assert(!a->m_firstProject);
     assert(!a->m_lastProject);
+    assert(!a->m_currentProject);
     assert(!a->m_firstFile);
     assert(!a->m_lastFile);
     assert(!a->m_firstWindow);
@@ -585,12 +587,15 @@ void Application::addProject(Project &project)
 {
     m_projectTable.insert(std::make_pair(project.uri(), &project));
     project.addToList(m_firstProject, m_lastProject);
+    m_currentProject = &project;
 }
 
 void Application::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
+    if (&project == m_currentProject)
+        m_currentProject = m_firstProject;
 }
 
 void Application::destroyProject(Project &project)
@@ -638,8 +643,7 @@ void Application::destroyFile(File &file)
 void Application::addWindow(Window &window)
 {
     window.addToList(m_firstWindow, m_lastWindow);
-    if (!m_currentWindow)
-        m_currentWindow = &window;
+    m_currentWindow = &window;
 }
 
 void Application::removeWindow(Window &window)

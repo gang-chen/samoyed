@@ -12,21 +12,23 @@ class BuildSystem
 public:
     BuildSystem(Project &project): m_project(project) {}
 
-    /**
-     *
-     */
-    virtual bool addFile(const char *fileName) = 0;
-    virtual bool removeFile(const char *fileName) = 0;
-    virtual bool editFileProperties(const char *fileName) = 0;
-    virtual bool importFile(const char *fileName) = 0;
+    bool addFile(const char *uri);
+    bool removeFile(const char *uri);
+    bool editFileProperties(const char *uri);
+    bool importFile(const char *uri);
 
-    virtual const char *defaultConfigurationCommands() = 0;
-    virtual const char *defaultBuildCommands() = 0;
-    virtual const char *defaultInstallCommands() = 0;
-    virtual const char *defaultDryBuildCommands() = 0;
+    bool configure();
+    bool build();
+    bool install();
+    bool collectCompilationOptions();
 
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
+
+    virtual const char *defaultConfigureCommands() const { return ""; }
+    virtual const char *defaultBuildCommands() const { return ""; }
+    virtual const char *defaultInstallCommands() const { return ""; }
+    virtual const char *defaultDryBuildCommands() const { return ""; }
 
 private:
     Project &m_project;

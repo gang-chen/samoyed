@@ -5,9 +5,14 @@
 # include <config.h>
 #endif
 #include "project-creator-dialog.hpp"
+#include "project.hpp"
+#include "build-system/build-systems-extension-point.hpp"
+#include "plugin/extension-point-manager.hpp"
 #include "application.hpp"
 #include <string>
 #include <gtk/gtk.h>
+
+#define BUILD_SYSTEMS "build-systems"
 
 namespace Samoyed
 {
@@ -20,11 +25,31 @@ ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
     m_builder = gtk_builder_new_from_file(uiFile.c_str());
     m_dialog =
         GTK_DIALOG(gtk_builder_get_object(m_builder, "project-creator-dialog"));
+    m_locationChooser =
+        GTK_FILE_CHOOSER(gtk_builder_get_object(m_builder,
+                                                "location-chooser"));
+    m_buildSystemChooser =
+        GTK_COMBO_BOX_TEXT(gtk_builder_get_object(m_builder,
+                                                  "build-system-chooser"));
     if (parent)
     {
         gtk_window_set_transient_for(GTK_WINDOW(m_dialog), parent);
         gtk_window_set_modal(GTK_WINDOW(m_dialog), true);
     }
+
+    // Add the registered build systems.
+    const BuildSystemsExtensionPoint::ExtensionTable &buildSystems =
+        static_cast<BuildSystemsExtensionPoint &>(Application::instance().
+        extensionPointManager().extensionPoint(BUILD_SYSTEMS)).extensions();
+    int i = 0;
+    for (BuildSystemsExtensionPoint::ExtensionTable::const_iterator it =
+            buildSystems.begin();
+         it != buildSystems.end();
+         ++it)
+        gtk_combo_box_text_insert(m_buildSystemChooser,
+                                  i++,
+                                  it->second->id.c_str(),
+                                  it->second->description.c_str());
 }
 
 ProjectCreatorDialog::~ProjectCreatorDialog()
@@ -33,9 +58,17 @@ ProjectCreatorDialog::~ProjectCreatorDialog()
     g_object_unref(m_builder);
 }
 
-void ProjectCreatorDialog::run()
+Project *ProjectCreatorDialog::run()
 {
-    gtk_dialog_run(m_dialog);
+    if (gtk_dialog_run(m_dialog) != GTK_RESPONSE_OK)
+        return NULL;
+    Project *project;
+    char *uri = gtk_file_chooser_get_uri(m_locationChooser);
+    const char *buildSystem =
+        gtk_combo_box_get_active_id(GTK_COMBO_BOX(m_buildSystemChooser));
+    project = Project::create(uri, buildSystem);
+    g_free(uri);
+    return project;
 }
 
 }

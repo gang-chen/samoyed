@@ -70,12 +70,11 @@ PluginManager::PluginManager(ExtensionPointManager &extensionPointMgr,
 
 PluginManager::~PluginManager()
 {
-    for (Table::iterator it = m_table.begin(); it != m_table.end();)
+    Table::iterator it;
+    while ((it = m_table.begin()) != m_table.end())
     {
-        Table::iterator it2 = it;
-        ++it;
-        Plugin *plugin = it2->second;
-        m_table.erase(it2);
+        Plugin *plugin = it->second;
+        m_table.erase(it);
         plugin->destroy();
     }
 }

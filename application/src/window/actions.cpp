@@ -8,6 +8,7 @@
 #include "window.hpp"
 #include "editors/file.hpp"
 #include "editors/editor.hpp"
+#include "project/project.hpp"
 #include "project/project-creator-dialog.hpp"
 #include "session/session.hpp"
 #include "session/session-management-window.hpp"
@@ -56,10 +57,15 @@ void createProject(GtkAction *action, Samoyed::Window *window)
 
 void openProject(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Project::openByDialog();
 }
 
 void closeProject(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Project *project =
+        Samoyed::Application::instance().currentProject();
+    if (project)
+        project->close();
 }
 
 void closeAllProjects(GtkAction *action, Samoyed::Window *window)
@@ -97,7 +103,8 @@ void manageConfigurations(GtkAction *action, Samoyed::Window *window)
 void openFile(GtkAction *action, Samoyed::Window *window)
 {
     std::list<std::pair<Samoyed::File *, Samoyed::Editor *> > opened;
-    Samoyed::File::openByDialog(NULL, opened);
+    Samoyed::File::openByDialog(
+        Samoyed::Application::instance().currentProject(), opened);
     if (!opened.empty())
         opened.back().second->setCurrent();
 }
@@ -219,7 +226,7 @@ void createEditor(GtkAction *action, Samoyed::Window *window)
     {
         Samoyed::Editor *editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file().
-            createEditor(NULL);
+            createEditor(Samoyed::Application::instance().currentProject());
         window->addEditorToEditorGroup(*editor, editorGroup,
                                        editorGroup.currentChildIndex());
         editor->setCurrent();
@@ -279,7 +286,7 @@ void splitEditorHorizontally(GtkAction *action, Samoyed::Window *window)
     {
         Samoyed::Editor *editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file().
-            createEditor(NULL);
+            createEditor(Samoyed::Application::instance().currentProject());
         Samoyed::Notebook *newEditorGroup =
             window->splitEditorGroup(editorGroup,
                                      Samoyed::Window::SIDE_BOTTOM);
@@ -295,7 +302,7 @@ void splitEditorVertically(GtkAction *action, Samoyed::Window *window)
     {
         Samoyed::Editor *editor =
             static_cast<Samoyed::Editor &>(editorGroup.currentChild()).file().
-            createEditor(NULL);
+            createEditor(Samoyed::Application::instance().currentProject());
         Samoyed::Notebook *newEditorGroup =
             window->splitEditorGroup(editorGroup,
                                      Samoyed::Window::SIDE_RIGHT);

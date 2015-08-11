@@ -119,6 +119,10 @@ public:
     void removeProject(Project &project);
     void destroyProject(Project &project);
 
+    Project *currentProject() const { return m_currentProject; }
+
+    void setCurrentProject(Project *project) { m_currentProject = project; }
+
     Project *projects() { return m_firstProject; }
     const Project *projects() const { return m_firstProject; }
 
@@ -136,9 +140,9 @@ public:
     void removeWindow(Window &window);
     void destroyWindow(Window &window);
 
-    Window &currentWindow() const { return *m_currentWindow; }
+    Window *currentWindow() const { return m_currentWindow; }
 
-    void setCurrentWindow(Window &window) { m_currentWindow = &window; }
+    void setCurrentWindow(Window *window) { m_currentWindow = window; }
 
     Window *windows() { return m_firstWindow; }
     const Window *windows() const { return m_firstWindow; }
@@ -234,6 +238,7 @@ private:
     ProjectTable m_projectTable;
     Project *m_firstProject;
     Project *m_lastProject;
+    Project *m_currentProject;
 
     FileTable m_fileTable;
     File *m_firstFile;

@@ -29,7 +29,7 @@
                 <property name="use-underline">true</property>
                 <property name="label" translatable="yes">_Location:</property>
                 <property name="halign">start</property>
-                <property name="tooltip-text" translatable="yes">Select a directory where the new project will be stored. Samoyed will create project file "samoyed-project.xml" in the directory.</property>
+                <property name="tooltip-text" translatable="yes">Select a directory where the new project will be stored.</property>
                 <property name="mnemonic-widget">location-chooser</property>
               </object>
               <packing>
@@ -43,8 +43,7 @@
               <object class="GtkComboBoxText" id="build-system-chooser">
                 <property name="visible">true</property>
                 <items>
-                  <item translatable="yes" id="gnu-build-system">GNU build system</item>
-                  <item translatable="yes" id="other-build-system">Build system not managed by Samoyed</item>
+                  <item translatable="yes" id="basic-build-system">Build system not managed by Samoyed</item>
                 </items>
               </object>
               <packing>

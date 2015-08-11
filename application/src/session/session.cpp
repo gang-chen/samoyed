@@ -643,7 +643,7 @@ Session::onUnsavedFilesReaderFinished(const boost::shared_ptr<Worker> &worker)
     if (!m_unsavedFiles.empty())
     {
         WidgetWithBars &mainArea =
-            Application::instance().currentWindow().mainArea();
+            Application::instance().currentWindow()->mainArea();
         FileRecoveryBar *bar =
             static_cast<FileRecoveryBar *>(
                 mainArea.findChild(FileRecoveryBar::ID));
@@ -819,8 +819,8 @@ bool Session::readAllSessionNames(std::list<std::string> &names)
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            Application::instance().windows() ?
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()) :
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
             NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
@@ -880,7 +880,9 @@ bool Session::remove(const char *name)
     if (!lockSession(name, lockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -902,7 +904,9 @@ bool Session::remove(const char *name)
     if (!removeFileOrDirectory(sessionDirName.c_str(), &removeError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -933,7 +937,9 @@ bool Session::rename(const char *oldName, const char *newName)
     if (!lockSession(oldName, oldLockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -957,7 +963,9 @@ bool Session::rename(const char *oldName, const char *newName)
     if (!lockSession(newName, newLockFile, lockError))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -984,7 +992,9 @@ bool Session::rename(const char *oldName, const char *newName)
     if (g_file_test(newSessionDirName.c_str(), G_FILE_TEST_EXISTS))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,
@@ -1002,7 +1012,9 @@ bool Session::rename(const char *oldName, const char *newName)
     if (g_rename(oldSessionDirName.c_str(), newSessionDirName.c_str()))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -1302,7 +1314,9 @@ bool Session::save()
         xmlErrorPtr error = xmlGetLastError();
         GtkWidget *dialog;
         dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,

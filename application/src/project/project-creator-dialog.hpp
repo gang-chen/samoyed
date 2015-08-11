@@ -9,6 +9,8 @@
 namespace Samoyed
 {
 
+class Project;
+
 class ProjectCreatorDialog
 {
 public:
@@ -16,12 +18,14 @@ public:
 
     ~ProjectCreatorDialog();
 
-    void run();
+    Project *run();
 
 private:
     GtkBuilder *m_builder;
 
     GtkDialog *m_dialog;
+    GtkFileChooser *m_locationChooser;
+    GtkComboBoxText *m_buildSystemChooser;
 };
 
 }

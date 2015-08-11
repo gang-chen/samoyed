@@ -943,7 +943,7 @@ gboolean Window::onFocusInEvent(GtkWidget *widget,
                                 GdkEvent *event,
                                 Window *window)
 {
-    Application::instance().setCurrentWindow(*window);
+    Application::instance().setCurrentWindow(window);
     return FALSE;
 }
 

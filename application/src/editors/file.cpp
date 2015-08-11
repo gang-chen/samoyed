@@ -215,7 +215,9 @@ File::open(const char *uri, Project *project,
     if (error)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -247,7 +249,9 @@ File::open(const char *uri, Project *project,
     if (!rec)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
@@ -288,7 +292,10 @@ File::open(const char *uri, Project *project,
             rec->optDescriber(*existOpt, existOptDesc);
             delete existOpt;
             GtkWidget *dialog = gtk_message_dialog_new(
-                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                Application::instance().currentWindow() ?
+                GTK_WINDOW(Application::instance().currentWindow()->
+                           gtkWidget()) :
+                NULL,
                 GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -356,7 +363,9 @@ void File::openByDialog(Project *project,
     GtkWidget *dialog =
         gtk_file_chooser_dialog_new(
             _("Open File"),
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_FILE_CHOOSER_ACTION_OPEN,
             "_Cancel", GTK_RESPONSE_CANCEL,
             "_Open", GTK_RESPONSE_OK,
@@ -424,7 +433,7 @@ void File::openByDialog(Project *project,
     if (lastFilter)
         gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), lastFilter);
 
-    Window &window = Application::instance().currentWindow();
+    Window &window = *Application::instance().currentWindow();
     Notebook &editorGroup = window.currentEditorGroup();
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
     {
@@ -540,7 +549,9 @@ bool File::closeEditor(Editor &editor)
     if (!closeable())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_INFO,
             GTK_BUTTONS_CLOSE,
@@ -573,7 +584,9 @@ bool File::closeEditor(Editor &editor)
     {
         // Ask the user if the file needs to be saved.
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_NONE,
@@ -628,7 +641,9 @@ bool File::close()
     if (!closeable())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_INFO,
             GTK_BUTTONS_CLOSE,
@@ -712,7 +727,9 @@ void File::onLoaderFinished(const boost::shared_ptr<Worker> &worker)
     if (m_loader->error())
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,
@@ -761,7 +778,10 @@ void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
         if (m_closing)
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                Application::instance().currentWindow() ?
+                GTK_WINDOW(Application::instance().currentWindow()->
+                           gtkWidget()) :
+                NULL,
                 GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_YES_NO,
@@ -789,7 +809,10 @@ void File::onSaverFinished(const boost::shared_ptr<Worker> &worker)
         else
         {
             GtkWidget *dialog = gtk_message_dialog_new(
-                GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+                Application::instance().currentWindow() ?
+                GTK_WINDOW(Application::instance().currentWindow()->
+                           gtkWidget()) :
+                NULL,
                 GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
@@ -836,7 +859,9 @@ bool File::load(bool userRequest)
     if (edited() && userRequest)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_QUESTION,
             GTK_BUTTONS_YES_NO,

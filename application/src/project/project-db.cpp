@@ -6,76 +6,143 @@
 #endif
 #include "project-db.hpp"
 #include <glib.h>
-#include <sqlite3.h>
+#include <db.h>
 
 namespace Samoyed
 {
 
 int ProjectDb::create(const char *uri, ProjectDb *&db)
 {
-    // If the database file exists, open it.
-    char *fileName = g_filename_from_uri(uri, NULL, NULL);
-    if (fileName && g_file_test(fileName, G_FILE_TEST_EXISTS))
-    {
-        g_free(fileName);
-        return ProjectDb::open(uri, db);
-    }
-    g_free(fileName);
-
-    // Create the database.
+    int error = 0;
+    char *fileName;
     db = new ProjectDb;
-    int error =
-        sqlite3_open_v2(uri,
-                        &(db->m_db),
-                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE |
-                        SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI,
-                        NULL);
-    if (error != SQLITE_OK)
-    {
-        delete db;
-        db = NULL;
-        return error;
-    }
 
-    //
+    error = db_env_create(&db->m_dbEnv, 0);
+    if (error)
+        goto ERROR_OUT;
+    fileName = g_filename_from_uri(uri, NULL, NULL);
+    error = db->m_dbEnv->open(db->m_dbEnv, fileName,
+                              DB_INIT_CDB | DB_INIT_MPOOL | DB_CREATE, 0);
+    g_free(fileName);
+    if (error)
+        goto ERROR_OUT;
 
+    error = db_create(&db->m_fileTable, db->m_dbEnv, 0);
+    if (error)
+        goto ERROR_OUT;
+    error = db->m_fileTable->open(db->m_fileTable, NULL,
+                                  "file-table.db", NULL,
+                                  DB_BTREE,
+                                  DB_CREATE | DB_EXCL, 0);
+    if (error)
+        goto ERROR_OUT;
+
+    error = db_create(&db->m_compilationOptionsTable, db->m_dbEnv, 0);
+    if (error)
+        goto ERROR_OUT;
+    error = db->m_compilationOptionsTable->open(db->m_compilationOptionsTable,
+                                                NULL,
+                                                "compilation-options-table.db",
+                                                NULL,
+                                                DB_BTREE,
+                                                DB_CREATE | DB_EXCL, 0);
+    if (error)
+        goto ERROR_OUT;
+
+    return error;
+
+ERROR_OUT:
+    delete db;
+    db = NULL;
     return error;
 }
 
 int ProjectDb::open(const char *uri, ProjectDb *&db)
 {
+    int error = 0;
+    char *fileName;
     db = new ProjectDb;
-    int error =
-        sqlite3_open_v2(uri,
-                        &(db->m_db),
-                        SQLITE_OPEN_READWRITE |
-                        SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI,
-                        NULL);
-    if (error != SQLITE_OK)
-    {
-        delete db;
-        db = NULL;
-        return error;
-    }
+
+    error = db_env_create(&db->m_dbEnv, 0);
+    if (error)
+        goto ERROR_OUT;
+    fileName = g_filename_from_uri(uri, NULL, NULL);
+    error = db->m_dbEnv->open(db->m_dbEnv, fileName,
+                              DB_INIT_CDB | DB_INIT_MPOOL, 0);
+    g_free(fileName);
+    if (error)
+        goto ERROR_OUT;
+
+    error = db_create(&db->m_fileTable, db->m_dbEnv, 0);
+    if (error)
+        goto ERROR_OUT;
+    error = db->m_fileTable->open(db->m_fileTable, NULL,
+                                  "file-table.db", NULL,
+                                  DB_BTREE, 0, 0);
+    if (error)
+        goto ERROR_OUT;
+
+    error = db_create(&db->m_compilationOptionsTable, db->m_dbEnv, 0);
+    if (error)
+        goto ERROR_OUT;
+    error = db->m_compilationOptionsTable->open(db->m_compilationOptionsTable,
+                                                NULL,
+                                                "compilation-options-table.db",
+                                                NULL,
+                                                DB_BTREE, 0, 0);
+    if (error)
+        goto ERROR_OUT;
+
+    return error;
+
+ERROR_OUT:
+    delete db;
+    db = NULL;
     return error;
 }
 
 int ProjectDb::close()
 {
-    if (m_db)
+    int error = 0;
+    if (m_fileTable)
     {
-        int error = sqlite3_close_v2(m_db);
-        if (error == SQLITE_OK)
-            m_db = NULL;
-        return error;
+        error = m_fileTable->close(m_fileTable, 0);
+        if (error)
+            return error;
+        m_fileTable = NULL;
     }
-    return SQLITE_OK;
+    if (m_compilationOptionsTable)
+    {
+        error = m_compilationOptionsTable->close(m_compilationOptionsTable, 0);
+        if (error)
+            return error;
+        m_compilationOptionsTable = NULL;
+    }
+    if (m_dbEnv)
+    {
+        error = m_dbEnv->close(m_dbEnv, 0);
+        if (error)
+            return error;
+        m_dbEnv = NULL;
+    }
+    return error;
+}
+
+ProjectDb::ProjectDb():
+    m_dbEnv(NULL),
+    m_fileTable(NULL),
+    m_compilationOptionsTable(NULL)
+{
 }
 
 ProjectDb::~ProjectDb()
 {
-    if (m_db)
-        close();
+    if (m_fileTable)
+        m_fileTable->close(m_fileTable, 0);
+    if (m_compilationOptionsTable)
+        m_compilationOptionsTable->close(m_compilationOptionsTable, 0);
+    if (m_dbEnv)
+        m_dbEnv->close(m_dbEnv, 0);
 }
 
 }

@@ -83,7 +83,9 @@ GtkWidget *Terminal::setup()
     {
         free(argv[0]);
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Application::instance().currentWindow().gtkWidget()),
+			Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+			NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,

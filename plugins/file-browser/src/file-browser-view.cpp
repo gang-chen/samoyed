@@ -98,8 +98,10 @@ void onError(GeditFileBrowserWidget *widget,
     }
 
     GtkWidget *dialog = gtk_message_dialog_new(
-        GTK_WINDOW(Samoyed::Application::instance().currentWindow().
-                   gtkWidget()),
+        Samoyed::Application::instance().currentWindow() ?
+        GTK_WINDOW(Samoyed::Application::instance().currentWindow()->
+                   gtkWidget()) :
+        NULL,
         GTK_DIALOG_DESTROY_WITH_PARENT,
         GTK_MESSAGE_ERROR,
         GTK_BUTTONS_CLOSE,
@@ -130,8 +132,10 @@ gboolean confirmDelete(GeditFileBrowserWidget *widget,
             -1);
         char *uri = g_file_get_uri(location);
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Samoyed::Application::instance().currentWindow().
-                       gtkWidget()),
+            Samoyed::Application::instance().currentWindow() ?
+            GTK_WINDOW(Samoyed::Application::instance().currentWindow()->
+                       gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,
@@ -146,8 +150,10 @@ gboolean confirmDelete(GeditFileBrowserWidget *widget,
     else
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Samoyed::Application::instance().currentWindow().
-                       gtkWidget()),
+            Samoyed::Application::instance().currentWindow() ?
+            GTK_WINDOW(Samoyed::Application::instance().currentWindow()->
+                       gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,
@@ -169,8 +175,10 @@ gboolean confirmNoTrash(GeditFileBrowserWidget *widget,
     {
         char *uri = g_file_get_uri(G_FILE(files->data));
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Samoyed::Application::instance().currentWindow().
-                       gtkWidget()),
+            Samoyed::Application::instance().currentWindow() ?
+            GTK_WINDOW(Samoyed::Application::instance().currentWindow()->
+                       gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,
@@ -186,8 +194,10 @@ gboolean confirmNoTrash(GeditFileBrowserWidget *widget,
     else
     {
         GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(Samoyed::Application::instance().currentWindow().
-                       gtkWidget()),
+            Samoyed::Application::instance().currentWindow() ?
+            GTK_WINDOW(Samoyed::Application::instance().currentWindow()->
+                       gtkWidget()) :
+            NULL,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_YES_NO,
