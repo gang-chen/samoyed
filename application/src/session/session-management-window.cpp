@@ -287,6 +287,32 @@ gboolean SessionManagementWindow::onKeyPress(GtkWidget *widget,
     return FALSE;
 }
 
+void SessionManagementWindow::onSessionSelectionChanged(
+    GtkTreeSelection *selection,
+    SessionManagementWindow *window)
+{
+    gboolean sensitive;
+    GtkTreeModel *model;
+    GtkTreeIter it;
+    gboolean locked;
+
+    if (!gtk_tree_selection_get_selected(selection, &model, &it))
+        sensitive = false;
+    else
+    {
+        gtk_tree_model_get(model, &it, LOCKED_COLUMN, &locked, -1);
+        sensitive = !locked;
+    }
+    gtk_widget_set_sensitive(
+        GTK_WIDGET(gtk_builder_get_object(window->m_builder,
+                                          "delete-session-button")),
+        sensitive);
+    gtk_widget_set_sensitive(
+        GTK_WIDGET(gtk_builder_get_object(window->m_builder,
+                                          "rename-session-button")),
+        sensitive);
+}
+
 SessionManagementWindow::SessionManagementWindow(
     GtkWindow *parent,
     const boost::function<void (SessionManagementWindow &)> &onDestroyed):
@@ -331,6 +357,13 @@ SessionManagementWindow::SessionManagementWindow(
         setSessionNameEditable, NULL, NULL);
     g_signal_connect(m_sessionList, "key-press-event",
                      G_CALLBACK(onKeyPress), this);
+    GList *cells = gtk_cell_layout_get_cells(
+        GTK_CELL_LAYOUT(gtk_tree_view_get_column(m_sessionList, 0)));
+    g_signal_connect(GTK_CELL_RENDERER_TEXT(cells->data), "edited",
+                     G_CALLBACK(onSessionRenamed), this);
+    g_list_free(cells);
+    g_signal_connect(gtk_tree_view_get_selection(m_sessionList), "changed",
+                     G_CALLBACK(onSessionSelectionChanged), this);
 
     g_signal_connect(gtk_builder_get_object(m_builder, "delete-session-button"),
                      "clicked",

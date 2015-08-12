@@ -85,6 +85,28 @@ bool readSessions(std::list<std::string> &sessionNames,
 #endif
 }
 
+void onNewSessionChanged(GtkEditable *editable, GtkDialog *dialog)
+{
+    gtk_widget_set_sensitive(
+        gtk_dialog_get_widget_for_response(dialog, GTK_RESPONSE_ACCEPT),
+        *gtk_editable_get_chars(editable, 0, -1));
+}
+
+void onRestoreSessionChanged(GtkTreeSelection *selection, GtkDialog *dialog)
+{
+    gtk_widget_set_sensitive(
+        gtk_dialog_get_widget_for_response(dialog, GTK_RESPONSE_ACCEPT),
+        gtk_tree_selection_get_selected(selection, NULL, NULL));
+}
+
+void onSessionListRowActivated(GtkTreeView *list,
+                               GtkTreeIter *iter,
+                               GtkTreePath *path,
+                               GtkWindow *dialog)
+{
+    gtk_window_activate_default(dialog);
+}
+
 }
 
 namespace Samoyed
@@ -105,8 +127,8 @@ void SessionChooserDialog::buildNewSessionDialog()
         m_newSessionNameEntry =
             GTK_ENTRY(gtk_builder_get_object(m_builder,
                                              "new-session-name-entry"));
-        g_signal_connect(m_newSessionDialog, "response",
-                         G_CALLBACK(onNewSessionResponse), this);
+        g_signal_connect(GTK_EDITABLE(m_newSessionNameEntry), "changed",
+                         G_CALLBACK(onNewSessionChanged), m_newSessionDialog);
     }
 }
 
@@ -126,12 +148,13 @@ void SessionChooserDialog::buildRestoreSessionDialog()
             sessionStates.begin();
         for (; it1 != sessionNames.end(); ++it1, ++it2)
         {
-            gtk_list_store_append(store, &it);
-            gtk_list_store_set(store, &it,
-                               NAME_COLUMN, it1->c_str(),
-                               LOCKED_COLUMN,
-                               *it2 != Samoyed::Session::STATE_UNLOCKED,
-                               -1);
+            if (*it2 == Samoyed::Session::STATE_UNLOCKED)
+            {
+                gtk_list_store_append(store, &it);
+                gtk_list_store_set(store, &it,
+                                   NAME_COLUMN, it1->c_str(),
+                                   -1);
+            }
         }
 
         m_restoreSessionDialog =
@@ -145,80 +168,14 @@ void SessionChooserDialog::buildRestoreSessionDialog()
         }
         m_sessionList =
             GTK_TREE_VIEW(gtk_builder_get_object(m_builder, "session-list"));
-        g_signal_connect(m_restoreSessionDialog, "response",
-                         G_CALLBACK(onRestoreSessionResponse), this);
+        g_signal_connect(gtk_tree_view_get_selection(m_sessionList),
+                         "changed",
+                         G_CALLBACK(onRestoreSessionChanged),
+                         m_restoreSessionDialog);
         g_signal_connect(m_sessionList, "row-activated",
-                         G_CALLBACK(onSessionListRowActivated), this);
+                         G_CALLBACK(onSessionListRowActivated),
+                         m_restoreSessionDialog);
     }
-}
-
-void SessionChooserDialog::onNewSessionResponse(GtkDialog *gtkDialog,
-                                                gint response,
-                                                SessionChooserDialog *dialog)
-{
-    if (response == GTK_RESPONSE_OK)
-    {
-        dialog->m_sessionName =
-            gtk_entry_get_text(dialog->m_newSessionNameEntry);
-        if (dialog->m_sessionName.empty())
-        {
-            GtkWidget *d = gtk_message_dialog_new(
-                GTK_WINDOW(gtkDialog),
-                GTK_DIALOG_DESTROY_WITH_PARENT,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("The new session name is empty. Type it in the input box."));
-            gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
-            gtk_dialog_run(GTK_DIALOG(d));
-            gtk_widget_destroy(d);
-            g_signal_stop_emission_by_name(gtkDialog, "response");
-            gtk_widget_grab_focus(GTK_WIDGET(dialog->m_newSessionNameEntry));
-        }
-    }
-}
-
-void
-SessionChooserDialog::onRestoreSessionResponse(GtkDialog *gtkDialog,
-                                               gint response,
-                                               SessionChooserDialog *dialog)
-{
-    if (response == GTK_RESPONSE_OK)
-    {
-        GtkTreeSelection *selection;
-        GtkTreeModel *model;
-        GtkTreeIter it;
-        selection = gtk_tree_view_get_selection(dialog->m_sessionList);
-        if (!gtk_tree_selection_get_selected(selection, &model, &it))
-        {
-            GtkWidget *d = gtk_message_dialog_new(
-                GTK_WINDOW(gtkDialog),
-                GTK_DIALOG_DESTROY_WITH_PARENT,
-                GTK_MESSAGE_ERROR,
-                GTK_BUTTONS_CLOSE,
-                _("No session is chosen. Choose one from the session list."));
-            gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
-            gtk_dialog_run(GTK_DIALOG(d));
-            gtk_widget_destroy(d);
-            g_signal_stop_emission_by_name(gtkDialog, "response");
-            gtk_widget_grab_focus(GTK_WIDGET(dialog->m_sessionList));
-        }
-        else
-        {
-            char *sessionName;
-            gtk_tree_model_get(model, &it, NAME_COLUMN, &sessionName, -1);
-            dialog->m_sessionName = sessionName;
-            g_free(sessionName);
-        }
-    }
-}
-
-void
-SessionChooserDialog::onSessionListRowActivated(GtkTreeView *list,
-                                                GtkTreeIter *iter,
-                                                GtkTreePath *path,
-                                                SessionChooserDialog *dialog)
-{
-    gtk_window_activate_default(GTK_WINDOW(dialog->m_restoreSessionDialog));
 }
 
 SessionChooserDialog::SessionChooserDialog(Action action, GtkWindow *parent):
@@ -259,7 +216,9 @@ void SessionChooserDialog::run()
                 m_action = ACTION_RESTORE;
             else
             {
-                if (response != GTK_RESPONSE_OK)
+                if (response == GTK_RESPONSE_ACCEPT)
+                    m_sessionName = gtk_entry_get_text(m_newSessionNameEntry);
+                else
                     m_action = ACTION_CANCEL;
                 break;
             }
@@ -273,7 +232,20 @@ void SessionChooserDialog::run()
                 m_action = ACTION_CREATE;
             else
             {
-                if (response != GTK_RESPONSE_OK)
+                if (response == GTK_RESPONSE_ACCEPT)
+                {
+                    GtkTreeSelection *selection;
+                    GtkTreeModel *model;
+                    GtkTreeIter it;
+                    char *sessionName;
+                    selection = gtk_tree_view_get_selection(m_sessionList);
+                    gtk_tree_selection_get_selected(selection, &model, &it);
+                    gtk_tree_model_get(model, &it, NAME_COLUMN, &sessionName,
+                                      -1);
+                    m_sessionName = sessionName;
+                    g_free(sessionName);
+                }
+                else
                     m_action = ACTION_CANCEL;
                 break;
             }

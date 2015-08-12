@@ -87,15 +87,15 @@ public:
 
     void onFileStructureUpdated();
 
-    bool foldingEnabled() const { return m_foldersRenderer; }
+    bool foldingEnabled() const { return m_foldsRenderer; }
 
-    bool hasFolder(int line) const;
+    bool lineHasFold(int line) const;
 
-    bool folded(int line) const;
+    bool lineCollapsed(int line) const;
 
-    void fold(int line);
+    void collapseLine(int line);
 
-    void expand(int line);
+    void expandLine(int line);
 
     bool lineVisible(int line) const;
 
@@ -124,12 +124,12 @@ protected:
     bool restore(XmlElement &xmlElement);
 
 private:
-    struct FolderData
+    struct FoldData
     {
-        FolderData(): hasFolder(false), folded(false) {}
-        void reset() { hasFolder = false; folded = false; }
-        bool hasFolder;
-        bool folded;
+        FoldData(): hasFold(false), collapsed(false) {}
+        void reset() { hasFold = false; collapsed = false; }
+        bool hasFold;
+        bool collapsed;
         SourceFile::StructureNode::Kind structureNodeKind;
     };
 
@@ -137,21 +137,21 @@ private:
 
     void applyInvisibleTag(const SourceFile::StructureNode *node);
 
-    static void activateFolder(GtkSourceGutterRenderer *renderer,
-                               GtkTextIter *iter,
-                               GdkRectangle *area,
-                               GdkEvent *event,
-                               SourceEditor *editor);
-    static gboolean queryFolderActivatable(GtkSourceGutterRenderer *renderer,
-                                           GtkTextIter *iter,
-                                           GdkRectangle *area,
-                                           GdkEvent *event,
-                                           SourceEditor *editor);
-    static void queryFolderData(GtkSourceGutterRenderer *renderer,
-                                GtkTextIter *begin,
-                                GtkTextIter *end,
-                                GtkSourceGutterRendererState state,
-                                SourceEditor *editor);
+    static void activateFold(GtkSourceGutterRenderer *renderer,
+                             GtkTextIter *iter,
+                             GdkRectangle *area,
+                             GdkEvent *event,
+                             SourceEditor *editor);
+    static gboolean queryFoldActivatable(GtkSourceGutterRenderer *renderer,
+                                         GtkTextIter *iter,
+                                         GdkRectangle *area,
+                                         GdkEvent *event,
+                                         SourceEditor *editor);
+    static void queryFoldData(GtkSourceGutterRenderer *renderer,
+                              GtkTextIter *begin,
+                              GtkTextIter *end,
+                              GtkSourceGutterRendererState state,
+                              SourceEditor *editor);
 
     static void setupPreferencesEditor(GtkGrid *grid);
 
@@ -162,9 +162,9 @@ private:
 
     static GtkTextTagTable *s_sharedTagTable;
 
-    GtkSourceGutterRenderer *m_foldersRenderer;
+    GtkSourceGutterRenderer *m_foldsRenderer;
 
-    std::vector<FolderData> m_foldersData;
+    std::vector<FoldData> m_foldsData;
 };
 
 }

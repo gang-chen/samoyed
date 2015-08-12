@@ -41,6 +41,9 @@ private:
                                GdkEventKey *event,
                                SessionManagementWindow *window);
 
+    static void onSessionSelectionChanged(GtkTreeSelection *selection,
+                                          SessionManagementWindow *window);
+
     GtkBuilder *m_builder;
     GtkWindow *m_window;
     GtkTreeView *m_sessionList;

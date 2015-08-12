@@ -32,19 +32,6 @@ public:
     const char *sessionName() const { return m_sessionName.c_str(); }
 
 private:
-    static void onNewSessionResponse(GtkDialog *gtkDialog,
-                                     gint response,
-                                     SessionChooserDialog *dialog);
-
-    static void onRestoreSessionResponse(GtkDialog *gtkDialog,
-                                         gint response,
-                                         SessionChooserDialog *dialog);
-
-    static void onSessionListRowActivated(GtkTreeView *list,
-                                          GtkTreeIter *iter,
-                                          GtkTreePath *path,
-                                          SessionChooserDialog *dialog);
-
     void buildNewSessionDialog();
     void buildRestoreSessionDialog();
 

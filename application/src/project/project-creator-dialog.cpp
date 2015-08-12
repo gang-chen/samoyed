@@ -60,7 +60,7 @@ ProjectCreatorDialog::~ProjectCreatorDialog()
 
 Project *ProjectCreatorDialog::run()
 {
-    if (gtk_dialog_run(m_dialog) != GTK_RESPONSE_OK)
+    if (gtk_dialog_run(m_dialog) != GTK_RESPONSE_ACCEPT)
         return NULL;
     Project *project;
     char *uri = gtk_file_chooser_get_uri(m_locationChooser);

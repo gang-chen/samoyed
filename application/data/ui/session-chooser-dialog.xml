@@ -46,11 +46,11 @@
       </object>
     </child>
     <child type="action">
-      <object class="GtkButton" id="new-session-button">
+      <object class="GtkButton" id="switch-to-restore-session-button">
         <property name="visible">true</property>
-        <property name="can-default">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">_OK</property>
+        <property name="label" translatable="yes">_Restore Session...</property>
+        <property name="tooltip-text" translatable="yes">Restore a saved session instead of creating a new one</property>
       </object>
     </child>
     <child type="action">
@@ -61,23 +61,22 @@
       </object>
     </child>
     <child type="action">
-      <object class="GtkButton" id="switch-to-restore-session-button">
+      <object class="GtkButton" id="new-session-button">
         <property name="visible">true</property>
+        <property name="can-default">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">_Restore Session...</property>
-        <property name="tooltip-text" translatable="yes">Restore a saved session instead of creating a new one</property>
+        <property name="label" translatable="yes">_New</property>
       </object>
     </child>
     <action-widgets>
-      <action-widget response="ok" default="true">new-session-button</action-widget>
-      <action-widget response="cancel">cancel-new-session-button</action-widget>
       <action-widget response="1">switch-to-restore-session-button</action-widget>
+      <action-widget response="cancel">cancel-new-session-button</action-widget>
+      <action-widget response="accept" default="true">new-session-button</action-widget>
     </action-widgets>
   </object>
   <object class="GtkListStore" id="sessions">
     <columns>
       <column type="gchararray"/>
-      <column type="gboolean"/>
     </columns>
   </object>
   <object class="GtkDialog" id="restore-session-dialog">
@@ -95,27 +94,14 @@
                 <property name="model">sessions</property>
                 <property name="hexpand">true</property>
                 <property name="vexpand">true</property>
+                <property name="headers-visible">false</property>
                 <child>
                   <object class="GtkTreeViewColumn" id="session-name-column">
-                    <property name="title" translatable="yes">Names</property>
                     <property name="expand">true</property>
                     <child>
                       <object class="GtkCellRendererText" id="session-name-renderer"/>
                       <attributes>
                         <attribute name="text">0</attribute>
-                      </attributes>
-                    </child>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn" id="session-locked-column">
-                    <property name="title" translatable="yes">Locked</property>
-                    <child>
-                      <object class="GtkCellRendererToggle" id="session-locked-renderer">
-                        <property name="activatable">false</property>
-                      </object>
-                      <attributes>
-                        <attribute name="active">1</attribute>
                       </attributes>
                     </child>
                   </object>
@@ -148,11 +134,11 @@
       </object>
     </child>
     <child type="action">
-      <object class="GtkButton" id="restore-session-button">
+      <object class="GtkButton" id="switch-to-new-session-button">
         <property name="visible">true</property>
-        <property name="can-default">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">_OK</property>
+        <property name="label" translatable="yes">_New Session...</property>
+        <property name="tooltip-text" translatable="yes">Create a new session instead of restoring a saved one</property>
       </object>
     </child>
     <child type="action">
@@ -163,17 +149,17 @@
       </object>
     </child>
     <child type="action">
-      <object class="GtkButton" id="switch-to-new-session-button">
+      <object class="GtkButton" id="restore-session-button">
         <property name="visible">true</property>
+        <property name="can-default">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">_New Session...</property>
-        <property name="tooltip-text" translatable="yes">Create a new session instead of restoring a saved one</property>
+        <property name="label" translatable="yes">_Restore</property>
       </object>
     </child>
     <action-widgets>
-      <action-widget response="ok" default="true">restore-session-button</action-widget>
       <action-widget response="cancel">cancel-restore-session-button</action-widget>
       <action-widget response="2">switch-to-new-session-button</action-widget>
+      <action-widget response="accept" default="true">restore-session-button</action-widget>
     </action-widgets>
   </object>
 </interface>

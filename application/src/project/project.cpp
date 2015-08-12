@@ -40,28 +40,20 @@ namespace
 
 void checkProjectExists(GtkFileChooser *chooser, gpointer dialog)
 {
+    gboolean sensitive;
     char *dir = gtk_file_chooser_get_filename(chooser);
     if (!dir || !g_file_test(dir, G_FILE_TEST_IS_DIR))
-    {
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                               GTK_RESPONSE_OK),
-            FALSE);
-        g_free(dir);
-        return;
-    }
-    std::string file(dir);
-    file += G_DIR_SEPARATOR_S "samoyed-project.xml";
-    if (!g_file_test(file.c_str(), G_FILE_TEST_EXISTS))
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                               GTK_RESPONSE_OK),
-            FALSE);
+        sensitive = false;
     else
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
-                                               GTK_RESPONSE_OK),
-            TRUE);
+    {
+        std::string file(dir);
+        file += G_DIR_SEPARATOR_S "samoyed-project.xml";
+        sensitive = g_file_test(file.c_str(), G_FILE_TEST_EXISTS);
+    }
+    gtk_widget_set_sensitive(
+        gtk_dialog_get_widget_for_response(GTK_DIALOG(dialog),
+                                           GTK_RESPONSE_ACCEPT),
+        sensitive);
     g_free(dir);
 }
 
@@ -723,12 +715,12 @@ Project *Project::openByDialog()
         NULL,
         GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
         "_Cancel", GTK_RESPONSE_CANCEL,
-        "_Open", GTK_RESPONSE_OK,
+        "_Open", GTK_RESPONSE_ACCEPT,
         NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
     g_signal_connect(GTK_FILE_CHOOSER(dialog), "selection-changed",
                      G_CALLBACK(checkProjectExists), dialog);
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
     {
         char *uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog));
         project = Project::open(uri);

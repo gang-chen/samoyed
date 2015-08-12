@@ -368,7 +368,7 @@ void File::openByDialog(Project *project,
             NULL,
             GTK_FILE_CHOOSER_ACTION_OPEN,
             "_Cancel", GTK_RESPONSE_CANCEL,
-            "_Open", GTK_RESPONSE_OK,
+            "_Open", GTK_RESPONSE_ACCEPT,
             NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 
@@ -435,7 +435,7 @@ void File::openByDialog(Project *project,
 
     Window &window = *Application::instance().currentWindow();
     Notebook &editorGroup = window.currentEditorGroup();
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK)
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
     {
         char *dirName =
             gtk_file_chooser_get_current_folder_uri(GTK_FILE_CHOOSER(dialog));
