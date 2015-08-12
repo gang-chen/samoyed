@@ -35,7 +35,9 @@ void onLocationActivated(GeditFileBrowserWidget *widget,
 {
     char *uri = g_file_get_uri(location);
     std::pair<Samoyed::File *, Samoyed::Editor *> fileEditor =
-        Samoyed::File::open(uri, NULL, NULL, NULL, false);
+        Samoyed::File::open(uri,
+                            Samoyed::Application::instance().currentProject(),
+                            NULL, NULL, false);
     if (fileEditor.second)
     {
         if (!fileEditor.second->parent())

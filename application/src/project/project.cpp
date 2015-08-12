@@ -151,7 +151,9 @@ Project::Project(const char *uri):
     m_db(NULL),
     m_buildSystem(NULL),
     m_activeConfig(NULL),
-    m_closing(false)
+    m_closing(false),
+    m_firstEditor(NULL),
+    m_lastEditor(NULL)
 {
     Application::instance().addProject(*this);
 }
@@ -159,6 +161,8 @@ Project::Project(const char *uri):
 Project::~Project()
 {
     assert(!m_db);
+    assert(!m_firstEditor);
+    assert(!m_lastEditor);
     delete m_buildSystem;
     ConfigurationTable::iterator it;
     while ((it = m_configurations.begin()) != m_configurations.end())
@@ -209,9 +213,9 @@ Project *Project::create(const char *uri,
             GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to create project \"%s\" because project \"%s\" "
+            _("Samoyed failed to create project \"%s\" because the project "
               "already exists."),
-            uri, uri);
+            uri);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
             GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
