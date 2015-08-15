@@ -6,12 +6,9 @@
 #endif
 #include "project.hpp"
 #include "project-db.hpp"
-#include "configuration.hpp"
 #include "build-system/build-system.hpp"
-#include "build-system/build-systems-extension-point.hpp"
 #include "editors/editor.hpp"
 #include "window/window.hpp"
-#include "plugin/extension-point-manager.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "application.hpp"
 #include <assert.h>
@@ -27,13 +24,9 @@
 #include <libxml/tree.h>
 #include <db.h>
 
+#define URI "uri"
 #define PROJECT "project"
 #define BUILD_SYSTEM "build-system"
-#define CONFIGURATIONS "configurations"
-#define CONFIGURATION "configuration"
-#define ACTIVE_CONFIGURATION "active-configuration"
-#define URI "uri"
-#define BUILD_SYSTEMS "build-systems"
 
 namespace
 {
@@ -142,7 +135,6 @@ Project::Project(const char *uri):
     m_uri(uri),
     m_db(NULL),
     m_buildSystem(NULL),
-    m_activeConfig(NULL),
     m_closing(false),
     m_firstEditor(NULL),
     m_lastEditor(NULL)
@@ -156,13 +148,6 @@ Project::~Project()
     assert(!m_firstEditor);
     assert(!m_lastEditor);
     delete m_buildSystem;
-    ConfigurationTable::iterator it;
-    while ((it = m_configurations.begin()) != m_configurations.end())
-    {
-        Configuration *config = it->second;
-        m_configurations.erase(it);
-        delete config;
-    }
     Application::instance().removeProject(*this);
 }
 
@@ -217,7 +202,8 @@ Project *Project::create(const char *uri,
     }
 
     Project *project = new Project(uri);
-    project->setBuildSystem(buildSystemExtensionId);
+    project->m_buildSystem = BuildSystem::create(*project,
+                                                 buildSystemExtensionId);
 
     // Write the project manifest file.
     xmlNodePtr node = project->writeManifestFile();
@@ -310,6 +296,13 @@ Project *Project::create(const char *uri,
         return NULL;
     }
 
+    // If there are existing files in the directory, import them.
+
+    // If none, copy the template files.
+    project->m_buildSystem->copyTemplateFiles();
+
+    project->m_buildSystem->createDefaultConfigurations();
+
     return project;
 }
 
@@ -338,52 +331,7 @@ bool Project::readManifestFile(xmlNodePtr node,
             continue;
         if (strcmp(reinterpret_cast<const char *>(child->name),
                    BUILD_SYSTEM) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeGetContent(child->children));
-            if (value)
-            {
-                setBuildSystem(value);
-                xmlFree(value);
-            }
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        CONFIGURATIONS) == 0)
-        {
-            for (xmlNodePtr grandChild = child->children;
-                 grandChild;
-                 grandChild = grandChild->next)
-            {
-                if (grandChild->type != XML_ELEMENT_NODE)
-                    continue;
-                if (strcmp(reinterpret_cast<const char *>(grandChild->name),
-                           CONFIGURATION) == 0)
-                {
-                    Configuration *config = new Configuration;
-                    if (config->readXmlElement(grandChild, errors))
-                    {
-                        if (!m_configurations.insert(
-                                std::make_pair(config->name(), config)).second)
-                            delete config;
-                    }
-                    else
-                        delete config;
-                }
-            }
-        }
-        else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        ACTIVE_CONFIGURATION) == 0)
-        {
-            value = reinterpret_cast<char *>(
-                xmlNodeGetContent(child->children));
-            if (value)
-            {
-                ConfigurationTable::iterator it = m_configurations.find(value);
-                if (it != m_configurations.end())
-                    m_activeConfig = it->second;
-                xmlFree(value);
-            }
-        }
+            m_buildSystem = BuildSystem::readXmlElement(*this, child, errors);
     }
     return true;
 }
@@ -392,23 +340,7 @@ xmlNodePtr Project::writeManifestFile() const
 {
     xmlNodePtr node = xmlNewNode(NULL,
                                  reinterpret_cast<const xmlChar *>(PROJECT));
-    xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(BUILD_SYSTEM),
-                    reinterpret_cast<const xmlChar *>(m_buildSystemExtensionId.
-                                                      c_str()));
-    xmlNodePtr configs =
-        xmlNewNode(NULL,
-                   reinterpret_cast<const xmlChar *>(CONFIGURATIONS));
-    for (ConfigurationTable::const_iterator it = m_configurations.begin();
-         it != m_configurations.end();
-         ++it)
-        xmlAddChild(configs, it->second->writeXmlElement());
-    xmlAddChild(node, configs);
-    if (m_activeConfig)
-        xmlNewTextChild(node, NULL,
-                        reinterpret_cast<const xmlChar *>(ACTIVE_CONFIGURATION),
-                        reinterpret_cast<const xmlChar *>(m_activeConfig->
-                                                          name()));
+    xmlAddChild(node, m_buildSystem->writeXmlElement());
     return node;
 }
 
@@ -780,21 +712,6 @@ void Project::destroyEditor(Editor &editor)
     editor.destroyInProject();
     if (m_closing && !m_firstEditor)
         finishClosing();
-}
-
-void Project::setBuildSystem(const char *buildSystemExtensionId)
-{
-    if (m_buildSystemExtensionId == buildSystemExtensionId)
-        return;
-    m_buildSystemExtensionId = buildSystemExtensionId;
-    delete m_buildSystem;
-    if (strcmp(buildSystemExtensionId, "basic-build-system") == 0)
-        m_buildSystem = new BuildSystem(*this);
-    else
-        m_buildSystem =
-            static_cast<BuildSystemsExtensionPoint &>(Application::instance().
-                extensionPointManager().extensionPoint(BUILD_SYSTEMS)).
-                activateBuildSystem(buildSystemExtensionId, *this);
 }
 
 }

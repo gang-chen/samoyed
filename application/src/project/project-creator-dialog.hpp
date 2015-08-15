@@ -21,6 +21,8 @@ public:
     Project *run();
 
 private:
+    static void validateInput(gpointer object, ProjectCreatorDialog *dialog);
+
     GtkBuilder *m_builder;
 
     GtkDialog *m_dialog;

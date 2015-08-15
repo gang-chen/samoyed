@@ -43,7 +43,7 @@ public:
 
     const ExtensionTable &extensions() const { return m_extensions; }
 
-    BuildSystem *activateBuildSystem(const char *extensionId, Project &project);
+    BuildSystem *activateBuildSystem(Project &project, const char *extensionId);
 
 private:
     ExtensionTable m_extensions;

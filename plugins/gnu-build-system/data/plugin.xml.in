@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+  <id>gnu-build-system</id>
+  <_name>GNU build system</_name>
+  <_description>This plugin adds GNU build system support.</_description>
+  <module>gnubuildsystem</module>
+  <extension>
+    <id>build-system</id>
+    <point>build-systems</point>
+    <detail>
+     <_description>GNU build system</_description>
+    </detail>
+  </extension>
+</plugin>

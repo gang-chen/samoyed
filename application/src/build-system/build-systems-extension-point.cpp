@@ -90,8 +90,8 @@ void BuildSystemsExtensionPoint::unregisterExtension(const char *extensionId)
 }
 
 BuildSystem *
-BuildSystemsExtensionPoint::activateBuildSystem(const char *extensionId,
-                                                Project &project)
+BuildSystemsExtensionPoint::activateBuildSystem(Project &project,
+                                                const char *extensionId)
 {
     BuildSystemExtension *ext =
         static_cast<BuildSystemExtension *>(

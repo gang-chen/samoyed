@@ -17,7 +17,6 @@ namespace Samoyed
 
 class ProjectDb;
 class BuildSystem;
-class Configuration;
 class Editor;
 
 /**
@@ -33,9 +32,6 @@ class Project: public boost::noncopyable
 public:
     typedef boost::signals2::signal<void (Project &project)> Opened;
     typedef boost::signals2::signal<void (Project &project)> Close;
-
-    typedef std::map<ComparablePointer<const char>, Configuration *>
-        ConfigurationTable;
 
     class XmlElement
     {
@@ -86,14 +82,6 @@ public:
 
     BuildSystem &buildSystem() { return *m_buildSystem; }
 
-    ConfigurationTable &configurations() { return m_configurations; }
-    const ConfigurationTable &configurations() const { return m_configurations; }
-
-    Configuration *activeConfiguration() { return m_activeConfig; }
-    const Configuration *activeConfiguration() const { return m_activeConfig; }
-    void setActiveConfiguration(Configuration *config)
-    { m_activeConfig = config; }
-
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;
 
@@ -130,12 +118,7 @@ private:
 
     ProjectDb *m_db;
 
-    std::string m_buildSystemExtensionId;
     BuildSystem *m_buildSystem;
-
-    ConfigurationTable m_configurations;
-
-    Configuration *m_activeConfig;
 
     bool m_closing;
 

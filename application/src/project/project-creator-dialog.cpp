@@ -17,6 +17,34 @@
 namespace Samoyed
 {
 
+void ProjectCreatorDialog::validateInput(gpointer object,
+                                         ProjectCreatorDialog *dialog)
+{
+    char *dir = gtk_file_chooser_get_uri(dialog->m_locationChooser);
+    if (!dir)
+    {
+        gtk_widget_set_sensitive(
+            gtk_dialog_get_widget_for_response(dialog->m_dialog,
+                                               GTK_RESPONSE_ACCEPT),
+            FALSE);
+        return;
+    }
+    g_free(dir);
+    if (!gtk_combo_box_get_active_id(
+            GTK_COMBO_BOX(dialog->m_buildSystemChooser)))
+    {
+        gtk_widget_set_sensitive(
+            gtk_dialog_get_widget_for_response(dialog->m_dialog,
+                                               GTK_RESPONSE_ACCEPT),
+            FALSE);
+        return;
+    }
+    gtk_widget_set_sensitive(
+        gtk_dialog_get_widget_for_response(dialog->m_dialog,
+                                           GTK_RESPONSE_ACCEPT),
+        TRUE);
+}
+
 ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
 {
     std::string uiFile(Application::instance().dataDirectoryName());
@@ -50,6 +78,11 @@ ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
                                   i++,
                                   it->second->id.c_str(),
                                   it->second->description.c_str());
+
+    g_signal_connect(m_locationChooser, "selection-changed",
+                     G_CALLBACK(validateInput), this);
+    g_signal_connect(GTK_COMBO_BOX(m_buildSystemChooser), "changed",
+                     G_CALLBACK(validateInput), this);
 }
 
 ProjectCreatorDialog::~ProjectCreatorDialog()

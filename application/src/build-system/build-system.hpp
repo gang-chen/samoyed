@@ -4,18 +4,42 @@
 #ifndef SMYD_BUILD_SYSTEM_HPP
 #define SMYD_BUILD_SYSTEM_HPP
 
+#include "utilities/miscellaneous.hpp"
+#include <map>
+#include <list>
+#include <string>
+#include <libxml/tree.h>
+
 namespace Samoyed
 {
+
+class Project;
+class Configuration;
 
 class BuildSystem
 {
 public:
-    BuildSystem(Project &project): m_project(project) {}
+    typedef std::map<ComparablePointer<const char>, Configuration *>
+        ConfigurationTable;
 
-    bool addFile(const char *uri);
-    bool removeFile(const char *uri);
-    bool editFileProperties(const char *uri);
-    bool importFile(const char *uri);
+    static BuildSystem *create(Project &project, const char *extensionId);
+
+    virtual ~BuildSystem();
+
+    /**
+     * Copy template files to a newly created project.
+     */
+    virtual bool copyTemplateFiles() { return true; }
+
+    /**
+     * Create default configurations for a newly created project.
+     */
+    virtual void createDefaultConfigurations() {}
+
+    /**
+     * Import a existing file to a project.
+     */
+    virtual bool importFile(const char *uri) { return true; }
 
     bool configure();
     bool build();
@@ -25,13 +49,31 @@ public:
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
 
-    virtual const char *defaultConfigureCommands() const { return ""; }
-    virtual const char *defaultBuildCommands() const { return ""; }
-    virtual const char *defaultInstallCommands() const { return ""; }
-    virtual const char *defaultDryBuildCommands() const { return ""; }
+    ConfigurationTable &configurations() { return m_configurations; }
+    const ConfigurationTable &configurations() const
+    { return m_configurations; }
+
+    Configuration *activeConfiguration() { return m_activeConfig; }
+    const Configuration *activeConfiguration() const { return m_activeConfig; }
+    void setActiveConfiguration(Configuration *config)
+    { m_activeConfig = config; }
+
+    static BuildSystem *readXmlElement(Project &project,
+                                       xmlNodePtr node,
+                                       std::list<std::string> *errors);
+    xmlNodePtr writeXmlElement() const;
+
+protected:
+    BuildSystem(Project &project, const char *extensionId);
 
 private:
     Project &m_project;
+
+    const std::string m_extensionId;
+
+    ConfigurationTable m_configurations;
+
+    Configuration *m_activeConfig;
 };
 
 }

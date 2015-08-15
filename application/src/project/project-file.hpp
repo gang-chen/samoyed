@@ -4,12 +4,13 @@
 #ifndef SMYD_PROJECT_FILE_HPP
 #define SMYD_PROJECT_FILE_HPP
 
-#include <map>
-#include <string>
 #include <boost/shared_ptr.hpp>
 
 namespace Samoyed
 {
+
+class Project;
+class BuildSystemFile;
 
 class ProjectFile
 {
@@ -26,25 +27,37 @@ public:
         TYPE_STATIC_LIBRARY
     };
 
-    const char *uri() const { return m_uri.c_str(); }
-    void setUri(const char *uri) { m_uri = uri; }
-    Type type() const { return m_type; }
-    void setType(Type type) { m_type = type; }
-    const char *installDirectory() const { return m_installDir.c_str(); }
-    void setInstallDirecoty(const char *dir) { m_installDir = dir; }
-    std::map<std::string, std::string> &properties()
-    { return m_properties; }
-    const std::map<std::string, std::string> &properties() const
-    { return m_properties; }
+    static ProjectFile *read(const Project &project,
+                             const boost::shared_ptr<char> &uri,
+                             int uriLength,
+                             const boost::shared_ptr<char> &data,
+                             int dataLength);
 
-    static ProjectFile *deserialize(const char *&bytes, int &length);
-    void serialize(boost::shared_ptr<char> &bytes, int &length) const;
+    static ProjectFile *createByDialog(const Project &project,
+                                       Type type,
+                                       const char *currentDir);
+
+    virtual ~ProjectFile();
+
+    const char *uri() const { return m_uri.get(); }
+    int uriLength() const { return m_uriLength; }
+
+    const char *data() const { return m_data.get(); }
+    int dataLength() const { return m_dataLength; }
+
+    Type type() const { return m_type; }
+
+    BuildSystemFile *buildSystemData() { return m_buildSystemData; }
 
 private:
-    std::string m_uri;
+    boost::shared_ptr<char> m_uri;
+    int m_uriLength;
+    boost::shared_ptr<char> m_data;
+    int m_dataLength;
+
     Type m_type;
-    std::string m_installDir;
-    std::map<std::string, std::string> m_properties;
+
+    BuildSystemFile *m_buildSystemData;
 };
 
 }
