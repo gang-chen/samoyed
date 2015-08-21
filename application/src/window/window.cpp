@@ -12,6 +12,7 @@
 #include "editors/file.hpp"
 #include "editors/editor.hpp"
 #include "editors/text-editor.hpp"
+#include "project/project-explorer.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/worker.hpp"
@@ -50,6 +51,7 @@
 #define MAIN_AREA_ID "main-area"
 #define EDITOR_GROUP_ID "editor-group"
 #define PANED_ID "paned"
+#define PROJECT_EXPLORER_ID "project-explorer"
 
 #define SIDE_PANE_MENU_ITEM_LABEL "side-pane-menu-item-label"
 #define SIDE_PANE_CHILDREN_MENU_LABEL "side-pane-children-menu-label"
@@ -2129,6 +2131,44 @@ void Window::disableShowActiveWorkers()
 {
     s_workerBegunConn.disconnect();
     s_workerEndedConn.disconnect();
+}
+
+ProjectExplorer *Window::projectExplorer()
+{
+    Notebook &navig = navigationPane();
+    for (int i = 0; i < navig.childCount(); ++i)
+    {
+        if (strcmp(navig.child(i).id(), PROJECT_EXPLORER_ID) == 0)
+            return static_cast<ProjectExplorer *>(&navig.child(i));
+    }
+    return NULL;
+}
+
+const ProjectExplorer *Window::projectExplorer() const
+{
+    const Notebook &navig = navigationPane();
+    for (int i = 0; i < navig.childCount(); ++i)
+    {
+        if (strcmp(navig.child(i).id(), PROJECT_EXPLORER_ID) == 0)
+            return static_cast<const ProjectExplorer *>(&navig.child(i));
+    }
+    return NULL;
+}
+
+Project *Window::currentProject()
+{
+    ProjectExplorer *explorer = projectExplorer();
+    if (explorer)
+        return explorer->currentProject();
+    return Application::instance().projects();
+}
+
+const Project *Window::currentProject() const
+{
+    const ProjectExplorer *explorer = projectExplorer();
+    if (explorer)
+        return explorer->currentProject();
+    return Application::instance().projects();
 }
 
 }

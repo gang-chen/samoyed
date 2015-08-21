@@ -24,6 +24,8 @@ class WidgetWithBars;
 class Notebook;
 class Paned;
 class Editor;
+class ProjectExplorer;
+class Project;
 
 /**
  * A window represents a top-level window.  A window is a container that manages
@@ -180,7 +182,7 @@ public:
      * @param size The size of the side pane.
      */
     void addSidePane(Widget &pane, Widget &neighbor, Side side, int size);
-										
+
     /**
      * Register a widget as a child of a side pane.  Add a menu item to let the
      * user open or close the registered widget.
@@ -198,14 +200,14 @@ public:
      * Unregister a child of a side pane.  If the child is open, close it
      * first.  Remove the menu item.
      * @param paneId The identifier of the side pane.
-     * @param id The identifier of the child. 
+     * @param id The identifier of the child.
      */
     void unregisterSidePaneChild(const char *paneId, const char *id);
 
     /**
      * Open a registered child of a side pane, if not opened.
      * @param pane The side pane.
-     * @param id The identifier of the child. 
+     * @param id The identifier of the child.
      * @return The child of the side pane.
      */
     Widget *openSidePaneChild(const char *paneId, const char *id);
@@ -240,6 +242,12 @@ public:
 
     void addEditorToEditorGroup(Editor &editor, Notebook &editorGroup,
                                 int index);
+
+    ProjectExplorer *projectExplorer();
+    const ProjectExplorer *projectExplorer() const;
+
+    Project *currentProject();
+    const Project *currentProject() const;
 
     GtkAction *addAction(const char *name,
                          const char *path,

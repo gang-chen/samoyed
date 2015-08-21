@@ -6,6 +6,7 @@
 #endif
 #include "project.hpp"
 #include "project-db.hpp"
+#include "project-file.hpp"
 #include "build-system/build-system.hpp"
 #include "editors/editor.hpp"
 #include "window/window.hpp"
@@ -21,6 +22,7 @@
 #include <utility>
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 #include <libxml/tree.h>
 #include <db.h>
 
@@ -672,6 +674,11 @@ bool Project::restore(XmlElement &xmlElement)
     return true;
 }
 
+ProjectFile *Project::createProjectFile(ProjectFile::Type type) const
+{
+    return new ProjectFile(type, m_buildSystem->createBuildSystemFile(type));
+}
+
 Editor *Project::findEditor(const char *uri)
 {
     EditorTable::const_iterator it = m_editorTable.find(uri);
@@ -712,6 +719,16 @@ void Project::destroyEditor(Editor &editor)
     editor.destroyInProject();
     if (m_closing && !m_firstEditor)
         finishClosing();
+}
+
+bool Project::addProjectFile(const ProjectFile &projectFile)
+{
+    return true;
+}
+
+bool Project::removeProjectFile(const char *uri)
+{
+    return true;
 }
 
 }

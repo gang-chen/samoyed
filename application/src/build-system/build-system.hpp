@@ -4,10 +4,12 @@
 #ifndef SMYD_BUILD_SYSTEM_HPP
 #define SMYD_BUILD_SYSTEM_HPP
 
+#include "project/project-file.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <map>
 #include <list>
 #include <string>
+#include <boost/utility.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -16,7 +18,7 @@ namespace Samoyed
 class Project;
 class Configuration;
 
-class BuildSystem
+class BuildSystem: public boost::noncopyable
 {
 public:
     typedef std::map<ComparablePointer<const char>, Configuration *>
@@ -37,9 +39,13 @@ public:
     virtual void createDefaultConfigurations() {}
 
     /**
-     * Import a existing file to a project.
+     * Import an existing file to a project.
      */
     virtual bool importFile(const char *uri) { return true; }
+
+    virtual bool addProjectFile(const ProjectFile &projectFile);
+
+    virtual bool removeProjectFile(const char *uri);
 
     bool configure();
     bool build();
@@ -57,6 +63,9 @@ public:
     const Configuration *activeConfiguration() const { return m_activeConfig; }
     void setActiveConfiguration(Configuration *config)
     { m_activeConfig = config; }
+
+    virtual BuildSystemFile *
+    createBuildSystemFile(ProjectFile::Type type) const;
 
     static BuildSystem *readXmlElement(Project &project,
                                        xmlNodePtr node,

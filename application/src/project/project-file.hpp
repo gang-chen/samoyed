@@ -4,7 +4,11 @@
 #ifndef SMYD_PROJECT_FILE_HPP
 #define SMYD_PROJECT_FILE_HPP
 
+#include <string>
+#include <boost/utility.hpp>
+#include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
+#include <gtk/gtk.h>
 
 namespace Samoyed
 {
@@ -12,7 +16,7 @@ namespace Samoyed
 class Project;
 class BuildSystemFile;
 
-class ProjectFile
+class ProjectFile: public boost::noncopyable
 {
 public:
     enum Type
@@ -27,35 +31,53 @@ public:
         TYPE_STATIC_LIBRARY
     };
 
-    static ProjectFile *read(const Project &project,
-                             const boost::shared_ptr<char> &uri,
-                             int uriLength,
-                             const boost::shared_ptr<char> &data,
-                             int dataLength);
+    class Editor
+    {
+    public:
+        Editor(const boost::function<void (Editor &)> &onChanged):
+            m_onChanged(onChanged)
+        {}
+        virtual ~Editor() {}
+        virtual void addGtkWidgets(GtkGrid *grid) {}
+        virtual bool inputValid() const { return true; }
+        virtual void getInput(ProjectFile &file) const {}
 
-    static ProjectFile *createByDialog(const Project &project,
-                                       Type type,
-                                       const char *currentDir);
+    private:
+        boost::function<void (Editor &)> m_onChanged;
+    };
 
+    ProjectFile(Type type, BuildSystemFile *buildSystemData):
+        m_type(type),
+        m_buildSystemData(buildSystemData)
+    {}
     virtual ~ProjectFile();
 
-    const char *uri() const { return m_uri.get(); }
-    int uriLength() const { return m_uriLength; }
-
-    const char *data() const { return m_data.get(); }
-    int dataLength() const { return m_dataLength; }
+    const char *uri() const { return m_uri.c_str(); }
+    void setUri(const char *uri) { m_uri = uri; }
 
     Type type() const { return m_type; }
 
-    BuildSystemFile *buildSystemData() { return m_buildSystemData; }
+    BuildSystemFile &buildSystemData() { return *m_buildSystemData; }
+    const BuildSystemFile &buildSystemData() const
+    { return *m_buildSystemData; }
+
+    static ProjectFile *read(const Project &project,
+                             const char *uri,
+                             int uriLength,
+                             const char *&data,
+                             int &dataLength);
+    void write(boost::shared_ptr<char> &uri,
+               int &uriLength,
+               boost::shared_ptr<char> &data,
+               int &dataLength);
+
+    virtual Editor *
+    createEditor(const boost::function<void (Editor &)> onChanged) const
+    { return new Editor(onChanged); }
 
 private:
-    boost::shared_ptr<char> m_uri;
-    int m_uriLength;
-    boost::shared_ptr<char> m_data;
-    int m_dataLength;
-
-    Type m_type;
+    std::string m_uri;
+    const Type m_type;
 
     BuildSystemFile *m_buildSystemData;
 };

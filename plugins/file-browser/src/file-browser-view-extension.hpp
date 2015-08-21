@@ -21,6 +21,9 @@ public:
 
     virtual View *createView(const char *viewId, const char *viewTitle);
     virtual View *restoreView(View::XmlElement &xmlElement);
+
+    virtual void registerXmlElementReader();
+    virtual void unregisterXmlElementReader();
 };
 
 }

@@ -4,6 +4,7 @@
 #ifndef SMYD_PROJECT_CREATOR_DIALOG_HPP
 #define SMYD_PROJECT_CREATOR_DIALOG_HPP
 
+#include <boost/utility.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -11,7 +12,7 @@ namespace Samoyed
 
 class Project;
 
-class ProjectCreatorDialog
+class ProjectCreatorDialog: public boost::noncopyable
 {
 public:
     ProjectCreatorDialog(GtkWindow *parent);

@@ -37,6 +37,11 @@ void Widget::XmlElement::registerReader(const char *className,
     s_readerRegistry.insert(std::make_pair(className, reader));
 }
 
+void Widget::XmlElement::unregisterReader(const char *className)
+{
+    s_readerRegistry.erase(className);
+}
+
 Widget::XmlElement* Widget::XmlElement::read(xmlNodePtr node,
                                              std::list<std::string> *errors)
 {

@@ -6,7 +6,9 @@
 #endif
 #include "build-system.hpp"
 #include "configuration.hpp"
+#include "build-system-file.hpp"
 #include "build-systems-extension-point.hpp"
+#include "project/project-file.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "application.hpp"
 #include <string.h>
@@ -52,6 +54,12 @@ BuildSystem *BuildSystem::create(Project &project,
     return static_cast<BuildSystemsExtensionPoint &>(Application::instance().
         extensionPointManager().extensionPoint(BUILD_SYSTEMS)).
         activateBuildSystem(project, extensionId);
+}
+
+BuildSystemFile *
+BuildSystem::createBuildSystemFile(ProjectFile::Type type) const
+{
+    return new BuildSystemFile();
 }
 
 BuildSystem *BuildSystem::readXmlElement(Project &project,
@@ -143,6 +151,16 @@ xmlNodePtr BuildSystem::writeXmlElement() const
                         reinterpret_cast<const xmlChar *>(m_activeConfig->
                                                           name()));
     return node;
+}
+
+bool BuildSystem::addProjectFile(const ProjectFile &projectFile)
+{
+    return true;
+}
+
+bool BuildSystem::removeProjectFile(const char *uri)
+{
+    return true;
 }
 
 }

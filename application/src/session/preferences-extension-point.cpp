@@ -133,7 +133,6 @@ bool PreferencesExtensionPoint::registerExtension(
 void
 PreferencesExtensionPoint::unregisterExtension(const char *extensionId)
 {
-    ExtensionInfo *extInfo = m_extensions[extensionId];
     PreferencesExtension *ext = static_cast<PreferencesExtension *>(
         Application::instance().pluginManager().
         acquireExtension(extensionId));
@@ -142,6 +141,7 @@ PreferencesExtensionPoint::unregisterExtension(const char *extensionId)
         ext->uninstallPreferences();
         ext->release();
     }
+    ExtensionInfo *extInfo = m_extensions[extensionId];
     for (std::map<std::string, std::string>::iterator it =
          extInfo->categories.begin();
          it != extInfo->categories.end();

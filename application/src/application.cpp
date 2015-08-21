@@ -16,6 +16,7 @@
 #include "plugin/extension-point-manager.hpp"
 #include "plugin/plugin-manager.hpp"
 #include "project/project.hpp"
+#include "project/project-explorer.hpp"
 #include "session/file-recoverers-extension-point.hpp"
 #include "session/histories-extension-point.hpp"
 #include "session/preferences-editor.hpp"
@@ -80,7 +81,6 @@ Application::Application():
     m_session(NULL),
     m_firstProject(NULL),
     m_lastProject(NULL),
-    m_currentProject(NULL),
     m_firstFile(NULL),
     m_lastFile(NULL),
     m_firstWindow(NULL),
@@ -193,6 +193,7 @@ gboolean Application::startUp(gpointer app)
     SourceEditor::XmlElement::registerReader();
     SourceEditor::createSharedData();
     Window::enableShowActiveWorkers();
+    ProjectExplorer::registerSidePaneChild();
 
     a->m_extensionPointManager = new ExtensionPointManager;
 
@@ -257,7 +258,6 @@ gboolean Application::shutDown(gpointer app)
     assert(!a->m_switchSession);
     assert(!a->m_firstProject);
     assert(!a->m_lastProject);
-    assert(!a->m_currentProject);
     assert(!a->m_firstFile);
     assert(!a->m_lastFile);
     assert(!a->m_firstWindow);
@@ -587,15 +587,12 @@ void Application::addProject(Project &project)
 {
     m_projectTable.insert(std::make_pair(project.uri(), &project));
     project.addToList(m_firstProject, m_lastProject);
-    m_currentProject = &project;
 }
 
 void Application::removeProject(Project &project)
 {
     m_projectTable.erase(project.uri());
     project.removeFromList(m_firstProject, m_lastProject);
-    if (&project == m_currentProject)
-        m_currentProject = m_firstProject;
 }
 
 void Application::destroyProject(Project &project)

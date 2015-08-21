@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "file-browser-view.hpp"
+#include "file-browser-plugin.hpp"
 #include "gedit-file-browser/gedit-file-browser-widget.h"
 #include "gedit-file-browser/gedit-file-browser-store.h"
 #include "gedit-file-browser/gedit-file-browser-error.h"
@@ -13,16 +14,24 @@
 #include "editors/editor.hpp"
 #include "window/window.hpp"
 #include "widget/notebook.hpp"
+#include "project/project-explorer.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/property-tree.hpp"
+#include <string.h>
 #include <utility>
+#include <list>
 #include <string>
+#include <boost/bind.hpp>
+#include <boost/ref.hpp>
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <gtk/gtk.h>
+#include <libxml/tree.h>
 
-#define FILE_BROWSER "file-browser"
+#define VIEW "view"
+#define FILE_BROWSER_VIEW "file-browser-view"
 #define ROOT "root"
 #define VIRTUAL_ROOT "virtual-root"
 
@@ -34,9 +43,13 @@ void onLocationActivated(GeditFileBrowserWidget *widget,
                          Samoyed::FileBrowser::FileBrowserView* fileBrowser)
 {
     char *uri = g_file_get_uri(location);
+    Samoyed::Widget *window = fileBrowser;
+    while (window->parent())
+        window = window->parent();
     std::pair<Samoyed::File *, Samoyed::Editor *> fileEditor =
         Samoyed::File::open(uri,
-                            Samoyed::Application::instance().currentProject(),
+                            static_cast<Samoyed::Window *>(window)->
+                            projectExplorer().currentProject(),
                             NULL, NULL, false);
     if (fileEditor.second)
     {
@@ -239,31 +252,6 @@ void setActiveRoot(GeditFileBrowserWidget *widget,
     }
 }
 
-void onRootChanged(GeditFileBrowserStore *store,
-                   GParamSpec *spec,
-                   gpointer data)
-{
-    GFile *root = gedit_file_browser_store_get_root(store);
-    char *rootUri = g_file_get_uri(root);
-    Samoyed::Application::instance().histories().
-        set(FILE_BROWSER "/" ROOT, std::string(rootUri), false, NULL);
-    g_free(rootUri);
-    g_object_unref(root);
-}
-
-void onVirtualRootChanged(GeditFileBrowserStore *store,
-                          GParamSpec *spec,
-                          gpointer data)
-{
-    GFile *virtualRoot = gedit_file_browser_store_get_virtual_root(store);
-    char *virtualRootUri = g_file_get_uri(virtualRoot);
-    Samoyed::Application::instance().histories().
-        set(FILE_BROWSER "/" VIRTUAL_ROOT, std::string(virtualRootUri),
-            false, NULL);
-    g_free(virtualRootUri);
-    g_object_unref(virtualRoot);
-}
-
 }
 
 namespace Samoyed
@@ -272,29 +260,128 @@ namespace Samoyed
 namespace FileBrowser
 {
 
+void FileBrowserView::XmlElement::registerReader()
+{
+    Widget::XmlElement::registerReader(FILE_BROWSER_VIEW,
+                                       Widget::XmlElement::Reader(read));
+}
+
+void FileBrowserView::XmlElement::unregisterReader()
+{
+    Widget::XmlElement::unregisterReader(FILE_BROWSER_VIEW);
+}
+
+bool FileBrowserView::XmlElement::readInternally(xmlNodePtr node,
+                                                 std::list<std::string> *errors)
+{
+    char *value, *cp;
+    bool viewSeen = false;
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+        if (child->type != XML_ELEMENT_NODE)
+            continue;
+        if (strcmp(reinterpret_cast<const char *>(child->name),
+                   VIEW) == 0)
+        {
+            if (viewSeen)
+            {
+                if (errors)
+                {
+                    cp = g_strdup_printf(
+                        _("Line %d: More than one \"%s\" elements seen.\n"),
+                        child->line, VIEW);
+                    errors->push_back(cp);
+                    g_free(cp);
+                }
+                return false;
+            }
+            if (!View::XmlElement::readInternally(child, errors))
+                return false;
+            viewSeen = true;
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        ROOT) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_root = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        VIRTUAL_ROOT) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_virtualRoot = value;
+                xmlFree(value);
+            }
+        }
+    }
+    return true;
+}
+
+FileBrowserView::XmlElement *
+FileBrowserView::XmlElement::read(xmlNodePtr node,
+                                  std::list<std::string> *errors)
+{
+    XmlElement *element = new XmlElement;
+    if (!element->readInternally(node, errors))
+    {
+        delete element;
+        return NULL;
+    }
+    return element;
+}
+
+xmlNodePtr FileBrowserView::XmlElement::write() const
+{
+    xmlNodePtr node =
+        xmlNewNode(NULL,
+                   reinterpret_cast<const xmlChar *>(FILE_BROWSER_VIEW));
+    xmlAddChild(node, View::XmlElement::write());
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(ROOT),
+                    reinterpret_cast<const xmlChar *>(root()));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(VIRTUAL_ROOT),
+                    reinterpret_cast<const xmlChar *>(virtualRoot()));
+    return node;
+}
+
+FileBrowserView::XmlElement::XmlElement(const FileBrowserView &view):
+    View::XmlElement(view),
+    m_root(view.root().get()),
+    m_virtualRoot(view.virtualRoot().get())
+{
+}
+
+Widget *FileBrowserView::XmlElement::restoreWidget()
+{
+    FileBrowserView *view = new FileBrowserView(extensionId());
+    if (!view->restore(*this))
+    {
+        delete view;
+        return NULL;
+    }
+    FileBrowserPlugin::instance().onViewCreated(*view);
+    view->addClosedCallback(boost::bind(
+        &FileBrowserPlugin::onViewClosed,
+        boost::ref(FileBrowserPlugin::instance()),
+        _1));
+    return view;
+}
+
 bool FileBrowserView::setupFileBrowser()
 {
     GtkWidget *widget = gedit_file_browser_widget_new();
     if (!widget)
         return false;
-    const std::string &rootUri = Application::instance().histories().
-        get<std::string>(FILE_BROWSER "/" ROOT);
-    GFile *root = NULL;
-    if (!rootUri.empty())
-        root = g_file_new_for_uri(rootUri.c_str());
-    const std::string &virtualRootUri = Application::instance().histories().
-        get<std::string>(FILE_BROWSER "/" VIRTUAL_ROOT);
-    GFile *virtualRoot = NULL;
-    if (!virtualRootUri.empty())
-        virtualRoot = g_file_new_for_uri(virtualRootUri.c_str());
-    if (root)
-        gedit_file_browser_widget_set_root_and_virtual_root(
-            GEDIT_FILE_BROWSER_WIDGET(widget),
-            root, virtualRoot);
-    if (root)
-        g_object_unref(root);
-    if (virtualRoot)
-        g_object_unref(virtualRoot);
+
     g_signal_connect(widget, "location-activated",
                      G_CALLBACK(onLocationActivated), this);
     g_signal_connect(widget, "error",
@@ -307,13 +394,6 @@ bool FileBrowserView::setupFileBrowser()
                      G_CALLBACK(openInTerminal), NULL);
     g_signal_connect(widget, "set-active-root",
                      G_CALLBACK(setActiveRoot), this);
-    GeditFileBrowserStore *store =
-        gedit_file_browser_widget_get_browser_store(
-            GEDIT_FILE_BROWSER_WIDGET(widget));
-    g_signal_connect_after(store, "notify::root",
-                           G_CALLBACK(onRootChanged), NULL);
-    g_signal_connect_after(store, "notify::virtual-root",
-                           G_CALLBACK(onVirtualRootChanged), NULL);
 
     setGtkWidget(widget);
     return true;
@@ -336,6 +416,16 @@ bool FileBrowserView::restore(XmlElement &xmlElement)
         return false;
     if (!setupFileBrowser())
         return false;
+    GFile *root = g_file_new_for_uri(xmlElement.root());
+    GFile *virtualRoot = g_file_new_for_uri(xmlElement.virtualRoot());
+    if (root)
+        gedit_file_browser_widget_set_root_and_virtual_root(
+            GEDIT_FILE_BROWSER_WIDGET(gtkWidget()),
+            root, virtualRoot);
+    if (root)
+        g_object_unref(root);
+    if (virtualRoot)
+        g_object_unref(virtualRoot);
     if (xmlElement.visible())
         gtk_widget_show_all(gtkWidget());
     return true;
@@ -350,19 +440,37 @@ FileBrowserView *FileBrowserView::create(const char *id, const char *title,
         delete view;
         return NULL;
     }
+    FileBrowserPlugin::instance().onViewCreated(*view);
+    view->addClosedCallback(boost::bind(
+        &FileBrowserPlugin::onViewClosed,
+        boost::ref(FileBrowserPlugin::instance()),
+        _1));
     return view;
 }
 
-FileBrowserView *FileBrowserView::restore(XmlElement &xmlElement,
-                                          const char *extensionId)
+Widget::XmlElement *FileBrowserView::save() const
 {
-    FileBrowserView *view = new FileBrowserView(extensionId);
-    if (!view->restore(xmlElement))
-    {
-        delete view;
-        return NULL;
-    }
-    return view;
+    return new XmlElement(*this);
+}
+
+boost::shared_ptr<char> FileBrowserView::root() const
+{
+    GFile *root = gedit_file_browser_store_get_root(
+        gedit_file_browser_widget_get_browser_store(
+            GEDIT_FILE_BROWSER_WIDGET(gtkWidget())));
+    char *rootUri = g_file_get_uri(root);
+    g_object_unref(root);
+    return boost::shared_ptr<char>(rootUri, g_free);
+}
+
+boost::shared_ptr<char> FileBrowserView::virtualRoot() const
+{
+    GFile *virtualRoot = gedit_file_browser_store_get_virtual_root(
+        gedit_file_browser_widget_get_browser_store(
+            GEDIT_FILE_BROWSER_WIDGET(gtkWidget())));
+    char *virtualRootUri = g_file_get_uri(virtualRoot);
+    g_object_unref(virtualRoot);
+    return boost::shared_ptr<char>(virtualRootUri, g_free);
 }
 
 }

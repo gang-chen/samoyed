@@ -3,11 +3,9 @@ pluginlibdir = $(pkglibdir)/plugins
 pluginlib_LTLIBRARIES = libfilebrowser.la
 
 libfilebrowser_la_SOURCES = \
-    file-browser-histories-extension.cpp \
     file-browser-plugin.cpp \
     file-browser-view.cpp \
     file-browser-view-extension.cpp \
-    file-browser-histories-extension.hpp \
     file-browser-plugin.hpp \
     file-browser-view.hpp \
     file-browser-view-extension.hpp

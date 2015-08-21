@@ -6,7 +6,6 @@
 #endif
 #include "file-browser-plugin.hpp"
 #include "file-browser-view-extension.hpp"
-#include "file-browser-histories-extension.hpp"
 #include "widget/widget.hpp"
 #include <string.h>
 
@@ -30,8 +29,6 @@ Extension *FileBrowserPlugin::createExtension(const char *extensionId)
 {
     if (strcmp(extensionId, "file-browser/view") == 0)
         return new FileBrowserViewExtension(extensionId, *this);
-    if (strcmp(extensionId, "file-browser/histories") == 0)
-        return new FileBrowserHistoriesExtension(extensionId, *this);
     return NULL;
 }
 

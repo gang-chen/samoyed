@@ -6,6 +6,7 @@
 
 #include <list>
 #include <string>
+#include <boost/utility.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <db.h>
@@ -15,7 +16,7 @@ namespace Samoyed
 
 class ProjectFile;
 
-class ProjectDb
+class ProjectDb: public boost::noncopyable
 {
 public:
     static int create(const char *uri, ProjectDb *&db);

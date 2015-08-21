@@ -13,13 +13,6 @@
 namespace Samoyed
 {
 
-/**
- * Views have two limitations:
- *
- *  1. When requested to be closed, views should be closed immediately.
- *
- *  2. Views cannot save their specific states to XML elements and restore.
- */
 class View: public Widget
 {
 public:

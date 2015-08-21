@@ -61,7 +61,6 @@ bool HistoriesExtensionPoint::registerExtension(
 
 void HistoriesExtensionPoint::unregisterExtension(const char *extensionId)
 {
-    ExtensionInfo *extInfo = m_extensions[extensionId];
     HistoriesExtension *ext = static_cast<HistoriesExtension *>(
         Application::instance().pluginManager().
         acquireExtension(extensionId));
@@ -70,6 +69,7 @@ void HistoriesExtensionPoint::unregisterExtension(const char *extensionId)
         ext->uninstallHistories();
         ext->release();
     }
+    ExtensionInfo *extInfo = m_extensions[extensionId];
     m_extensions.erase(extensionId);
     delete extInfo;
 }

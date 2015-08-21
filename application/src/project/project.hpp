@@ -4,6 +4,7 @@
 #ifndef SMYD_PROJECT_HPP
 #define SMYD_PROJECT_HPP
 
+#include "project-file.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
@@ -81,6 +82,13 @@ public:
     ProjectDb &db() { return *m_db; }
 
     BuildSystem &buildSystem() { return *m_buildSystem; }
+    const BuildSystem &buildSystem() const { return *m_buildSystem; }
+
+    virtual ProjectFile *createProjectFile(ProjectFile::Type type) const;
+
+    virtual bool addProjectFile(const ProjectFile &projectFile);
+
+    virtual bool removeProjectFile(const char *uri);
 
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;

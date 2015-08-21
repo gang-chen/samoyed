@@ -101,7 +101,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                                             std::list<std::string> *errors)
 {
     // Parse the extension.
-    ExtensionInfo *ext = new ExtensionInfo(extensionId);
+    ExtensionInfo *extInfo = new ExtensionInfo(extensionId);
     char *value, *cp;
     for (xmlNodePtr child = xmlNode->children; child; child = child->next)
     {
@@ -115,9 +115,9 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
             if (value)
             {
                 if (strcmp(value, NAVIGATOR) == 0)
-                    ext->paneId = Window::NAVIGATION_PANE_ID;
+                    extInfo->paneId = Window::NAVIGATION_PANE_ID;
                 else if (strcmp(value, TOOL) == 0)
-                    ext->paneId = Window::TOOLS_PANE_ID;
+                    extInfo->paneId = Window::TOOLS_PANE_ID;
                 else if (errors)
                 {
                     cp = g_strdup_printf(
@@ -138,7 +138,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
             {
                 try
                 {
-                    ext->viewIndex = boost::lexical_cast<int>(value);
+                    extInfo->viewIndex = boost::lexical_cast<int>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
                 {
@@ -164,7 +164,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
             {
                 try
                 {
-                    ext->openByDefault = boost::lexical_cast<bool>(value);
+                    extInfo->openByDefault = boost::lexical_cast<bool>(value);
                 }
                 catch (boost::bad_lexical_cast &error)
                 {
@@ -197,7 +197,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                         xmlNodeGetContent(grandChild->children));
                     if (value)
                     {
-                        ext->viewId = value;
+                        extInfo->viewId = value;
                         xmlFree(value);
                     }
                 }
@@ -209,7 +209,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                         xmlNodeGetContent(grandChild->children));
                     if (value)
                     {
-                        ext->viewTitle = gettext(value);
+                        extInfo->viewTitle = gettext(value);
                         xmlFree(value);
                     }
                 }
@@ -231,7 +231,7 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
                         xmlNodeGetContent(grandChild->children));
                     if (value)
                     {
-                        ext->menuItemLabel = gettext(value);
+                        extInfo->menuItemLabel = gettext(value);
                         xmlFree(value);
                     }
                 }
@@ -239,9 +239,11 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
         }
     }
 
-    if (ext->menuItemLabel.empty())
-        ext->menuItemLabel = ext->viewTitle;
-    if (ext->paneId.empty() || ext->viewId.empty() || ext->viewTitle.empty())
+    if (extInfo->menuItemLabel.empty())
+        extInfo->menuItemLabel = extInfo->viewTitle;
+    if (extInfo->paneId.empty() ||
+        extInfo->viewId.empty() ||
+        extInfo->viewTitle.empty())
     {
         if (errors)
         {
@@ -251,30 +253,50 @@ bool ViewsExtensionPoint::registerExtension(const char *extensionId,
             errors->push_back(cp);
             g_free(cp);
         }
-        delete ext;
+        delete extInfo;
         return false;
     }
-    m_extensions.insert(std::make_pair(ext->id.c_str(), ext));
+    m_extensions.insert(std::make_pair(extInfo->id.c_str(), extInfo));
+
+    // Register the XML element readers for the views.
+    ViewExtension *ext = static_cast<ViewExtension *>(
+        Application::instance().pluginManager().
+        acquireExtension(extensionId));
+    if (!ext)
+    {
+        unregisterExtension(extensionId);
+        return false;
+    }
+    ext->registerXmlElementReader();
+    ext->release();
 
     // Register the view to each existing window.
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
-        registerExtensionInternally(*window, *ext);
+        registerExtensionInternally(*window, *extInfo);
 
     return true;
 }
 
 void ViewsExtensionPoint::unregisterExtension(const char *extensionId)
 {
-    ExtensionInfo *ext = m_extensions[extensionId];
+    ViewExtension *ext = static_cast<ViewExtension *>(
+        Application::instance().pluginManager().
+        acquireExtension(extensionId));
+    if (ext)
+    {
+        ext->unregisterXmlElementReader();
+        ext->release();
+    }
+    ExtensionInfo *extInfo = m_extensions[extensionId];
     for (Window *window = Application::instance().windows();
          window;
          window = window->next())
-        window->unregisterSidePaneChild(ext->paneId.c_str(),
-                                        ext->viewId.c_str());
+        window->unregisterSidePaneChild(extInfo->paneId.c_str(),
+                                        extInfo->viewId.c_str());
     m_extensions.erase(extensionId);
-    delete ext;
+    delete extInfo;
 }
 
 }

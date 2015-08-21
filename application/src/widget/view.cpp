@@ -63,7 +63,7 @@ bool View::XmlElement::readInternally(xmlNodePtr node,
             if (value)
             {
                 m_extensionId = value;
-                g_free(value);
+                xmlFree(value);
             }
         }
     }

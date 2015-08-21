@@ -51,6 +51,7 @@ public:
 
         static void registerReader(const char *className,
                                    const Reader &reader);
+        static void unregisterReader(const char *className);
 
         virtual ~XmlElement() {}
 

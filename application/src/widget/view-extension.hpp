@@ -19,6 +19,9 @@ public:
 
     virtual View *createView(const char *viewId, const char *viewTitle) = 0;
     virtual View *restoreView(View::XmlElement &xmlElement) = 0;
+
+    virtual void registerXmlElementReader() = 0;
+    virtual void unregisterXmlElementReader() = 0;
 };
 
 }
