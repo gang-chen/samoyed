@@ -67,6 +67,20 @@ bool View::XmlElement::readInternally(xmlNodePtr node,
             }
         }
     }
+
+    if (!widgetSeen)
+    {
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, WIDGET);
+            errors->push_back(cp);
+            g_free(cp);
+        }
+        return false;
+    }
+
     if (m_extensionId.empty())
     {
         if (errors)

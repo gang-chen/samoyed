@@ -24,31 +24,40 @@ public:
         boost::function<XmlElement *(xmlNodePtr node,
                                      std::list<std::string> *errors)> Reader;
 
-        static void registerReader(const char *className,
-                                   const Reader &reader);
-        static void unregisterReader(const char *className);
-
-        virtual ~XmlElement() {}
+        static void registerReader();
 
         static XmlElement *read(xmlNodePtr node,
                                 std::list<std::string> *errors);
-
         virtual xmlNodePtr write() const;
-
-        XmlElement(const Widget &widget);
-
-        virtual Widget *restoreWidget() = 0;
+        XmlElement(const ProjectExplorer &explorer);
+        virtual Widget *restoreWidget();
 
     protected:
-        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
+        XmlElement() {}
 
-    private:
+        bool readInternally(xmlNodePtr node, std::list<std::string> *errors);
     };
 
-    static void registerSidePaneChild();
+    static void registerWithWindow();
+
+    static ProjectExplorer *create();
+
+    virtual Widget::XmlElement *save() const;
 
     Project *currentProject();
     const Project *currentProject() const;
+
+protected:
+    ProjectExplorer() {}
+
+    bool setupProjectExplorer();
+
+    bool setup();
+
+    bool restore(XmlElement &xmlElement);
+
+private:
+    static void onWindowCreatedOrRestored(Window &window);
 };
 
 }

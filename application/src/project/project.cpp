@@ -679,6 +679,18 @@ ProjectFile *Project::createProjectFile(ProjectFile::Type type) const
     return new ProjectFile(type, m_buildSystem->createBuildSystemFile(type));
 }
 
+bool Project::addProjectFile(ProjectFile &projectFile)
+{
+    if (!m_buildSystem->addProjectFile(projectFile))
+        return false;
+    return true;
+}
+
+bool Project::removeProjectFile(const char *uri)
+{
+    return true;
+}
+
 Editor *Project::findEditor(const char *uri)
 {
     EditorTable::const_iterator it = m_editorTable.find(uri);
@@ -719,16 +731,6 @@ void Project::destroyEditor(Editor &editor)
     editor.destroyInProject();
     if (m_closing && !m_firstEditor)
         finishClosing();
-}
-
-bool Project::addProjectFile(const ProjectFile &projectFile)
-{
-    return true;
-}
-
-bool Project::removeProjectFile(const char *uri)
-{
-    return true;
 }
 
 }

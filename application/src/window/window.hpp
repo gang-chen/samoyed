@@ -189,6 +189,7 @@ public:
      * @param paneId The identifier of the side pane to contain the widget.
      * @param id The identifier of the widget.
      * @param index The index of the widget among the children of the side pane.
+     * The valid values are 1, 2, ..., 20.
      * @param factory The widget factory.
      * @param menuTitle The title of the menu item.
      */

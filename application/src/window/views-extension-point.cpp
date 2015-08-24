@@ -37,6 +37,13 @@
 #define MENU_ITEM "menu-item"
 #define LABEL "label"
 
+namespace
+{
+
+const int MAX_INTERNAL_SIDE_PANE_INDEX = 10;
+
+}
+
 namespace Samoyed
 {
 
@@ -58,7 +65,7 @@ void ViewsExtensionPoint::registerExtensionInternally(Window &window,
 {
     window.registerSidePaneChild(ext.paneId.c_str(),
                                  ext.viewId.c_str(),
-                                 ext.viewIndex,
+                                 ext.viewIndex + MAX_INTERNAL_SIDE_PANE_INDEX,
                                  boost::bind(createView, boost::cref(ext)),
                                  ext.menuItemLabel.c_str());
     if (ext.openByDefault)

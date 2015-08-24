@@ -43,7 +43,7 @@ public:
      */
     virtual bool importFile(const char *uri) { return true; }
 
-    virtual bool addProjectFile(const ProjectFile &projectFile);
+    virtual bool addProjectFile(ProjectFile &projectFile);
 
     virtual bool removeProjectFile(const char *uri);
 

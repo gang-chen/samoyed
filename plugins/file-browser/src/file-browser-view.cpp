@@ -49,7 +49,7 @@ void onLocationActivated(GeditFileBrowserWidget *widget,
     std::pair<Samoyed::File *, Samoyed::Editor *> fileEditor =
         Samoyed::File::open(uri,
                             static_cast<Samoyed::Window *>(window)->
-                            projectExplorer().currentProject(),
+                            currentProject(),
                             NULL, NULL, false);
     if (fileEditor.second)
     {
@@ -322,6 +322,20 @@ bool FileBrowserView::XmlElement::readInternally(xmlNodePtr node,
             }
         }
     }
+
+    if (!viewSeen)
+    {
+        if (errors)
+        {
+            cp = g_strdup_printf(
+                _("Line %d: \"%s\" element missing.\n"),
+                node->line, VIEW);
+            errors->push_back(cp);
+            g_free(cp);
+        }
+        return false;
+    }
+
     return true;
 }
 
@@ -354,10 +368,14 @@ xmlNodePtr FileBrowserView::XmlElement::write() const
 }
 
 FileBrowserView::XmlElement::XmlElement(const FileBrowserView &view):
-    View::XmlElement(view),
-    m_root(view.root().get()),
-    m_virtualRoot(view.virtualRoot().get())
+    View::XmlElement(view)
 {
+    boost::shared_ptr<char> root = view.root();
+    if (root.get())
+        m_root = root.get();
+    boost::shared_ptr<char> virtualRoot = view.virtualRoot();
+    if (virtualRoot.get())
+        m_virtualRoot = virtualRoot.get();
 }
 
 Widget *FileBrowserView::XmlElement::restoreWidget()
@@ -416,8 +434,12 @@ bool FileBrowserView::restore(XmlElement &xmlElement)
         return false;
     if (!setupFileBrowser())
         return false;
-    GFile *root = g_file_new_for_uri(xmlElement.root());
-    GFile *virtualRoot = g_file_new_for_uri(xmlElement.virtualRoot());
+    GFile *root = NULL;
+    if (*xmlElement.root())
+        root = g_file_new_for_uri(xmlElement.root());
+    GFile *virtualRoot = NULL;
+    if (*xmlElement.virtualRoot())
+        virtualRoot = g_file_new_for_uri(xmlElement.virtualRoot());
     if (root)
         gedit_file_browser_widget_set_root_and_virtual_root(
             GEDIT_FILE_BROWSER_WIDGET(gtkWidget()),
@@ -458,6 +480,8 @@ boost::shared_ptr<char> FileBrowserView::root() const
     GFile *root = gedit_file_browser_store_get_root(
         gedit_file_browser_widget_get_browser_store(
             GEDIT_FILE_BROWSER_WIDGET(gtkWidget())));
+    if (!root)
+        return boost::shared_ptr<char>();
     char *rootUri = g_file_get_uri(root);
     g_object_unref(root);
     return boost::shared_ptr<char>(rootUri, g_free);
@@ -468,6 +492,8 @@ boost::shared_ptr<char> FileBrowserView::virtualRoot() const
     GFile *virtualRoot = gedit_file_browser_store_get_virtual_root(
         gedit_file_browser_widget_get_browser_store(
             GEDIT_FILE_BROWSER_WIDGET(gtkWidget())));
+    if (!virtualRoot)
+        return boost::shared_ptr<char>();
     char *virtualRootUri = g_file_get_uri(virtualRoot);
     g_object_unref(virtualRoot);
     return boost::shared_ptr<char>(virtualRootUri, g_free);

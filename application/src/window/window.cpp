@@ -68,6 +68,8 @@ const int LINE_NUMBER_WIDTH = 6;
 
 const int COLUMN_NUMBER_WIDTH = 4;
 
+const int MAX_SIDE_PANE_CHILD_INDEX = 20;
+
 int serialNumber = 0;
 
 Samoyed::Widget *findPane(Samoyed::Widget &widget, const char *id)
@@ -1241,8 +1243,10 @@ void Window::createMenuItemForSidePane(Widget &pane)
 
     std::string uiPath("/main-menu-bar/view/side-panes/");
     uiPath += actionName2;
-    std::string placeHolder("placeholder1");
-    for (int i = 1; i < 10; ++i, ++*placeHolder.rbegin())
+    for (int i = 1; i <= MAX_SIDE_PANE_CHILD_INDEX; ++i)
+    {
+        std::string placeHolder("placeholder-");
+        placeHolder += boost::lexical_cast<std::string>(i);
         gtk_ui_manager_add_ui(m_uiManager,
                               mergeId,
                               uiPath.c_str(),
@@ -1250,13 +1254,7 @@ void Window::createMenuItemForSidePane(Widget &pane)
                               NULL,
                               GTK_UI_MANAGER_PLACEHOLDER,
                               FALSE);
-    gtk_ui_manager_add_ui(m_uiManager,
-                          mergeId,
-                          uiPath.c_str(),
-                          "placeholder-ext",
-                          NULL,
-                          GTK_UI_MANAGER_PLACEHOLDER,
-                          FALSE);
+    }
 
     pane.addClosedCallback(boost::bind(&Window::onSidePaneClosed, this, _1));
 
@@ -1352,14 +1350,8 @@ void Window::registerSidePaneChild(const char *paneId,
 
     std::string uiPath("/main-menu-bar/view/side-panes/");
     uiPath += paneId;
-    uiPath += "-children/";
-    if (index > 9)
-        uiPath += "placeholder-ext";
-    else
-    {
-        uiPath += "placeholder1";
-        *uiPath.rbegin() += index - 1;
-    }
+    uiPath += "-children/placeholder-";
+    uiPath += boost::lexical_cast<std::string>(index);
     guint mergeId = gtk_ui_manager_new_merge_id(m_uiManager);
     gtk_ui_manager_add_ui(m_uiManager,
                           mergeId,

@@ -153,7 +153,7 @@ xmlNodePtr BuildSystem::writeXmlElement() const
     return node;
 }
 
-bool BuildSystem::addProjectFile(const ProjectFile &projectFile)
+bool BuildSystem::addProjectFile(ProjectFile &projectFile)
 {
     return true;
 }

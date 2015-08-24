@@ -37,6 +37,7 @@ private:
         std::string id;
         std::string paneId;
         std::string viewId;
+        // The valid values are 1, 2, ..., 10.
         int viewIndex;
         std::string viewTitle;
         std::string menuItemLabel;
