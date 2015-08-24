@@ -5,6 +5,8 @@
 # include <config.h>
 #endif
 #include "project-explorer.hpp"
+#include "project.hpp"
+#include "project-file.hpp"
 #include "window/window.hpp"
 #include "application.hpp"
 #include <string.h>
@@ -150,6 +152,13 @@ bool ProjectExplorer::setupProjectExplorer()
     gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
     setGtkWidget(tree);
+
+    // Load the existing projects.
+    for (Project *project = Application::instance().projects();
+         project;
+         project = project->next())
+        onProjectOpened(*project);
+
     return true;
 }
 
@@ -213,6 +222,24 @@ Project *ProjectExplorer::currentProject()
 const Project *ProjectExplorer::currentProject() const
 {
     return Application::instance().projects();
+}
+
+void ProjectExplorer::onProjectOpened(Project &project)
+{
+}
+
+void ProjectExplorer::onProjectClose(Project &project)
+{
+}
+
+void ProjectExplorer::onProjectFileAdded(Project &project,
+                                         const ProjectFile &projectFile)
+{
+}
+
+void ProjectExplorer::onProjectFileRemoved(Project &project,
+                                           const char *uri)
+{
 }
 
 }

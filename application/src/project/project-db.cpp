@@ -145,4 +145,16 @@ ProjectDb::~ProjectDb()
         m_dbEnv->close(m_dbEnv, 0);
 }
 
+int ProjectDb::addFile(const ProjectFile &file)
+{
+    int error = 0;
+    return error;
+}
+
+int ProjectDb::removeFile(const char *uri)
+{
+    int error = 0;
+    return error;
+}
+
 }

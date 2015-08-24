@@ -29,17 +29,14 @@ public:
     virtual ~BuildSystem();
 
     /**
-     * Copy template files to a newly created project.
+     * Setup the build system for a newly created project, including creating
+     * build-system-specific files and default build configurations.
      */
-    virtual bool copyTemplateFiles() { return true; }
+    virtual bool setup() { return true; }
 
     /**
-     * Create default configurations for a newly created project.
-     */
-    virtual void createDefaultConfigurations() {}
-
-    /**
-     * Import an existing file to a project.
+     * Import an existing file, or recursively all the files in a directory, to
+     * a project.
      */
     virtual bool importFile(const char *uri) { return true; }
 

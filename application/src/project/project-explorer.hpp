@@ -13,6 +13,7 @@ namespace Samoyed
 {
 
 class Project;
+class ProjectFile;
 
 class ProjectExplorer: public Widget
 {
@@ -46,6 +47,14 @@ public:
 
     Project *currentProject();
     const Project *currentProject() const;
+
+    void onProjectOpened(Project &project);
+    void onProjectClose(Project &project);
+
+    void onProjectFileAdded(Project &project,
+                            const ProjectFile &projectFile);
+    void onProjectFileRemoved(Project &project,
+                              const char *uri);
 
 protected:
     ProjectExplorer() {}

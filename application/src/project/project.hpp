@@ -105,6 +105,14 @@ public:
     Editor *editors() { return m_firstEditor; }
     const Editor *editors() const { return m_firstEditor; }
 
+    static boost::signals2::connection
+    addOpenedCallback(const Opened::slot_type &callback)
+    { return s_opened.connect(callback); }
+
+    boost::signals2::connection
+    addCloseCallback(const Close::slot_type &callback)
+    { return m_close.connect(callback); }
+
 protected:
     Project(const char *uri);
 
@@ -136,6 +144,9 @@ private:
     Editor *m_firstEditor;
     Editor *m_lastEditor;
     EditorTable m_editorTable;
+
+    static Opened s_opened;
+    Close m_close;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Project)
 };

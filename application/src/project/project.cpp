@@ -7,6 +7,7 @@
 #include "project.hpp"
 #include "project-db.hpp"
 #include "project-file.hpp"
+#include "project-explorer.hpp"
 #include "build-system/build-system.hpp"
 #include "editors/editor.hpp"
 #include "window/window.hpp"
@@ -56,6 +57,8 @@ void checkProjectExists(GtkFileChooser *chooser, gpointer dialog)
 
 namespace Samoyed
 {
+
+Project::Opened Project::s_opened;
 
 bool Project::XmlElement::readInternally(xmlNodePtr node,
                                          std::list<std::string> *errors)
@@ -299,11 +302,20 @@ Project *Project::create(const char *uri,
     }
 
     // If there are existing files in the directory, import them.
+    project->m_buildSystem->importFile(uri);
 
-    // If none, copy the template files.
-    project->m_buildSystem->copyTemplateFiles();
+    // Setup the build system.
+    project->m_buildSystem->setup();
 
-    project->m_buildSystem->createDefaultConfigurations();
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        ProjectExplorer *explorer = window->projectExplorer();
+        if (explorer)
+            explorer->onProjectOpened(*project);
+    }
+    s_opened(*project);
 
     return project;
 }
@@ -500,6 +512,15 @@ Project *Project::open(const char *uri)
         return NULL;
     }
 
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        ProjectExplorer *explorer = window->projectExplorer();
+        if (explorer)
+            explorer->onProjectOpened(*project);
+    }
+    s_opened(*project);
     return project;
 }
 
@@ -608,6 +629,15 @@ bool Project::finishClosing()
     delete m_db;
     m_db = NULL;
 
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        ProjectExplorer *explorer = window->projectExplorer();
+        if (explorer)
+            explorer->onProjectClose(*this);
+    }
+    m_close(*this);
     Application::instance().destroyProject(*this);
     return true;
 }
@@ -683,11 +713,36 @@ bool Project::addProjectFile(ProjectFile &projectFile)
 {
     if (!m_buildSystem->addProjectFile(projectFile))
         return false;
+    if (!m_db->addFile(projectFile))
+    {
+        m_buildSystem->removeProjectFile(projectFile.uri());
+        return false;
+    }
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        ProjectExplorer *explorer = window->projectExplorer();
+        if (explorer)
+            explorer->onProjectFileAdded(*this, projectFile);
+    }
     return true;
 }
 
 bool Project::removeProjectFile(const char *uri)
 {
+    if (!m_buildSystem->removeProjectFile(uri))
+        return false;
+    if (!m_db->removeFile(uri))
+        return false;
+    for (Window *window = Application::instance().windows();
+         window;
+         window = window->next())
+    {
+        ProjectExplorer *explorer = window->projectExplorer();
+        if (explorer)
+            explorer->onProjectFileRemoved(*this, uri);
+    }
     return true;
 }
 
