@@ -233,7 +233,8 @@ void ProjectExplorer::onProjectClose(Project &project)
 }
 
 void ProjectExplorer::onProjectFileAdded(Project &project,
-                                         const ProjectFile &projectFile)
+                                         const char *uri,
+                                         const ProjectFile &data)
 {
 }
 

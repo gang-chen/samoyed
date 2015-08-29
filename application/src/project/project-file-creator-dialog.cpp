@@ -7,7 +7,6 @@
 #include "project-file-creator-dialog.hpp"
 #include "project.hpp"
 #include "project-file.hpp"
-#include "build-system/build-system-file.hpp"
 #include "application.hpp"
 #include <stdlib.h>
 #include <boost/bind.hpp>
@@ -20,16 +19,13 @@ namespace Samoyed
 
 ProjectFileCreatorDialog::ProjectFileCreatorDialog(GtkWindow *parent,
                                                    Project &project,
-                                                   ProjectFile::Type type,
+                                                   int type,
                                                    const char *currentDir):
     m_project(project)
 {
     m_projectFile = project.createProjectFile(type);
-    m_projectFileEditor =
-        m_projectFile->createEditor(boost::bind(validateInput, this));
-    m_buildSystemDataEditor =
-        m_projectFile->buildSystemData().
-        createEditor(boost::bind(validateInput, this));
+    m_projectFileEditor = m_projectFile->createEditor();
+    m_projectFileEditor->setChangedCallback(boost::bind(validateInput, this));
 
     std::string uiFile(Application::instance().dataDirectoryName());
     uiFile += G_DIR_SEPARATOR_S "ui" G_DIR_SEPARATOR_S
@@ -38,11 +34,13 @@ ProjectFileCreatorDialog::ProjectFileCreatorDialog(GtkWindow *parent,
     m_dialog =
         GTK_DIALOG(gtk_builder_get_object(m_builder,
                                           "project-file-creator-dialog"));
+    m_locationChooser =
+        GTK_FILE_CHOOSER(gtk_builder_get_object(m_builder, "location-chooser"));
+    m_nameEntry = GTK_ENTRY(gtk_builder_get_object(m_builder, "name-entry"));
     GtkGrid *grid =
         GTK_GRID(gtk_builder_get_object(m_builder,
                                         "project-file-creator-grid"));
     m_projectFileEditor->addGtkWidgets(grid);
-    m_buildSystemDataEditor->addGtkWidgets(grid);
 
     if (parent)
     {
@@ -93,28 +91,32 @@ ProjectFileCreatorDialog::~ProjectFileCreatorDialog()
     g_object_unref(m_builder);
     delete m_projectFile;
     delete m_projectFileEditor;
-    delete m_buildSystemDataEditor;
 }
 
 boost::shared_ptr<ProjectFile> ProjectFileCreatorDialog::run()
 {
+    boost::shared_ptr<ProjectFile> projectFile;
     if (gtk_dialog_run(m_dialog) != GTK_RESPONSE_ACCEPT)
-        return boost::shared_ptr<ProjectFile>();
+        return projectFile;
+    char *dir = gtk_file_chooser_get_uri(m_locationChooser);
+    const char *name = gtk_entry_get_text(m_nameEntry);
+    std::string uri(dir);
+    uri += G_DIR_SEPARATOR;
+    uri += name;
+    g_free(dir);
     m_projectFileEditor->getInput(*m_projectFile);
-    m_buildSystemDataEditor->getInput(m_projectFile->buildSystemData());
-    if (!m_project.addProjectFile(*m_projectFile))
-        return boost::shared_ptr<ProjectFile>();
-    ProjectFile *projectFile = m_projectFile;
+    if (!m_project.addProjectFile(uri.c_str(), *m_projectFile))
+        return projectFile;
+    projectFile.reset(m_projectFile);
     m_projectFile = NULL;
-    return boost::shared_ptr<ProjectFile>(projectFile);
+    return projectFile;
 }
 
 void ProjectFileCreatorDialog::validateInput()
 {
     gtk_widget_set_sensitive(
         gtk_dialog_get_widget_for_response(m_dialog, GTK_RESPONSE_ACCEPT),
-        m_projectFileEditor->inputValid() &&
-        m_buildSystemDataEditor->inputValid());
+        m_projectFileEditor->inputValid());
 }
 
 }

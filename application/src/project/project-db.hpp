@@ -14,6 +14,7 @@
 namespace Samoyed
 {
 
+class Project;
 class ProjectFile;
 
 class ProjectDb: public boost::noncopyable
@@ -27,16 +28,35 @@ public:
 
     int close();
 
-    int addFile(const ProjectFile &file);
+    int addFile(const char *uri, const ProjectFile &data);
 
     int removeFile(const char *uri);
 
-    int readFile(ProjectFile &file);
+    int readFile(const Project &project,
+                 const char *uri,
+                 boost::shared_ptr<ProjectFile> &data);
 
-    int writeFile(const ProjectFile &file);
+    int writeFile(const char *uri, const ProjectFile &data);
 
-    int visitFiles(const char *uriPrefix,
-                   const boost::function<bool (const ProjectFile &)> &visitor);
+    /**
+     * The file visitor callback function.
+     * @param uri The URI of the visited file, not terminated with '\0'.
+     * @param uriLength The length of the URI of the visited file.
+     * @param data The project-specific data of the visited file.
+     * @return True to stop visiting the left files.
+     */
+    typedef boost::function<bool (const char *uri,
+                                  int uriLength,
+                                  boost::shared_ptr<ProjectFile> data)> Visitor;
+
+    /**
+     * Visit all files whose URI's have the common prefix.
+     * @param uriPrefix The common URI prefix.
+     * @param visitor The visitor callback function.
+     */
+    int visitFiles(const Project &project,
+                   const char *uriPrefix,
+                   const Visitor &visitor);
 
     int readCompilationOptions(const char *fileUri,
                                boost::shared_ptr<char> &compilationOpts);

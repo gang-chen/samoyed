@@ -5,6 +5,12 @@
 # include <config.h>
 #endif
 #include "project-db.hpp"
+#include "project.hpp"
+#include "project-file.hpp"
+#include <string.h>
+#include <stdlib.h>
+#include <boost/shared_ptr.hpp>
+#include <boost/shared_array.hpp>
 #include <glib.h>
 #include <db.h>
 
@@ -145,15 +151,124 @@ ProjectDb::~ProjectDb()
         m_dbEnv->close(m_dbEnv, 0);
 }
 
-int ProjectDb::addFile(const ProjectFile &file)
+int ProjectDb::addFile(const char *uri, const ProjectFile &data)
 {
-    int error = 0;
-    return error;
+    boost::shared_array<char> dataMem;
+    int dataLen;
+    data.write(dataMem, dataLen);
+    DBT key, dat;
+    memset(&key, 0, sizeof(DBT));
+    memset(&dat, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uri);
+    key.size = strlen(uri);
+    dat.data = dataMem.get();
+    dat.size = dataLen;
+    return m_fileTable->put(m_fileTable, NULL, &key, &dat, DB_NOOVERWRITE);
 }
 
 int ProjectDb::removeFile(const char *uri)
 {
+    DBT key;
+    memset(&key, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uri);
+    key.size = strlen(uri);
+    return m_fileTable->del(m_fileTable, NULL, &key, 0);
+}
+
+int ProjectDb::readFile(const Project &project,
+                        const char *uri,
+                        boost::shared_ptr<ProjectFile> &data)
+{
+    DBT key, dat;
+    memset(&key, 0, sizeof(DBT));
+    memset(&dat, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uri);
+    key.size = strlen(uri);
+    dat.flags = DB_DBT_MALLOC;
+    int error = m_fileTable->get(m_fileTable, NULL, &key, &dat, 0);
+    if (error)
+        return error;
+    data.reset(ProjectFile::read(project,
+                                 static_cast<char *>(dat.data),
+                                 dat.size));
+    free(dat.data);
+    return error;
+}
+
+int ProjectDb::writeFile(const char *uri, const ProjectFile &data)
+{
+    boost::shared_array<char> dataMem;
+    int dataLen;
+    data.write(dataMem, dataLen);
+    DBT key, dat;
+    memset(&key, 0, sizeof(DBT));
+    memset(&dat, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uri);
+    key.size = strlen(uri);
+    dat.data = dataMem.get();
+    dat.size = dataLen;
+    return m_fileTable->put(m_fileTable, NULL, &key, &dat, 0);
+}
+
+int ProjectDb::visitFiles(const Project &project,
+                          const char *uriPrefix,
+                          const Visitor &visitor)
+{
+    int uriPrefixLen = strlen(uriPrefix);
     int error = 0;
+    DBC *cursor;
+    error = m_fileTable->cursor(m_fileTable, NULL, &cursor, 0);
+    if (error)
+        return error;
+    DBT key, dat;
+    ProjectFile *data;
+    memset(&key, 0, sizeof(DBT));
+    memset(&dat, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uriPrefix);
+    key.size = uriPrefixLen;
+    key.flags = DB_DBT_MALLOC;
+    dat.flags = DB_DBT_MALLOC;
+    error = cursor->get(cursor, &key, &dat, DB_SET_RANGE);
+    if (error)
+        goto END;
+    if (key.size < uriPrefixLen ||
+        memcmp(uriPrefix, key.data, uriPrefixLen) != 0)
+        goto END;
+    data = ProjectFile::read(project,
+                             static_cast<char *>(dat.data),
+                             dat.size);
+    if (!data)
+        goto END;
+    if (visitor(static_cast<char *>(key.data),
+                key.size,
+                boost::shared_ptr<ProjectFile>(data)))
+        goto END;
+    key.flags = DB_DBT_REALLOC;
+    dat.flags = DB_DBT_REALLOC;
+    for (;;)
+    {
+        error = cursor->get(cursor, &key, &dat, DB_NEXT);
+        if (error)
+            goto END;
+        if (key.size < uriPrefixLen ||
+            memcmp(uriPrefix, key.data, uriPrefixLen) != 0)
+            goto END;
+        data = ProjectFile::read(project,
+                                 static_cast<char *>(dat.data),
+                                 dat.size);
+        if (!data)
+            goto END;
+        if (visitor(static_cast<char *>(key.data),
+                    key.size,
+                    boost::shared_ptr<ProjectFile>(data)))
+            goto END;
+    }
+
+END:
+    cursor->close(cursor);
+    if (key.data != uriPrefix)
+        free(key.data);
+    free(dat.data);
     return error;
 }
 

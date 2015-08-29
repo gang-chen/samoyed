@@ -53,8 +53,8 @@ TextFileRecoverer::TextFileRecoverer(TextFile &file,
     TextFileRecovererPlugin::instance().onTextFileRecoveringBegun(*this);
     m_file.pin(_("Samoyed is recovering it"));
     if (file.loading())
-        m_fileLoadedConnection = file.addLoadedCallback(boost::bind(
-            &TextFileRecoverer::onFileLoaded, this, _1));
+        m_fileLoadedConnection = file.addLoadedCallback(
+            boost::bind(onFileLoaded, this, _1));
     char *fileName = TextFileRecovererPlugin::getTextReplayFileName(
         m_file.uri(), m_timeStamp);
     char *uri = g_filename_to_uri(fileName, NULL, NULL);
@@ -64,12 +64,10 @@ TextFileRecoverer::TextFileRecoverer(TextFile &file,
         uri));
     m_replayFileReaderFinishedConn =
         m_replayFileReader->addFinishedCallbackInMainThread(
-            boost::bind(&TextFileRecoverer::onReplayFileReaderFinished,
-                        this, _1));
+            boost::bind(onReplayFileReaderFinished, this, _1));
     m_replayFileReaderCanceledConn =
         m_replayFileReader->addCanceledCallbackInMainThread(
-            boost::bind(&TextFileRecoverer::onReplayFileReaderCanceled,
-                        this, _1));
+            boost::bind(onReplayFileReaderCanceled, this, _1));
     m_replayFileReader->submit(m_replayFileReader);
     g_free(uri);
     g_free(fileName);

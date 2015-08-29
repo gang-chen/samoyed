@@ -56,8 +56,7 @@ BuildSystem *BuildSystem::create(Project &project,
         activateBuildSystem(project, extensionId);
 }
 
-BuildSystemFile *
-BuildSystem::createBuildSystemFile(ProjectFile::Type type) const
+BuildSystemFile *BuildSystem::createBuildSystemFile(int type) const
 {
     return new BuildSystemFile();
 }
@@ -151,16 +150,6 @@ xmlNodePtr BuildSystem::writeXmlElement() const
                         reinterpret_cast<const xmlChar *>(m_activeConfig->
                                                           name()));
     return node;
-}
-
-bool BuildSystem::addProjectFile(ProjectFile &projectFile)
-{
-    return true;
-}
-
-bool BuildSystem::removeProjectFile(const char *uri)
-{
-    return true;
 }
 
 }

@@ -4,7 +4,6 @@
 #ifndef SMYD_BUILD_SYSTEM_HPP
 #define SMYD_BUILD_SYSTEM_HPP
 
-#include "project/project-file.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <map>
 #include <list>
@@ -17,6 +16,8 @@ namespace Samoyed
 
 class Project;
 class Configuration;
+class ProjectFile;
+class BuildSystemFile;
 
 class BuildSystem: public boost::noncopyable
 {
@@ -30,7 +31,8 @@ public:
 
     /**
      * Setup the build system for a newly created project, including creating
-     * build-system-specific files and default build configurations.
+     * build-system-specific files and default build configurations, and
+     * importing existing files, if any.
      */
     virtual bool setup() { return true; }
 
@@ -40,13 +42,18 @@ public:
      */
     virtual bool importFile(const char *uri) { return true; }
 
-    virtual bool addProjectFile(ProjectFile &projectFile);
+    virtual bool addProjectFile(const char *uri, const ProjectFile &data)
+    { return true; }
 
-    virtual bool removeProjectFile(const char *uri);
+    virtual bool removeProjectFile(const char *uri)
+    { return true; }
 
     bool configure();
+
     bool build();
+
     bool install();
+
     bool collectCompilationOptions();
 
     Project &project() { return m_project; }
@@ -61,8 +68,7 @@ public:
     void setActiveConfiguration(Configuration *config)
     { m_activeConfig = config; }
 
-    virtual BuildSystemFile *
-    createBuildSystemFile(ProjectFile::Type type) const;
+    virtual BuildSystemFile *createBuildSystemFile(int type) const;
 
     static BuildSystem *readXmlElement(Project &project,
                                        xmlNodePtr node,

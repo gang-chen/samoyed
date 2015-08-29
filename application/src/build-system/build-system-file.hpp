@@ -14,16 +14,19 @@ namespace Samoyed
 class BuildSystemFile: public boost::noncopyable
 {
 public:
-    class Editor
+    class Editor: public boost::noncopyable
     {
     public:
-        Editor(const boost::function<void (Editor &)> &onChanged):
-            m_onChanged(onChanged)
-        {}
         virtual ~Editor() {}
         virtual void addGtkWidgets(GtkGrid *grid) {}
         virtual bool inputValid() const { return true; }
         virtual void getInput(BuildSystemFile &file) const {}
+        void
+        setChangedCallback(const boost::function<void (Editor &)> &onChanged)
+        { m_onChanged = onChanged; }
+
+    protected:
+        void onChanged() { m_onChanged(*this); }
 
     private:
         boost::function<void (Editor &)> m_onChanged;
@@ -31,9 +34,12 @@ public:
 
     virtual ~BuildSystemFile() {}
 
-    virtual Editor *
-    createEditor(const boost::function<void (Editor &)> onChanged) const
-    { return new Editor(onChanged); }
+    virtual bool read(const char *&data, int &dataLength) { return true; }
+    virtual int dataLength() const { return 0; }
+    virtual void write(char *&data) const {}
+
+    virtual Editor *createEditor() const
+    { return new Editor; }
 };
 
 }

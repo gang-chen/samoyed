@@ -57,9 +57,8 @@ FileObserversExtensionPoint::FileObserversExtensionPoint():
     Application::instance().extensionPointManager().
         registerExtensionPoint(*this);
 
-    m_filesOpenedConnection = File::addOpenedCallback(boost::bind(
-        &FileObserversExtensionPoint::registerAllExtensionsOnFileOpened,
-        this, _1));
+    m_filesOpenedConnection = File::addOpenedCallback(
+        boost::bind(registerAllExtensionsOnFileOpened, this, _1));
 }
 
 FileObserversExtensionPoint::~FileObserversExtensionPoint()

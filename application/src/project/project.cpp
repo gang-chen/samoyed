@@ -301,9 +301,6 @@ Project *Project::create(const char *uri,
         return NULL;
     }
 
-    // If there are existing files in the directory, import them.
-    project->m_buildSystem->importFile(uri);
-
     // Setup the build system.
     project->m_buildSystem->setup();
 
@@ -704,18 +701,18 @@ bool Project::restore(XmlElement &xmlElement)
     return true;
 }
 
-ProjectFile *Project::createProjectFile(ProjectFile::Type type) const
+ProjectFile *Project::createProjectFile(int type) const
 {
     return new ProjectFile(type, m_buildSystem->createBuildSystemFile(type));
 }
 
-bool Project::addProjectFile(ProjectFile &projectFile)
+bool Project::addProjectFile(const char *uri, const ProjectFile &data)
 {
-    if (!m_buildSystem->addProjectFile(projectFile))
+    if (!m_buildSystem->addProjectFile(uri, data))
         return false;
-    if (!m_db->addFile(projectFile))
+    if (!m_db->addFile(uri, data))
     {
-        m_buildSystem->removeProjectFile(projectFile.uri());
+        m_buildSystem->removeProjectFile(uri);
         return false;
     }
     for (Window *window = Application::instance().windows();
@@ -724,7 +721,7 @@ bool Project::addProjectFile(ProjectFile &projectFile)
     {
         ProjectExplorer *explorer = window->projectExplorer();
         if (explorer)
-            explorer->onProjectFileAdded(*this, projectFile);
+            explorer->onProjectFileAdded(*this, uri, data);
     }
     return true;
 }

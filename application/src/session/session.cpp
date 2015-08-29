@@ -727,9 +727,9 @@ void Session::scheduleUnsavedFilesWriter(UnsavedFileTableOperation *op)
             m_name.c_str()));
     }
     info.finishedConn = info.writer->addFinishedCallbackInMainThread(
-        boost::bind(&Session::onUnsavedFilesWriterFinished, this, _1));
+        boost::bind(onUnsavedFilesWriterFinished, this, _1));
     info.canceledConn = info.writer->addCanceledCallbackInMainThread(
-        boost::bind(&Session::onUnsavedFilesWriterCanceled, this, _1));
+        boost::bind(onUnsavedFilesWriterCanceled, this, _1));
     m_unsavedFilesWriters.push_back(info);
 
     info.writer->submit(info.writer);
@@ -1252,10 +1252,10 @@ Session *Session::restore(const char *name)
         name));
     session->m_unsavedFilesReaderFinishedConn =
         session->m_unsavedFilesReader->addFinishedCallbackInMainThread(
-            boost::bind(&Session::onUnsavedFilesReaderFinished, session, _1));
+            boost::bind(onUnsavedFilesReaderFinished, session, _1));
     session->m_unsavedFilesReaderCanceledConn =
         session->m_unsavedFilesReader->addCanceledCallbackInMainThread(
-            boost::bind(&Session::onUnsavedFilesReaderCanceled, session, _1));
+            boost::bind(onUnsavedFilesReaderCanceled, session, _1));
     session->m_unsavedFilesReader->submit(session->m_unsavedFilesReader);
 
     // Write the last session name here so that we can have the last session

@@ -1256,7 +1256,7 @@ void Window::createMenuItemForSidePane(Widget &pane)
                               FALSE);
     }
 
-    pane.addClosedCallback(boost::bind(&Window::onSidePaneClosed, this, _1));
+    pane.addClosedCallback(boost::bind(onSidePaneClosed, this, _1));
 
     data->action = action;
     data->action2 = action2;
@@ -1413,8 +1413,8 @@ Widget *Window::openSidePaneChild(const char *paneId, const char *id)
                 ++index;
         pane->addChild(*child, index);
         child->setCurrent();
-        child->addClosedCallback(boost::bind(&Window::onSidePaneChildClosed,
-                                             this, _1, boost::cref(*pane)));
+        child->addClosedCallback(
+            boost::bind(onSidePaneChildClosed, this, _1, boost::cref(*pane)));
         gtk_toggle_action_set_active(data->action, TRUE);
     }
     else

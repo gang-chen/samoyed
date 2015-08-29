@@ -4,7 +4,6 @@
 #ifndef SMYD_PROJECT_HPP
 #define SMYD_PROJECT_HPP
 
-#include "project-file.hpp"
 #include "utilities/miscellaneous.hpp"
 #include <list>
 #include <map>
@@ -18,6 +17,7 @@ namespace Samoyed
 
 class ProjectDb;
 class BuildSystem;
+class ProjectFile;
 class Editor;
 
 /**
@@ -84,9 +84,9 @@ public:
     BuildSystem &buildSystem() { return *m_buildSystem; }
     const BuildSystem &buildSystem() const { return *m_buildSystem; }
 
-    virtual ProjectFile *createProjectFile(ProjectFile::Type type) const;
+    virtual ProjectFile *createProjectFile(int type) const;
 
-    virtual bool addProjectFile(ProjectFile &projectFile);
+    virtual bool addProjectFile(const char *uri, const ProjectFile &data);
 
     virtual bool removeProjectFile(const char *uri);
 

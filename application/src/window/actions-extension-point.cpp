@@ -129,10 +129,10 @@ ActionsExtensionPoint::ActionsExtensionPoint():
     Application::instance().extensionPointManager().
         registerExtensionPoint(*this);
 
-    m_windowsCreatedConnection = Window::addCreatedCallback(boost::bind(
-        &ActionsExtensionPoint::registerAllExtensions, this, _1));
-    m_windowsRestoredConnection = Window::addRestoredCallback(boost::bind(
-        &ActionsExtensionPoint::registerAllExtensions, this, _1));
+    m_windowsCreatedConnection = Window::addCreatedCallback(
+        boost::bind(registerAllExtensions, this, _1));
+    m_windowsRestoredConnection = Window::addRestoredCallback(
+        boost::bind(registerAllExtensions, this, _1));
 }
 
 ActionsExtensionPoint::~ActionsExtensionPoint()

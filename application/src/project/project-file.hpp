@@ -4,10 +4,11 @@
 #ifndef SMYD_PROJECT_FILE_HPP
 #define SMYD_PROJECT_FILE_HPP
 
+#include "build-system/build-system-file.hpp"
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
+#include <boost/shared_array.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -31,53 +32,56 @@ public:
         TYPE_STATIC_LIBRARY
     };
 
-    class Editor
+    class Editor: public boost::noncopyable
     {
     public:
-        Editor(const boost::function<void (Editor &)> &onChanged):
-            m_onChanged(onChanged)
-        {}
-        virtual ~Editor() {}
-        virtual void addGtkWidgets(GtkGrid *grid) {}
-        virtual bool inputValid() const { return true; }
-        virtual void getInput(ProjectFile &file) const {}
+        Editor(BuildSystemFile::Editor *buildSystemDataEditor);
+        virtual ~Editor();
+        void addGtkWidgets(GtkGrid *grid);
+        bool inputValid() const;
+        void getInput(ProjectFile &file) const;
+        void
+        setChangedCallback(const boost::function<void (Editor &)> &onChanged)
+        { m_onChanged = onChanged; }
+
+    protected:
+        virtual void addGtkWidgetsInternally(GtkGrid *grid) {}
+        virtual bool inputValidInternally() const { return true; }
+        virtual void getInputInternally(ProjectFile &file) const {}
+        void onChanged() { m_onChanged(*this); }
 
     private:
+        BuildSystemFile::Editor *m_buildSystemDataEditor;
         boost::function<void (Editor &)> m_onChanged;
     };
 
-    ProjectFile(Type type, BuildSystemFile *buildSystemData):
+    ProjectFile(int type, BuildSystemFile *buildSystemData):
         m_type(type),
         m_buildSystemData(buildSystemData)
     {}
     virtual ~ProjectFile();
 
-    const char *uri() const { return m_uri.c_str(); }
-    void setUri(const char *uri) { m_uri = uri; }
-
-    Type type() const { return m_type; }
+    int type() const { return m_type; }
 
     BuildSystemFile &buildSystemData() { return *m_buildSystemData; }
     const BuildSystemFile &buildSystemData() const
     { return *m_buildSystemData; }
 
     static ProjectFile *read(const Project &project,
-                             const char *uri,
-                             int uriLength,
-                             const char *&data,
-                             int &dataLength);
-    void write(boost::shared_ptr<char> &uri,
-               int &uriLength,
-               boost::shared_ptr<char> &data,
-               int &dataLength);
+                             const char *data,
+                             int dataLength);
+    void write(boost::shared_array<char> &data, int &dataLength) const;
 
-    virtual Editor *
-    createEditor(const boost::function<void (Editor &)> onChanged) const
-    { return new Editor(onChanged); }
+    virtual Editor *createEditor() const;
+
+protected:
+    virtual bool readInternally(const char *&data, int &dataLength)
+    { return true; }
+    virtual int dataLength() const { return 0; }
+    virtual void writeInternally(char *&data) const {}
 
 private:
-    std::string m_uri;
-    const Type m_type;
+    const int m_type;
 
     BuildSystemFile *m_buildSystemData;
 };

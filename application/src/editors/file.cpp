@@ -877,9 +877,9 @@ bool File::load(bool userRequest)
     freezeInternally();
     m_loader.reset(createLoader(Worker::PRIORITY_INTERACTIVE));
     m_loaderFinishedConn = m_loader->addFinishedCallbackInMainThread(
-        boost::bind(&File::onLoaderFinished, this, _1));
+        boost::bind(onLoaderFinished, this, _1));
     m_loaderCanceledConn = m_loader->addCanceledCallbackInMainThread(
-        boost::bind(&File::onLoaderCanceled, this, _1));
+        boost::bind(onLoaderCanceled, this, _1));
     m_loader->submit(m_loader);
     return true;
 }
@@ -891,9 +891,9 @@ bool File::save()
     freezeInternally();
     m_saver.reset(createSaver(Worker::PRIORITY_INTERACTIVE));
     m_saverFinishedConn = m_saver->addFinishedCallbackInMainThread(
-        boost::bind(&File::onSaverFinished, this, _1));
+        boost::bind(onSaverFinished, this, _1));
     m_saverCanceledConn = m_saver->addCanceledCallbackInMainThread(
-        boost::bind(&File::onSaverCanceled, this, _1));
+        boost::bind(onSaverCanceled, this, _1));
     m_saver->submit(m_saver);
     return true;
 }

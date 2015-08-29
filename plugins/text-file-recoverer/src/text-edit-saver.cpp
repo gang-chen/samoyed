@@ -220,11 +220,9 @@ gboolean TextEditSaver::scheduleReplayFileOperationExecutor(gpointer param)
             saver->m_file.uri()));
     }
     info.finishedConn = info.executor->addFinishedCallbackInMainThread(
-        boost::bind(&TextEditSaver::onReplayFileOperationExecutorFinished,
-                    saver, _1));
+        boost::bind(onReplayFileOperationExecutorFinished, saver, _1));
     info.canceledConn = info.executor->addCanceledCallbackInMainThread(
-        boost::bind(&TextEditSaver::onReplayFileOperationExecutorCanceled,
-                    saver, _1));
+        boost::bind(onReplayFileOperationExecutorCanceled, saver, _1));
     saver->m_operationExecutors.push_back(info);
 
     info.executor->submit(info.executor);

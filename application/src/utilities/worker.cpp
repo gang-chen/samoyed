@@ -4,7 +4,7 @@
 /*
 UNIT TEST BUILD
 g++ worker.cpp -DSMYD_WORKER_UNIT_TEST `pkg-config --cflags --libs glib-2.0` \
--I../../../libs -lboost_thread -pthread -Werror -Wall -o worker
+-I../../libs -lboost_thread-mt -lboost_system-mt -pthread -Werror -Wall -o worker
 */
 
 #ifdef HAVE_CONFIG_H
@@ -276,7 +276,7 @@ void Worker::submit(const boost::shared_ptr<Worker> &self)
         // to this worker, which will make it alive during the dependent period.
         std::pair<State, boost::signals2::connection> sc =
             it->first->checkAddFinishedCallback(
-                boost::bind(&Worker::onDependencyFinished, self, _1));
+                boost::bind(onDependencyFinished, self, _1));
         if (sc.first == STATE_FINISHED)
             onDependencyFinished(self, it->first);
         else if (sc.first != STATE_CANCELED)
@@ -547,9 +547,9 @@ public:
                                     m_priority,
                                     m_id, m_sec, times));
             m_alarm->addFinishedCallback(
-                boost::bind(&AlarmDriver::onAlarmFinished, this, _1));
+                boost::bind(onAlarmFinished, this, _1));
             m_alarm->addCanceledCallback(
-                boost::bind(&AlarmDriver::onAlarmCanceled, this, _1));
+                boost::bind(onAlarmCanceled, this, _1));
             m_alarm->submit(m_alarm);
         }
     }
@@ -568,9 +568,9 @@ private:
                                     m_priority,
                                     m_id, m_sec, m_updatedTimes));
             m_alarm->addFinishedCallback(
-                boost::bind(&AlarmDriver::onAlarmFinished, this, _1));
+                boost::bind(onAlarmFinished, this, _1));
             m_alarm->addCanceledCallback(
-                boost::bind(&AlarmDriver::onAlarmCanceled, this, _1));
+                boost::bind(onAlarmCanceled, this, _1));
             m_alarm->submit(m_alarm);
             m_updatedTimes = 0;
         }
@@ -589,9 +589,9 @@ private:
                                     m_priority,
                                     m_id, m_sec, m_updatedTimes));
             m_alarm->addFinishedCallback(
-                boost::bind(&AlarmDriver::onAlarmFinished, this, _1));
+                boost::bind(onAlarmFinished, this, _1));
             m_alarm->addCanceledCallback(
-                boost::bind(&AlarmDriver::onAlarmCanceled, this, _1));
+                boost::bind(onAlarmCanceled, this, _1));
             m_alarm->submit(m_alarm);
             m_updatedTimes = 0;
         }

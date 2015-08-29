@@ -52,7 +52,8 @@ public:
     void onProjectClose(Project &project);
 
     void onProjectFileAdded(Project &project,
-                            const ProjectFile &projectFile);
+                            const char *uri,
+                            const ProjectFile &data);
     void onProjectFileRemoved(Project &project,
                               const char *uri);
 
