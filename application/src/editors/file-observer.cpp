@@ -13,8 +13,8 @@ namespace Samoyed
 
 void FileObserver::activate()
 {
-    m_closeConnection = m_file.addCloseCallback(
-        boost::bind(onCloseFileInternally, this));
+    m_closedConnection = m_file.addClosedCallback(
+        boost::bind(onFileClosedInternally, this));
     m_loadedConnection = m_file.addLoadedCallback(
         boost::bind(onFileLoaded, this));
     m_savedConnection = m_file.addSavedCallback(
@@ -25,15 +25,15 @@ void FileObserver::activate()
 
 void FileObserver::deactivate()
 {
-    m_closeConnection.disconnect();
+    m_closedConnection.disconnect();
     m_loadedConnection.disconnect();
     m_savedConnection.disconnect();
     m_changedConnection.disconnect();
 }
 
-void FileObserver::onCloseFileInternally()
+void FileObserver::onFileClosedInternally()
 {
-    onCloseFile();
+    onFileClosed();
     deactivate();
 }
 

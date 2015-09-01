@@ -305,6 +305,9 @@ int countIndentSizeAt(GtkTextBuffer *buffer, CXCursor ast,
     CXSourceLocation begin = clang_getRangeStart(range);
     unsigned beginLine, beginColumn;
     clang_getFileLocation(begin, NULL, &beginLine, &beginColumn, NULL);
+    // The code may have syntax errors.
+    if (beginLine == 0 || beginColumn == 0)
+        return 0;
     GtkTextIter iter, limit;
     gtk_text_buffer_get_iter_at_line(buffer, &iter, beginLine - 1);
     gtk_text_buffer_get_iter_at_line_index(buffer, &limit,
@@ -338,6 +341,9 @@ bool checkToken(GtkTextBuffer *buffer,
     CXFile file;
     unsigned line;
     clang_getFileLocation(loc, &file, &line, NULL, NULL);
+    // The code may have syntax errors.
+    if (line == 0)
+        return false;
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_line(buffer, &iter, line - 1);
     if (!gtk_text_iter_ends_line(&iter))
@@ -868,8 +874,9 @@ int SourceFile::calculateIndentSize(int line,
         {
             unsigned beginLine;
             clang_getFileLocation(begin, NULL, &beginLine, NULL, NULL);
-            for (int ln = beginLine - 1; ln < line; ln++)
-                m_indentLines.insert(ln);
+            if (beginLine >= 1)
+                for (int ln = beginLine - 1; ln < line; ln++)
+                    m_indentLines.insert(ln);
         }
     }
 
@@ -1136,12 +1143,12 @@ CXChildVisitResult SourceFile::updateStructureForAst(CXCursor ast,
     CXFile file;
     unsigned beginLine;
     clang_getFileLocation(begin, &file, &beginLine, NULL, NULL);
-    if (file != thisFile)
+    if (file != thisFile || beginLine == 0)
         return CXChildVisit_Continue;
     CXSourceLocation end = clang_getRangeEnd(range);
     unsigned endLine;
     clang_getFileLocation(end, &file, &endLine, NULL, NULL);
-    if (file != thisFile)
+    if (file != thisFile || endLine == 0)
         return CXChildVisit_Continue;
 
     CXCursorKind kind = clang_getCursorKind(ast);

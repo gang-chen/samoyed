@@ -26,6 +26,7 @@ class Paned;
 class Editor;
 class ProjectExplorer;
 class Project;
+class BuildLogViewGroup;
 
 /**
  * A window represents a top-level window.  A window is a container that manages
@@ -249,6 +250,11 @@ public:
 
     Project *currentProject();
     const Project *currentProject() const;
+
+    BuildLogViewGroup *buildLogViewGroup();
+    const BuildLogViewGroup *buildLogViewGroup() const;
+
+    BuildLogViewGroup *openBuildLogViewGroup();
 
     GtkAction *addAction(const char *name,
                          const char *path,

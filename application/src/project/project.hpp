@@ -32,7 +32,7 @@ class Project: public boost::noncopyable
 {
 public:
     typedef boost::signals2::signal<void (Project &project)> Opened;
-    typedef boost::signals2::signal<void (Project &project)> Close;
+    typedef boost::signals2::signal<void (Project &project)> Closed;
 
     class XmlElement
     {
@@ -110,8 +110,8 @@ public:
     { return s_opened.connect(callback); }
 
     boost::signals2::connection
-    addCloseCallback(const Close::slot_type &callback)
-    { return m_close.connect(callback); }
+    addClosedCallback(const Closed::slot_type &callback)
+    { return m_closed.connect(callback); }
 
 protected:
     Project(const char *uri);
@@ -146,7 +146,7 @@ private:
     EditorTable m_editorTable;
 
     static Opened s_opened;
-    Close m_close;
+    Closed m_closed;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Project)
 };

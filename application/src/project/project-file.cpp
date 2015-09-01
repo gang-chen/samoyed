@@ -8,10 +8,13 @@
 #include "project.hpp"
 #include "build-system/build-system.hpp"
 #include "build-system/build-system-file.hpp"
+#include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_array.hpp>
+#include <glib.h>
 
 namespace Samoyed
 {
@@ -53,11 +56,13 @@ ProjectFile *ProjectFile::read(const Project &project,
                                const char *data,
                                int dataLength)
 {
-    if (dataLength < sizeof(int))
+    if (static_cast<size_t>(dataLength) < sizeof(gint32))
         return NULL;
-    int type = *reinterpret_cast<const int *>(data);
-    data += sizeof(int);
-    dataLength -= sizeof(int);
+    gint32 type;
+    memcpy(&type, data, sizeof(gint32));
+    data += sizeof(gint32);
+    dataLength -= sizeof(gint32);
+    type = GINT32_FROM_LE(type);
     ProjectFile *file = project.createProjectFile(type);
     if (!file ||
         !file->readInternally(data, dataLength) ||
@@ -72,11 +77,12 @@ ProjectFile *ProjectFile::read(const Project &project,
 void ProjectFile::write(boost::shared_array<char> &data, int &dataLength) const
 {
     dataLength =
-        sizeof(int) + this->dataLength() + buildSystemData().dataLength();
+        sizeof(gint32) + this->dataLength() + buildSystemData().dataLength();
     char *d = new char[dataLength];
     data.reset(d);
-    *reinterpret_cast<int *>(d) = m_type;
-    d += sizeof(int);
+    gint32 type = GINT32_TO_LE(m_type);
+    memcpy(d, &type, sizeof(gint32));
+    d += sizeof(gint32);
     writeInternally(d);
     buildSystemData().write(d);
 }

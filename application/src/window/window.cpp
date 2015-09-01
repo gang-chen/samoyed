@@ -13,6 +13,7 @@
 #include "editors/editor.hpp"
 #include "editors/text-editor.hpp"
 #include "project/project-explorer.hpp"
+#include "build-system/build-log-view-group.hpp"
 #include "application.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/worker.hpp"
@@ -52,6 +53,7 @@
 #define EDITOR_GROUP_ID "editor-group"
 #define PANED_ID "paned"
 #define PROJECT_EXPLORER_ID "project-explorer"
+#define BUILD_LOG_VIEW_GROUP_ID "build-log-view-group"
 
 #define SIDE_PANE_MENU_ITEM_LABEL "side-pane-menu-item-label"
 #define SIDE_PANE_CHILDREN_MENU_LABEL "side-pane-children-menu-label"
@@ -2161,6 +2163,37 @@ const Project *Window::currentProject() const
     if (explorer)
         return explorer->currentProject();
     return Application::instance().projects();
+}
+
+BuildLogViewGroup *Window::buildLogViewGroup()
+{
+    Notebook &tools = toolsPane();
+    for (int i = 0; i < tools.childCount(); ++i)
+    {
+        if (strcmp(tools.child(i).id(), BUILD_LOG_VIEW_GROUP_ID) == 0)
+            return static_cast<BuildLogViewGroup *>(&tools.child(i));
+    }
+    return NULL;
+}
+
+const BuildLogViewGroup *Window::buildLogViewGroup() const
+{
+    const Notebook &tools = toolsPane();
+    for (int i = 0; i < tools.childCount(); ++i)
+    {
+        if (strcmp(tools.child(i).id(), BUILD_LOG_VIEW_GROUP_ID) == 0)
+            return static_cast<const BuildLogViewGroup *>(&tools.child(i));
+    }
+    return NULL;
+}
+
+BuildLogViewGroup *Window::openBuildLogViewGroup()
+{
+    BuildLogViewGroup *group = buildLogViewGroup();
+    if (group)
+        return group;
+    return static_cast<BuildLogViewGroup *>(
+        openSidePaneChild(TOOLS_PANE_ID, BUILD_LOG_VIEW_GROUP_ID));
 }
 
 }

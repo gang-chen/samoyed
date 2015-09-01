@@ -59,6 +59,7 @@ ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
     m_buildSystemChooser =
         GTK_COMBO_BOX_TEXT(gtk_builder_get_object(m_builder,
                                                   "build-system-chooser"));
+
     if (parent)
     {
         gtk_window_set_transient_for(GTK_WINDOW(m_dialog), parent);

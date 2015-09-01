@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <string>
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 #include <gtk/gtk.h>
 
@@ -147,6 +148,8 @@ bool removeFileOrDirectory(const char *name, GError **error);
 const char **characterEncodings();
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
+
+boost::shared_ptr<char> findShell();
 
 }
 

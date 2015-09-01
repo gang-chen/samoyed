@@ -30,7 +30,7 @@ public:
 
     virtual void deactivate();
 
-    virtual void onCloseFile();
+    virtual void onFileClosed();
     virtual void onFileLoaded();
     virtual void onFileSaved();
     virtual void onFileChanged(const File::Change &change, bool interactive);

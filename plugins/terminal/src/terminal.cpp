@@ -9,26 +9,17 @@
 #include "application.hpp"
 #include "window/window.hpp"
 #include "utilities/miscellaneous.hpp"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <utility>
-#include <string>
+#include <boost/shared_ptr.hpp>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
-#include <unistd.h>
-#include <sys/types.h>
-#ifndef OS_WINDOWS
-# include <pwd.h>
-#endif
 #include <vte/vte.h>
 
 namespace
 {
 
 void closeTerminal(VteTerminal *realTerm,
-		   int status,
-		   Samoyed::Terminal::Terminal *term)
+		           int status,
+		           Samoyed::Terminal::Terminal *term)
 {
     term->view().close();
 }
@@ -45,43 +36,25 @@ GtkWidget *Terminal::setup()
 {
     m_terminal = vte_terminal_new();
 
-    const char *shell;
-    const char *dir;
-#ifdef OS_WINDOWS
-    shell = "C:\\Windows\\System32\\cmd.exe";
-    dir = NULL;
-#else
-    struct passwd *pw;
-    pw = getpwuid(getuid());
-    if (pw)
-    {
-        shell = pw->pw_shell;
-        dir = pw->pw_dir;
-    } else {
-        shell = "/bin/sh";
-        dir = "/";
-    }
-#endif
-
+    boost::shared_ptr<char> shell = findShell();
     char *argv[2];
-    argv[0] = strdup(shell);
+    argv[0] = shell.get();
     argv[1] = NULL;
     GError *error = NULL;
 #if VTE_CHECK_VERSION(0, 38, 0)
     if (!vte_terminal_spawn_sync(VTE_TERMINAL(m_terminal),
                                  VTE_PTY_DEFAULT,
-                                 dir, argv, NULL,
+                                 NULL, argv, NULL,
                                  G_SPAWN_CHILD_INHERITS_STDIN,
-				 NULL, NULL, NULL, NULL, &error))
+                                 NULL, NULL, NULL, NULL, &error))
 #else
     if (!vte_terminal_fork_command_full(VTE_TERMINAL(m_terminal),
                                         VTE_PTY_DEFAULT,
-                                        dir, argv, NULL,
+                                        NULL, argv, NULL,
                                         G_SPAWN_CHILD_INHERITS_STDIN,
                                         NULL, NULL, NULL, &error))
 #endif
     {
-        free(argv[0]);
         GtkWidget *dialog = gtk_message_dialog_new(
 			Application::instance().currentWindow() ?
             GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
@@ -93,14 +66,13 @@ GtkWidget *Terminal::setup()
         gtkMessageDialogAddDetails(
             dialog,
             _("Samoyed failed to start shell \"%s\". %s."),
-            shell, error->message);
+            shell.get(), error->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         g_error_free(error);
         gtk_widget_destroy(m_terminal);
         return NULL;
     }
-    free(argv[0]);
     g_signal_connect(m_terminal, "child-exited",
                      G_CALLBACK(closeTerminal), this);
 

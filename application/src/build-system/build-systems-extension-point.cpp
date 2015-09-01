@@ -56,9 +56,7 @@ bool BuildSystemsExtensionPoint::registerExtension(const char *extensionId,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                cp = g_content_type_from_mime_type(value);
-                ext->description = cp;
-                g_free(cp);
+                ext->description = value;
                 xmlFree(value);
             }
         }

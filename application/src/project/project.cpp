@@ -632,9 +632,9 @@ bool Project::finishClosing()
     {
         ProjectExplorer *explorer = window->projectExplorer();
         if (explorer)
-            explorer->onProjectClose(*this);
+            explorer->onProjectClosed(*this);
     }
-    m_close(*this);
+    m_closed(*this);
     Application::instance().destroyProject(*this);
     return true;
 }

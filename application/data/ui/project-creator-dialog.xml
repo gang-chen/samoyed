@@ -72,60 +72,6 @@
                 <property name="height">1</property>
               </packing>
             </child>
-            <child>
-              <object class="GtkEntry" id="package-entry">
-                <property name="visible">true</property>
-                <property name="hexpand">true</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">2</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="package-label">
-                <property name="visible">true</property>
-                <property name="use-underline">true</property>
-                <property name="label" translatable="yes">_Package:</property>
-                <property name="halign">start</property>
-                <property name="mnemonic-widget">package-entry</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">2</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="authors-entry">
-                <property name="visible">true</property>
-                <property name="hexpand">true</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">3</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="authors-label">
-                <property name="visible">true</property>
-                <property name="use-underline">true</property>
-                <property name="label" translatable="yes">_Authors:</property>
-                <property name="halign">start</property>
-                <property name="mnemonic-widget">authors-entry</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">3</property>
-                <property name="width">1</property>
-                <property name="height">1</property>
-              </packing>
-            </child>
           </object>
         </child>
       </object>

@@ -168,6 +168,11 @@ void SessionChooserDialog::buildRestoreSessionDialog()
         }
         m_sessionList =
             GTK_TREE_VIEW(gtk_builder_get_object(m_builder, "session-list"));
+        gtk_widget_set_sensitive(
+            GTK_WIDGET(gtk_builder_get_object(m_builder,
+                                              "restore-session-button")),
+            gtk_tree_selection_get_selected(
+                gtk_tree_view_get_selection(m_sessionList), NULL, NULL));
         g_signal_connect(gtk_tree_view_get_selection(m_sessionList),
                          "changed",
                          G_CALLBACK(onRestoreSessionChanged),
@@ -241,7 +246,7 @@ void SessionChooserDialog::run()
                     selection = gtk_tree_view_get_selection(m_sessionList);
                     gtk_tree_selection_get_selected(selection, &model, &it);
                     gtk_tree_model_get(model, &it, NAME_COLUMN, &sessionName,
-                                      -1);
+                                       -1);
                     m_sessionName = sessionName;
                     g_free(sessionName);
                 }

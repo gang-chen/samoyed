@@ -8,6 +8,8 @@
 #include "configuration.hpp"
 #include "build-system-file.hpp"
 #include "build-systems-extension-point.hpp"
+#include "build-job.hpp"
+#include "project/project.hpp"
 #include "project/project-file.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "application.hpp"
@@ -37,11 +39,15 @@ BuildSystem::BuildSystem(Project &project,
 
 BuildSystem::~BuildSystem()
 {
-    ConfigurationTable::iterator it;
-    while ((it = m_configurations.begin()) != m_configurations.end())
+    std::map<std::string, BuildJob *>::iterator buildJobIt;
+    while ((buildJobIt = m_buildJobs.begin()) != m_buildJobs.end())
+        stopBuild(buildJobIt->first.c_str());
+
+    ConfigurationTable::iterator configIt;
+    while ((configIt = m_configurations.begin()) != m_configurations.end())
     {
-        Configuration *config = it->second;
-        m_configurations.erase(it);
+        Configuration *config = configIt->second;
+        m_configurations.erase(configIt);
         delete config;
     }
 }
@@ -150,6 +156,94 @@ xmlNodePtr BuildSystem::writeXmlElement() const
                         reinterpret_cast<const xmlChar *>(m_activeConfig->
                                                           name()));
     return node;
+}
+
+bool BuildSystem::configure()
+{
+    Configuration *config = activeConfiguration();
+    if (!config)
+        return false;
+    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
+        return false;
+    BuildJob *job = new BuildJob(*this,
+                                 config->configureCommands(),
+                                 BuildJob::ACTION_CONFIGURE,
+                                 project().uri(),
+                                 config->name());
+    m_buildJobs.insert(std::make_pair(config->name(), job));
+    if (job->run())
+        return true;
+    m_buildJobs.erase(config->name());
+    delete job;
+    return false;
+}
+
+bool BuildSystem::build()
+{
+    Configuration *config = activeConfiguration();
+    if (!config)
+        return false;
+    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
+        return false;
+    BuildJob *job = new BuildJob(*this,
+                                 config->buildCommands(),
+                                 BuildJob::ACTION_BUILD,
+                                 project().uri(),
+                                 config->name());
+    m_buildJobs.insert(std::make_pair(config->name(), job));
+    if (job->run())
+        return true;
+    m_buildJobs.erase(config->name());
+    delete job;
+    return false;
+}
+
+bool BuildSystem::install()
+{
+    Configuration *config = activeConfiguration();
+    if (!config)
+        return false;
+    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
+        return false;
+    BuildJob *job = new BuildJob(*this,
+                                 config->installCommands(),
+                                 BuildJob::ACTION_INSTALL,
+                                 project().uri(),
+                                 config->name());
+    m_buildJobs.insert(std::make_pair(config->name(), job));
+    if (job->run())
+        return true;
+    m_buildJobs.erase(config->name());
+    delete job;
+    return false;
+}
+
+bool BuildSystem::collectCompilationOptions()
+{
+    return true;
+}
+
+void BuildSystem::stopBuild(const char *configName)
+{
+    std::map<std::string, BuildJob *>::iterator it =
+        m_buildJobs.find(configName);
+    if (it != m_buildJobs.end())
+    {
+        it->second->stop();
+        delete it->second;
+        m_buildJobs.erase(it);
+    }
+}
+
+void BuildSystem::onBuildFinished(const char *configName)
+{
+    std::map<std::string, BuildJob *>::iterator it =
+        m_buildJobs.find(configName);
+    if (it != m_buildJobs.end())
+    {
+        delete it->second;
+        m_buildJobs.erase(it);
+    }
 }
 
 }

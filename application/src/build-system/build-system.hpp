@@ -18,6 +18,7 @@ class Project;
 class Configuration;
 class ProjectFile;
 class BuildSystemFile;
+class BuildJob;
 
 class BuildSystem: public boost::noncopyable
 {
@@ -56,6 +57,10 @@ public:
 
     bool collectCompilationOptions();
 
+    void stopBuild(const char *configName);
+
+    void onBuildFinished(const char *configName);
+
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
 
@@ -86,6 +91,8 @@ private:
     ConfigurationTable m_configurations;
 
     Configuration *m_activeConfig;
+
+    std::map<std::string, BuildJob *> m_buildJobs;
 };
 
 }

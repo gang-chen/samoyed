@@ -1,5 +1,7 @@
 @INTLTOOL_XML_RULE@
 
+SUBDIRS = ui
+
 gnubuildsystemdatadir = $(pkgdatadir)/plugins/gnu-build-system
 
 gnubuildsystemdata_DATA = plugin.xml

@@ -525,7 +525,7 @@ void File::finishClosing()
 
     // Notify the observers right before deleting the file so that the observers
     // can access the intact concrete file.
-    m_close(*this);
+    m_closed(*this);
     Application::instance().destroyFile(*this);
 }
 

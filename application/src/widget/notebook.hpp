@@ -118,7 +118,8 @@ protected:
 
     virtual ~Notebook();
 
-    bool setup(const char *id, const char *groupName,
+    bool setup(const char *id,
+               const char *groupName,
                bool createCloseButtons,
                bool canDragChildren,
                bool useUnderline);

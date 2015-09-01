@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkGrid" id="grid">
+    <property name="visible">true</property>
+    <property name="vexpand">false</property>
+    <property name="row-spacing">6</property>
+    <property name="column-spacing">6</property>
+    <property name="border-width">12</property>
+    <child>
+      <object class="GtkLabel" id="message">
+        <property name="halign">start</property>
+        <property name="hexpand">true</property>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkButton" id="stop-button">
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Stop</property>
+      </object>
+      <packing>
+        <property name="left-attach">1</property>
+        <property name="top-attach">0</property>
+        <property name="width">1</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkScrolledWindow" id="scrolled-window">
+        <property name="visible">true</property>
+        <child>
+          <object class="GtkTextView" id="log">
+            <property name="visible">true</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="editable">false</property>
+          </object>
+        </child>
+      </boject>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">1</property>
+        <property name="width">2</property>
+        <property name="height">1</property>
+      </packing>
+    </child>
+  </object>
+</interface>

@@ -44,7 +44,7 @@ class File: public boost::noncopyable
 {
 public:
     typedef boost::signals2::signal<void (File &file)> Opened;
-    typedef boost::signals2::signal<void (File &file)> Close;
+    typedef boost::signals2::signal<void (File &file)> Closed;
     typedef boost::signals2::signal<void (File &file)> Loaded;
     typedef boost::signals2::signal<void (File &file)> Saved;
 
@@ -252,8 +252,8 @@ public:
     { return s_opened.connect(callback); }
 
     boost::signals2::connection
-    addCloseCallback(const Close::slot_type &callback)
-    { return m_close.connect(callback); }
+    addClosedCallback(const Closed::slot_type &callback)
+    { return m_closed.connect(callback); }
 
     boost::signals2::connection
     addLoadedCallback(const Loaded::slot_type &callback)
@@ -519,7 +519,7 @@ private:
     boost::signals2::connection m_saverCanceledConn;
 
     static Opened s_opened;
-    Close m_close;
+    Closed m_closed;
     Loaded m_loaded;
     Saved m_saved;
     Changed m_changed;

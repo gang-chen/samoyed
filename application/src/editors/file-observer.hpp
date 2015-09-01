@@ -21,7 +21,7 @@ public:
     virtual void deactivate();
 
     virtual void onFileOpened() {}
-    virtual void onCloseFile() {}
+    virtual void onFileClosed() {}
     virtual void onFileLoaded() {}
     virtual void onFileSaved() {}
     virtual void onFileChanged(const File::Change &change, bool interactive) {}
@@ -30,9 +30,9 @@ protected:
     File &m_file;
 
 private:
-    void onCloseFileInternally();
+    void onFileClosedInternally();
 
-    boost::signals2::connection m_closeConnection;
+    boost::signals2::connection m_closedConnection;
     boost::signals2::connection m_loadedConnection;
     boost::signals2::connection m_savedConnection;
     boost::signals2::connection m_changedConnection;

@@ -38,8 +38,7 @@ public:
     virtual int dataLength() const { return 0; }
     virtual void write(char *&data) const {}
 
-    virtual Editor *createEditor() const
-    { return new Editor; }
+    virtual Editor *createEditor() const { return new Editor; }
 };
 
 }

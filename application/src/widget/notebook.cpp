@@ -281,9 +281,19 @@ Notebook::XmlElement::XmlElement(const Notebook &notebook):
     m_canDragChildren = notebook.canDragChildren();
     m_useUnderline = notebook.useUnderline();
     m_children.reserve(notebook.childCount());
-    for (int i = 0; i < notebook.childCount(); ++i)
-        m_children.push_back(notebook.child(i).save());
     m_currentChildIndex = notebook.currentChildIndex();
+    int removed = 0;
+    for (int i = 0; i < notebook.childCount(); ++i)
+    {
+        Widget::XmlElement *child = notebook.child(i).save();
+        if (child)
+            m_children.push_back(child);
+        else if (m_currentChildIndex > i)
+            removed++;
+    }
+    m_currentChildIndex -= removed;
+    if (m_currentChildIndex == childCount())
+        m_currentChildIndex = childCount() - 1;
 }
 
 Widget *Notebook::XmlElement::restoreWidget()
@@ -316,7 +326,8 @@ Notebook::XmlElement::~XmlElement()
         delete *it;
 }
 
-bool Notebook::setup(const char *id, const char *groupName,
+bool Notebook::setup(const char *id,
+                     const char *groupName,
                      bool createCloseButtons,
                      bool canDragChildren,
                      bool useUnderline)
@@ -343,13 +354,15 @@ bool Notebook::setup(const char *id, const char *groupName,
     return true;
 }
 
-Notebook *Notebook::create(const char *id, const char *groupName,
+Notebook *Notebook::create(const char *id,
+                           const char *groupName,
                            bool createCloseButtons,
                            bool canDragChildren,
                            bool useUnderline)
 {
     Notebook *notebook = new Notebook;
-    if (!notebook->setup(id, groupName,
+    if (!notebook->setup(id,
+                         groupName,
                          createCloseButtons,
                          canDragChildren,
                          useUnderline))

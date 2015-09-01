@@ -49,7 +49,7 @@ public:
     const Project *currentProject() const;
 
     void onProjectOpened(Project &project);
-    void onProjectClose(Project &project);
+    void onProjectClosed(Project &project);
 
     void onProjectFileAdded(Project &project,
                             const char *uri,
@@ -67,7 +67,8 @@ protected:
     bool restore(XmlElement &xmlElement);
 
 private:
-    static void onWindowCreatedOrRestored(Window &window);
+    static void onWindowCreated(Window &window);
+    static void onWindowRestored(Window &window);
 };
 
 }

@@ -121,7 +121,7 @@ ProjectExplorer::XmlElement::XmlElement(const ProjectExplorer &explorer):
 
 Widget *ProjectExplorer::XmlElement::restoreWidget()
 {
-    ProjectExplorer *explorer = new ProjectExplorer();
+    ProjectExplorer *explorer = new ProjectExplorer;
     if (!explorer->restore(*this))
     {
         delete explorer;
@@ -166,7 +166,7 @@ bool ProjectExplorer::setup()
 {
     if (!Widget::setup(PROJECT_EXPLORER_ID))
         return false;
-    setTitle("_Project Explorer");
+    setTitle(_("_Project Explorer"));
     if (!setupProjectExplorer())
         return false;
     gtk_widget_show_all(gtkWidget());
@@ -200,7 +200,7 @@ Widget::XmlElement *ProjectExplorer::save() const
     return new XmlElement(*this);
 }
 
-void ProjectExplorer::onWindowCreatedOrRestored(Window &window)
+void ProjectExplorer::onWindowCreated(Window &window)
 {
     window.registerSidePaneChild(NAVIGATION_PANE_ID, PROJECT_EXPLORER_ID,
                                  PROJECT_EXPLORER_INDEX_IN_NAVIGATION_PANE,
@@ -208,10 +208,17 @@ void ProjectExplorer::onWindowCreatedOrRestored(Window &window)
     window.openSidePaneChild(NAVIGATION_PANE_ID, PROJECT_EXPLORER_ID);
 }
 
+void ProjectExplorer::onWindowRestored(Window &window)
+{
+    window.registerSidePaneChild(NAVIGATION_PANE_ID, PROJECT_EXPLORER_ID,
+                                 PROJECT_EXPLORER_INDEX_IN_NAVIGATION_PANE,
+                                 create, _("_Project Explorer"));
+}
+
 void ProjectExplorer::registerWithWindow()
 {
-    Window::addCreatedCallback(onWindowCreatedOrRestored);
-    Window::addRestoredCallback(onWindowCreatedOrRestored);
+    Window::addCreatedCallback(onWindowCreated);
+    Window::addRestoredCallback(onWindowRestored);
 }
 
 Project *ProjectExplorer::currentProject()
@@ -228,7 +235,7 @@ void ProjectExplorer::onProjectOpened(Project &project)
 {
 }
 
-void ProjectExplorer::onProjectClose(Project &project)
+void ProjectExplorer::onProjectClosed(Project &project)
 {
 }
 

@@ -6,6 +6,7 @@
 #endif
 #include "application.hpp"
 #include "build-system/build-systems-extension-point.hpp"
+#include "build-system/build-log-view-group.hpp"
 #include "editors/file.hpp"
 #include "editors/file-observers-extension-point.hpp"
 #include "editors/source-editor.hpp"
@@ -192,6 +193,8 @@ gboolean Application::startUp(gpointer app)
     SourceEditor::XmlElement::registerReader();
     ProjectExplorer::XmlElement::registerReader();
     ProjectExplorer::registerWithWindow();
+    BuildLogViewGroup::XmlElement::registerReader();
+    BuildLogViewGroup::registerWithWindow();
     TextEditor::createSharedData();
     SourceEditor::createSharedData();
     Window::enableShowActiveWorkers();

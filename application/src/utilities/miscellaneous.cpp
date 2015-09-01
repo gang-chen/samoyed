@@ -25,8 +25,11 @@ g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST \
 # include <windows.h>
 # include <winsock2.h>
 #else
+# include <sys/types.h>
+# include <pwd.h>
 # include <unistd.h>
 #endif
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 #ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # define _(T) T
@@ -98,6 +101,10 @@ const char *charEncodings[] =
 };
 
 bool charEncodingsTranslated = false;
+
+#ifdef OS_WINDOWS
+std::string foundShell;
+#endif
 
 }
 
@@ -202,6 +209,34 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 
     box = gtk_message_dialog_get_message_area(GTK_MESSAGE_DIALOG(dialog));
     gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
+}
+
+boost::shared_ptr<char> findShell()
+{
+#ifdef OS_WINDOWS
+    if (foundShell.empty())
+    {
+        char *instDir =
+            g_win32_get_package_installation_directory_of_module(NULL);
+        foundShell = instDir;
+        foundShell += "\\bin\\bash.exe";
+        if (!g_file_test(foundShell.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+        {
+            foundShell = instDir;
+            foundShell += "\\bash.exe";
+            if (!g_file_test(foundShell.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+                foundShell = "C:\\Windows\\System32\\cmd.exe";
+        }
+        g_free(instDir);
+    }
+    return boost::shared_ptr<char>(strdup(foundShell.c_str()), free);
+#else
+    struct passwd *pw;
+    pw = getpwuid(getuid());
+    if (pw)
+        return boost::shared_ptr<char>(strdup(pw->pw_shell), free);
+    return boost::shared_ptr<char>(strdup("/bin/sh"), free);
+#endif
 }
 
 }

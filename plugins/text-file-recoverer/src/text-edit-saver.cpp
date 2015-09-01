@@ -280,7 +280,7 @@ void TextEditSaver::queueReplayFileAppending(TextRemoval *rem)
     }
 }
 
-void TextEditSaver::onCloseFile()
+void TextEditSaver::onFileClosed()
 {
     if (m_replayFileCreated)
     {

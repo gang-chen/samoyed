@@ -144,6 +144,10 @@ plugins/finder/Makefile
 plugins/finder/data/Makefile
 plugins/finder/data/ui/Makefile
 plugins/finder/src/Makefile
+plugins/gnu-build-system/Makefile
+plugins/gnu-build-system/data/Makefile
+plugins/gnu-build-system/data/ui/Makefile
+plugins/gnu-build-system/src/Makefile
 plugins/terminal/Makefile
 plugins/terminal/data/Makefile
 plugins/terminal/libs/Makefile
