@@ -1404,15 +1404,18 @@ Widget *Window::openSidePaneChild(const char *paneId, const char *id)
     child = data->factory();
     if (child)
     {
-        int index = 0;
+        int index;
+        std::set<ComparablePointer<SidePaneChildData> >::const_iterator it =
+            paneData->children.begin();
         std::set<ComparablePointer<SidePaneChildData> >::const_iterator end =
             paneData->children.find(data);
-        for (std::set<ComparablePointer<SidePaneChildData> >::const_iterator
-             it = paneData->children.begin();
-             it != end;
-             ++it)
-            if ((*it)->id == pane->child(index).id())
-                ++index;
+        for (index = 0; index < pane->childCount(); ++index)
+        {
+            while ((*it)->id != pane->child(index).id() && it != end)
+                ++it;
+            if (it == end)
+                break;
+        }
         pane->addChild(*child, index);
         child->setCurrent();
         child->addClosedCallback(

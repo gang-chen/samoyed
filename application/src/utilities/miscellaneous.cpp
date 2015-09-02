@@ -219,11 +219,11 @@ boost::shared_ptr<char> findShell()
         char *instDir =
             g_win32_get_package_installation_directory_of_module(NULL);
         foundShell = instDir;
-        foundShell += "\\bin\\bash.exe";
+        foundShell += "\\bin\\sh.exe";
         if (!g_file_test(foundShell.c_str(), G_FILE_TEST_IS_EXECUTABLE))
         {
             foundShell = instDir;
-            foundShell += "\\bash.exe";
+            foundShell += "\\sh.exe";
             if (!g_file_test(foundShell.c_str(), G_FILE_TEST_IS_EXECUTABLE))
                 foundShell = "C:\\Windows\\System32\\cmd.exe";
         }
