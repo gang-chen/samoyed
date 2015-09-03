@@ -18,7 +18,8 @@ class Project;
 class Configuration;
 class ProjectFile;
 class BuildSystemFile;
-class BuildJob;
+class BuildProcess;
+class CompilationOptionsCollector;
 
 class BuildSystem: public boost::noncopyable
 {
@@ -32,8 +33,7 @@ public:
 
     /**
      * Setup the build system for a newly created project, including creating
-     * build-system-specific files and default build configurations, and
-     * importing existing files, if any.
+     * build-system-specific files, and importing existing files, if any.
      */
     virtual bool setup() { return true; }
 
@@ -49,10 +49,13 @@ public:
     virtual bool removeProjectFile(const char *uri)
     { return true; }
 
+    bool canConfigure() const;
     bool configure();
 
+    bool canBuild() const;
     bool build();
 
+    bool canInstall() const;
     bool install();
 
     bool collectCompilationOptions();
@@ -60,6 +63,8 @@ public:
     void stopBuild(const char *configName);
 
     void onBuildFinished(const char *configName);
+
+    void onCompilationOptionsCollectorFinished();
 
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
@@ -72,6 +77,10 @@ public:
     const Configuration *activeConfiguration() const { return m_activeConfig; }
     void setActiveConfiguration(Configuration *config)
     { m_activeConfig = config; }
+
+    Configuration *createConfiguration();
+
+    virtual void defaultConfiguration(Configuration &config) const;
 
     virtual BuildSystemFile *createBuildSystemFile(int type) const;
 
@@ -92,7 +101,9 @@ private:
 
     Configuration *m_activeConfig;
 
-    std::map<std::string, BuildJob *> m_buildJobs;
+    std::map<std::string, BuildProcess *> m_buildJobs;
+
+    CompilationOptionsCollector *m_compOptCollector;
 };
 
 }

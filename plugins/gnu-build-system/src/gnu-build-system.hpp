@@ -28,6 +28,8 @@ public:
     virtual bool removeProjectFile(const char *uri);
 
     virtual BuildSystemFile *createBuildSystemFile(int type) const;
+
+    virtual void defaultConfiguration(Configuration &config) const;
 };
 
 }

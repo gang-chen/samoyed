@@ -1,5 +1,5 @@
 // Build log view.
-// Copyright (C) Gang Chen.
+// Copyright (C) 2015 Gang Chen.
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -79,7 +79,7 @@ BuildLogView *BuildLogView::create(const char *projectUri,
     return view;
 }
 
-void BuildLogView::startBuild(BuildJob::Action action)
+void BuildLogView::startBuild(BuildProcess::Action action)
 {
     m_action = action;
     char *message = g_strdup_printf(_("%s project \"%s\" (%s)"),
@@ -108,14 +108,28 @@ void BuildLogView::addLog(const char *log, int length)
     gtk_text_buffer_insert(buffer, &end, log, length);
 }
 
-void BuildLogView::onBuildFinished()
+void BuildLogView::onBuildFinished(int exitCode)
 {
-    char *message = g_strdup_printf(_("Finished %s project \"%s\" (%s)"),
-                                    gettext(actionText2[m_action]),
-                                    m_projectUri.c_str(),
-                                    m_configName.c_str());
+    char *message;
+    GError *error = NULL;
+    if (g_spawn_check_exit_status(exitCode, &error))
+        message =
+            g_strdup_printf(_("Successfully finished %s project \"%s\" (%s)"),
+                            gettext(actionText2[m_action]),
+                            m_projectUri.c_str(),
+                            m_configName.c_str());
+    else
+        message =
+            g_strdup_printf(_("Finished %s project \"%s\" (%s) with errors. %s "
+                              "process exited with code %d: %s."),
+                            gettext(actionText2[m_action]),
+                            m_projectUri.c_str(),
+                            m_configName.c_str(),
+                            gettext(actionText[m_action]),
+                            error->message);
     gtk_label_set_label(m_message, message);
     g_free(message);
+    g_error_free(error);
     gtk_widget_hide(GTK_WIDGET(m_stopButton));
 }
 

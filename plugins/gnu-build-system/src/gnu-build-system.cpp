@@ -8,6 +8,7 @@
 #include "gnu-build-system-plugin.hpp"
 #include "gnu-build-system-file.hpp"
 #include "build-system/build-system.hpp"
+#include "build-system/configuration.hpp"
 #include "project/project-file.hpp"
 
 namespace Samoyed
@@ -52,6 +53,14 @@ BuildSystemFile *GnuBuildSystem::createBuildSystemFile(int type) const
     if (type == ProjectFile::TYPE_DIRECTORY)
         return new BuildSystemFile;
     return new GnuBuildSystemFile;
+}
+
+void GnuBuildSystem::defaultConfiguration(Configuration &config) const
+{
+    config.setConfigureCommands("./configure");
+    config.setBuildCommands("make");
+    config.setInstallCommands("make install");
+    config.setDryBuildCommands("make -n");
 }
 
 }

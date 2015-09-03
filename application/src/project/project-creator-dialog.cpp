@@ -63,7 +63,7 @@ ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
     if (parent)
     {
         gtk_window_set_transient_for(GTK_WINDOW(m_dialog), parent);
-        gtk_window_set_modal(GTK_WINDOW(m_dialog), true);
+        gtk_window_set_modal(GTK_WINDOW(m_dialog), TRUE);
     }
 
     // Add the registered build systems.

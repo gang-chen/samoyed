@@ -122,7 +122,7 @@ void SessionChooserDialog::buildNewSessionDialog()
         {
             gtk_window_set_transient_for(GTK_WINDOW(m_newSessionDialog),
                                          m_parent);
-            gtk_window_set_modal(GTK_WINDOW(m_newSessionDialog), true);
+            gtk_window_set_modal(GTK_WINDOW(m_newSessionDialog), TRUE);
         }
         m_newSessionNameEntry =
             GTK_ENTRY(gtk_builder_get_object(m_builder,
@@ -164,7 +164,7 @@ void SessionChooserDialog::buildRestoreSessionDialog()
         {
             gtk_window_set_transient_for(GTK_WINDOW(m_restoreSessionDialog),
                                          m_parent);
-            gtk_window_set_modal(GTK_WINDOW(m_restoreSessionDialog), true);
+            gtk_window_set_modal(GTK_WINDOW(m_restoreSessionDialog), TRUE);
         }
         m_sessionList =
             GTK_TREE_VIEW(gtk_builder_get_object(m_builder, "session-list"));

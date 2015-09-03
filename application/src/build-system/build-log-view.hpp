@@ -5,7 +5,7 @@
 #define SMYD_BUILD_LOG_VIEW_HPP
 
 #include "widget/widget.hpp"
-#include "build-job.hpp"
+#include "build-process.hpp"
 #include <string>
 
 namespace Samoyed
@@ -19,17 +19,17 @@ public:
 
     virtual Widget::XmlElement *save() const { return NULL; }
 
-    void startBuild(BuildJob::Action action);
+    void startBuild(BuildProcess::Action action);
 
     void clear();
 
     void addLog(const char *log, int length);
 
-    void onBuildFinished();
+    void onBuildFinished(int exitCode);
 
     void onBuildStopped();
 
-    BuildJob::Action action() const { return m_action; }
+    BuildProcess::Action action() const { return m_action; }
     const char *projectUri() const { return m_projectUri.c_str(); }
     const char *configurationName() const { return m_configName.c_str(); }
 
@@ -47,7 +47,7 @@ private:
 
     std::string m_projectUri;
     std::string m_configName;
-    BuildJob::Action m_action;
+    BuildProcess::Action m_action;
 
     GtkBuilder *m_builder;
     GtkLabel *m_message;
