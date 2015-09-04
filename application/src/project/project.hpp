@@ -84,11 +84,11 @@ public:
     BuildSystem &buildSystem() { return *m_buildSystem; }
     const BuildSystem &buildSystem() const { return *m_buildSystem; }
 
-    virtual ProjectFile *createProjectFile(int type) const;
+    virtual ProjectFile *createFile(int type) const;
 
-    virtual bool addProjectFile(const char *uri, const ProjectFile &data);
+    virtual bool addFile(const char *uri, const ProjectFile &data);
 
-    virtual bool removeProjectFile(const char *uri);
+    virtual bool removeFile(const char *uri);
 
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;

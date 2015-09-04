@@ -30,6 +30,8 @@ GnuBuildSystem::~GnuBuildSystem()
 
 bool GnuBuildSystem::setup()
 {
+    if (!activeConfiguration())
+        createConfiguration();
     return true;
 }
 
@@ -38,21 +40,21 @@ bool GnuBuildSystem::importFile(const char *uri)
     return true;
 }
 
-bool GnuBuildSystem::addProjectFile(const char *uri, const ProjectFile &data)
-{
-    return true;
-}
-
-bool GnuBuildSystem::removeProjectFile(const char *uri)
-{
-    return true;
-}
-
-BuildSystemFile *GnuBuildSystem::createBuildSystemFile(int type) const
+BuildSystemFile *GnuBuildSystem::createFile(int type) const
 {
     if (type == ProjectFile::TYPE_DIRECTORY)
         return new BuildSystemFile;
     return new GnuBuildSystemFile;
+}
+
+bool GnuBuildSystem::addFile(const char *uri, const BuildSystemFile &data)
+{
+    return true;
+}
+
+bool GnuBuildSystem::removeFile(const char *uri)
+{
+    return true;
 }
 
 void GnuBuildSystem::defaultConfiguration(Configuration &config) const

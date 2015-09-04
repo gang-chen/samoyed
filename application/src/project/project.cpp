@@ -701,18 +701,18 @@ bool Project::restore(XmlElement &xmlElement)
     return true;
 }
 
-ProjectFile *Project::createProjectFile(int type) const
+ProjectFile *Project::createFile(int type) const
 {
-    return new ProjectFile(type, m_buildSystem->createBuildSystemFile(type));
+    return new ProjectFile(type, m_buildSystem->createFile(type));
 }
 
-bool Project::addProjectFile(const char *uri, const ProjectFile &data)
+bool Project::addFile(const char *uri, const ProjectFile &data)
 {
-    if (!m_buildSystem->addProjectFile(uri, data))
+    if (!m_buildSystem->addFile(uri, data.buildSystemData()))
         return false;
     if (!m_db->addFile(uri, data))
     {
-        m_buildSystem->removeProjectFile(uri);
+        m_buildSystem->removeFile(uri);
         return false;
     }
     for (Window *window = Application::instance().windows();
@@ -726,9 +726,9 @@ bool Project::addProjectFile(const char *uri, const ProjectFile &data)
     return true;
 }
 
-bool Project::removeProjectFile(const char *uri)
+bool Project::removeFile(const char *uri)
 {
-    if (!m_buildSystem->removeProjectFile(uri))
+    if (!m_buildSystem->removeFile(uri))
         return false;
     if (!m_db->removeFile(uri))
         return false;

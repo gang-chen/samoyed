@@ -28,10 +28,9 @@ public:
     };
 
     BuildProcess(BuildSystem &buildSystem,
+                 const char *configName,
                  const char *commands,
-                 Action action,
-                 const char *projectUri,
-                 const char *configName);
+                 Action action);
 
     ~BuildProcess();
 
@@ -53,10 +52,9 @@ private:
     void onLogViewClosed(Widget &widget);
 
     BuildSystem &m_buildSystem;
+    std::string m_configName;
     std::string m_commands;
     Action m_action;
-    std::string m_projectUri;
-    std::string m_configName;
 
     BuildLogView *m_logView;
     boost::signals2::connection m_logViewClosedConn;

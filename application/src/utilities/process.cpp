@@ -61,9 +61,9 @@ bool Process::run(
             NULL,
             NULL,
             &m_pid,
-            onStdin ? &childStdin : NULL,
-            onStdout ? &childStdout : NULL,
-            onStderr ? &childStderr : NULL,
+            /*onStdin ?*/ &childStdin /*: NULL*/,
+            /*onStdout ?*/ &childStdout /*: NULL*/,
+            /*onStderr ?*/ &childStderr /*: NULL*/,
             error))
     {
         g_strfreev(argv2);
@@ -130,7 +130,6 @@ bool Process::run(
 void Process::stop()
 {
     // Stop watching.
-    g_source_remove(m_exitWatchId);
     if (m_watchingStdin)
     {
         g_source_remove(m_stdinWatchId);
@@ -148,13 +147,17 @@ void Process::stop()
     }
 
     // Terminate the process.
+    if (m_running)
+    {
+        g_source_remove(m_exitWatchId);
 #ifdef OS_WINDOWS
-    TerminateProcess(m_pid, 0);
+        TerminateProcess(m_pid, 0);
 #else
-    kill(m_pid, SIGTERM);
+        kill(m_pid, SIGTERM);
 #endif
-    g_spawn_close_pid(m_pid);
-    m_running = false;
+        g_spawn_close_pid(m_pid);
+        m_running = false;
+    }
 }
 
 GIOStatus Process::closeStdin(GError **error)

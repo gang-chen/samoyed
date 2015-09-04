@@ -58,10 +58,10 @@ public:
                    const char *uriPrefix,
                    const Visitor &visitor);
 
-    int readCompilationOptions(const char *fileUri,
+    int readCompilationOptions(const char *uri,
                                boost::shared_ptr<char> &compilationOpts);
 
-    int writeCompilationOptions(const char *fileUri,
+    int writeCompilationOptions(const char *uri,
                                 const char *compilationOpts);
 
 private:

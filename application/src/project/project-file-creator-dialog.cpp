@@ -23,7 +23,7 @@ ProjectFileCreatorDialog::ProjectFileCreatorDialog(GtkWindow *parent,
                                                    const char *currentDir):
     m_project(project)
 {
-    m_projectFile = project.createProjectFile(type);
+    m_projectFile = project.createFile(type);
     m_projectFileEditor = m_projectFile->createEditor();
     m_projectFileEditor->setChangedCallback(boost::bind(validateInput, this));
 
@@ -53,26 +53,27 @@ ProjectFileCreatorDialog::ProjectFileCreatorDialog(GtkWindow *parent,
     case ProjectFile::TYPE_DIRECTORY:
         gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Directory"));
         break;
-    case ProjectFile::TYPE_GENERIC_FILE:
-        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New File"));
-        break;
     case ProjectFile::TYPE_SOURCE_FILE:
         gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Source File"));
         break;
     case ProjectFile::TYPE_HEADER_FILE:
         gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Header File"));
         break;
-    case ProjectFile::TYPE_GENERIC_TARGET:
-        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Target"));
+    case ProjectFile::TYPE_GENERIC_FILE:
+        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New File"));
         break;
-    case ProjectFile::TYPE_PROGRAM:
-        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Program"));
+    case ProjectFile::TYPE_STATIC_LIBRARY:
+        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Static Library"));
         break;
     case ProjectFile::TYPE_SHARED_LIBRARY:
         gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Shared Library"));
         break;
-    case ProjectFile::TYPE_STATIC_LIBRARY:
-        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Static Library"));
+    case ProjectFile::TYPE_PROGRAM:
+        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Program"));
+        break;
+    case ProjectFile::TYPE_GENERIC_TARGET:
+        gtk_window_set_title(GTK_WINDOW(m_dialog), _("New Target"));
+        break;
     }
 
     gtk_label_set_label(
@@ -105,7 +106,7 @@ boost::shared_ptr<ProjectFile> ProjectFileCreatorDialog::run()
     uri += name;
     g_free(dir);
     m_projectFileEditor->getInput(*m_projectFile);
-    if (!m_project.addProjectFile(uri.c_str(), *m_projectFile))
+    if (!m_project.addFile(uri.c_str(), *m_projectFile))
         return projectFile;
     projectFile.reset(m_projectFile);
     m_projectFile = NULL;
@@ -116,7 +117,7 @@ void ProjectFileCreatorDialog::validateInput()
 {
     gtk_widget_set_sensitive(
         gtk_dialog_get_widget_for_response(m_dialog, GTK_RESPONSE_ACCEPT),
-        m_projectFileEditor->inputValid());
+        *gtk_entry_get_text(m_nameEntry) && m_projectFileEditor->inputValid());
 }
 
 }

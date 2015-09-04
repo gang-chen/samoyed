@@ -63,7 +63,7 @@ ProjectFile *ProjectFile::read(const Project &project,
     data += sizeof(gint32);
     dataLength -= sizeof(gint32);
     type = GINT32_FROM_LE(type);
-    ProjectFile *file = project.createProjectFile(type);
+    ProjectFile *file = project.createFile(type);
     if (!file ||
         !file->readInternally(data, dataLength) ||
         !file->buildSystemData().read(data, dataLength))

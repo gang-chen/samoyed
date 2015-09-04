@@ -16,7 +16,6 @@ namespace Samoyed
 
 class Project;
 class Configuration;
-class ProjectFile;
 class BuildSystemFile;
 class BuildProcess;
 class CompilationOptionsCollector;
@@ -35,7 +34,7 @@ public:
      * Setup the build system for a newly created project, including creating
      * build-system-specific files, and importing existing files, if any.
      */
-    virtual bool setup() { return true; }
+    virtual bool setup();
 
     /**
      * Import an existing file, or recursively all the files in a directory, to
@@ -43,10 +42,12 @@ public:
      */
     virtual bool importFile(const char *uri) { return true; }
 
-    virtual bool addProjectFile(const char *uri, const ProjectFile &data)
+    virtual BuildSystemFile *createFile(int type) const;
+
+    virtual bool addFile(const char *uri, const BuildSystemFile &data)
     { return true; }
 
-    virtual bool removeProjectFile(const char *uri)
+    virtual bool removeFile(const char *uri)
     { return true; }
 
     bool canConfigure() const;
@@ -81,8 +82,6 @@ public:
     Configuration *createConfiguration();
 
     virtual void defaultConfiguration(Configuration &config) const;
-
-    virtual BuildSystemFile *createBuildSystemFile(int type) const;
 
     static BuildSystem *readXmlElement(Project &project,
                                        xmlNodePtr node,

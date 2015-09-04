@@ -10,6 +10,9 @@
 #include "editors/editor.hpp"
 #include "project/project.hpp"
 #include "project/project-creator-dialog.hpp"
+#include "project/project-file.hpp"
+#include "project/project-file-creator-dialog.hpp"
+#include "build-system/build-system.hpp"
 #include "session/session.hpp"
 #include "session/session-management-window.hpp"
 #include "session/preferences-editor.hpp"
@@ -79,31 +82,119 @@ void closeAllProjects(GtkAction *action, Samoyed::Window *window)
     }
 }
 
-void createFile(GtkAction *action, Samoyed::Window *window)
-{
-}
-
 void createDirectory(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_DIRECTORY,
+                   project->uri());
+        dialog.run();
+    }
 }
 
-void createLibrary(GtkAction *action, Samoyed::Window *window)
+void createSourceFile(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_SOURCE_FILE,
+                   project->uri());
+        dialog.run();
+    }
+}
+
+void createHeaderFile(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_HEADER_FILE,
+                   project->uri());
+        dialog.run();
+    }
+}
+
+void createFile(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_GENERIC_FILE,
+                   project->uri());
+        dialog.run();
+    }
+}
+
+void createStaticLibrary(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_STATIC_LIBRARY,
+                   project->uri());
+        dialog.run();
+    }
+}
+
+void createSharedLibrary(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_SHARED_LIBRARY,
+                   project->uri());
+        dialog.run();
+    }
 }
 
 void createProgram(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_PROGRAM,
+                   project->uri());
+        dialog.run();
+    }
+}
+
+void createTarget(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ProjectFileCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   *project,
+                   Samoyed::ProjectFile::TYPE_GENERIC_TARGET,
+                   project->uri());
+        dialog.run();
+    }
 }
 
 void editProperties(GtkAction *action, Samoyed::Window *window)
-{
-}
-
-void setActiveConfiguration(GtkAction *action, Samoyed::Window *window)
-{
-}
-
-void manageConfigurations(GtkAction *action, Samoyed::Window *window)
 {
 }
 
@@ -217,6 +308,42 @@ void indent(GtkAction *action, Samoyed::Window *window)
     window->current().activateAction(*window,
                                      action,
                                      Samoyed::Actions::ACTION_INDENT);
+}
+
+void configureProject(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+        project->buildSystem().configure();
+}
+
+void buildProject(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+        project->buildSystem().build();
+}
+
+void installProject(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+        project->buildSystem().build();
+}
+
+void createConfiguration(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+        project->buildSystem().createConfiguration();
+}
+
+void setActiveConfiguration(GtkAction *action, Samoyed::Window *window)
+{
+}
+
+void manageConfigurations(GtkAction *action, Samoyed::Window *window)
+{
 }
 
 void createWindow(GtkAction *action, Samoyed::Window *window)
@@ -359,11 +486,12 @@ void changeWindowLayout(GtkRadioAction *action,
 const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
 {
     // Top-level.
-    { "session", NULL, N_("_Session"), NULL, NULL, NULL },
+    { "session", NULL, N_("Sessio_n"), NULL, NULL, NULL },
     { "project", NULL, N_("_Project"), NULL, NULL, NULL },
     { "file", NULL, N_("_File"), NULL, NULL, NULL },
     { "edit", NULL, N_("_Edit"), NULL, NULL, NULL },
     { "search", NULL, N_("_Search"), NULL, NULL, NULL },
+    { "build", NULL, N_("_Build"), NULL, NULL, NULL },
     { "view", NULL, N_("_View"), NULL, NULL, NULL },
     { "help", NULL, N_("_Help"), NULL, NULL, NULL },
 
@@ -390,23 +518,25 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Close the current project"), G_CALLBACK(closeProject) },
     { "close-all-projects", NULL, N_("Close _All"), NULL,
       N_("Close all opened projects"), G_CALLBACK(closeAllProjects) },
-    { "create-file", "document-new", N_("New _File..."), NULL,
-      N_("Create a file"), G_CALLBACK(createFile) },
     { "create-directory", NULL, N_("New _Directory..."), NULL,
       N_("Create a directory"), G_CALLBACK(createDirectory) },
-    { "create-library", NULL, N_("New _Library..."), NULL,
-      N_("Create a shared or static library"), G_CALLBACK(createLibrary) },
+    { "create-source-file", NULL, N_("New _Source File..."), NULL,
+      N_("Create a source file"), G_CALLBACK(createSourceFile) },
+    { "create-header-file", NULL, N_("New _Header File..."), NULL,
+      N_("Create a header file"), G_CALLBACK(createHeaderFile) },
+    { "create-file", "document-new", N_("New _File..."), NULL,
+      N_("Create a file"), G_CALLBACK(createFile) },
+    { "create-static-library", NULL, N_("New Static Li_brary..."), NULL,
+      N_("Create a static library"), G_CALLBACK(createStaticLibrary) },
+    { "create-shared-library", NULL, N_("New Shared _Library..."), NULL,
+      N_("Create a shared library"), G_CALLBACK(createSharedLibrary) },
     { "create-program", NULL, N_("New _Program..."), NULL,
       N_("Create a program"), G_CALLBACK(createProgram) },
+    { "create-target", NULL, N_("New _Target..."), NULL,
+      N_("Create a target"), G_CALLBACK(createTarget) },
     { "edit-properties", "document-properties", N_("P_roperties"),
       "<Alt>Return", N_("Edit the properties of the selected object"),
       G_CALLBACK(editProperties) },
-    { "set-active-configuration", NULL, N_("Set Active Confi_guration"), NULL,
-      N_("Set the active configuration of the current project"),
-      G_CALLBACK(setActiveConfiguration) },
-    { "manage-configurations", NULL, N_("_Manage Configurations"), NULL,
-      N_("Manage configurations of the current project"),
-      G_CALLBACK(manageConfigurations) },
 
     // File menu.
     { "open-file", "document-open", N_("_Open..."), "<Control>o",
@@ -437,6 +567,23 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Delete the selected object"), G_CALLBACK(deleteObject) },
     { "indent", "edit-indent", N_("_Indent"), NULL,
       N_("Indent the current line or the selected lines"), G_CALLBACK(indent) },
+
+    // Build menu.
+    { "configure-project", NULL, N_("_Configure"), NULL,
+      N_("Configure the current project"), G_CALLBACK(configureProject) },
+    { "build-project", NULL, N_("_Build"), NULL,
+      N_("Build the current project"), G_CALLBACK(buildProject) },
+    { "install-project", NULL, N_("_Install"), NULL,
+      N_("Install the current project"), G_CALLBACK(installProject) },
+    { "create-configuration", NULL, N_("_New Configuration"), NULL,
+      N_("Create a configuration for the current project"),
+      G_CALLBACK(createConfiguration) },
+    { "set-active-configuration", NULL, N_("Set _Active Configuration"), NULL,
+      N_("Set the active configuration of the current project"),
+      G_CALLBACK(setActiveConfiguration) },
+    { "manage-configurations", NULL, N_("_Manage Configurations"), NULL,
+      N_("Manage configurations of the current project"),
+      G_CALLBACK(manageConfigurations) },
 
     // View menu.
     { "create-window", "window-new", N_("New _Window"), NULL,

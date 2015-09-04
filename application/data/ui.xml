@@ -20,16 +20,18 @@
       <menuitem name="close" action="close-project"/>
       <menuitem name="close-all" action="close-all-projects"/>
       <separator/>
-      <menuitem name="new-file" action="create-file"/>
       <menuitem name="new-directory" action="create-directory"/>
-      <menuitem name="new-library" action="create-library"/>
+      <separator/>
+      <menuitem name="new-source-file" action="create-source-file"/>
+      <menuitem name="new-header-file" action="create-header-file"/>
+      <menuitem name="new-file" action="create-file"/>
+      <separator/>
+      <menuitem name="new-static-library" action="create-static-library"/>
+      <menuitem name="new-shared-library" action="create-shared-library"/>
       <menuitem name="new-program" action="create-program"/>
+      <menuitem name="new-target" action="create-target"/>
       <separator/>
       <menuitem name="properties" action="edit-properties"/>
-      <separator/>
-      <menuitem name="set-active-configuration"
-                action="set-active-configuration"/>
-      <menuitem name="manage-configurations" action="manage-configurations"/>
     </menu>
 
     <menu name="file" action="file">
@@ -56,6 +58,17 @@
     </menu>
 
     <menu name="search" action="search">
+    </menu>
+
+    <menu name="build" action="build">
+      <menuitem name="configure-project" action="configure-project"/>
+      <menuitem name="build-project" action="build-project"/>
+      <menuitem name="install-project" action="install-project"/>
+      <separator/>
+      <menuitem name="new-configuration" action="create-configuration"/>
+      <menuitem name="set-active-configuration"
+                action="set-active-configuration"/>
+      <menuitem name="manage-configurations" action="manage-configurations"/>
     </menu>
 
     <menu name="view" action="view">

@@ -23,13 +23,13 @@ public:
     enum Type
     {
         TYPE_DIRECTORY,
-        TYPE_GENERIC_FILE,
         TYPE_SOURCE_FILE,
         TYPE_HEADER_FILE,
-        TYPE_GENERIC_TARGET,
-        TYPE_PROGRAM,
+        TYPE_GENERIC_FILE,
+        TYPE_STATIC_LIBRARY,
         TYPE_SHARED_LIBRARY,
-        TYPE_STATIC_LIBRARY
+        TYPE_PROGRAM,
+        TYPE_GENERIC_TARGET
     };
 
     class Editor: public boost::noncopyable

@@ -31,35 +31,40 @@ bool Configuration::readXmlElement(xmlNodePtr node,
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
-            m_name = value;
+	    if (value)
+            	m_name = value;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         CONFIGURE_COMMANDS) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
-            m_configCommands = value;
+	    if (value)
+            	m_configCommands = value;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         BUILD_COMMANDS) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
-            m_buildCommands = value;
+	    if (value)
+            	m_buildCommands = value;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         INSTALL_COMMANDS) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
-            m_installCommands = value;
+	    if (value)
+            	m_installCommands = value;
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
                         DRY_BUILD_COMMANDS) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
-            m_dryBuildCommands = value;
+	    if (value)
+            	m_dryBuildCommands = value;
         }
     }
     return true;
@@ -85,6 +90,7 @@ xmlNodePtr Configuration::writeXmlElement() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(DRY_BUILD_COMMANDS),
                     reinterpret_cast<const xmlChar *>(dryBuildCommands()));
+    return node;
 }
 
 }

@@ -11,7 +11,6 @@
 #include "build-process.hpp"
 #include "compilation-options-collector.hpp"
 #include "project/project.hpp"
-#include "project/project-file.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "window/window.hpp"
 #include "application.hpp"
@@ -55,7 +54,8 @@ BuildSystem::BuildSystem(Project &project,
                          const char *extensionId):
     m_project(project),
     m_extensionId(extensionId),
-    m_activeConfig(NULL)
+    m_activeConfig(NULL),
+    m_compOptCollector(NULL)
 {
 }
 
@@ -88,11 +88,6 @@ BuildSystem *BuildSystem::create(Project &project,
     return static_cast<BuildSystemsExtensionPoint &>(Application::instance().
         extensionPointManager().extensionPoint(BUILD_SYSTEMS)).
         activateBuildSystem(project, extensionId);
-}
-
-BuildSystemFile *BuildSystem::createBuildSystemFile(int type) const
-{
-    return new BuildSystemFile();
 }
 
 BuildSystem *BuildSystem::readXmlElement(Project &project,
@@ -186,6 +181,18 @@ xmlNodePtr BuildSystem::writeXmlElement() const
     return node;
 }
 
+bool BuildSystem::setup()
+{
+    if (!activeConfiguration())
+        createConfiguration();
+    return true;
+}
+
+BuildSystemFile *BuildSystem::createFile(int type) const
+{
+    return new BuildSystemFile;
+}
+
 bool BuildSystem::canConfigure() const
 {
     const Configuration *config = activeConfiguration();
@@ -204,10 +211,9 @@ bool BuildSystem::configure()
     if (m_buildJobs.find(config->name()) != m_buildJobs.end())
         return false;
     BuildProcess *job = new BuildProcess(*this,
+                                         config->name(),
                                          config->configureCommands(),
-                                         BuildProcess::ACTION_CONFIGURE,
-                                         project().uri(),
-                                         config->name());
+                                         BuildProcess::ACTION_CONFIGURE);
     m_buildJobs.insert(std::make_pair(config->name(), job));
     if (job->run())
         return true;
@@ -234,10 +240,9 @@ bool BuildSystem::build()
     if (m_buildJobs.find(config->name()) != m_buildJobs.end())
         return false;
     BuildProcess *job = new BuildProcess(*this,
+                                         config->name(),
                                          config->buildCommands(),
-                                         BuildProcess::ACTION_BUILD,
-                                         project().uri(),
-                                         config->name());
+                                         BuildProcess::ACTION_BUILD);
     m_buildJobs.insert(std::make_pair(config->name(), job));
     if (job->run())
         return true;
@@ -264,10 +269,9 @@ bool BuildSystem::install()
     if (m_buildJobs.find(config->name()) != m_buildJobs.end())
         return false;
     BuildProcess *job = new BuildProcess(*this,
+                                         config->name(),
                                          config->installCommands(),
-                                         BuildProcess::ACTION_INSTALL,
-                                         project().uri(),
-                                         config->name());
+                                         BuildProcess::ACTION_INSTALL);
     m_buildJobs.insert(std::make_pair(config->name(), job));
     if (job->run())
         return true;

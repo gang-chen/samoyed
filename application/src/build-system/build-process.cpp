@@ -8,6 +8,7 @@
 #include "build-system.hpp"
 #include "build-log-view.hpp"
 #include "build-log-view-group.hpp"
+#include "project/project.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "window/window.hpp"
 #include "application.hpp"
@@ -38,15 +39,13 @@ namespace Samoyed
 {
 
 BuildProcess::BuildProcess(BuildSystem &buildSystem,
+                           const char *configName,
                            const char *commands,
-                           Action action,
-                           const char *projectUri,
-                           const char *configName):
+                           Action action):
     m_buildSystem(buildSystem),
+    m_configName(configName),
     m_commands(commands),
     m_action(action),
-    m_projectUri(projectUri),
-    m_configName(configName),
     m_logView(NULL)
 {
 }
@@ -63,43 +62,47 @@ BuildProcess::~BuildProcess()
     if (status != G_IO_STATUS_NORMAL)
     {
         if (error)
+        {
             g_warning(_("Samoyed failed to close the pipe connected to the "
                         "stdout of the child process when %s project \"%s\" "
-                        "(%s): %s."),
+                        "with configuration \"%s\": %s."),
                       gettext(actionText2[m_action]),
-                      m_projectUri.c_str(),
+                      m_buildSystem.project().uri(),
                       m_configName.c_str(),
                       error->message);
+            g_error_free(error);
+        }
         else
             g_warning(_("Samoyed failed to close the pipe connected to the "
                         "stdout of the child process when %s project \"%s\" "
-                        "(%s)."),
+                        "with configuration \"%s\"."),
                       gettext(actionText2[m_action]),
-                      m_projectUri.c_str(),
+                      m_buildSystem.project().uri(),
                       m_configName.c_str());
     }
-    g_error_free(error);
     error = NULL;
     status = closeStderr(&error);
     if (status != G_IO_STATUS_NORMAL)
     {
         if (error)
+        {
             g_warning(_("Samoyed failed to close the pipe connected to the "
                         "stderr of the child process when %s project "
-                        "\"%s\" (%s): %s."),
+                        "\"%s\" with configuration \"%s\": %s."),
                       gettext(actionText2[m_action]),
-                      m_projectUri.c_str(),
+                      m_buildSystem.project().uri(),
                       m_configName.c_str(),
                       error->message);
+            g_error_free(error);
+        }
         else
             g_warning(_("Samoyed failed to close the pipe connected to the "
                         "stderr of the child process when %s project \"%s\" "
-                        "(%s)."),
+                        "with configuration \"%s\"."),
                       gettext(actionText2[m_action]),
-                      m_projectUri.c_str(),
+                      m_buildSystem.project().uri(),
                       m_configName.c_str());
     }
-    g_error_free(error);
 
     if (m_logView)
         m_logViewClosedConn.disconnect();
@@ -107,7 +110,7 @@ BuildProcess::~BuildProcess()
 
 bool BuildProcess::run()
 {
-    char *pwd = g_filename_from_uri(m_projectUri.c_str(), NULL, NULL);
+    char *pwd = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
     const char *argv[4];
     boost::shared_ptr<char> shell = findShell();
     argv[0] = shell.get();
@@ -132,9 +135,9 @@ bool BuildProcess::run()
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to start a child process to %s project \"%s\" "
-              "(%s)."),
+              "with configuration \"%s\"."),
             gettext(actionText[m_action]),
-            m_projectUri.c_str(),
+            m_buildSystem.project().uri(),
             m_configName.c_str());
         if (error)
         {
@@ -151,7 +154,7 @@ bool BuildProcess::run()
     // Show the build log view.
     BuildLogViewGroup *group =
         Application::instance().currentWindow()->openBuildLogViewGroup();
-    m_logView = group->openBuildLogView(m_projectUri.c_str(),
+    m_logView = group->openBuildLogView(m_buildSystem.project().uri(),
                                         m_configName.c_str());
     m_logView->startBuild(m_action);
     m_logView->clear();
@@ -204,32 +207,38 @@ void BuildProcess::onStdout(Process &process,
         if (status == G_IO_STATUS_ERROR)
         {
             if (error)
+            {
                 g_warning(_("Samoyed failed to read the stdout of the child "
-                            "process when %s project \"%s\" (%s): %s."),
+                            "process when %s project \"%s\" with configuration "
+                            "\"%s\": %s."),
                             gettext(actionText2[proc.m_action]),
-                            proc.m_projectUri.c_str(),
+                            proc.m_buildSystem.project().uri(),
                             proc.m_configName.c_str(),
                             error->message);
+                g_error_free(error);
+            }
             else
                 g_warning(_("Samoyed failed to read the stdout of the child "
-                            "process when %s project \"%s\" (%s)."),
+                            "process when %s project \"%s\" with configuration "
+                            "\"%s\"."),
                             gettext(actionText2[proc.m_action]),
-                            proc.m_projectUri.c_str(),
+                            proc.m_buildSystem.project().uri(),
                             proc.m_configName.c_str());
         }
-        g_error_free(error);
     }
     if (condition & G_IO_ERR)
         g_warning(_("Samoyed got a G_IO_ERR error on the stdout of the child "
-                    "process when %s project \"%s\" (%s)."),
+                    "process when %s project \"%s\" with configuration "
+                    "\"%s\"."),
                   gettext(actionText2[proc.m_action]),
-                  proc.m_projectUri.c_str(),
+                  proc.m_buildSystem.project().uri(),
                   proc.m_configName.c_str());
     if (condition & G_IO_NVAL)
         g_warning(_("Samoyed got a G_IO_NVAL error on the stdout of the child "
-                    "process when %s project \"%s\" (%s)."),
+                    "process when %s project \"%s\" with configuration "
+                    "\"%s\"."),
                   gettext(actionText2[proc.m_action]),
-                  proc.m_projectUri.c_str(),
+                  proc.m_buildSystem.project().uri(),
                   proc.m_configName.c_str());
 }
 
@@ -261,32 +270,38 @@ void BuildProcess::onStderr(Process &process,
         if (status == G_IO_STATUS_ERROR)
         {
             if (error)
+            {
                 g_warning(_("Samoyed failed to read the stderr of the child "
-                            "process when %s project \"%s\" (%s): %s."),
+                            "process when %s project \"%s\" with configuration "
+                            "\"%s\": %s."),
                             gettext(actionText2[proc.m_action]),
-                            proc.m_projectUri.c_str(),
+                            proc.m_buildSystem.project().uri(),
                             proc.m_configName.c_str(),
                             error->message);
+                g_error_free(error);
+            }
             else
                 g_warning(_("Samoyed failed to read the stderr of the child "
-                            "process when %s project \"%s\" (%s)."),
+                            "process when %s project \"%s\" with configuration "
+                            "\"%s\"."),
                             gettext(actionText2[proc.m_action]),
-                            proc.m_projectUri.c_str(),
+                            proc.m_buildSystem.project().uri(),
                             proc.m_configName.c_str());
         }
-        g_error_free(error);
     }
     if (condition & G_IO_ERR)
         g_warning(_("Samoyed got a G_IO_ERR error on the stderr of the child "
-                    "process when %s project \"%s\" (%s)."),
+                    "process when %s project \"%s\" with configuration "
+                    "\"%s\"."),
                   gettext(actionText2[proc.m_action]),
-                  proc.m_projectUri.c_str(),
+                  proc.m_buildSystem.project().uri(),
                   proc.m_configName.c_str());
     if (condition & G_IO_NVAL)
         g_warning(_("Samoyed got a G_IO_NVAL error on the stderr of the child "
-                    "process when %s project \"%s\" (%s)."),
+                    "process when %s project \"%s\" with configuration "
+                    "\"%s\"."),
                   gettext(actionText2[proc.m_action]),
-                  proc.m_projectUri.c_str(),
+                  proc.m_buildSystem.project().uri(),
                   proc.m_configName.c_str());
 }
 

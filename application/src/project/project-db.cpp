@@ -272,4 +272,34 @@ END:
     return error;
 }
 
+int
+ProjectDb::readCompilationOptions(const char *uri,
+                                  boost::shared_ptr<char> &compilationOpts)
+{
+    DBT key, data;
+    memset(&key, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uri);
+    key.size = strlen(uri);
+    data.flags = DB_DBT_MALLOC;
+    int error = m_fileTable->get(m_fileTable, NULL, &key, &data, 0);
+    if (error)
+        return error;
+    compilationOpts.reset(static_cast<char *>(data.data), free);
+    return error;
+}
+
+int ProjectDb::writeCompilationOptions(const char *uri,
+                                       const char *compilationOpts)
+{
+    DBT key, data;
+    memset(&key, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+    key.data = const_cast<char *>(uri);
+    key.size = strlen(uri);
+    data.data = const_cast<char *>(compilationOpts);
+    data.size = strlen(compilationOpts) + 1;
+    return m_fileTable->put(m_fileTable, NULL, &key, &data, 0);
+}
+
 }

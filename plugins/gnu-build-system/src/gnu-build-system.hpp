@@ -23,11 +23,11 @@ public:
 
     virtual bool importFile(const char *uri);
 
-    virtual bool addProjectFile(const char *uri, const ProjectFile &data);
+    virtual BuildSystemFile *createFile(int type) const;
 
-    virtual bool removeProjectFile(const char *uri);
+    virtual bool addFile(const char *uri, const BuildSystemFile &data);
 
-    virtual BuildSystemFile *createBuildSystemFile(int type) const;
+    virtual bool removeFile(const char *uri);
 
     virtual void defaultConfiguration(Configuration &config) const;
 };
