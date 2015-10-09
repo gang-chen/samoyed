@@ -6,8 +6,8 @@
 
 #include <string.h>
 #include <string>
-#include <boost/shared_ptr.hpp>
 #include <glib.h>
+#include <gio/gio.h>
 #include <gtk/gtk.h>
 
 #define SAMOYED_DEFINE_DOUBLY_LINKED(Class) \
@@ -149,7 +149,26 @@ const char **characterEncodings();
 
 void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...);
 
-boost::shared_ptr<char> findShell();
+enum SpawnSubprocessFlag
+{
+    SPAWN_SUBPROCESS_FLAG_NONE,
+    SPAWN_SUBPROCESS_FLAG_STDIN_PIPE        = 1,
+    SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE       = 1 << 1,
+    SPAWN_SUBPROCESS_FLAG_STDOUT_SILENCE    = 1 << 2,
+    SPAWN_SUBPROCESS_FLAG_STDERR_PIPE       = 1 << 3,
+    SPAWN_SUBPROCESS_FLAG_STDERR_SILENCE    = 1 << 4,
+    SPAWN_SUBPROCESS_FLAG_STDERR_MERGE      = 1 << 5
+};
+
+bool spawnSubprocess(const char *cwd,
+                     char **argv,
+                     char **env,
+                     unsigned int flags,
+                     GPid *subprocessId,
+                     GOutputStream **stdinPipe,
+                     GInputStream **stdoutPipe,
+                     GInputStream **stderrPipe,
+                     GError **error);
 
 }
 

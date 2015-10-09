@@ -17,7 +17,7 @@ namespace Samoyed
 class Project;
 class Configuration;
 class BuildSystemFile;
-class BuildProcess;
+class Builder;
 class CompilationOptionsCollector;
 
 class BuildSystem: public boost::noncopyable
@@ -65,7 +65,7 @@ public:
 
     void onBuildFinished(const char *configName);
 
-    void onCompilationOptionsCollectorFinished();
+    void onCompilationOptionsCollectionFinished();
 
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
@@ -100,7 +100,7 @@ private:
 
     Configuration *m_activeConfig;
 
-    std::map<std::string, BuildProcess *> m_buildJobs;
+    std::map<std::string, Builder *> m_builders;
 
     CompilationOptionsCollector *m_compOptCollector;
 };

@@ -664,8 +664,7 @@ bool Window::build(const Configuration &config)
     std::string uiFile(Application::instance().dataDirectoryName());
     uiFile += G_DIR_SEPARATOR_S "ui.xml";
     GError *error = NULL;
-    gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), &error);
-    if (error)
+    if (!gtk_ui_manager_add_ui_from_file(m_uiManager, uiFile.c_str(), &error))
     {
         GtkWidget *dialog;
         dialog = gtk_message_dialog_new(

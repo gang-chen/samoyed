@@ -3,7 +3,6 @@ noinst_LTLIBRARIES = libutilities.la
 libutilities_la_SOURCES = \
     lock-file.cpp \
     miscellaneous.cpp \
-    process.cpp \
     property-tree.cpp \
     raw-file-loader.cpp \
     signal.cpp \
@@ -15,7 +14,6 @@ libutilities_la_SOURCES = \
     file-saver.hpp \
     lock-file.hpp \
     miscellaneous.hpp \
-    process.hpp \
     property-tree.hpp \
     raw-file-loader.hpp \
     scheduler.hpp \

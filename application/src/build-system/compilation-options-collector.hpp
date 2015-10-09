@@ -4,15 +4,17 @@
 #ifndef SMYD_COMPILATION_OPTIONS_COLLECTOR_HPP
 #define SMYD_COMPILATION_OPTIONS_COLLECTOR_HPP
 
-#include "utilities/process.hpp"
 #include <string>
+#include <boost/utility.hpp>
+#include <glib.h>
+#include <gio/gio.h>
 
 namespace Samoyed
 {
 
 class BuildSystem;
 
-class CompilationOptionsCollector: public Process
+class CompilationOptionsCollector: public boost::noncopyable
 {
 public:
     CompilationOptionsCollector(BuildSystem &buildSystem,
@@ -20,17 +22,29 @@ public:
 
     ~CompilationOptionsCollector();
 
+    bool running() const;
+
     bool run();
 
-private:
-    static void onFinished(Process &process, int exitCode);
+    void stop();
 
-    static void onStdout(Process &process,
-                         GIOChannel *channel,
-                         int condition);
+private:
+    static void onProcessExited(GPid processId,
+                                gint status,
+                                gpointer collector);
+
+    static void onDataRead(GObject *stream,
+                           GAsyncResult *result,
+                           gpointer param);
 
     BuildSystem &m_buildSystem;
     std::string m_commands;
+
+    bool m_processRunning;
+    GPid m_processId;
+    guint m_processWatchId;
+    GInputStream *m_stdoutPipe;
+    GCancellable *m_cancelReadingStdout;
 };
 
 }

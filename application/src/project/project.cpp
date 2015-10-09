@@ -164,7 +164,7 @@ Project *Project::create(const char *uri,
     xmlUri += "/samoyed-project.xml";
     GError *error = NULL;
     char *xmlFileName = g_filename_from_uri(xmlUri.c_str(), NULL, &error);
-    if (error)
+    if (!xmlFileName)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?
@@ -368,7 +368,7 @@ Project *Project::open(const char *uri)
     xmlUri += "/samoyed-project.xml";
     GError *error = NULL;
     char *xmlFileName = g_filename_from_uri(xmlUri.c_str(), NULL, &error);
-    if (error)
+    if (!xmlFileName)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?
@@ -528,7 +528,7 @@ bool Project::finishClosing()
     xmlUri += "/samoyed-project.xml";
     GError *error = NULL;
     char *xmlFileName = g_filename_from_uri(xmlUri.c_str(), NULL, &error);
-    if (error)
+    if (!xmlFileName)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?

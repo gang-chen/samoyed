@@ -607,7 +607,7 @@ void PluginManager::scanPlugins(const char *pluginsDirName)
 {
     GError *error = NULL;
     GDir *dir = g_dir_open(pluginsDirName, 0, &error);
-    if (error)
+    if (!dir)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             NULL,

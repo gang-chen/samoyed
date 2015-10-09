@@ -8,7 +8,7 @@
 #include "configuration.hpp"
 #include "build-system-file.hpp"
 #include "build-systems-extension-point.hpp"
-#include "build-process.hpp"
+#include "builder.hpp"
 #include "compilation-options-collector.hpp"
 #include "project/project.hpp"
 #include "plugin/extension-point-manager.hpp"
@@ -61,9 +61,9 @@ BuildSystem::BuildSystem(Project &project,
 
 BuildSystem::~BuildSystem()
 {
-    std::map<std::string, BuildProcess *>::iterator buildJobIt;
-    while ((buildJobIt = m_buildJobs.begin()) != m_buildJobs.end())
-        stopBuild(buildJobIt->first.c_str());
+    std::map<std::string, Builder *>::iterator builderIt;
+    while ((builderIt = m_builders.begin()) != m_builders.end())
+        stopBuild(builderIt->first.c_str());
 
     if (m_compOptCollector)
     {
@@ -198,27 +198,25 @@ bool BuildSystem::canConfigure() const
     const Configuration *config = activeConfiguration();
     if (!config || *config->configureCommands() == '\0')
         return false;
-    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
+    if (m_builders.find(config->name()) != m_builders.end())
         return false;
     return true;
 }
 
 bool BuildSystem::configure()
 {
+    if (!canConfigure())
+        return false;
     Configuration *config = activeConfiguration();
-    if (!config)
-        return false;
-    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
-        return false;
-    BuildProcess *job = new BuildProcess(*this,
-                                         config->name(),
-                                         config->configureCommands(),
-                                         BuildProcess::ACTION_CONFIGURE);
-    m_buildJobs.insert(std::make_pair(config->name(), job));
-    if (job->run())
+    Builder *builder = new Builder(*this,
+                                   config->name(),
+                                   config->configureCommands(),
+                                   Builder::ACTION_CONFIGURE);
+    m_builders.insert(std::make_pair(config->name(), builder));
+    if (builder->run())
         return true;
-    m_buildJobs.erase(config->name());
-    delete job;
+    m_builders.erase(config->name());
+    delete builder;
     return false;
 }
 
@@ -227,27 +225,25 @@ bool BuildSystem::canBuild() const
     const Configuration *config = activeConfiguration();
     if (!config || *config->buildCommands() == '\0')
         return false;
-    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
+    if (m_builders.find(config->name()) != m_builders.end())
         return false;
     return true;
 }
 
 bool BuildSystem::build()
 {
+    if (!canBuild())
+        return false;
     Configuration *config = activeConfiguration();
-    if (!config)
-        return false;
-    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
-        return false;
-    BuildProcess *job = new BuildProcess(*this,
-                                         config->name(),
-                                         config->buildCommands(),
-                                         BuildProcess::ACTION_BUILD);
-    m_buildJobs.insert(std::make_pair(config->name(), job));
-    if (job->run())
+    Builder *builder = new Builder(*this,
+                                   config->name(),
+                                   config->buildCommands(),
+                                   Builder::ACTION_BUILD);
+    m_builders.insert(std::make_pair(config->name(), builder));
+    if (builder->run())
         return true;
-    m_buildJobs.erase(config->name());
-    delete job;
+    m_builders.erase(config->name());
+    delete builder;
     return false;
 }
 
@@ -256,34 +252,34 @@ bool BuildSystem::canInstall() const
     const Configuration *config = activeConfiguration();
     if (!config || *config->installCommands() == '\0')
         return false;
-    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
+    if (m_builders.find(config->name()) != m_builders.end())
         return false;
     return true;
 }
 
 bool BuildSystem::install()
 {
+    if (!canInstall())
+        return false;
     Configuration *config = activeConfiguration();
-    if (!config)
-        return false;
-    if (m_buildJobs.find(config->name()) != m_buildJobs.end())
-        return false;
-    BuildProcess *job = new BuildProcess(*this,
-                                         config->name(),
-                                         config->installCommands(),
-                                         BuildProcess::ACTION_INSTALL);
-    m_buildJobs.insert(std::make_pair(config->name(), job));
-    if (job->run())
+    Builder *builder = new Builder(*this,
+                                   config->name(),
+                                   config->installCommands(),
+                                   Builder::ACTION_INSTALL);
+    m_builders.insert(std::make_pair(config->name(), builder));
+    if (builder->run())
         return true;
-    m_buildJobs.erase(config->name());
-    delete job;
+    m_builders.erase(config->name());
+    delete builder;
     return false;
 }
 
 bool BuildSystem::collectCompilationOptions()
 {
     Configuration *config = activeConfiguration();
-    if (!config)
+    if (!config || *config->dryBuildCommands() == '\0')
+        return false;
+    if (m_compOptCollector)
         return false;
     m_compOptCollector =
         new CompilationOptionsCollector(*this,
@@ -297,28 +293,28 @@ bool BuildSystem::collectCompilationOptions()
 
 void BuildSystem::stopBuild(const char *configName)
 {
-    std::map<std::string, BuildProcess *>::iterator it =
-        m_buildJobs.find(configName);
-    if (it != m_buildJobs.end())
+    std::map<std::string, Builder *>::iterator it =
+        m_builders.find(configName);
+    if (it != m_builders.end())
     {
         it->second->stop();
         delete it->second;
-        m_buildJobs.erase(it);
+        m_builders.erase(it);
     }
 }
 
 void BuildSystem::onBuildFinished(const char *configName)
 {
-    std::map<std::string, BuildProcess *>::iterator it =
-        m_buildJobs.find(configName);
-    if (it != m_buildJobs.end())
+    std::map<std::string, Builder *>::iterator it =
+        m_builders.find(configName);
+    if (it != m_builders.end())
     {
         delete it->second;
-        m_buildJobs.erase(it);
+        m_builders.erase(it);
     }
 }
 
-void BuildSystem::onCompilationOptionsCollectorFinished()
+void BuildSystem::onCompilationOptionsCollectionFinished()
 {
     delete m_compOptCollector;
     m_compOptCollector = NULL;

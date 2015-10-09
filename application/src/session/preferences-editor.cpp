@@ -23,6 +23,18 @@ namespace
 
 const double DEFAULT_SIZE_RATIO = 0.5;
 
+struct CategoryPageSetupParam
+{
+    boost::shared_ptr<Samoyed::PreferencesEditor *> editorPointer;
+    GtkWidget *grid;
+    CategoryPageSetupParam(
+        const boost::shared_ptr<Samoyed::PreferencesEditor *> &e,
+        GtkWidget *g):
+        editorPointer(e),
+        grid(g)
+    {}
+};
+
 }
 
 namespace Samoyed
@@ -62,27 +74,31 @@ void PreferencesEditor::registerPreferences(const char *category,
 
 gboolean PreferencesEditor::setupCategoryPage(gpointer param)
 {
-    std::pair<PreferencesEditor *, GtkWidget *> *p =
-        static_cast<std::pair<PreferencesEditor *, GtkWidget *> *>(param);
-    gtk_container_remove(GTK_CONTAINER(p->second),
-                         gtk_grid_get_child_at(GTK_GRID(p->second), 0, 0));
-    GtkWidget *c = gtk_widget_get_parent(gtk_widget_get_parent(p->second));
-    GtkWidget *n = gtk_bin_get_child(GTK_BIN(p->first->m_window));
-    int i = gtk_notebook_page_num(GTK_NOTEBOOK(n), c);
-    for (std::vector<Setup>::iterator it =
-            s_categories[i].preferences.begin();
-         it != s_categories[i].preferences.end();
-         ++it)
-        (*it)(GTK_GRID(p->second));
-    static_cast<PreferencesExtensionPoint &>(Application::instance().
-        extensionPointManager().extensionPoint(PREFERENCES)).
-        setupPreferencesEditor(s_categories[i].id.c_str(),
-                               GTK_GRID(p->second));
+    CategoryPageSetupParam *p = static_cast<CategoryPageSetupParam *>(param);
+    PreferencesEditor *editor = *p->editorPointer;
+    if (editor)
+    {
+        gtk_container_remove(GTK_CONTAINER(p->grid),
+                             gtk_grid_get_child_at(GTK_GRID(p->grid), 0, 0));
+        GtkWidget *c = gtk_widget_get_parent(gtk_widget_get_parent(p->grid));
+        GtkWidget *n = gtk_bin_get_child(GTK_BIN(editor->m_window));
+        int i = gtk_notebook_page_num(GTK_NOTEBOOK(n), c);
+        for (std::vector<Setup>::iterator it =
+                s_categories[i].preferences.begin();
+             it != s_categories[i].preferences.end();
+             ++it)
+            (*it)(GTK_GRID(p->grid));
+        static_cast<PreferencesExtensionPoint &>(Application::instance().
+            extensionPointManager().extensionPoint(PREFERENCES)).
+            setupPreferencesEditor(s_categories[i].id.c_str(),
+                                   GTK_GRID(p->grid));
+    }
     delete p;
     return FALSE;
 }
 
-PreferencesEditor::PreferencesEditor()
+PreferencesEditor::PreferencesEditor():
+    m_weakReference(new PreferencesEditor *(this))
 {
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
@@ -108,8 +124,7 @@ PreferencesEditor::PreferencesEditor()
                                        CONTAINER_BORDER_WIDTH);
         gtk_grid_set_row_spacing(GTK_GRID(grid), CONTAINER_SPACING);
         g_idle_add(setupCategoryPage,
-                   new std::pair<PreferencesEditor *, GtkWidget *>(this,
-                                                                   grid));
+                   new CategoryPageSetupParam(m_weakReference, grid));
     }
     GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(m_window));
     int width = gdk_screen_get_width(screen) * DEFAULT_SIZE_RATIO;
@@ -124,6 +139,7 @@ PreferencesEditor::PreferencesEditor()
 PreferencesEditor::~PreferencesEditor()
 {
     gtk_widget_destroy(m_window);
+    *m_weakReference = NULL;
 }
 
 void PreferencesEditor::show()

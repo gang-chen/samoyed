@@ -22,14 +22,14 @@ g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST \
 #include <string.h>
 #include <string>
 #ifdef OS_WINDOWS
+# define UNICODE
+# define _UNICODE
 # include <windows.h>
-# include <winsock2.h>
+# include <gio/gwin32inputstream.h>
+# include <gio/gwin32outputstream.h>
 #else
-# include <sys/types.h>
-# include <pwd.h>
 # include <unistd.h>
 #endif
-#include <boost/shared_ptr.hpp>
 #include <glib.h>
 #ifdef SMYD_MISCELLANEOUS_UNIT_TEST
 # define _(T) T
@@ -103,7 +103,101 @@ const char *charEncodings[] =
 bool charEncodingsTranslated = false;
 
 #ifdef OS_WINDOWS
-std::string foundShell;
+
+gchar *
+protect_argv_string (const gchar *string)
+{
+  const gchar *p = string;
+  gchar *retval, *q;
+  gint len = 0;
+  gboolean need_dblquotes = FALSE;
+  while (*p)
+    {
+      if (*p == ' ' || *p == '\t')
+	need_dblquotes = TRUE;
+      else if (*p == '"')
+	len++;
+      else if (*p == '\\')
+	{
+	  const gchar *pp = p;
+	  while (*pp && *pp == '\\')
+	    pp++;
+	  if (*pp == '"')
+	    len++;
+	}
+      len++;
+      p++;
+    }
+
+  q = retval = (gchar *) g_malloc (len + need_dblquotes*2 + 1);
+  p = string;
+
+  if (need_dblquotes)
+    *q++ = '"';
+
+  while (*p)
+    {
+      if (*p == '"')
+	*q++ = '\\';
+      else if (*p == '\\')
+	{
+	  const gchar *pp = p;
+	  while (*pp && *pp == '\\')
+	    pp++;
+	  if (*pp == '"')
+	    *q++ = '\\';
+	}
+      *q++ = *p;
+      p++;
+    }
+
+  if (need_dblquotes)
+    *q++ = '"';
+  *q++ = '\0';
+
+  return retval;
+}
+
+gint
+protect_argv (gchar  **argv,
+	      gchar ***new_argv)
+{
+  gint i;
+  gint argc = 0;
+
+  while (argv[argc])
+    ++argc;
+  *new_argv = g_new (gchar *, argc+1);
+
+  /* Quote each argv element if necessary, so that it will get
+   * reconstructed correctly in the C runtime startup code.  Note that
+   * the unquoting algorithm in the C runtime is really weird, and
+   * rather different than what Unix shells do. See stdargv.c in the C
+   * runtime sources (in the Platform SDK, in src/crt).
+   *
+   * Note that an new_argv[0] constructed by this function should
+   * *not* be passed as the filename argument to a spawn* or exec*
+   * family function. That argument should be the real file name
+   * without any quoting.
+   */
+  for (i = 0; i < argc; i++)
+    (*new_argv)[i] = protect_argv_string (argv[i]);
+
+  (*new_argv)[argc] = NULL;
+
+  return argc;
+}
+
+#else
+
+void mergeStderr(gpointer d)
+{
+    gint result;
+    do
+        result = dup2(1, 2);
+    while (result == -1 && errno == EINTR);
+}
+
 #endif
 
 }
@@ -129,11 +223,7 @@ bool removeFileOrDirectory(const char *name, GError **error)
     {
         if (g_unlink(name))
         {
-            if (error)
-                g_set_error_literal(error,
-                                    G_FILE_ERROR,
-                                    errno,
-                                    g_strerror(errno));
+            g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
             return false;
         }
         return true;
@@ -160,8 +250,7 @@ bool removeFileOrDirectory(const char *name, GError **error)
     g_dir_close(dir);
     if (g_rmdir(name))
     {
-        if (error)
-            g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
+        g_set_error_literal(error, G_FILE_ERROR, errno, g_strerror(errno));
         return false;
     }
     return true;
@@ -211,37 +300,413 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
     gtk_box_pack_end(GTK_BOX(box), expander, TRUE, TRUE, 0);
 }
 
-boost::shared_ptr<char> findShell()
+bool spawnSubprocess(const char *cwd,
+                     char **argv,
+                     char **env,
+                     unsigned int flags,
+                     GPid *subprocessId,
+                     GOutputStream **stdinPipe,
+                     GInputStream **stdoutPipe,
+                     GInputStream **stderrPipe,
+                     GError **error)
 {
 #ifdef OS_WINDOWS
-    if (foundShell.empty())
+
+    SECURITY_ATTRIBUTES secAttr;
+
+    HANDLE stdinReader = NULL, stdinWriter = NULL,
+           stdoutReader = NULL, stdoutWriter = NULL,
+           stderrReader = NULL, stderrWriter = NULL;
+
+    GError *convError = NULL;
+    wchar_t *wcwd = NULL;
+    wchar_t *wargv0 = NULL;
+    char **protectedArgv, *protectedArgvStr;
+    wchar_t *wargv = NULL;
+    wchar_t *wenv = NULL, *we;
+    GArray *wenv_arr;
+    int i;
+
+    STARTUPINFO startInfo;
+    PROCESS_INFORMATION procInfo;
+
+    ZeroMemory(&secAttr, sizeof(SECURITY_ATTRIBUTES));
+    secAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    secAttr.bInheritHandle = TRUE;
+    secAttr.lpSecurityDescriptor = NULL;
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDIN_PIPE)
     {
-        char *instDir =
-            g_win32_get_package_installation_directory_of_module(NULL);
-        foundShell = instDir;
-        foundShell += "\\bin\\sh.exe";
-        if (!g_file_test(foundShell.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+        if (!CreatePipe(&stdinReader, &stdinWriter, &secAttr, 0) ||
+            !SetHandleInformation(stdinWriter, HANDLE_FLAG_INHERIT, 0))
         {
-            foundShell = instDir;
-            foundShell += "\\sh.exe";
-            if (!g_file_test(foundShell.c_str(), G_FILE_TEST_IS_EXECUTABLE))
-                foundShell = "C:\\Windows\\System32\\cmd.exe";
+            g_set_error(error,
+                        G_SPAWN_ERROR,
+                        G_SPAWN_ERROR_FAILED,
+                        _("Failed to create stdin pipe (error code %d)"),
+                        GetLastError());
+            goto ERROR_OUT;
         }
-        g_free(instDir);
     }
-    return boost::shared_ptr<char>(strdup(foundShell.c_str()), free);
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE)
+    {
+        if (!CreatePipe(&stdoutReader, &stdoutWriter, &secAttr, 0) ||
+            !SetHandleInformation(stdoutReader, HANDLE_FLAG_INHERIT, 0))
+        {
+            g_set_error(error,
+                        G_SPAWN_ERROR,
+                        G_SPAWN_ERROR_FAILED,
+                        _("Failed to create stdout pipe (error code %d)"),
+                        GetLastError());
+            goto ERROR_OUT;
+        }
+    }
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDERR_PIPE)
+    {
+        if (!CreatePipe(&stderrReader, &stderrWriter, &secAttr, 0) ||
+            !SetHandleInformation(stderrReader, HANDLE_FLAG_INHERIT, 0))
+        {
+            g_set_error(error,
+                        G_SPAWN_ERROR,
+                        G_SPAWN_ERROR_FAILED,
+                        _("Failed to create stdout pipe (error code %d)"),
+                        GetLastError());
+            goto ERROR_OUT;
+        }
+    }
+
+    if (cwd)
+    {
+        wcwd = reinterpret_cast<wchar_t *>(
+            g_utf8_to_utf16(cwd, -1, NULL, NULL, &convError));
+        if (!wcwd)
+        {
+            g_set_error(error,
+                        G_SPAWN_ERROR,
+                        G_SPAWN_ERROR_FAILED,
+                        _("Invalid working directory: %s"),
+                        convError->message);
+            g_error_free(convError);
+            goto ERROR_OUT;
+        }
+    }
+    wargv0 = reinterpret_cast<wchar_t *>(
+        g_utf8_to_utf16(argv[0], -1, NULL, NULL, &convError));
+    if (!wargv0)
+    {
+        g_set_error(error,
+                    G_SPAWN_ERROR,
+                    G_SPAWN_ERROR_FAILED,
+                    _("Invalid program name: %s"),
+                    convError->message);
+        g_error_free(convError);
+        goto ERROR_OUT;
+    }
+    protect_argv(argv, &protectedArgv);
+    protectedArgvStr = g_strjoinv(" ", protectedArgv);
+    g_strfreev(protectedArgv);
+    wargv = reinterpret_cast<wchar_t *>(
+        g_utf8_to_utf16(protectedArgvStr, -1, NULL, NULL, &convError));
+    g_free(protectedArgvStr);
+    if (!wargv)
+    {
+        g_set_error(error,
+                    G_SPAWN_ERROR,
+                    G_SPAWN_ERROR_FAILED,
+                    _("Invalid argument vector: %s"),
+                    convError->message);
+        g_error_free(convError);
+        goto ERROR_OUT;
+    }
+    if (env)
+    {
+        wenv_arr = g_array_new(FALSE, FALSE, sizeof(wchar_t));
+        for (i = 0; env[i]; i++)
+        {
+            we = reinterpret_cast<wchar_t *>(
+                g_utf8_to_utf16(env[i], -1, NULL, NULL, &convError));
+            if (!we)
+            {
+                g_set_error(error,
+                            G_SPAWN_ERROR,
+                            G_SPAWN_ERROR_FAILED,
+                            _("Invalid environment: %s"),
+                            convError->message);
+                g_error_free(convError);
+                g_array_free(wenv_arr, TRUE);
+                goto ERROR_OUT;
+            }
+            g_array_append_vals(wenv_arr, we, wcslen(we) + 1);
+            g_free(we);
+        }
+        g_array_append_vals(wenv_arr, L"", 1);
+        wenv = reinterpret_cast<wchar_t *>(g_array_free(wenv_arr, FALSE));
+    }
+
+    ZeroMemory(&startInfo, sizeof(STARTUPINFO));
+    startInfo.cb = sizeof(STARTUPINFO);
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDIN_PIPE)
+        startInfo.hStdInput = stdinReader;
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE)
+        startInfo.hStdOutput = stdoutWriter;
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDERR_PIPE)
+        startInfo.hStdError = stderrWriter;
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDERR_MERGE)
+        startInfo.hStdError = stdoutWriter;
+    startInfo.wShowWindow = SW_HIDE;
+    startInfo.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    ZeroMemory(&procInfo, sizeof(PROCESS_INFORMATION));
+
+    if (!CreateProcess(wargv0,
+                       wargv,
+                       NULL,
+                       NULL,
+                       TRUE,
+                       CREATE_NEW_CONSOLE,
+                       wenv,
+                       wcwd,
+                       &startInfo,
+                       &procInfo))
+    {
+        g_set_error(error,
+                    G_SPAWN_ERROR,
+                    G_SPAWN_ERROR_FAILED,
+                    _("Failed to execute child process \"%s\" (error code %d)"),
+                    argv[0],
+                    GetLastError());
+        goto ERROR_OUT;
+    }
+    g_free(wcwd);
+    g_free(wargv0);
+    g_free(wargv);
+    g_free(wenv);
+
+    if (subprocessId)
+        *subprocessId = procInfo.hProcess;
+    else
+        CloseHandle(procInfo.hProcess);
+    CloseHandle(procInfo.hThread);
+
+    if (stdinReader)
+        CloseHandle(stdinReader);
+    if (stdinPipe)
+    {
+        if (stdinWriter)
+            *stdinPipe = g_win32_output_stream_new(stdinWriter, TRUE);
+        else
+            *stdinPipe = NULL;
+    }
+    else if (stdinWriter)
+        CloseHandle(stdinWriter);
+    if (stdoutWriter)
+        CloseHandle(stdoutWriter);
+    if (stdoutPipe)
+    {
+        if (stdoutReader)
+            *stdoutPipe = g_win32_input_stream_new(stdoutReader, TRUE);
+        else
+            *stdoutPipe = NULL;
+    }
+    else if (stdoutReader)
+        CloseHandle(stdoutReader);
+    if (stderrWriter)
+        CloseHandle(stderrWriter);
+    if (stderrPipe)
+    {
+        if (stderrReader)
+            *stderrPipe = g_win32_input_stream_new(stderrReader, TRUE);
+        else
+            *stderrPipe = NULL;
+    }
+    else if (stderrReader)
+        CloseHandle(stderrReader);
+    return true;
+
+ERROR_OUT:
+    if (stdinReader)
+        CloseHandle(stdinReader);
+    if (stdinWriter)
+        CloseHandle(stdinWriter);
+    if (stdoutReader)
+        CloseHandle(stdoutReader);
+    if (stdoutWriter)
+        CloseHandle(stdoutWriter);
+    if (stderrReader)
+        CloseHandle(stderrReader);
+    if (stderrWriter)
+        CloseHandle(stderrWriter);
+    g_free(wcwd);
+    g_free(wargv0);
+    g_free(wargv);
+    g_free(wenv);
+    return false;
+
 #else
-    struct passwd *pw;
-    pw = getpwuid(getuid());
-    if (pw)
-        return boost::shared_ptr<char>(strdup(pw->pw_shell), free);
-    return boost::shared_ptr<char>(strdup("/bin/sh"), free);
+
+    unsigned int spawnFlags;
+    spawnFlags = G_SPAWN_DO_NOT_REAP_CHILD;
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDOUT_SILENCE)
+        spawnFlags |= G_SPAWN_STDOUT_TO_DEV_NULL;
+    if (flags & SPAWN_SUBPROCESS_FLAG_STDERR_SILENCE)
+        spawnFlags |= G_SPAWN_STDERR_TO_DEV_NULL;
+    int stdinFd, stdoutFd, stderrFd;
+    if (!g_spawn_async_with_pipes(
+            cwd,
+            argv,
+            env,
+            static_cast<GSpawnFlags>(spawnFlags),
+            (flags & SPAWN_SUBPROCESS_FLAG_STDERR_MERGE) ? mergeStderr : NULL,
+            NULL,
+            subprocessId,
+            (flags & SPAWN_SUBPROCESS_FLAG_STDIN_PIPE) ? &stdinFd : NULL,
+            (flags & SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE) ? &stdoutFd : NULL,
+            (flags & SPAWN_SUBPROCESS_FLAG_STDERR_PIPE) ? &stderrFd : NULL,
+            error))
+        return false;
+    if (stdinPipe)
+    {
+        if (flags & SPAWN_SUBPROCESS_FLAG_STDIN_PIPE)
+            *stdinPipe = g_unix_output_stream_new(stdinFd, TRUE);
+        else
+            *stdinPipe = NULL;
+    }
+    if (stdoutPipe)
+    {
+        if (flags & SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE)
+            *stdoutPipe = g_unix_input_stream_new(stdoutFd, TRUE);
+        else
+            *stdoutPipe = NULL;
+    }
+    if (stderrPipe)
+    {
+        if (flags & SPAWN_SUBPROCESS_FLAG_STDERR_PIPE)
+            *stderrPipe = g_unix_input_stream_new(stderrFd, TRUE);
+        else
+            *stderrPipe = NULL;
+    }
+    return true;
+
 #endif
 }
 
 }
 
 #ifdef SMYD_MISCELLANEOUS_UNIT_TEST
+
+GPid pid;
+GOutputStream *stdinPipe;
+GInputStream *stdoutPipe;
+GInputStream *stderrPipe;
+GtkLabel *label;
+GtkTextView *stdinView, *stdoutView, *stderrView;
+guint childWatchId;
+char stdoutBuffer[100], stderrBuffer[100];
+
+void onExited(GPid pid, gint status, gpointer data)
+{
+    gtk_label_set_text(label, "Stopped");
+    g_source_remove(childWatchId);
+}
+
+gboolean onDeleteWindow(GtkWidget *widget, GdkEvent *e, gpointer d)
+{
+    gtk_main_quit();
+    return FALSE;
+}
+
+void onStdinWritten(GObject *stream, GAsyncResult *result, gpointer data)
+{
+    gtk_text_view_set_editable(stdinView, TRUE);
+    g_free(data);
+}
+
+void onStdinBufferInput(GtkTextBuffer *buffer,
+                        GtkTextIter *location,
+                        gchar *text,
+                        gint length,
+                        gpointer d)
+{
+    if (length >= 1 && text[length - 1] == '\n' &&
+        gtk_text_iter_get_line(location) > 0)
+    {
+        GtkTextIter begin, end;
+        gtk_text_buffer_get_iter_at_line(buffer, &begin,
+                                         gtk_text_iter_get_line(location) - 1);
+        gtk_text_buffer_get_iter_at_line(buffer, &end,
+                                         gtk_text_iter_get_line(location));
+        char *line = gtk_text_buffer_get_text(buffer, &begin, &end, TRUE);
+        g_output_stream_write_async(stdinPipe,
+                                    line,
+                                    strlen(line),
+                                    G_PRIORITY_DEFAULT,
+                                    NULL,
+                                    onStdinWritten,
+                                    line);
+        gtk_text_view_set_editable(stdinView, FALSE);
+    }
+}
+
+void onStdoutRead(GObject *stream, GAsyncResult *result, gpointer d)
+{
+    GError *error = NULL;
+    int length =
+        g_input_stream_read_finish(G_INPUT_STREAM(stream), result, &error);
+    if (length > 0)
+    {
+        gtk_text_buffer_insert_at_cursor(gtk_text_view_get_buffer(stdoutView),
+                                         stdoutBuffer, length);
+        g_input_stream_read_async(G_INPUT_STREAM(stream),
+                                  stdoutBuffer, 100,
+                                  G_PRIORITY_DEFAULT,
+                                  NULL,
+                                  onStdoutRead,
+                                  NULL);
+    }
+    else if (length == -1)
+    {
+        char *msg = g_strdup_printf("ERROR. %s.", error->message);
+        gtk_text_buffer_insert_at_cursor(gtk_text_view_get_buffer(stdoutView),
+                                         msg, -1);
+        g_free(msg);
+        g_error_free(error);
+    }
+    else
+    {
+        gtk_text_buffer_insert_at_cursor(gtk_text_view_get_buffer(stdoutView),
+                                         "EOF", -1);
+    }
+}
+
+void onStderrRead(GObject *stream, GAsyncResult *result, gpointer d)
+{
+    GError *error = NULL;
+    int length =
+        g_input_stream_read_finish(G_INPUT_STREAM(stream), result, &error);
+    if (length > 0)
+    {
+        gtk_text_buffer_insert_at_cursor(gtk_text_view_get_buffer(stderrView),
+                                         stderrBuffer, length);
+        g_input_stream_read_async(G_INPUT_STREAM(stream),
+                                  stderrBuffer, 100,
+                                  G_PRIORITY_DEFAULT,
+                                  NULL,
+                                  onStderrRead,
+                                  NULL);
+    }
+    else if (length == -1)
+    {
+        char *msg = g_strdup_printf("ERROR. %s.", error->message);
+        gtk_text_buffer_insert_at_cursor(gtk_text_view_get_buffer(stderrView),
+                                         msg, -1);
+        g_free(msg);
+        g_error_free(error);
+    }
+    else
+    {
+        gtk_text_buffer_insert_at_cursor(gtk_text_view_get_buffer(stderrView),
+                                         "EOF", -1);
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -291,7 +756,6 @@ int main(int argc, char *argv[])
 
     gtk_init(&argc, &argv);
 
-    printf("Host name: %s\n", Samoyed::hostName());
     printf("Number of processors: %d\n", Samoyed::numberOfProcessors());
 
     if (!g_mkdir("misc-test-dir", 0755) &&
@@ -313,6 +777,72 @@ int main(int argc, char *argv[])
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
     g_free(readme);
+
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    GtkWidget *grid = gtk_grid_new();
+    label = GTK_LABEL(gtk_label_new(NULL));
+    stdinView = GTK_TEXT_VIEW(gtk_text_view_new());
+    stdoutView = GTK_TEXT_VIEW(gtk_text_view_new());
+    stderrView = GTK_TEXT_VIEW(gtk_text_view_new());
+    gtk_text_view_set_editable(stdoutView, FALSE);
+    gtk_text_view_set_editable(stderrView, FALSE);
+    gtk_container_add(GTK_CONTAINER(window), grid);
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(label), 0, 0, 3, 1);
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stdinView), 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stdoutView), 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stderrView), 2, 1, 1, 1);
+
+    GError *error = NULL;
+    if (!Samoyed::spawnSubprocess(NULL,
+                                  argv + 1,
+                                  NULL,
+                                  Samoyed::SPAWN_SUBPROCESS_FLAG_STDIN_PIPE |
+                                  Samoyed::SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE |
+                                  Samoyed::SPAWN_SUBPROCESS_FLAG_STDERR_PIPE,
+                                  &pid,
+                                  &stdinPipe,
+                                  &stdoutPipe,
+                                  &stderrPipe,
+                                  &error))
+    {
+        char *argvLine = g_strjoinv(" ", argv + 1);
+        printf("Failed to spawn subprocess \"%s\". %s.",
+               argvLine, error->message);
+        g_free(argvLine);
+        g_error_free(error);
+        return 1;
+    }
+    char *argvLine = g_strjoinv(" ", argv + 1);
+    char *msg = g_strdup_printf("Spawned subprocess \"%s\".", argvLine);
+    gtk_label_set_text(label, msg);
+    g_free(argvLine);
+    g_free(msg);
+
+    childWatchId = g_child_watch_add(pid, onExited, NULL);
+    g_signal_connect(window, "delete-event", G_CALLBACK(onDeleteWindow), NULL);
+    g_signal_connect_after(gtk_text_view_get_buffer(stdinView), "insert-text",
+                           G_CALLBACK(onStdinBufferInput), NULL);
+    g_input_stream_read_async(stdoutPipe,
+                              stdoutBuffer, 100,
+                              G_PRIORITY_DEFAULT,
+                              NULL,
+                              onStdoutRead,
+                              NULL);
+    g_input_stream_read_async(stderrPipe,
+                              stderrBuffer, 100,
+                              G_PRIORITY_DEFAULT,
+                              NULL,
+                              onStderrRead,
+                              NULL);
+
+    gtk_widget_show_all(window);
+    gtk_main();
+
+    g_spawn_close_pid(pid);
+    g_object_unref(stdinPipe);
+    g_object_unref(stdoutPipe);
+    g_object_unref(stderrPipe);
+
     return 0;
 }
 

@@ -9,7 +9,12 @@
 #include "application.hpp"
 #include "window/window.hpp"
 #include "utilities/miscellaneous.hpp"
-#include <boost/shared_ptr.hpp>
+#ifndef OS_WINDOWS
+# include <pwd.h>
+# include <unistd.h>
+# include <sys/types.h>
+#endif
+#include <glib.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <vte/vte.h>
@@ -36,21 +41,46 @@ GtkWidget *Terminal::setup()
 {
     m_terminal = vte_terminal_new();
 
-    boost::shared_ptr<char> shell = findShell();
-    char *argv[2];
-    argv[0] = shell.get();
-    argv[1] = NULL;
+    char *argv[3] = { NULL, NULL, NULL };
+    char **env = NULL;
+#ifdef OS_WINDOWS
+    char *instDir =
+        g_win32_get_package_installation_directory_of_module(NULL);
+    argv[0] = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
+    argv[1] = g_strdup("--login");
+    g_free(instDir);
+    if (!g_getenv("MSYSTEM"))
+    {
+        env = g_get_environ();
+        env = g_environ_setenv(env, "MSYSTEM", "MINGW32", FALSE);
+    }
+#else
+    const char *shell = g_getenv("SHELL");
+    if (shell)
+        argv[0] = g_strdup(shell);
+    else
+    {
+        struct passwd *pw;
+        pw = getpwuid(getuid());
+        if (pw)
+            argv[0] = g_strdup(pw->pw_shell);
+        else if (g_file_test("/usr/bin/bash", G_FILE_TEST_IS_EXECUTABLE))
+            argv[0] = g_strdup("/usr/bin/bash");
+        else
+            argv[0] = g_strdup("/bin/sh");
+    }
+#endif
     GError *error = NULL;
 #if VTE_CHECK_VERSION(0, 38, 0)
     if (!vte_terminal_spawn_sync(VTE_TERMINAL(m_terminal),
                                  VTE_PTY_DEFAULT,
-                                 NULL, argv, NULL,
+                                 NULL, argv, env,
                                  G_SPAWN_CHILD_INHERITS_STDIN,
                                  NULL, NULL, NULL, NULL, &error))
 #else
     if (!vte_terminal_fork_command_full(VTE_TERMINAL(m_terminal),
                                         VTE_PTY_DEFAULT,
-                                        NULL, argv, NULL,
+                                        NULL, argv, env,
                                         G_SPAWN_CHILD_INHERITS_STDIN,
                                         NULL, NULL, NULL, &error))
 #endif
@@ -66,13 +96,19 @@ GtkWidget *Terminal::setup()
         gtkMessageDialogAddDetails(
             dialog,
             _("Samoyed failed to start shell \"%s\". %s."),
-            shell.get(), error->message);
+            argv[0], error->message);
+        g_error_free(error);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
-        g_error_free(error);
         gtk_widget_destroy(m_terminal);
+        g_free(argv[0]);
+        g_free(argv[1]);
+        g_strfreev(env);
         return NULL;
     }
+    g_free(argv[0]);
+    g_free(argv[1]);
+    g_strfreev(env);
     g_signal_connect(m_terminal, "child-exited",
                      G_CALLBACK(closeTerminal), this);
 

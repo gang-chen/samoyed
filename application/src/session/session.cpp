@@ -816,7 +816,7 @@ bool Session::readAllSessionNames(std::list<std::string> &names)
 
     GError *error = NULL;
     GDir *dir = g_dir_open(sessionsDirName.c_str(), 0, &error);
-    if (error)
+    if (!dir)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?

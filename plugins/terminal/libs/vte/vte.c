@@ -3328,10 +3328,10 @@ _vte_terminal_connect_pty_write(VteTerminal *terminal)
 		PTY_WRITE_CHANNEL(pvt) =
 #ifdef G_OS_WIN32
 			g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
-			g_io_channel_set_encoding(PTY_WRITE_CHANNEL(pvt), NULL, NULL);
-			g_io_channel_set_buffered(PTY_WRITE_CHANNEL(pvt), FALSE);
+		g_io_channel_set_encoding(PTY_WRITE_CHANNEL(pvt), NULL, NULL);
+		g_io_channel_set_buffered(PTY_WRITE_CHANNEL(pvt), FALSE);
 #else
-			g_io_channel_unix_new(vte_pty_get_fd(pvt->pty));
+		g_io_channel_unix_new(vte_pty_get_fd(pvt->pty));
 #endif
 	}
 
@@ -3402,7 +3402,7 @@ vte_terminal_pty_new_sync(VteTerminal *terminal,
                           GError **error)
 {
 #ifdef G_OS_WIN32
-	winpty_t *pty;
+        winpty_t *pty;
 #else
         VtePty *pty;
 #endif
@@ -3410,7 +3410,7 @@ vte_terminal_pty_new_sync(VteTerminal *terminal,
         g_return_val_if_fail(VTE_IS_TERMINAL(terminal), NULL);
 
 #ifdef G_OS_WIN32
-	pty = winpty_open(terminal->pvt->column_count, terminal->pvt->row_count);
+        pty = winpty_open(terminal->pvt->column_count, terminal->pvt->row_count);
 #else
         pty = vte_pty_new_sync(flags, cancellable, error);
 #endif
@@ -3493,9 +3493,9 @@ char *
 vte_get_user_shell (void)
 {
 #ifndef G_OS_WIN32
-	struct passwd *pwd;
+        struct passwd *pwd;
 
-	pwd = getpwuid(getuid());
+        pwd = getpwuid(getuid());
         if (pwd && pwd->pw_shell)
                 return g_strdup (pwd->pw_shell);
 #endif
@@ -3551,9 +3551,14 @@ vte_terminal_spawn_sync(VteTerminal *terminal,
                                GError **error)
 {
 #ifdef G_OS_WIN32
-	winpty_t *pty;
-	wchar_t *wargv;
-	int win_pid;
+        winpty_t *pty;
+        char *argv_str;
+        wchar_t *wargv = NULL;
+        wchar_t *wcwd = NULL;
+        wchar_t *wenv = NULL, *we;
+        GArray *wenv_arr;
+        int i, win_pid;
+        GError *conv_error = NULL;
 #else
         VtePty *pty;
 #endif
@@ -3569,12 +3574,67 @@ vte_terminal_spawn_sync(VteTerminal *terminal,
                 return FALSE;
 
 #ifdef G_OS_WIN32
-	wargv = (wchar_t *) g_utf8_to_utf16(argv[0], -1, NULL, NULL, NULL);
-	if (winpty_start_process(pty, NULL, wargv, NULL, NULL)) {
-		g_free(wargv);
-		return FALSE;
-	}
-	g_free(wargv);
+        argv_str = g_strjoinv(" ", argv);
+	    wargv = g_utf8_to_utf16(argv_str, -1, NULL, NULL, &conv_error);
+        g_free(argv_str);
+        if (!wargv) {
+                g_set_error(error,
+                            G_SPAWN_ERROR,
+                            G_SPAWN_ERROR_FAILED,
+                            _("Invalid argument vector: %s"),
+                            conv_error->message);
+                g_error_free(conv_error);
+                return FALSE;
+        }
+        if (working_directory) {
+                wcwd = g_utf8_to_utf16(working_directory, -1, NULL, NULL, &conv_error);
+                if (!wcwd) {
+                        g_set_error(error,
+                                    G_SPAWN_ERROR,
+                                    G_SPAWN_ERROR_FAILED,
+                                    _("Invalid working directory: %s"),
+                                    conv_error->message);
+                        g_error_free(conv_error);
+                        g_free(wargv);
+                        return FALSE;
+                }
+        }
+        if (envv) {
+                wenv_arr = g_array_new(FALSE, FALSE, sizeof(wchar_t));
+                for (i = 0; envv[i]; i++) {
+                        we = g_utf8_to_utf16(envv[i], -1, NULL, NULL, &conv_error);
+                        if (!we) {
+                                g_set_error(error,
+                                            G_SPAWN_ERROR,
+                                            G_SPAWN_ERROR_FAILED,
+                                            _("Invalid environment: %s"),
+                                            conv_error->message);
+                                g_error_free(conv_error);
+                                g_free(wargv);
+                                g_free(wcwd);
+                                g_array_free(wenv_arr, TRUE);
+                                return FALSE;
+                        }
+                        g_array_append_vals(wenv_arr, we, wcslen(we) + 1);
+                        g_free(we);
+                }
+                g_array_append_vals(wenv_arr, L"", 1);
+                wenv = (wchar_t *) g_array_free(wenv_arr, FALSE);
+        }
+        if (winpty_start_process(pty, NULL, wargv, wcwd, wenv)) {
+                g_set_error(error,
+                            G_SPAWN_ERROR,
+                            G_SPAWN_ERROR_FAILED,
+                            _("Failed to execute child process \"%s\""),
+                            argv[0]);
+                g_free(wargv);
+                g_free(wcwd);
+                g_free(wenv);
+                return FALSE;
+        }
+        g_free(wargv);
+        g_free(wcwd);
+        g_free(wenv);
 #else
         /* FIXMEchpe: is this flag needed */
         spawn_flags |= G_SPAWN_CHILD_INHERITS_STDIN;
@@ -3594,8 +3654,8 @@ vte_terminal_spawn_sync(VteTerminal *terminal,
 
         vte_terminal_set_pty(terminal, pty);
 #ifdef G_OS_WIN32
-	win_pid = winpty_get_process_id(pty);
-	pid = OpenProcess(PROCESS_ALL_ACCESS, FALSE, win_pid);
+        win_pid = winpty_get_process_id(pty);
+        pid = OpenProcess(PROCESS_ALL_ACCESS, FALSE, win_pid);
 #endif
         vte_terminal_watch_child(terminal, pid);
 #ifndef G_OS_WIN32
@@ -8619,8 +8679,8 @@ vte_terminal_finalize(GObject *object)
 #ifdef G_OS_WIN32
 		winpty_close(terminal->pvt->pty);
 #else
-                vte_pty_close(terminal->pvt->pty);
-                g_object_unref(terminal->pvt->pty);
+		vte_pty_close(terminal->pvt->pty);
+		g_object_unref(terminal->pvt->pty);
 #endif
 	}
 
@@ -11630,7 +11690,7 @@ vte_terminal_class_init(VteTerminalClass *klass)
                 (gobject_class,
                  PROP_PTY,
 #ifdef G_OS_WIN32
-		 g_param_spec_pointer("pty", NULL, NULL,
+                 g_param_spec_pointer("pty", NULL, NULL,
 #else
                  g_param_spec_object ("pty", NULL, NULL,
                                       VTE_TYPE_PTY,
@@ -12663,7 +12723,7 @@ vte_terminal_set_pty(VteTerminal *terminal,
 #ifdef G_OS_WIN32
 		     winpty_t *pty)
 #else
-                            VtePty *pty)
+		     VtePty *pty)
 #endif
 {
         VteTerminalPrivate *pvt;
@@ -12717,8 +12777,8 @@ vte_terminal_set_pty(VteTerminal *terminal,
 #ifdef G_OS_WIN32
 		winpty_close(pvt->pty);
 #else
-                vte_pty_close(pvt->pty);
-                g_object_unref(pvt->pty);
+		vte_pty_close(pvt->pty);
+		g_object_unref(pvt->pty);
 #endif
                 pvt->pty = NULL;
         }
@@ -12731,13 +12791,13 @@ vte_terminal_set_pty(VteTerminal *terminal,
         }
 
 #ifdef G_OS_WIN32
-	pvt->pty = pty;
-	pvt->pty_read_channel = g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
-	g_io_channel_set_encoding(pvt->pty_read_channel, NULL, NULL);
-	g_io_channel_set_buffered(pvt->pty_read_channel, FALSE);
-	pvt->pty_write_channel = g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
-	g_io_channel_set_encoding(pvt->pty_write_channel, NULL, NULL);
-	g_io_channel_set_buffered(pvt->pty_write_channel, FALSE);
+        pvt->pty = pty;
+        pvt->pty_read_channel = g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
+        g_io_channel_set_encoding(pvt->pty_read_channel, NULL, NULL);
+        g_io_channel_set_buffered(pvt->pty_read_channel, FALSE);
+        pvt->pty_write_channel = g_io_channel_win32_new_pipe(winpty_get_data_pipe(pvt->pty));
+        g_io_channel_set_encoding(pvt->pty_write_channel, NULL, NULL);
+        g_io_channel_set_buffered(pvt->pty_write_channel, FALSE);
 #else
         pvt->pty = g_object_ref(pty);
         pty_master = vte_pty_get_fd(pvt->pty);
@@ -13052,8 +13112,12 @@ vte_terminal_emit_pending_signals(VteTerminal *terminal)
 		terminal->pvt->window_title = terminal->pvt->window_title_changed;
 		terminal->pvt->window_title_changed = NULL;
 
+		/* Do not change the window title since VTE is used as a plugin
+		   of Samoyed.  */
+#if 0
 		if (window)
 			gdk_window_set_title (window, terminal->pvt->window_title);
+#endif
 		vte_terminal_emit_window_title_changed(terminal);
                 g_object_notify(object, "window-title");
 	}
@@ -13063,8 +13127,12 @@ vte_terminal_emit_pending_signals(VteTerminal *terminal)
 		terminal->pvt->icon_title = terminal->pvt->icon_title_changed;
 		terminal->pvt->icon_title_changed = NULL;
 
+		/* Do not change the icon title since VTE is used as a plugin of
+		   Samoyed.  */
+#if 0
 		if (window)
 			gdk_window_set_icon_name (window, terminal->pvt->icon_title);
+#endif
 		vte_terminal_emit_icon_title_changed(terminal);
                 g_object_notify(object, "icon-title");
 	}

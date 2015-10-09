@@ -212,7 +212,7 @@ File::open(const char *uri, Project *project,
 
     GError *error = NULL;
     char *fileName = g_filename_from_uri(uri, NULL, &error);
-    if (error)
+    if (!fileName)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?

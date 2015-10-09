@@ -150,17 +150,16 @@ void onDone(const boost::shared_ptr<Samoyed::Worker> &worker)
         printf("Text file saver error: %s.\n", saver->error()->message);
         return;
     }
-    GError *error;
+    GError *error = NULL;
     char *fileName = g_filename_from_uri(saver->uri(), NULL, &error);
-    if (error)
+    if (!fileName)
     {
         printf("URI to file name conversion error: %s.\n", error->message);
         g_error_free(error);
         return;
     }
     char *text;
-    g_file_get_contents(fileName, &text, NULL, &error);
-    if (error)
+    if (!g_file_get_contents(fileName, &text, NULL, &error))
     {
         printf("Text file read error: %s.\n", error->message);
         g_error_free(error);

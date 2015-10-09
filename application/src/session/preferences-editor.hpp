@@ -8,6 +8,7 @@
 #include <vector>
 #include <boost/utility.hpp>
 #include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
@@ -46,6 +47,8 @@ private:
     static std::vector<Category> s_categories;
 
     GtkWidget *m_window;
+
+    boost::shared_ptr<PreferencesEditor *> m_weakReference;
 };
 
 }

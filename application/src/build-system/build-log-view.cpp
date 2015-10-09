@@ -8,8 +8,8 @@
 #include "build-system.hpp"
 #include "project/project.hpp"
 #include "application.hpp"
-#include <glib/gi18n.h>
 #include <gtk/gtk.h>
+#include <glib/gi18n.h>
 
 #define BUILD_LOG_VIEW_ID "build-log-view"
 
@@ -28,6 +28,13 @@ const char *actionText2[] =
     N_("configuring"),
     N_("building"),
     N_("installing")
+};
+
+const char *actionText3[] =
+{
+    N_("configure"),
+    N_("build"),
+    N_("install")
 };
 
 }
@@ -79,7 +86,7 @@ BuildLogView *BuildLogView::create(const char *projectUri,
     return view;
 }
 
-void BuildLogView::startBuild(BuildProcess::Action action)
+void BuildLogView::startBuild(Builder::Action action)
 {
     m_action = action;
     char *message = g_strdup_printf(
@@ -109,11 +116,10 @@ void BuildLogView::addLog(const char *log, int length)
     gtk_text_buffer_insert(buffer, &end, log, length);
 }
 
-void BuildLogView::onBuildFinished(int exitCode)
+void BuildLogView::onBuildFinished(bool successful, const char *error)
 {
     char *message;
-    GError *error = NULL;
-    if (g_spawn_check_exit_status(exitCode, &error))
+    if (successful)
         message = g_strdup_printf(
             _("Successfully finished %s project \"%s\" with configuration "
               "\"%s\"."),
@@ -122,16 +128,13 @@ void BuildLogView::onBuildFinished(int exitCode)
             m_configName.c_str());
     else
         message = g_strdup_printf(
-            _("Finished %s project \"%s\" with configuration \"%s\". %s "
-              "process exited with code %d: %s."),
-            gettext(actionText2[m_action]),
+            _("Failed to %s project \"%s\" with configuration \"%s\". %s."),
+            gettext(actionText3[m_action]),
             m_projectUri.c_str(),
             m_configName.c_str(),
-            gettext(actionText[m_action]),
-            error->message);
+            error);
     gtk_label_set_label(m_message, message);
     g_free(message);
-    g_error_free(error);
     gtk_widget_hide(GTK_WIDGET(m_stopButton));
 }
 

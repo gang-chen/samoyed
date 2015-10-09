@@ -119,6 +119,8 @@ protected:
 
     TextEditor(TextFile &file, Project *project);
 
+    virtual ~TextEditor();
+
     bool setup(GtkTextTagTable *tagTable);
 
     bool restore(XmlElement &xmlElement, GtkTextTagTable *tagTable);
@@ -156,6 +158,8 @@ private:
 
     int m_presetCursorLine;
     int m_presetCursorColumn;
+
+    boost::shared_ptr<TextEditor *> m_weakReference;
 };
 
 }
