@@ -20,6 +20,7 @@ g++ miscellaneous.cpp -DSMYD_MISCELLANEOUS_UNIT_TEST \
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 #include <string>
 #ifdef OS_WINDOWS
 # define UNICODE
@@ -159,7 +160,7 @@ protect_argv_string (const gchar *string)
 }
 
 gint
-protect_argv (gchar  **argv,
+protect_argv (const gchar  **argv,
 	      gchar ***new_argv)
 {
   gint i;
@@ -301,8 +302,8 @@ void gtkMessageDialogAddDetails(GtkWidget *dialog, const char *details, ...)
 }
 
 bool spawnSubprocess(const char *cwd,
-                     char **argv,
-                     char **env,
+                     const char **argv,
+                     const char **env,
                      unsigned int flags,
                      GPid *subprocessId,
                      GOutputStream **stdinPipe,
@@ -320,7 +321,7 @@ bool spawnSubprocess(const char *cwd,
 
     GError *convError = NULL;
     wchar_t *wcwd = NULL;
-    wchar_t *wargv0 = NULL;
+    wchar_t *warg0 = NULL;
     char **protectedArgv, *protectedArgvStr;
     wchar_t *wargv = NULL;
     wchar_t *wenv = NULL, *we;
@@ -389,9 +390,9 @@ bool spawnSubprocess(const char *cwd,
             goto ERROR_OUT;
         }
     }
-    wargv0 = reinterpret_cast<wchar_t *>(
+    warg0 = reinterpret_cast<wchar_t *>(
         g_utf8_to_utf16(argv[0], -1, NULL, NULL, &convError));
-    if (!wargv0)
+    if (!warg0)
     {
         g_set_error(error,
                     G_SPAWN_ERROR,
@@ -456,12 +457,12 @@ bool spawnSubprocess(const char *cwd,
     startInfo.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     ZeroMemory(&procInfo, sizeof(PROCESS_INFORMATION));
 
-    if (!CreateProcess(wargv0,
+    if (!CreateProcess(warg0,
                        wargv,
                        NULL,
                        NULL,
                        TRUE,
-                       CREATE_NEW_CONSOLE,
+                       CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT,
                        wenv,
                        wcwd,
                        &startInfo,
@@ -476,7 +477,7 @@ bool spawnSubprocess(const char *cwd,
         goto ERROR_OUT;
     }
     g_free(wcwd);
-    g_free(wargv0);
+    g_free(warg0);
     g_free(wargv);
     g_free(wenv);
 
@@ -535,7 +536,7 @@ ERROR_OUT:
     if (stderrWriter)
         CloseHandle(stderrWriter);
     g_free(wcwd);
-    g_free(wargv0);
+    g_free(warg0);
     g_free(wargv);
     g_free(wenv);
     return false;
@@ -551,8 +552,8 @@ ERROR_OUT:
     int stdinFd, stdoutFd, stderrFd;
     if (!g_spawn_async_with_pipes(
             cwd,
-            argv,
-            env,
+            const_cast<char **>(argv),
+            const_cast<char **>(env),
             static_cast<GSpawnFlags>(spawnFlags),
             (flags & SPAWN_SUBPROCESS_FLAG_STDERR_MERGE) ? mergeStderr : NULL,
             NULL,
@@ -792,10 +793,11 @@ int main(int argc, char *argv[])
     gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stdoutView), 1, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stderrView), 2, 1, 1, 1);
 
+    const char *env[3] = { "VAR1=VAL1", "VAR2=VAL2", NULL };
     GError *error = NULL;
     if (!Samoyed::spawnSubprocess(NULL,
-                                  argv + 1,
-                                  NULL,
+                                  const_cast<const char **>(argv + 1),
+                                  env,
                                   Samoyed::SPAWN_SUBPROCESS_FLAG_STDIN_PIPE |
                                   Samoyed::SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE |
                                   Samoyed::SPAWN_SUBPROCESS_FLAG_STDERR_PIPE,

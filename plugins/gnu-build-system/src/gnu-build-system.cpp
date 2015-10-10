@@ -30,8 +30,6 @@ GnuBuildSystem::~GnuBuildSystem()
 
 bool GnuBuildSystem::setup()
 {
-    if (!activeConfiguration())
-        createConfiguration();
     return true;
 }
 

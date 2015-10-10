@@ -129,6 +129,8 @@ void SessionChooserDialog::buildNewSessionDialog()
                                              "new-session-name-entry"));
         g_signal_connect(GTK_EDITABLE(m_newSessionNameEntry), "changed",
                          G_CALLBACK(onNewSessionChanged), m_newSessionDialog);
+        g_signal_connect(GTK_WIDGET(m_newSessionDialog), "delete-event",
+                         G_CALLBACK(gtk_widget_hide_on_delete), NULL);
     }
 }
 
@@ -180,6 +182,8 @@ void SessionChooserDialog::buildRestoreSessionDialog()
         g_signal_connect(m_sessionList, "row-activated",
                          G_CALLBACK(onSessionListRowActivated),
                          m_restoreSessionDialog);
+        g_signal_connect(GTK_WIDGET(m_restoreSessionDialog), "delete-event",
+                         G_CALLBACK(gtk_widget_hide_on_delete), NULL);
     }
 }
 

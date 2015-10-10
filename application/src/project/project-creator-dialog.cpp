@@ -84,6 +84,8 @@ ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
                      G_CALLBACK(validateInput), this);
     g_signal_connect(GTK_COMBO_BOX(m_buildSystemChooser), "changed",
                      G_CALLBACK(validateInput), this);
+
+    validateInput(NULL, this);
 }
 
 ProjectCreatorDialog::~ProjectCreatorDialog()

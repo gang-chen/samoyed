@@ -67,43 +67,45 @@ bool CompilationOptionsCollector::running() const
 bool CompilationOptionsCollector::run()
 {
     char *cwd = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
-    char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
-    char **env = NULL;
+    const char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
+    char **envv = NULL;
 #ifdef OS_WINDOWS
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
-    argv[0] = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
-    argv[1] = g_strdup("-l");
-    argv[2] = g_strdup("-c");
-    argv[3] = g_strdup(m_commands.c_str());
+    char *arg0;
+    arg0 = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
+    argv[0] = arg0;
+    argv[1] = "-l";
+    argv[2] = "-c";
+    argv[3] = m_commands.c_str();
     g_free(instDir);
     if (!g_getenv("MSYSTEM"))
     {
-        env = g_get_environ();
-        env = g_environ_setenv(env, "MSYSTEM", "MINGW32", FALSE);
+        envv = g_get_environ();
+        envv = g_environ_setenv(envv, "MSYSTEM", "MINGW32", FALSE);
     }
 #else
     const char *shell = g_getenv("SHELL");
     if (shell)
-        argv[0] = g_strdup(shell);
+        argv[0] = shell;
     else
     {
         struct passwd *pw;
         pw = getpwuid(getuid());
         if (pw)
-            argv[0] = g_strdup(pw->pw_shell);
+            argv[0] = pw->pw_shell;
         else if (g_file_test("/usr/bin/bash", G_FILE_TEST_IS_EXECUTABLE))
-            argv[0] = g_strdup("/usr/bin/bash");
+            argv[0] = "/usr/bin/bash";
         else
-            argv[0] = g_strdup("/bin/sh");
+            argv[0] = "/bin/sh";
     }
-    argv[1] = g_strdup("-c");
-    argv[2] = g_strdup(m_commands.c_str());
+    argv[1] = "-c";
+    argv[2] = m_commands.c_str();
 #endif
     GError *error = NULL;
     if (!spawnSubprocess(cwd,
                          argv,
-                         env,
+                         const_cast<const char **>(envv),
                          SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE,
                          &m_processId,
                          NULL,
@@ -116,19 +118,17 @@ bool CompilationOptionsCollector::run()
                   m_buildSystem.project().uri());
         g_error_free(error);
         g_free(cwd);
-        g_free(argv[0]);
-        g_free(argv[1]);
-        g_free(argv[2]);
-        g_free(argv[3]);
-        g_strfreev(env);
+#ifdef OS_WINDOWS
+        g_free(arg0);
+#endif
+        g_strfreev(envv);
         return false;
     }
     g_free(cwd);
-    g_free(argv[0]);
-    g_free(argv[1]);
-    g_free(argv[2]);
-    g_free(argv[3]);
-    g_strfreev(env);
+#ifdef OS_WINDOWS
+    g_free(arg0);
+#endif
+    g_strfreev(envv);
 
     m_processRunning = true;
     m_processWatchId = g_child_watch_add(m_processId, onProcessExited, this);

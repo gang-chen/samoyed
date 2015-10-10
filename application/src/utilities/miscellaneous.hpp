@@ -161,8 +161,8 @@ enum SpawnSubprocessFlag
 };
 
 bool spawnSubprocess(const char *cwd,
-                     char **argv,
-                     char **env,
+                     const char **argv,
+                     const char **env,
                      unsigned int flags,
                      GPid *subprocessId,
                      GOutputStream **stdinPipe,

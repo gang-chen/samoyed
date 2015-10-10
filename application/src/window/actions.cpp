@@ -12,7 +12,10 @@
 #include "project/project-creator-dialog.hpp"
 #include "project/project-file.hpp"
 #include "project/project-file-creator-dialog.hpp"
+#include "build-system/active-configuration-setter-dialog.hpp"
 #include "build-system/build-system.hpp"
+#include "build-system/configuration-creator-dialog.hpp"
+#include "build-system/configuration-management-window.hpp"
 #include "session/session.hpp"
 #include "session/session-management-window.hpp"
 #include "session/preferences-editor.hpp"
@@ -335,15 +338,32 @@ void createConfiguration(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Project *project = window->currentProject();
     if (project)
-        project->buildSystem().createConfiguration();
+    {
+        Samoyed::ConfigurationCreatorDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   project->buildSystem());
+        dialog.run();
+    }
 }
 
 void setActiveConfiguration(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+    {
+        Samoyed::ActiveConfigurationSetterDialog
+            dialog(GTK_WINDOW(window->gtkWidget()),
+                   project->buildSystem());
+        dialog.run();
+    }
 }
 
 void manageConfigurations(GtkAction *action, Samoyed::Window *window)
 {
+    Samoyed::ConfigurationManagementWindow *win =
+        new Samoyed::ConfigurationManagementWindow(
+            GTK_WINDOW(window->gtkWidget()));
+    win->show();
 }
 
 void createWindow(GtkAction *action, Samoyed::Window *window)
@@ -588,7 +608,7 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
     // View menu.
     { "create-window", "window-new", N_("New _Window"), NULL,
       N_("Create a window"), G_CALLBACK(createWindow) },
-    { "window-layout", NULL, N_("Window _Layout"), NULL, NULL, NULL },
+    { "window-layout", NULL, N_("Window La_yout"), NULL, NULL, NULL },
     { "create-editor", NULL, N_("New _Editor"), NULL,
       N_("Create an editor for the current file"), G_CALLBACK(createEditor) },
     { "move-editor-down", NULL, N_("Move Editor _Down"), NULL,

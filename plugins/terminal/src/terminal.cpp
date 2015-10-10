@@ -42,7 +42,7 @@ GtkWidget *Terminal::setup()
     m_terminal = vte_terminal_new();
 
     char *argv[3] = { NULL, NULL, NULL };
-    char **env = NULL;
+    char **envv = NULL;
 #ifdef OS_WINDOWS
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
@@ -51,8 +51,8 @@ GtkWidget *Terminal::setup()
     g_free(instDir);
     if (!g_getenv("MSYSTEM"))
     {
-        env = g_get_environ();
-        env = g_environ_setenv(env, "MSYSTEM", "MINGW32", FALSE);
+        envv = g_get_environ();
+        envv = g_environ_setenv(envv, "MSYSTEM", "MINGW32", FALSE);
     }
 #else
     const char *shell = g_getenv("SHELL");
@@ -74,13 +74,13 @@ GtkWidget *Terminal::setup()
 #if VTE_CHECK_VERSION(0, 38, 0)
     if (!vte_terminal_spawn_sync(VTE_TERMINAL(m_terminal),
                                  VTE_PTY_DEFAULT,
-                                 NULL, argv, env,
+                                 NULL, argv, envv,
                                  G_SPAWN_CHILD_INHERITS_STDIN,
                                  NULL, NULL, NULL, NULL, &error))
 #else
     if (!vte_terminal_fork_command_full(VTE_TERMINAL(m_terminal),
                                         VTE_PTY_DEFAULT,
-                                        NULL, argv, env,
+                                        NULL, argv, envv,
                                         G_SPAWN_CHILD_INHERITS_STDIN,
                                         NULL, NULL, NULL, &error))
 #endif
@@ -103,12 +103,12 @@ GtkWidget *Terminal::setup()
         gtk_widget_destroy(m_terminal);
         g_free(argv[0]);
         g_free(argv[1]);
-        g_strfreev(env);
+        g_strfreev(envv);
         return NULL;
     }
     g_free(argv[0]);
     g_free(argv[1]);
-    g_strfreev(env);
+    g_strfreev(envv);
     g_signal_connect(m_terminal, "child-exited",
                      G_CALLBACK(closeTerminal), this);
 

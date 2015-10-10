@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkDialog" id="active-configuration-setter-dialog">
+    <property name="title" translatable="yes">Set Active Configuration</property>
+    <child internal-child="vbox">
+      <object class="GtkBox" id="active-configuration-setter-vbox">
+        <property name="visible">true</property>
+        <child>
+          <object class="GtkGrid" id="active-configuration-setter-grid">
+            <property name="visible">true</property>
+            <property name="row-spacing">6</property>
+            <property name="column-spacing">6</property>
+            <property name="border-width">12</property>
+            <child>
+              <object class="GtkLabel" id="project-uri-label">
+                <property name="visible">true</property>
+                <property name="hexpand">true</property>
+                <property name="halign">start</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">0</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="project-label">
+                <property name="visible">true</property>
+                <property name="label" translatable="yes">Project:</property>
+                <property name="halign">start</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">0</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBoxText" id="configuration-chooser">
+                <property name="visible">true</property>
+                <property name="hexpand">true</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">1</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="configuration-label">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">Con_figuration:</property>
+                <property name="halign">start</property>
+                <property name="mnemonic-widget">configuration-chooser</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">1</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="cancel-button">
+        <property name="visible">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Cancel</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="set-button">
+        <property name="visible">true</property>
+        <property name="can-default">true</property>
+        <property name="use-underline">true</property>
+        <property name="label" translatable="yes">_Set Active</property>
+        <property name="sensitive">false</property>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="cancel">cancel-button</action-widget>
+      <action-widget response="accept" default="true">set-button</action-widget>
+    </action-widgets>
+  </object>
+</interface>

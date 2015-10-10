@@ -28,25 +28,6 @@
 #define ACTIVE_CONFIGURATION "active-configuration"
 #define BUILD_SYSTEMS "build-systems"
 
-namespace
-{
-
-void onConfigurationNameEntryChanged(GtkEntry *entry, GtkDialog *dialog)
-{
-    if (*gtk_entry_get_text(entry) != '\0')
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(dialog,
-                                               GTK_RESPONSE_ACCEPT),
-            TRUE);
-    else
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(dialog,
-                                               GTK_RESPONSE_ACCEPT),
-            FALSE);
-}
-
-}
-
 namespace Samoyed
 {
 
@@ -183,8 +164,6 @@ xmlNodePtr BuildSystem::writeXmlElement() const
 
 bool BuildSystem::setup()
 {
-    if (!activeConfiguration())
-        createConfiguration();
     return true;
 }
 
@@ -320,87 +299,9 @@ void BuildSystem::onCompilationOptionsCollectionFinished()
     m_compOptCollector = NULL;
 }
 
-Configuration *BuildSystem::createConfiguration()
+Configuration BuildSystem::defaultConfiguration() const
 {
-    Configuration *config = new Configuration;
-    defaultConfiguration(*config);
-
-    std::string uiFile(Application::instance().dataDirectoryName());
-    uiFile += G_DIR_SEPARATOR_S "ui" G_DIR_SEPARATOR_S
-        "configuration-creator-dialog.xml";
-    GtkBuilder *builder = gtk_builder_new_from_file(uiFile.c_str());
-    GtkDialog *dialog =
-        GTK_DIALOG(gtk_builder_get_object(builder,
-                                          "configuration-creator-dialog"));
-    GtkEntry *nameEntry =
-        GTK_ENTRY(gtk_builder_get_object(builder, "name-entry"));
-    g_signal_connect(GTK_EDITABLE(nameEntry), "changed",
-                     G_CALLBACK(onConfigurationNameEntryChanged), dialog);
-    GtkEntry *configCommandsEntry =
-        GTK_ENTRY(gtk_builder_get_object(builder, "configure-commands-entry"));
-    gtk_entry_set_text(configCommandsEntry, config->configureCommands());
-    GtkEntry *buildCommandsEntry =
-        GTK_ENTRY(gtk_builder_get_object(builder, "build-commands-entry"));
-    gtk_entry_set_text(buildCommandsEntry, config->buildCommands());
-    GtkEntry *installCommandsEntry =
-        GTK_ENTRY(gtk_builder_get_object(builder, "install-commands-entry"));
-    gtk_entry_set_text(installCommandsEntry, config->installCommands());
-    GtkEntry *dryBuildCommandsEntry =
-        GTK_ENTRY(gtk_builder_get_object(builder, "dry-build-commands-entry"));
-    gtk_entry_set_text(dryBuildCommandsEntry, config->dryBuildCommands());
-
-    if (Application::instance().currentWindow())
-    {
-        gtk_window_set_transient_for(
-            GTK_WINDOW(dialog),
-            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()));
-        gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
-    }
-
-    for (;;)
-    {
-        if (gtk_dialog_run(dialog) != GTK_RESPONSE_ACCEPT)
-        {
-            delete config;
-            config = NULL;
-            break;
-        }
-
-        config->setName(gtk_entry_get_text(nameEntry));
-        config->setConfigureCommands(gtk_entry_get_text(configCommandsEntry));
-        config->setBuildCommands(gtk_entry_get_text(buildCommandsEntry));
-        config->setInstallCommands(gtk_entry_get_text(installCommandsEntry));
-        config->setDryBuildCommands(gtk_entry_get_text(dryBuildCommandsEntry));
-        if (configurations().insert(std::make_pair(config->name(), config)).
-                second)
-            break;
-
-        GtkWidget *diag = gtk_message_dialog_new(
-            GTK_WINDOW(dialog),
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Samoyed failed to create configuration \"%s\" for project "
-              "\"%s\" because configuration \"%s\" already exists."),
-            config->name(),
-            project().uri(),
-            config->name());
-        gtk_dialog_run(GTK_DIALOG(diag));
-        gtk_widget_destroy(diag);
-
-        gtk_widget_grab_focus(GTK_WIDGET(nameEntry));
-    }
-
-    gtk_widget_destroy(GTK_WIDGET(dialog));
-    g_object_unref(builder);
-
-    if (config)
-        m_activeConfig = config;
-    return config;
-}
-
-void BuildSystem::defaultConfiguration(Configuration &config) const
-{
+    return Configuration();
 }
 
 }

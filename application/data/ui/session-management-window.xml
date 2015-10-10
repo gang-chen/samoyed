@@ -58,16 +58,6 @@
             <property name="layout-style">spread</property>
             <property name="spacing">6</property>
             <child>
-              <object class="GtkButton" id="delete-session-button">
-                <property name="visible">true</property>
-                <property name="use-underline">true</property>
-                <property name="label" translatable="yes">_Delete</property>
-              </object>
-              <packing>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
               <object class="GtkButton" id="rename-session-button">
                 <property name="visible">true</property>
                 <property name="use-underline">true</property>
@@ -75,6 +65,16 @@
               </object>
               <packing>
                 <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="delete-session-button">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">_Delete</property>
+              </object>
+              <packing>
+                <property name="position">1</property>
               </packing>
             </child>
           </object>

@@ -1156,8 +1156,8 @@ void Window::createToolsPane(Layout layout)
     Notebook *pane =
         Notebook::create(TOOLS_PANE_ID, NULL, false, false, true);
     pane->setTitle(_("_Tools Pane"));
-    pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("_Tools Pane"));
-    pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("T_ools"));
+    pane->setProperty(SIDE_PANE_MENU_ITEM_LABEL, _("T_ools Pane"));
+    pane->setProperty(SIDE_PANE_CHILDREN_MENU_LABEL, _("Too_ls"));
     addSidePane(*pane, mainArea(),
                 layout == LAYOUT_TOOLS_PANE_RIGHT ? SIDE_RIGHT : SIDE_BOTTOM,
                 (layout == LAYOUT_TOOLS_PANE_RIGHT ? m_width : m_height)

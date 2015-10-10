@@ -26,10 +26,10 @@ public:
 private:
     void deleteSelectedSession(bool confirm);
 
-    static void onDeleteSession(GtkButton *button,
+    static void onRenameSession(GtkButton *button,
                                 SessionManagementWindow *window);
 
-    static void onRenameSession(GtkButton *button,
+    static void onDeleteSession(GtkButton *button,
                                 SessionManagementWindow *window);
 
     static void onSessionRenamed(GtkCellRendererText *renderer,

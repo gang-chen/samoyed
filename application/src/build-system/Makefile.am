@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libbuildsystem.la
 
 libbuildsystem_la_SOURCES = \
+    active-configuration-setter-dialog.cpp \
     build-log-view.cpp \
     build-log-view-group.cpp \
     build-system.cpp \
@@ -8,6 +9,9 @@ libbuildsystem_la_SOURCES = \
     builder.cpp \
     compilation-options-collector.cpp \
     configuration.cpp \
+    configuration-creator-dialog.cpp \
+    configuration-management-window.cpp \
+    active-configuration-setter-dialog.hpp \
     build-log-view.hpp \
     build-log-view-group.hpp \
     build-system.hpp \
@@ -16,7 +20,9 @@ libbuildsystem_la_SOURCES = \
     build-systems-extension-point.hpp \
     builder.hpp \
     compilation-options-collector.hpp \
-    configuration.hpp
+    configuration.hpp \
+    configuration-creator-dialog.hpp \
+    configuration-management-window.hpp
 
 libbuildsystem_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 

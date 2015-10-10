@@ -79,9 +79,7 @@ public:
     void setActiveConfiguration(Configuration *config)
     { m_activeConfig = config; }
 
-    Configuration *createConfiguration();
-
-    virtual void defaultConfiguration(Configuration &config) const;
+    virtual Configuration defaultConfiguration() const;
 
     static BuildSystem *readXmlElement(Project &project,
                                        xmlNodePtr node,

@@ -105,6 +105,94 @@ gboolean onDeleteEvent(GtkWidget *widget,
 namespace Samoyed
 {
 
+void SessionManagementWindow::onSessionRenamed(GtkCellRendererText *renderer,
+                                               char *path,
+                                               char *newName,
+                                               SessionManagementWindow *window)
+{
+    GtkTreeModel *model;
+    GtkTreePath *p;
+    GtkTreeIter it;
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(window->m_sessionList));
+    p = gtk_tree_path_new_from_string(path);
+    if (gtk_tree_model_get_iter(model, &it, p))
+    {
+        char *oldName;
+        gtk_tree_model_get(model, &it, NAME_COLUMN, &oldName, -1);
+        if (strcmp(oldName, newName))
+        {
+#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
+            printf("Rename session \"%s\" with \"%s\".\n", oldName, newName);
+#else
+            if (Session::rename(oldName, newName))
+#endif
+            gtk_list_store_set(GTK_LIST_STORE(model), &it,
+                               NAME_COLUMN, newName, -1);
+        }
+        g_free(oldName);
+    }
+    gtk_tree_path_free(p);
+}
+
+void SessionManagementWindow::onRenameSession(GtkButton *button,
+                                              SessionManagementWindow *window)
+{
+    GtkTreeSelection *selection;
+    GtkTreeModel *model;
+    GtkTreeIter it;
+
+    selection =
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(window->m_sessionList));
+
+    if (!gtk_tree_selection_get_selected(selection, &model, &it))
+    {
+        GtkWidget *d = gtk_message_dialog_new(
+            window->m_window,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("No session is chosen. Choose the session you want to rename "
+              "from the session list."));
+        gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(d));
+        gtk_widget_destroy(d);
+        return;
+    }
+
+    gboolean locked;
+    gtk_tree_model_get(model, &it, LOCKED_COLUMN, &locked, -1);
+    if (locked)
+    {
+        char *sessionName;
+        gtk_tree_model_get(model, &it, NAME_COLUMN, &sessionName, -1);
+        GtkWidget *d = gtk_message_dialog_new(
+            window->m_window,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Session \"%s\" can't be renamed because it is locked."),
+            sessionName);
+        gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(d));
+        gtk_widget_destroy(d);
+        g_free(sessionName);
+        return;
+    }
+
+    // Start editing.
+    GtkTreePath *path;
+    GtkTreeViewColumn *column;
+    gtk_widget_grab_focus(GTK_WIDGET(window->m_sessionList));
+    path = gtk_tree_model_get_path(model, &it);
+    column = gtk_tree_view_get_column(GTK_TREE_VIEW(window->m_sessionList),
+                                      NAME_COLUMN);
+    gtk_tree_view_set_cursor(GTK_TREE_VIEW(window->m_sessionList),
+                             path,
+                             column,
+                             TRUE);
+    gtk_tree_path_free(path);
+}
+
 void SessionManagementWindow::deleteSelectedSession(bool confirm)
 {
     GtkTreeSelection *selection;
@@ -183,94 +271,6 @@ void SessionManagementWindow::onDeleteSession(GtkButton *button,
     window->deleteSelectedSession(true);
 }
 
-void SessionManagementWindow::onRenameSession(GtkButton *button,
-                                              SessionManagementWindow *window)
-{
-    GtkTreeSelection *selection;
-    GtkTreeModel *model;
-    GtkTreeIter it;
-
-    selection =
-        gtk_tree_view_get_selection(GTK_TREE_VIEW(window->m_sessionList));
-
-    if (!gtk_tree_selection_get_selected(selection, &model, &it))
-    {
-        GtkWidget *d = gtk_message_dialog_new(
-            window->m_window,
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("No session is chosen. Choose the session you want to rename "
-              "from the session list."));
-        gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
-        gtk_dialog_run(GTK_DIALOG(d));
-        gtk_widget_destroy(d);
-        return;
-    }
-
-    gboolean locked;
-    gtk_tree_model_get(model, &it, LOCKED_COLUMN, &locked, -1);
-    if (locked)
-    {
-        char *sessionName;
-        gtk_tree_model_get(model, &it, NAME_COLUMN, &sessionName, -1);
-        GtkWidget *d = gtk_message_dialog_new(
-            window->m_window,
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            _("Session \"%s\" can't be renamed because it is locked."),
-            sessionName);
-        gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
-        gtk_dialog_run(GTK_DIALOG(d));
-        gtk_widget_destroy(d);
-        g_free(sessionName);
-        return;
-    }
-
-    // Start editing.
-    GtkTreePath *path;
-    GtkTreeViewColumn *column;
-    gtk_widget_grab_focus(GTK_WIDGET(window->m_sessionList));
-    path = gtk_tree_model_get_path(model, &it);
-    column = gtk_tree_view_get_column(GTK_TREE_VIEW(window->m_sessionList),
-                                      NAME_COLUMN);
-    gtk_tree_view_set_cursor(GTK_TREE_VIEW(window->m_sessionList),
-                             path,
-                             column,
-                             TRUE);
-    gtk_tree_path_free(path);
-}
-
-void SessionManagementWindow::onSessionRenamed(GtkCellRendererText *renderer,
-                                               char *path,
-                                               char *newName,
-                                               SessionManagementWindow *window)
-{
-    GtkTreeModel *model;
-    GtkTreePath *p;
-    GtkTreeIter it;
-    model = gtk_tree_view_get_model(GTK_TREE_VIEW(window->m_sessionList));
-    p = gtk_tree_path_new_from_string(path);
-    if (gtk_tree_model_get_iter(model, &it, p))
-    {
-        char *oldName;
-        gtk_tree_model_get(model, &it, NAME_COLUMN, &oldName, -1);
-        if (strcmp(oldName, newName))
-        {
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-            printf("Rename session \"%s\" with \"%s\".\n", oldName, newName);
-#else
-            if (Session::rename(oldName, newName))
-#endif
-            gtk_list_store_set(GTK_LIST_STORE(model), &it,
-                               NAME_COLUMN, newName, -1);
-        }
-        g_free(oldName);
-    }
-    gtk_tree_path_free(p);
-}
-
 gboolean SessionManagementWindow::onKeyPress(GtkWidget *widget,
                                              GdkEventKey *event,
                                              SessionManagementWindow *window)
@@ -305,11 +305,11 @@ void SessionManagementWindow::onSessionSelectionChanged(
     }
     gtk_widget_set_sensitive(
         GTK_WIDGET(gtk_builder_get_object(window->m_builder,
-                                          "delete-session-button")),
+                                          "rename-session-button")),
         sensitive);
     gtk_widget_set_sensitive(
         GTK_WIDGET(gtk_builder_get_object(window->m_builder,
-                                          "rename-session-button")),
+                                          "delete-session-button")),
         sensitive);
 }
 
@@ -365,12 +365,12 @@ SessionManagementWindow::SessionManagementWindow(
     g_signal_connect(gtk_tree_view_get_selection(m_sessionList), "changed",
                      G_CALLBACK(onSessionSelectionChanged), this);
 
-    g_signal_connect(gtk_builder_get_object(m_builder, "delete-session-button"),
-                     "clicked",
-                     G_CALLBACK(onDeleteSession), this);
     g_signal_connect(gtk_builder_get_object(m_builder, "rename-session-button"),
                      "clicked",
                      G_CALLBACK(onRenameSession), this);
+    g_signal_connect(gtk_builder_get_object(m_builder, "delete-session-button"),
+                     "clicked",
+                     G_CALLBACK(onDeleteSession), this);
 
     m_window = GTK_WINDOW(gtk_builder_get_object(m_builder,
                                                  "session-management-window"));

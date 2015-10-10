@@ -1,12 +1,152 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <object class="GtkDialog" id="configuration-creator-dialog">
-    <property name="title" translatable="yes">New Configuration</property>
+  <object class="GtkListStore" id="projects">
+    <columns>
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkListStore" id="configurations">
+    <columns>
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkWindow" id="configuration-management-window">
+    <property name="title" translatable="yes">Manage Configurations</property>
+    <property name="default-width">400</property>
+    <property name="default-height">300</property>
+    <child>
+      <object class="GtkGrid" id="configurations-grid">
+        <property name="visible">true</property>
+        <property name="row-spacing">6</property>
+        <property name="column-spacing">6</property>
+        <property name="border-width">12</property>
+        <child>
+          <object class="GtkTreeView" id="project-list">
+            <property name="visible">true</property>
+            <property name="model">projects</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="headers-visible">false</property>
+            <child>
+              <object class="GtkTreeViewColumn" id="project-name-column">
+                <property name="expand">true</property>
+                <child>
+                  <object class="GtkCellRendererText" id="project-name-renderer"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+            <property name="width">1</property>
+            <property name="height">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="projects-label">
+            <property name="visible">true</property>
+            <property name="use-underline">true</property>
+            <property name="label" translatable="yes">_Projects:</property>
+            <property name="halign">start</property>
+            <property name="mnemonic-widget">project-list</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkTreeView" id="configuration-list">
+            <property name="visible">true</property>
+            <property name="model">configurations</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="headers-visible">false</property>
+            <child>
+              <object class="GtkTreeViewColumn" id="config-name-column">
+                <property name="expand">true</property>
+                <child>
+                  <object class="GtkCellRendererText" id="config-name-renderer"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="configurations-label">
+            <property name="visible">true</property>
+            <property name="use-underline">true</property>
+            <property name="label" translatable="yes">_Configurations:</property>
+            <property name="halign">start</property>
+            <property name="mnemonic-widget">configuration-list</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButtonBox" id="configurations-buttons">
+            <property name="visible">true</property>
+            <property name="layout-style">spread</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkButton" id="edit-config-button">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">_Edit...</property>
+                <property name="sensitive">false</property>
+              </object>
+              <packing>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="delete-config-button">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">_Delete</property>
+                <property name="sensitive">false</property>
+              </object>
+              <packing>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">2</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkDialog" id="configuration-editor-dialog">
+    <property name="title" translatable="yes">Edit Configuration</property>
     <child internal-child="vbox">
-      <object class="GtkBox" id="configuration-creator-vbox">
+      <object class="GtkBox" id="configuration-editor-vbox">
         <property name="visible">true</property>
         <child>
-          <object class="GtkGrid" id="configuration-creator-grid">
+          <object class="GtkGrid" id="configuration-editor-grid">
             <property name="visible">true</property>
             <property name="row-spacing">6</property>
             <property name="column-spacing">6</property>
@@ -38,9 +178,10 @@
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="name-entry">
+              <object class="GtkLabel" id="name-content-label">
                 <property name="visible">true</property>
                 <property name="hexpand">true</property>
+                <property name="halign">start</property>
               </object>
               <packing>
                 <property name="left-attach">1</property>
@@ -52,10 +193,8 @@
             <child>
               <object class="GtkLabel" id="name-label">
                 <property name="visible">true</property>
-                <property name="use-underline">true</property>
-                <property name="label" translatable="yes">_Name:</property>
+                <property name="label" translatable="yes">Configuration:</property>
                 <property name="halign">start</property>
-                <property name="mnemonic-widget">name-entry</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
@@ -180,21 +319,21 @@
       <object class="GtkButton" id="cancel-button">
         <property name="visible">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">Cance_l</property>
+        <property name="label" translatable="yes">_Cancel</property>
       </object>
     </child>
     <child type="action">
-      <object class="GtkButton" id="create-button">
+      <object class="GtkButton" id="apply-button">
         <property name="visible">true</property>
         <property name="can-default">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">_Create</property>
-        <property name="sensitive">false</property>
+        <property name="label" translatable="yes">_Apply</property>
+        <property name="sensitive">true</property>
       </object>
     </child>
     <action-widgets>
       <action-widget response="cancel">cancel-button</action-widget>
-      <action-widget response="accept" default="true">create-button</action-widget>
+      <action-widget response="accept" default="true">apply-button</action-widget>
     </action-widgets>
   </object>
 </interface>
