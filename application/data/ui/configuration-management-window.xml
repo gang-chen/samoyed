@@ -285,9 +285,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="dry-build-commands-entry">
+              <object class="GtkComboBoxText" id="compiler-chooser">
                 <property name="visible">true</property>
                 <property name="hexpand">true</property>
+                <items>
+                  <item translatable="yes" id="gcc">GCC</item>
+                </items>
               </object>
               <packing>
                 <property name="left-attach">1</property>
@@ -297,16 +300,70 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="dry-build-commands-label">
+              <object class="GtkLabel" id="compiler-label">
                 <property name="visible">true</property>
                 <property name="use-underline">true</property>
-                <property name="label" translatable="yes">_Dry build commands:</property>
+                <property name="label" translatable="yes">Com_piler:</property>
                 <property name="halign">start</property>
-                <property name="mnemonic-widget">dry-build-commands-entry</property>
+                <property name="mnemonic-widget">compiler-chooser</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
                 <property name="top-attach">5</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="compiler-options-label">
+                <property name="visible">true</property>
+                <property name="label" translatable="yes">Compiler's command-line options:</property>
+                <property name="halign">start</property>
+                <property name="tooltip-text" translatable="yes">Samoyed needs to know the compiler's command-line options so that it can parse source files exactly as the compiler parses them. To achieve this, it is recommended that you add the "-v" option to the compiler's command lines if using GCC, and Samoyed can collect the compiler's command-line options from build processes automatically. Otherwise, specify the compiler's command-line options manually.</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">6</property>
+                <property name="width">2</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkRadioButton" id="compiler-options-automatically">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">Added the "-_v" option to the compiler's command lines to let Samoyed collect the compiler's command-line options automatically.</property>
+                <property name="active">true</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">7</property>
+                <property name="width">2</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkRadioButton" id="compiler-options-manually">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">Specify _manually:</property>
+                <property name="group">compiler-options-automatically</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">8</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="compiler-options-entry">
+                <property name="visible">true</property>
+                <property name="hexpand">true</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">8</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>

@@ -180,8 +180,8 @@ void CompilationOptionsCollector::onProcessExited(GPid processId,
     g_spawn_close_pid(c->m_processId);
     c->m_processRunning = false;
 
-    if (!c->m_stdoutPipe)
-        c->m_buildSystem.onCompilationOptionsCollectionFinished();
+    //if (!c->m_stdoutPipe)
+    //    c->m_buildSystem.onCompilationOptionsCollectionFinished();
 }
 
 void CompilationOptionsCollector::onDataRead(GObject *stream,
@@ -222,9 +222,9 @@ void CompilationOptionsCollector::onDataRead(GObject *stream,
             g_object_unref(p->collector.m_stdoutPipe);
             p->collector.m_stdoutPipe = NULL;
 
-            if (!p->collector.m_processRunning)
-                p->collector.m_buildSystem.
-                    onCompilationOptionsCollectionFinished();
+            //if (!p->collector.m_processRunning)
+            //    p->collector.m_buildSystem.
+            //        onCompilationOptionsCollectionFinished();
             delete p;
         }
     }

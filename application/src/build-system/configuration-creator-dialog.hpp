@@ -34,7 +34,9 @@ private:
     GtkEntry *m_configCommandsEntry;
     GtkEntry *m_buildCommandsEntry;
     GtkEntry *m_installCommandsEntry;
-    GtkEntry *m_dryBuildCommandsEntry;
+    GtkComboBox *m_compilerChooser;
+    GtkToggleButton *m_autoCompilerOptions;
+    GtkEntry *m_compilerOptionsEntry;
 };
 
 }

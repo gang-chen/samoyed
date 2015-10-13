@@ -8,6 +8,7 @@
 #include "build-system.hpp"
 #include "build-log-view.hpp"
 #include "build-log-view-group.hpp"
+#include "configuration.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "project/project.hpp"
 #include "window/window.hpp"
@@ -61,12 +62,10 @@ namespace Samoyed
 {
 
 Builder::Builder(BuildSystem &buildSystem,
-                 const char *configName,
-                 const char *commands,
+                 Configuration &config,
                  Action action):
     m_buildSystem(buildSystem),
-    m_configName(configName),
-    m_commands(commands),
+    m_configuration(config),
     m_action(action),
     m_logView(NULL),
     m_processRunning(false),
@@ -91,6 +90,20 @@ bool Builder::running() const
 
 bool Builder::run()
 {
+    const char *commands;
+    switch (m_action)
+    {
+    case ACTION_CONFIGURE:
+        commands = m_configuration.configureCommands();
+        break;
+    case ACTION_BUILD:
+        commands = m_configuration.buildCommands();
+        break;
+    case ACTION_INSTALL:
+        commands = m_configuration.installCommands();
+        break;
+    }
+
     char *cwd = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
     const char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
     char **envv = NULL;
@@ -102,7 +115,7 @@ bool Builder::run()
     argv[0] = arg0;
     argv[1] = "-l";
     argv[2] = "-c";
-    argv[3] = m_commands.c_str();
+    argv[3] = commands;
     g_free(instDir);
     if (!g_getenv("MSYSTEM"))
     {
@@ -125,7 +138,7 @@ bool Builder::run()
             argv[0] = "/bin/sh";
     }
     argv[1] = "-c";
-    argv[2] = m_commands.c_str();
+    argv[2] = commands;
 #endif
     GError *error = NULL;
     if (!spawnSubprocess(cwd,
@@ -150,7 +163,7 @@ bool Builder::run()
               "with configuration \"%s\"."),
             gettext(actionText[m_action]),
             m_buildSystem.project().uri(),
-            m_configName.c_str());
+            m_configuration.name());
         gtkMessageDialogAddDetails(dialog, _("%s."), error->message);
         g_error_free(error);
         g_free(cwd);
@@ -188,7 +201,7 @@ bool Builder::run()
     BuildLogViewGroup *group =
         Application::instance().currentWindow()->openBuildLogViewGroup();
     m_logView = group->openBuildLogView(m_buildSystem.project().uri(),
-                                        m_configName.c_str());
+                                        m_configuration.name());
     m_logView->startBuild(m_action);
     m_logView->clear();
     m_logViewClosedConn = m_logView->addClosedCallback(
@@ -241,7 +254,7 @@ void Builder::onProcessExited(GPid processId,
     }
 
     if (!b->m_outputPipe)
-        b->m_buildSystem.onBuildFinished(b->m_configName.c_str());
+        b->m_buildSystem.onBuildFinished(b->m_configuration.name());
 }
 
 void Builder::onDataRead(GObject *stream,
@@ -276,7 +289,7 @@ void Builder::onDataRead(GObject *stream,
                             "configuration \"%s\": %s."),
                        gettext(actionText2[p->builder.m_action]),
                        p->builder.m_buildSystem.project().uri(),
-                       p->builder.m_configName.c_str(),
+                       p->builder.m_configuration.name(),
                        error->message);
                 g_error_free(error);
             }
@@ -288,7 +301,7 @@ void Builder::onDataRead(GObject *stream,
 
             if (!p->builder.m_processRunning)
                 p->builder.m_buildSystem.onBuildFinished(
-                    p->builder.m_configName.c_str());
+                    p->builder.m_configuration.name());
             delete p;
         }
     }

@@ -4,7 +4,6 @@
 #ifndef SMYD_BUILDER_HPP
 #define SMYD_BUILDER_HPP
 
-#include <string>
 #include <boost/utility.hpp>
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
@@ -15,6 +14,7 @@ namespace Samoyed
 
 class BuildSystem;
 class BuildLogView;
+class Configuration;
 class Widget;
 
 class Builder: public boost::noncopyable
@@ -28,8 +28,7 @@ public:
     };
 
     Builder(BuildSystem &buildSystem,
-            const char *configName,
-            const char *commands,
+            Configuration &config,
             Action action);
 
     ~Builder();
@@ -52,8 +51,7 @@ private:
     void onLogViewClosed(Widget &widget);
 
     BuildSystem &m_buildSystem;
-    std::string m_configName;
-    std::string m_commands;
+    Configuration &m_configuration;
     Action m_action;
 
     BuildLogView *m_logView;

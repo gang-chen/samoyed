@@ -55,12 +55,14 @@ bool GnuBuildSystem::removeFile(const char *uri)
     return true;
 }
 
-void GnuBuildSystem::defaultConfiguration(Configuration &config) const
+Configuration GnuBuildSystem::defaultConfiguration() const
 {
-    config.setConfigureCommands("./configure");
+    Configuration config;
+    config.setConfigureCommands("./configure CC='gcc -v' CXX='g++ -v'");
     config.setBuildCommands("make");
     config.setInstallCommands("make install");
-    config.setDryBuildCommands("make -n");
+    config.setCompiler("gcc");
+    config.setCollectCompilerOptionsAutomatically(true);
 }
 
 }

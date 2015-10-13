@@ -18,14 +18,10 @@ class Project;
 class Configuration;
 class BuildSystemFile;
 class Builder;
-class CompilationOptionsCollector;
 
 class BuildSystem: public boost::noncopyable
 {
 public:
-    typedef std::map<ComparablePointer<const char>, Configuration *>
-        ConfigurationTable;
-
     static BuildSystem *create(Project &project, const char *extensionId);
 
     virtual ~BuildSystem();
@@ -59,20 +55,21 @@ public:
     bool canInstall() const;
     bool install();
 
-    bool collectCompilationOptions();
-
     void stopBuild(const char *configName);
 
     void onBuildFinished(const char *configName);
 
-    void onCompilationOptionsCollectionFinished();
-
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
 
-    ConfigurationTable &configurations() { return m_configurations; }
-    const ConfigurationTable &configurations() const
-    { return m_configurations; }
+    Configuration *findConfiguration(const char *name);
+    const Configuration *findConfiguration(const char *name) const;
+
+    bool addConfiguration(Configuration &config);
+    bool removeConfiguration(Configuration &config);
+
+    Configuration *configurations() { return m_firstConfig; }
+    const Configuration *configurations() const { return m_firstConfig; }
 
     Configuration *activeConfiguration() { return m_activeConfig; }
     const Configuration *activeConfiguration() const { return m_activeConfig; }
@@ -90,17 +87,22 @@ protected:
     BuildSystem(Project &project, const char *extensionId);
 
 private:
+    typedef std::map<ComparablePointer<const char>, Configuration *>
+        ConfigurationTable;
+
+    typedef std::map<ComparablePointer<const char>, Builder *> BuilderTable;
+
     Project &m_project;
 
     const std::string m_extensionId;
 
-    ConfigurationTable m_configurations;
+    ConfigurationTable m_configTable;
+    Configuration *m_firstConfig;
+    Configuration *m_lastConfig;
 
     Configuration *m_activeConfig;
 
-    std::map<std::string, Builder *> m_builders;
-
-    CompilationOptionsCollector *m_compOptCollector;
+    BuilderTable m_builders;
 };
 
 }

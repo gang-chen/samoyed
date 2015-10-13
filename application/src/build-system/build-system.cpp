@@ -9,15 +9,14 @@
 #include "build-system-file.hpp"
 #include "build-systems-extension-point.hpp"
 #include "builder.hpp"
-#include "compilation-options-collector.hpp"
 #include "project/project.hpp"
 #include "plugin/extension-point-manager.hpp"
-#include "window/window.hpp"
 #include "application.hpp"
 #include <string.h>
 #include <map>
 #include <list>
 #include <string>
+#include <utility>
 #include <libxml/tree.h>
 #include <glib/gi18n.h>
 
@@ -35,28 +34,22 @@ BuildSystem::BuildSystem(Project &project,
                          const char *extensionId):
     m_project(project),
     m_extensionId(extensionId),
-    m_activeConfig(NULL),
-    m_compOptCollector(NULL)
+    m_firstConfig(NULL),
+    m_lastConfig(NULL),
+    m_activeConfig(NULL)
 {
 }
 
 BuildSystem::~BuildSystem()
 {
-    std::map<std::string, Builder *>::iterator builderIt;
-    while ((builderIt = m_builders.begin()) != m_builders.end())
-        stopBuild(builderIt->first.c_str());
+    BuilderTable::iterator it;
+    while ((it = m_builders.begin()) != m_builders.end())
+        stopBuild(it->first);
 
-    if (m_compOptCollector)
+    while (m_firstConfig)
     {
-        m_compOptCollector->stop();
-        delete m_compOptCollector;
-    }
-
-    ConfigurationTable::iterator configIt;
-    while ((configIt = m_configurations.begin()) != m_configurations.end())
-    {
-        Configuration *config = configIt->second;
-        m_configurations.erase(configIt);
+        Configuration *config = m_firstConfig;
+        removeConfiguration(*config);
         delete config;
     }
 }
@@ -109,7 +102,7 @@ BuildSystem *BuildSystem::readXmlElement(Project &project,
                         Configuration *config = new Configuration;
                         if (config->readXmlElement(grandChild, errors))
                         {
-                            if (!buildSystem->m_configurations.insert(
+                            if (!buildSystem->m_configTable.insert(
                                     std::make_pair(config->name(), config)).
                                     second)
                                 delete config;
@@ -127,8 +120,8 @@ BuildSystem *BuildSystem::readXmlElement(Project &project,
                 if (value)
                 {
                     ConfigurationTable::iterator it =
-                        buildSystem->m_configurations.find(value);
-                    if (it != buildSystem->m_configurations.end())
+                        buildSystem->m_configTable.find(value);
+                    if (it != buildSystem->m_configTable.end())
                         buildSystem->m_activeConfig = it->second;
                     xmlFree(value);
                 }
@@ -149,8 +142,8 @@ xmlNodePtr BuildSystem::writeXmlElement() const
     xmlNodePtr configs =
         xmlNewNode(NULL,
                    reinterpret_cast<const xmlChar *>(CONFIGURATIONS));
-    for (ConfigurationTable::const_iterator it = m_configurations.begin();
-         it != m_configurations.end();
+    for (ConfigurationTable::const_iterator it = m_configTable.begin();
+         it != m_configTable.end();
          ++it)
         xmlAddChild(configs, it->second->writeXmlElement());
     xmlAddChild(node, configs);
@@ -188,8 +181,7 @@ bool BuildSystem::configure()
         return false;
     Configuration *config = activeConfiguration();
     Builder *builder = new Builder(*this,
-                                   config->name(),
-                                   config->configureCommands(),
+                                   *config,
                                    Builder::ACTION_CONFIGURE);
     m_builders.insert(std::make_pair(config->name(), builder));
     if (builder->run())
@@ -215,8 +207,7 @@ bool BuildSystem::build()
         return false;
     Configuration *config = activeConfiguration();
     Builder *builder = new Builder(*this,
-                                   config->name(),
-                                   config->buildCommands(),
+                                   *config,
                                    Builder::ACTION_BUILD);
     m_builders.insert(std::make_pair(config->name(), builder));
     if (builder->run())
@@ -242,8 +233,7 @@ bool BuildSystem::install()
         return false;
     Configuration *config = activeConfiguration();
     Builder *builder = new Builder(*this,
-                                   config->name(),
-                                   config->installCommands(),
+                                   *config,
                                    Builder::ACTION_INSTALL);
     m_builders.insert(std::make_pair(config->name(), builder));
     if (builder->run())
@@ -253,27 +243,9 @@ bool BuildSystem::install()
     return false;
 }
 
-bool BuildSystem::collectCompilationOptions()
-{
-    Configuration *config = activeConfiguration();
-    if (!config || *config->dryBuildCommands() == '\0')
-        return false;
-    if (m_compOptCollector)
-        return false;
-    m_compOptCollector =
-        new CompilationOptionsCollector(*this,
-                                        config->dryBuildCommands());
-    if (m_compOptCollector->run())
-        return true;
-    delete m_compOptCollector;
-    m_compOptCollector = NULL;
-    return false;
-}
-
 void BuildSystem::stopBuild(const char *configName)
 {
-    std::map<std::string, Builder *>::iterator it =
-        m_builders.find(configName);
+    BuilderTable::iterator it = m_builders.find(configName);
     if (it != m_builders.end())
     {
         it->second->stop();
@@ -284,8 +256,7 @@ void BuildSystem::stopBuild(const char *configName)
 
 void BuildSystem::onBuildFinished(const char *configName)
 {
-    std::map<std::string, Builder *>::iterator it =
-        m_builders.find(configName);
+    BuilderTable::iterator it = m_builders.find(configName);
     if (it != m_builders.end())
     {
         delete it->second;
@@ -293,15 +264,47 @@ void BuildSystem::onBuildFinished(const char *configName)
     }
 }
 
-void BuildSystem::onCompilationOptionsCollectionFinished()
-{
-    delete m_compOptCollector;
-    m_compOptCollector = NULL;
-}
-
 Configuration BuildSystem::defaultConfiguration() const
 {
     return Configuration();
+}
+
+Configuration *BuildSystem::findConfiguration(const char *name)
+{
+    ConfigurationTable::const_iterator it = m_configTable.find(name);
+    if (it == m_configTable.end())
+        return NULL;
+    return it->second;
+}
+
+const Configuration *BuildSystem::findConfiguration(const char *name) const
+{
+    ConfigurationTable::const_iterator it = m_configTable.find(name);
+    if (it == m_configTable.end())
+        return NULL;
+    return it->second;
+}
+
+bool BuildSystem::addConfiguration(Configuration &config)
+{
+    if (!m_configTable.insert(std::make_pair(config.name(), &config)).second)
+        return false;
+    config.addToList(m_firstConfig, m_lastConfig);
+    if (!activeConfiguration())
+        setActiveConfiguration(&config);
+    return true;
+}
+
+bool BuildSystem::removeConfiguration(Configuration &config)
+{
+    if (m_builders.find(config.name()) != m_builders.end())
+        return false;
+    if (!m_configTable.erase(config.name()))
+        return false;
+    config.removeFromList(m_firstConfig, m_lastConfig);
+    if (activeConfiguration() == &config)
+        setActiveConfiguration(m_firstConfig);
+    return true;
 }
 
 }

@@ -53,16 +53,14 @@ ActiveConfigurationSetterDialog::ActiveConfigurationSetterDialog(
         GTK_LABEL(gtk_builder_get_object(m_builder, "project-uri-label")),
         m_buildSystem.project().uri());
 
-    const BuildSystem::ConfigurationTable &configs =
-        m_buildSystem.configurations();
     int i = 0;
-    for (BuildSystem::ConfigurationTable::const_iterator it = configs.begin();
-         it != configs.end();
-         ++it)
+    for (Configuration *config = m_buildSystem.configurations();
+         config;
+         config = config->next())
         gtk_combo_box_text_insert(m_configChooser,
                                   i++,
-                                  it->first,
-                                  it->first);
+                                  config->name(),
+                                  config->name());
     Configuration *config = m_buildSystem.activeConfiguration();
     if (config)
         gtk_combo_box_set_active_id(GTK_COMBO_BOX(m_configChooser),
@@ -93,7 +91,7 @@ void ActiveConfigurationSetterDialog::run()
 
     const char *configName = gtk_combo_box_get_active_id(
         GTK_COMBO_BOX(m_configChooser));
-    Configuration *config = m_buildSystem.configurations()[configName];
+    Configuration *config = m_buildSystem.findConfiguration(configName);
     m_buildSystem.setActiveConfiguration(config);
 }
 

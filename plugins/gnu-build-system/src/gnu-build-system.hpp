@@ -29,7 +29,7 @@ public:
 
     virtual bool removeFile(const char *uri);
 
-    virtual void defaultConfiguration(Configuration &config) const;
+    virtual Configuration defaultConfiguration() const;
 };
 
 }

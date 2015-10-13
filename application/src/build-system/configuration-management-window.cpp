@@ -9,7 +9,6 @@
 #include "build-system.hpp"
 #include "project/project.hpp"
 #include "application.hpp"
-#include <map>
 #include <string>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -97,9 +96,9 @@ void ConfigurationManagementWindow::onEditConfiguration(
         return;
     }
 
-    BuildSystem::ConfigurationTable::iterator it2 =
-        project->buildSystem().configurations().find(configName);
-    if (it2 == project->buildSystem().configurations().end())
+    Configuration *config =
+        project->buildSystem().findConfiguration(configName);
+    if (!config)
     {
         GtkWidget *d = gtk_message_dialog_new(
             window->m_window,
@@ -119,7 +118,6 @@ void ConfigurationManagementWindow::onEditConfiguration(
         g_free(configName);
         return;
     }
-    Configuration *config = it2->second;
 
     gtk_label_set_label(
         GTK_LABEL(gtk_builder_get_object(window->m_builder,
@@ -141,10 +139,19 @@ void ConfigurationManagementWindow::onEditConfiguration(
         GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                          "install-commands-entry")),
         config->installCommands());
+    gtk_combo_box_set_active_id(
+        GTK_COMBO_BOX(gtk_builder_get_object(window->m_builder,
+                                             "compiler-chooser")),
+        config->compiler());
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(gtk_builder_get_object(
+            window->m_builder,
+            "compiler-options-automatically")),
+        config->collectCompilerOptionsAutomatically());
     gtk_entry_set_text(
         GTK_ENTRY(gtk_builder_get_object(window->m_builder,
-                                         "dry-build-commands-entry")),
-        config->dryBuildCommands());
+                                         "compiler-options-entry")),
+        config->compilerOptions());
 
     if (!window->m_editorDialog)
     {
@@ -166,9 +173,16 @@ void ConfigurationManagementWindow::onEditConfiguration(
         config->setInstallCommands(gtk_entry_get_text(
             GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                              "install-commands-entry"))));
-        config->setDryBuildCommands(gtk_entry_get_text(
+        config->setCompiler(gtk_combo_box_get_active_id(
+            GTK_COMBO_BOX(gtk_builder_get_object(window->m_builder,
+                                                 "compiler-chooser"))));
+        config->setCollectCompilerOptionsAutomatically(
+            gtk_toggle_button_get_active(
+                GTK_TOGGLE_BUTTON(gtk_builder_get_object(window->m_builder,
+                                  "compiler-options-automatically"))));
+        config->setCompilerOptions(gtk_entry_get_text(
             GTK_ENTRY(gtk_builder_get_object(window->m_builder,
-                                             "dry-build-commands-entry"))));
+                                             "compiler-options-entry"))));
     }
     gtk_widget_hide(GTK_WIDGET(window->m_editorDialog));
 
@@ -261,9 +275,9 @@ void ConfigurationManagementWindow::deleteSelectedConfiguration(bool confirm)
         return;
     }
 
-    BuildSystem::ConfigurationTable::iterator it2 =
-        project->buildSystem().configurations().find(configName);
-    if (it2 == project->buildSystem().configurations().end())
+    Configuration *config =
+        project->buildSystem().findConfiguration(configName);
+    if (!config)
     {
         GtkWidget *d = gtk_message_dialog_new(
             m_window,
@@ -284,16 +298,25 @@ void ConfigurationManagementWindow::deleteSelectedConfiguration(bool confirm)
         return;
     }
 
-    Configuration *config = it2->second;
-    project->buildSystem().configurations().erase(it2);
-    if (project->buildSystem().activeConfiguration() == config)
+    if (!project->buildSystem().removeConfiguration(*config))
     {
-        it2 = project->buildSystem().configurations().begin();
-        if (it2 == project->buildSystem().configurations().end())
-            project->buildSystem().setActiveConfiguration(NULL);
-        else
-            project->buildSystem().setActiveConfiguration(it2->second);
+        GtkWidget *d = gtk_message_dialog_new(
+            m_window,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to delete configuration \"%s\" of project \"%s\" "
+              "because the configuration is in use."),
+            configName,
+            projectUri);
+        gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(d));
+        gtk_widget_destroy(d);
+        g_free(projectUri);
+        g_free(configName);
+        return;
     }
+
     delete config;
     gtk_list_store_remove(
         GTK_LIST_STORE(gtk_builder_get_object(m_builder, "configurations")),
@@ -348,14 +371,12 @@ void ConfigurationManagementWindow::onProjectSelectionChanged(
     if (!project)
         return;
 
-    const BuildSystem::ConfigurationTable &configs =
-        project->buildSystem().configurations();
-    for (BuildSystem::ConfigurationTable::const_iterator it2 = configs.begin();
-         it2 != configs.end();
-         ++it2)
+    for (Configuration *config = project->buildSystem().configurations();
+         config;
+         config = config->next())
     {
         gtk_list_store_append(configStore, &it);
-        gtk_list_store_set(configStore, &it, 0, it2->first, -1);
+        gtk_list_store_set(configStore, &it, 0, config->name(), -1);
     }
 }
 

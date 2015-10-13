@@ -9,7 +9,6 @@
 #include "build-system.hpp"
 #include "project/project.hpp"
 #include "application.hpp"
-#include <map>
 #include <string>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -22,6 +21,14 @@ ConfigurationCreatorDialog::validateInput(gpointer object,
                                           ConfigurationCreatorDialog *dialog)
 {
     if (*gtk_entry_get_text(dialog->m_nameEntry) == '\0')
+    {
+        gtk_widget_set_sensitive(
+            gtk_dialog_get_widget_for_response(dialog->m_dialog,
+                                               GTK_RESPONSE_ACCEPT),
+            FALSE);
+        return;
+    }
+    if (!gtk_combo_box_get_active_id(dialog->m_compilerChooser))
     {
         gtk_widget_set_sensitive(
             gtk_dialog_get_widget_for_response(dialog->m_dialog,
@@ -61,10 +68,18 @@ ConfigurationCreatorDialog::ConfigurationCreatorDialog(
     m_installCommandsEntry =
         GTK_ENTRY(gtk_builder_get_object(m_builder, "install-commands-entry"));
     gtk_entry_set_text(m_installCommandsEntry, config.installCommands());
-    m_dryBuildCommandsEntry =
-        GTK_ENTRY(gtk_builder_get_object(m_builder,
-                                         "dry-build-commands-entry"));
-    gtk_entry_set_text(m_dryBuildCommandsEntry, config.dryBuildCommands());
+    m_compilerChooser =
+        GTK_COMBO_BOX(gtk_builder_get_object(m_builder, "compiler-chooser"));
+    gtk_combo_box_set_active_id(m_compilerChooser, config.compiler());
+    m_autoCompilerOptions = GTK_TOGGLE_BUTTON(gtk_builder_get_object(
+        m_builder,
+        "compiler-options-automatically"));
+    gtk_toggle_button_set_active(
+        m_autoCompilerOptions,
+        config.collectCompilerOptionsAutomatically());
+    m_compilerOptionsEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder, "compiler-options-entry"));
+    gtk_entry_set_text(m_compilerOptionsEntry, config.compilerOptions());
     gtk_label_set_label(
         GTK_LABEL(gtk_builder_get_object(m_builder, "project-uri-label")),
         m_buildSystem.project().uri());
@@ -76,6 +91,8 @@ ConfigurationCreatorDialog::ConfigurationCreatorDialog(
     }
 
     g_signal_connect(GTK_EDITABLE(m_nameEntry), "changed",
+                     G_CALLBACK(validateInput), this);
+    g_signal_connect(m_compilerChooser, "changed",
                      G_CALLBACK(validateInput), this);
 
     validateInput(NULL, this);
@@ -97,10 +114,11 @@ Configuration *ConfigurationCreatorDialog::run()
     config->setConfigureCommands(gtk_entry_get_text(m_configCommandsEntry));
     config->setBuildCommands(gtk_entry_get_text(m_buildCommandsEntry));
     config->setInstallCommands(gtk_entry_get_text(m_installCommandsEntry));
-    config->setDryBuildCommands(gtk_entry_get_text(m_dryBuildCommandsEntry));
-    if (!m_buildSystem.configurations().insert(std::make_pair(config->name(),
-                                                              config)).
-            second)
+    config->setCompiler(gtk_combo_box_get_active_id(m_compilerChooser));
+    config->setCollectCompilerOptionsAutomatically(
+        gtk_toggle_button_get_active(m_autoCompilerOptions));
+    config->setCompilerOptions(gtk_entry_get_text(m_compilerOptionsEntry));
+    if (!m_buildSystem.addConfiguration(*config))
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(m_dialog),
@@ -118,7 +136,6 @@ Configuration *ConfigurationCreatorDialog::run()
         return NULL;
     }
 
-    m_buildSystem.setActiveConfiguration(config);
     return config;
 }
 
