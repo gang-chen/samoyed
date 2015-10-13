@@ -85,8 +85,9 @@ void TextFileRecovererPreferencesExtension::setupPreferencesEditor(
         prefs.get<int>(TEXT_EDIT_SAVE_INTERVAL),
         1.0, 100.0, 1.0, 5.0, 0.0);
     GtkWidget *spin = gtk_spin_button_new(adjust, 1.0, 0);
-    GtkWidget *label = gtk_label_new(
-        _("minutes in replay files for recovering them from crashes"));
+    GtkWidget *label = gtk_label_new_with_mnemonic(
+        _("_minutes in replay files for recovering them from crashes"));
+    gtk_label_set_mnemonic_widget(GTK_LABEL(label), spin);
     gtk_grid_attach(GTK_GRID(g), check, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(g), spin, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(g), label, 2, 0, 1, 1);

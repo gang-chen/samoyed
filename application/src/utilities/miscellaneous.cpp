@@ -340,11 +340,14 @@ bool spawnSubprocess(const char *cwd,
         if (!CreatePipe(&stdinReader, &stdinWriter, &secAttr, 0) ||
             !SetHandleInformation(stdinWriter, HANDLE_FLAG_INHERIT, 0))
         {
+            int code = GetLastError();
+            char *msg = g_win32_error_message(code);
             g_set_error(error,
                         G_SPAWN_ERROR,
                         G_SPAWN_ERROR_FAILED,
-                        _("Failed to create stdin pipe (error code %d)"),
-                        GetLastError());
+                        _("Failed to create stdin pipe: %s (error code %d)"),
+                        msg, code);
+            g_free(msg);
             goto ERROR_OUT;
         }
     }
@@ -353,11 +356,14 @@ bool spawnSubprocess(const char *cwd,
         if (!CreatePipe(&stdoutReader, &stdoutWriter, &secAttr, 0) ||
             !SetHandleInformation(stdoutReader, HANDLE_FLAG_INHERIT, 0))
         {
+            int code = GetLastError();
+            char *msg = g_win32_error_message(code);
             g_set_error(error,
                         G_SPAWN_ERROR,
                         G_SPAWN_ERROR_FAILED,
-                        _("Failed to create stdout pipe (error code %d)"),
-                        GetLastError());
+                        _("Failed to create stdout pipe: %s (error code %d)"),
+                        msg, code);
+            g_free(msg);
             goto ERROR_OUT;
         }
     }
@@ -366,11 +372,14 @@ bool spawnSubprocess(const char *cwd,
         if (!CreatePipe(&stderrReader, &stderrWriter, &secAttr, 0) ||
             !SetHandleInformation(stderrReader, HANDLE_FLAG_INHERIT, 0))
         {
+            int code = GetLastError();
+            char *msg = g_win32_error_message(code);
             g_set_error(error,
                         G_SPAWN_ERROR,
                         G_SPAWN_ERROR_FAILED,
-                        _("Failed to create stdout pipe (error code %d)"),
-                        GetLastError());
+                        _("Failed to create stdout pipe: %s (error code %d)"),
+                        msg, code);
+            g_free(msg);
             goto ERROR_OUT;
         }
     }
@@ -468,12 +477,15 @@ bool spawnSubprocess(const char *cwd,
                        &startInfo,
                        &procInfo))
     {
+        int code = GetLastError();
+        char *msg = g_win32_error_message(code);
         g_set_error(error,
                     G_SPAWN_ERROR,
                     G_SPAWN_ERROR_FAILED,
-                    _("Failed to execute child process \"%s\" (error code %d)"),
-                    argv[0],
-                    GetLastError());
+                    _("Failed to execute child process \"%s\": %s (error code "
+                      "%d)"),
+                    argv[0], msg, code);
+        g_free(msg);
         goto ERROR_OUT;
     }
     g_free(wcwd);
@@ -793,11 +805,10 @@ int main(int argc, char *argv[])
     gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stdoutView), 1, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(stderrView), 2, 1, 1, 1);
 
-    const char *env[3] = { "VAR1=VAL1", "VAR2=VAL2", NULL };
     GError *error = NULL;
     if (!Samoyed::spawnSubprocess(NULL,
                                   const_cast<const char **>(argv + 1),
-                                  env,
+                                  NULL,
                                   Samoyed::SPAWN_SUBPROCESS_FLAG_STDIN_PIPE |
                                   Samoyed::SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE |
                                   Samoyed::SPAWN_SUBPROCESS_FLAG_STDERR_PIPE,

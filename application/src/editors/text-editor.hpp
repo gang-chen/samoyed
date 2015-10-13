@@ -150,6 +150,10 @@ private:
                                          gpointer data);
     static void onIndentWidthChanged(GtkSpinButton *spin, gpointer data);
     static void onIndentToggled(GtkToggleButton *toggle, gpointer data);
+    static void onIndentCompletedToggled(GtkToggleButton *toggle,
+                                         gpointer data);
+    static void onIndentNamespaceToggled(GtkToggleButton *toggle,
+                                         gpointer data);
 
     static GtkTextTagTable *s_sharedTagTable;
 

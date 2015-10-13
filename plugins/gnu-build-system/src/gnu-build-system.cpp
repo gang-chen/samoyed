@@ -63,6 +63,7 @@ Configuration GnuBuildSystem::defaultConfiguration() const
     config.setInstallCommands("make install");
     config.setCompiler("gcc");
     config.setCollectCompilerOptionsAutomatically(true);
+    return config;
 }
 
 }

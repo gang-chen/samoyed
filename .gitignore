@@ -3,8 +3,8 @@
 .*
 !/.gitignore
 
-# Files created by IDEs.
-/samoyed.*
+# Samoyed project file.
+/samoyed-project.xml
 
 # Files produced by autotools.
 /aclocal.m4

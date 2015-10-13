@@ -27,6 +27,9 @@
 #define INSERT_SPACES_INSTEAD_OF_TABS "insert-spaces-instead-of-tabs"
 #define INDENT "indent"
 #define INDENT_WIDTH "indent-width"
+#define INDENT_COMPLETED_DECL_STMT_CONTENTS \
+    "indent-completed-decl-stmt-contents"
+#define INDENT_NAMESPACE_CONTENTS "indent-namespace-contents"
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define FOLD_STRUCTURED_TEXT "fold-structured-text"
 
@@ -814,7 +817,7 @@ int SourceFile::calculateIndentSize(int line,
     int indentWidth = Application::instance().preferences().child(TEXT_EDITOR).
         get<int>(INDENT_WIDTH);
 
-    // Get the beginning of the line excluding blank characters.
+    // Set the iterator at the beginning of the line excluding blank characters.
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
         GTK_TEXT_VIEW(static_cast<TextEditor *>(editors())->gtkSourceView()));
     GtkTextIter iter;
@@ -867,10 +870,12 @@ int SourceFile::calculateIndentSize(int line,
         checkToken(buffer, m_tu.get(), loc, CXToken_Punctuation, "}"))
     {
         // This "}" completes the declaration or the compound statement and
-        // completes the enclosing declarations or statements as well.  We need
-        // to indent these lines.  But if the beginning is not in this file, we
+        // completes the enclosed declarations or statements as well.  Indent
+        // these lines if allowed.  But if the beginning is not in this file, we
         // do not know how to do it.
-        if (astFile == file)
+        if (Application::instance().preferences().child(TEXT_EDITOR).
+            get<bool>(INDENT_COMPLETED_DECL_STMT_CONTENTS) &&
+            astFile == file)
         {
             unsigned beginLine;
             clang_getFileLocation(begin, NULL, &beginLine, NULL, NULL);
@@ -889,7 +894,8 @@ int SourceFile::calculateIndentSize(int line,
             if (clang_Cursor_isNull(parentAst) ||
                 clang_isTranslationUnit(parentKind))
                 return 0;
-            // Do not indent in access specifiers.
+            // Align the access specifier with the beginning of the enclosing
+            // class declaration.
             if (kind == CXCursor_CXXAccessSpecifier)
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             if (kind == CXCursor_ParmDecl &&
@@ -906,6 +912,10 @@ int SourceFile::calculateIndentSize(int line,
                     !clang_equalCursors(firstParam, ast))
                     return countIndentSizeAt(buffer, firstParam, indentSizes);
             }
+            if (!Application::instance().preferences().child(TEXT_EDITOR).
+                 get<bool>(INDENT_NAMESPACE_CONTENTS) &&
+                parentKind == CXCursor_Namespace)
+                return countIndentSizeAt(buffer, parentAst, indentSizes);
             return countIndentSizeAt(buffer, parentAst, indentSizes) +
                 indentWidth;
         }
@@ -960,8 +970,8 @@ int SourceFile::calculateIndentSize(int line,
                     !clang_equalCursors(firstParam, ast))
                     return countIndentSizeAt(buffer, firstParam, indentSizes);
             }
-            // If the expression is nested in another expression, do not indent
-            // it in.  Otherwise, indent it in.
+            // If the expression is nested in another expression, do not add an
+            // extra level of indentation.
             if (clang_isExpression(parentKind))
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             return countIndentSizeAt(buffer, parentAst, indentSizes) +
@@ -982,7 +992,7 @@ int SourceFile::calculateIndentSize(int line,
                 clang_isTranslationUnit(parentKind))
                 return 0;
             // If the compound statement is nested in another compound
-            // statement, indent it in.  Otherwise, do not indent it in.
+            // statement, add an extra level of indentation.  Otherwise, do not.
             if (kind == CXCursor_CompoundStmt)
             {
                 if (parentKind == CXCursor_CompoundStmt)
@@ -990,7 +1000,8 @@ int SourceFile::calculateIndentSize(int line,
                         indentWidth;
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             }
-            // Do not indent in case statements and default statements.
+            // Align the case statement or default statement with the enclosing
+            // switch statement.
             if (kind == CXCursor_CaseStmt || kind == CXCursor_DefaultStmt)
                 return countIndentSizeAt(buffer, parentAst, indentSizes);
             if (kind == CXCursor_CXXCatchStmt &&

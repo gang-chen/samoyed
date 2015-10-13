@@ -36,6 +36,9 @@
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define INDENT "indent"
 #define INDENT_WIDTH "indent-width"
+#define INDENT_COMPLETED_DECL_STMT_CONTENTS \
+    "indent-completed-decl-stmt-contents"
+#define INDENT_NAMESPACE_CONTENTS "indent-namespace-contents"
 
 namespace
 {
@@ -49,6 +52,8 @@ const bool DEFAULT_SHOW_LINE_NUMBERS = true;
 const bool DEFAULT_HIGHLIGHT_SYNTAX = true;
 const bool DEFAULT_INDENT = true;
 const int DEFAULT_INDENT_WIDTH = 4;
+const bool DEFAULT_INDENT_COMPLETED_DECL_STMT_CONTENTS = true;
+const bool DEFAULT_INDENT_NAMESPACE_CONTENTS = false;
 
 void onCursorChanged(GtkTextBuffer *buffer, Samoyed::TextEditor *editor)
 {
@@ -811,6 +816,10 @@ void TextEditor::installPreferences()
     prefs.addChild(HIGHLIGHT_SYNTAX, DEFAULT_HIGHLIGHT_SYNTAX);
     prefs.addChild(INDENT, DEFAULT_INDENT);
     prefs.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
+    prefs.addChild(INDENT_COMPLETED_DECL_STMT_CONTENTS,
+                   DEFAULT_INDENT_COMPLETED_DECL_STMT_CONTENTS);
+    prefs.addChild(INDENT_NAMESPACE_CONTENTS,
+                   DEFAULT_INDENT_NAMESPACE_CONTENTS);
 
     PreferencesEditor::addCategory(TEXT_EDITOR, _("_Text Editor"));
     PreferencesEditor::registerPreferences(TEXT_EDITOR, setupPreferencesEditor);
@@ -1078,6 +1087,28 @@ void TextEditor::onIndentToggled(GtkToggleButton *toggle, gpointer data)
     }
 }
 
+void TextEditor::onIndentCompletedToggled(GtkToggleButton *toggle,
+                                          gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(INDENT_COMPLETED_DECL_STMT_CONTENTS,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+}
+
+void TextEditor::onIndentNamespaceToggled(GtkToggleButton *toggle,
+                                          gpointer data)
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(INDENT_NAMESPACE_CONTENTS,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+}
+
 void TextEditor::setupPreferencesEditor(GtkGrid *grid)
 {
     const PropertyTree &prefs =
@@ -1097,7 +1128,7 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_widget_show_all(fontLine);
 
     GtkWidget *tabWidthLine = gtk_grid_new();
-    GtkWidget *tabWidthLabel1 = gtk_label_new_with_mnemonic(_("_Tab width:"));
+    GtkWidget *tabWidthLabel1 = gtk_label_new_with_mnemonic(_("Ta_b width:"));
     GtkAdjustment *tabWidthAdjust = gtk_adjustment_new(
         prefs.get<int>(TAB_WIDTH),
         1.0, 100.0, 1.0, 4.0, 0.0);
@@ -1145,28 +1176,58 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
                             GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(highlight);
 
-    GtkWidget *indentLine = gtk_grid_new();
-    GtkWidget *indentCheck = gtk_check_button_new_with_mnemonic(
-        _("_Indent new lines by"));
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indentCheck),
+    GtkWidget *indent = gtk_check_button_new_with_mnemonic(
+        _("_Indent lines automatically"));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(indent),
                                  prefs.get<bool>(INDENT));
-    g_signal_connect(indentCheck, "toggled",
+    g_signal_connect(indent, "toggled",
                      G_CALLBACK(onIndentToggled), NULL);
+    gtk_grid_attach_next_to(grid, indent, highlight,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(indent);
+
+    GtkWidget *indentWidthLine = gtk_grid_new();
+    GtkWidget *indentWidthLabel1 =
+        gtk_label_new_with_mnemonic(_("Indentation _width:"));
     GtkAdjustment *indentWidthAdjust = gtk_adjustment_new(
         prefs.get<int>(INDENT_WIDTH),
         1.0, 100.0, 1.0, 4.0, 0.0);
-    GtkWidget *indentWidthSpin =
-        gtk_spin_button_new(indentWidthAdjust, 1.0, 0);
+    GtkWidget *indentWidthSpin = gtk_spin_button_new(indentWidthAdjust, 1.0, 0);
     g_signal_connect(indentWidthSpin, "value-changed",
                      G_CALLBACK(onIndentWidthChanged), NULL);
-    GtkWidget *indentLabel = gtk_label_new(_("spaces"));
-    gtk_grid_attach(GTK_GRID(indentLine), indentCheck, 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(indentLine), indentWidthSpin, 1, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(indentLine), indentLabel, 2, 0, 1, 1);
-    gtk_grid_set_column_spacing(GTK_GRID(indentLine), CONTAINER_SPACING);
-    gtk_grid_attach_next_to(grid, indentLine, highlight,
+    gtk_label_set_mnemonic_widget(GTK_LABEL(indentWidthLabel1),
+                                  indentWidthSpin);
+    GtkWidget *indentWidthLabel2 = gtk_label_new(_("spaces"));
+    gtk_grid_attach(GTK_GRID(indentWidthLine), indentWidthLabel1, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(indentWidthLine), indentWidthSpin, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(indentWidthLine), indentWidthLabel2, 2, 0, 1, 1);
+    gtk_grid_set_column_spacing(GTK_GRID(indentWidthLine), CONTAINER_SPACING);
+    gtk_grid_attach_next_to(grid, indentWidthLine, indent,
                             GTK_POS_BOTTOM, 1, 1);
-    gtk_widget_show_all(indentLine);
+    gtk_widget_show_all(indentWidthLine);
+
+    GtkWidget *indentCompleted = gtk_check_button_new_with_mnemonic(
+        _("Indent the c_ontents of a declaration or a compound statement when "
+          "it is completed"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(indentCompleted),
+        prefs.get<bool>(INDENT_COMPLETED_DECL_STMT_CONTENTS));
+    g_signal_connect(indentCompleted, "toggled",
+                     G_CALLBACK(onIndentCompletedToggled), NULL);
+    gtk_grid_attach_next_to(grid, indentCompleted, indentWidthLine,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(indentCompleted);
+
+    GtkWidget *indentNamespace = gtk_check_button_new_with_mnemonic(
+        _("Add an e_xtra level of indentation for the contents of namespaces"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(indentNamespace),
+        prefs.get<bool>(INDENT_NAMESPACE_CONTENTS));
+    g_signal_connect(indentNamespace, "toggled",
+                     G_CALLBACK(onIndentNamespaceToggled), NULL);
+    gtk_grid_attach_next_to(grid, indentNamespace, indentCompleted,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(indentNamespace);
 }
 
 }

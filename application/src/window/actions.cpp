@@ -331,7 +331,7 @@ void installProject(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Project *project = window->currentProject();
     if (project)
-        project->buildSystem().build();
+        project->buildSystem().install();
 }
 
 void createConfiguration(GtkAction *action, Samoyed::Window *window)

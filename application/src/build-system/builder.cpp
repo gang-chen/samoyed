@@ -13,6 +13,7 @@
 #include "project/project.hpp"
 #include "window/window.hpp"
 #include "application.hpp"
+#include <string>
 #ifdef OS_WINDOWS
 # include <windows.h>
 #else
@@ -90,33 +91,42 @@ bool Builder::running() const
 
 bool Builder::run()
 {
-    const char *commands;
-    switch (m_action)
-    {
-    case ACTION_CONFIGURE:
-        commands = m_configuration.configureCommands();
-        break;
-    case ACTION_BUILD:
-        commands = m_configuration.buildCommands();
-        break;
-    case ACTION_INSTALL:
-        commands = m_configuration.installCommands();
-        break;
-    }
-
     char *cwd = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
     const char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
     char **envv = NULL;
+
+    std::string commands;
+
+#ifdef OS_WINDOWS
+    commands += "cd \"";
+    commands += cwd;
+    commands += "\"; ";
+#endif
+
+    switch (m_action)
+    {
+    case ACTION_CONFIGURE:
+        commands += m_configuration.configureCommands();
+        break;
+    case ACTION_BUILD:
+        commands += m_configuration.buildCommands();
+        break;
+    case ACTION_INSTALL:
+        commands += m_configuration.installCommands();
+        break;
+    }
+
 #ifdef OS_WINDOWS
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     char *arg0;
     arg0 = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
     argv[0] = arg0;
+    g_free(instDir);
     argv[1] = "-l";
     argv[2] = "-c";
-    argv[3] = commands;
-    g_free(instDir);
+    argv[3] = commands.c_str();
+
     if (!g_getenv("MSYSTEM"))
     {
         envv = g_get_environ();
@@ -138,12 +148,13 @@ bool Builder::run()
             argv[0] = "/bin/sh";
     }
     argv[1] = "-c";
-    argv[2] = commands;
+    argv[2] = commands.c_str();
 #endif
     GError *error = NULL;
     if (!spawnSubprocess(cwd,
                          argv,
                          const_cast<const char **>(envv),
+                         SPAWN_SUBPROCESS_FLAG_STDIN_PIPE |
                          SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE |
                          SPAWN_SUBPROCESS_FLAG_STDERR_MERGE,
                          &m_processId,
@@ -247,7 +258,8 @@ void Builder::onProcessExited(GPid processId,
     if (b->m_logView)
     {
         GError *error = NULL;
-        b->m_logView->onBuildFinished(g_spawn_check_exit_status(status, &error),
+        bool successful = g_spawn_check_exit_status(status, &error);
+        b->m_logView->onBuildFinished(successful,
                                       error ? error->message : NULL);
         if (error)
             g_error_free(error);

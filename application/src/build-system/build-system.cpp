@@ -102,9 +102,7 @@ BuildSystem *BuildSystem::readXmlElement(Project &project,
                         Configuration *config = new Configuration;
                         if (config->readXmlElement(grandChild, errors))
                         {
-                            if (!buildSystem->m_configTable.insert(
-                                    std::make_pair(config->name(), config)).
-                                    second)
+                            if (!buildSystem->addConfiguration(*config))
                                 delete config;
                         }
                         else
@@ -119,10 +117,10 @@ BuildSystem *BuildSystem::readXmlElement(Project &project,
                     xmlNodeGetContent(child->children));
                 if (value)
                 {
-                    ConfigurationTable::iterator it =
-                        buildSystem->m_configTable.find(value);
-                    if (it != buildSystem->m_configTable.end())
-                        buildSystem->m_activeConfig = it->second;
+                    Configuration *config =
+                        buildSystem->findConfiguration(value);
+                    if (config)
+                        buildSystem->setActiveConfiguration(config);
                     xmlFree(value);
                 }
             }
