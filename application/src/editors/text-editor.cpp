@@ -35,10 +35,7 @@
 #define SHOW_LINE_NUMBERS "show-line-numbers"
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define INDENT "indent"
-#define INDENT_WIDTH "indent-width"
-#define INDENT_COMPLETED_DECL_STMT_CONTENTS \
-    "indent-completed-decl-stmt-contents"
-#define INDENT_NAMESPACE_CONTENTS "indent-namespace-contents"
+#define INDENTATION_WIDTH "indentation-width"
 
 namespace
 {
@@ -51,9 +48,7 @@ const bool DEFAULT_INSERT_SPACES_INSTEAD_OF_TABS = true;
 const bool DEFAULT_SHOW_LINE_NUMBERS = true;
 const bool DEFAULT_HIGHLIGHT_SYNTAX = true;
 const bool DEFAULT_INDENT = true;
-const int DEFAULT_INDENT_WIDTH = 4;
-const bool DEFAULT_INDENT_COMPLETED_DECL_STMT_CONTENTS = true;
-const bool DEFAULT_INDENT_NAMESPACE_CONTENTS = false;
+const int DEFAULT_INDENTATION_WIDTH = 4;
 
 void onCursorChanged(GtkTextBuffer *buffer, Samoyed::TextEditor *editor)
 {
@@ -197,11 +192,13 @@ static void source_undo_manager_class_init(SourceUndoManagerClass *c)
 void beforePasteClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
 {
     editor->file().beginEditGroup();
+    editor->file().beginPastingClipboard();
 }
 
 void afterPasteClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
 {
     editor->file().endEditGroup();
+    editor->file().endPastingClipboard();
 }
 
 void beforeCutClipboard(GtkTextView *view, Samoyed::TextEditor *editor)
@@ -471,7 +468,7 @@ bool TextEditor::setup(GtkTextTagTable *tagTable)
         prefs.get<bool>(INDENT));
     gtk_source_view_set_indent_width(
         GTK_SOURCE_VIEW(view),
-        prefs.get<int>(INDENT_WIDTH));
+        prefs.get<int>(INDENTATION_WIDTH));
     gtk_source_view_set_show_line_numbers(
         GTK_SOURCE_VIEW(view),
         prefs.get<bool>(SHOW_LINE_NUMBERS));
@@ -815,11 +812,7 @@ void TextEditor::installPreferences()
     prefs.addChild(SHOW_LINE_NUMBERS, DEFAULT_SHOW_LINE_NUMBERS);
     prefs.addChild(HIGHLIGHT_SYNTAX, DEFAULT_HIGHLIGHT_SYNTAX);
     prefs.addChild(INDENT, DEFAULT_INDENT);
-    prefs.addChild(INDENT_WIDTH, DEFAULT_INDENT_WIDTH);
-    prefs.addChild(INDENT_COMPLETED_DECL_STMT_CONTENTS,
-                   DEFAULT_INDENT_COMPLETED_DECL_STMT_CONTENTS);
-    prefs.addChild(INDENT_NAMESPACE_CONTENTS,
-                   DEFAULT_INDENT_NAMESPACE_CONTENTS);
+    prefs.addChild(INDENTATION_WIDTH, DEFAULT_INDENTATION_WIDTH);
 
     PreferencesEditor::addCategory(TEXT_EDITOR, _("_Text Editor"));
     PreferencesEditor::registerPreferences(TEXT_EDITOR, setupPreferencesEditor);
@@ -1037,31 +1030,6 @@ void TextEditor::onHighlightSyntaxToggled(GtkToggleButton *toggle,
     }
 }
 
-void TextEditor::onIndentWidthChanged(GtkSpinButton *spin, gpointer data)
-{
-    PropertyTree &prefs =
-        Application::instance().preferences().child(TEXT_EDITOR);
-    prefs.set(INDENT_WIDTH,
-              gtk_spin_button_get_value_as_int(spin),
-              false,
-              NULL);
-    int indentWidth = prefs.get<int>(INDENT_WIDTH);
-    for (File *file = Application::instance().files();
-         file;
-         file = file->next())
-    {
-        if (file->type() & TextFile::TYPE)
-        {
-            for (Editor *editor = file->editors();
-                 editor;
-                 editor = editor->nextInFile())
-                gtk_source_view_set_indent_width(
-                    static_cast<TextEditor *>(editor)->gtkSourceView(),
-                    indentWidth);
-        }
-    }
-}
-
 void TextEditor::onIndentToggled(GtkToggleButton *toggle, gpointer data)
 {
     PropertyTree &prefs =
@@ -1087,26 +1055,29 @@ void TextEditor::onIndentToggled(GtkToggleButton *toggle, gpointer data)
     }
 }
 
-void TextEditor::onIndentCompletedToggled(GtkToggleButton *toggle,
-                                          gpointer data)
+void TextEditor::onIndentationWidthChanged(GtkSpinButton *spin, gpointer data)
 {
     PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
-    prefs.set(INDENT_COMPLETED_DECL_STMT_CONTENTS,
-              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+    prefs.set(INDENTATION_WIDTH,
+              gtk_spin_button_get_value_as_int(spin),
               false,
               NULL);
-}
-
-void TextEditor::onIndentNamespaceToggled(GtkToggleButton *toggle,
-                                          gpointer data)
-{
-    PropertyTree &prefs =
-        Application::instance().preferences().child(TEXT_EDITOR);
-    prefs.set(INDENT_NAMESPACE_CONTENTS,
-              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
-              false,
-              NULL);
+    int indentWidth = prefs.get<int>(INDENTATION_WIDTH);
+    for (File *file = Application::instance().files();
+         file;
+         file = file->next())
+    {
+        if (file->type() & TextFile::TYPE)
+        {
+            for (Editor *editor = file->editors();
+                 editor;
+                 editor = editor->nextInFile())
+                gtk_source_view_set_indent_width(
+                    static_cast<TextEditor *>(editor)->gtkSourceView(),
+                    indentWidth);
+        }
+    }
 }
 
 void TextEditor::setupPreferencesEditor(GtkGrid *grid)
@@ -1146,7 +1117,7 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_widget_show_all(tabWidthLine);
 
     GtkWidget *spaces = gtk_check_button_new_with_mnemonic(
-        _("Insert s_paces instead of tabs"));
+        _("Insert _spaces instead of tabs"));
     gtk_toggle_button_set_active(
         GTK_TOGGLE_BUTTON(spaces),
         prefs.get<bool>(INSERT_SPACES_INSTEAD_OF_TABS));
@@ -1190,11 +1161,11 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     GtkWidget *indentWidthLabel1 =
         gtk_label_new_with_mnemonic(_("Indentation _width:"));
     GtkAdjustment *indentWidthAdjust = gtk_adjustment_new(
-        prefs.get<int>(INDENT_WIDTH),
+        prefs.get<int>(INDENTATION_WIDTH),
         1.0, 100.0, 1.0, 4.0, 0.0);
     GtkWidget *indentWidthSpin = gtk_spin_button_new(indentWidthAdjust, 1.0, 0);
     g_signal_connect(indentWidthSpin, "value-changed",
-                     G_CALLBACK(onIndentWidthChanged), NULL);
+                     G_CALLBACK(onIndentationWidthChanged), NULL);
     gtk_label_set_mnemonic_widget(GTK_LABEL(indentWidthLabel1),
                                   indentWidthSpin);
     GtkWidget *indentWidthLabel2 = gtk_label_new(_("spaces"));
@@ -1205,29 +1176,6 @@ void TextEditor::setupPreferencesEditor(GtkGrid *grid)
     gtk_grid_attach_next_to(grid, indentWidthLine, indent,
                             GTK_POS_BOTTOM, 1, 1);
     gtk_widget_show_all(indentWidthLine);
-
-    GtkWidget *indentCompleted = gtk_check_button_new_with_mnemonic(
-        _("Indent the c_ontents of a declaration or a compound statement when "
-          "it is completed"));
-    gtk_toggle_button_set_active(
-        GTK_TOGGLE_BUTTON(indentCompleted),
-        prefs.get<bool>(INDENT_COMPLETED_DECL_STMT_CONTENTS));
-    g_signal_connect(indentCompleted, "toggled",
-                     G_CALLBACK(onIndentCompletedToggled), NULL);
-    gtk_grid_attach_next_to(grid, indentCompleted, indentWidthLine,
-                            GTK_POS_BOTTOM, 1, 1);
-    gtk_widget_show_all(indentCompleted);
-
-    GtkWidget *indentNamespace = gtk_check_button_new_with_mnemonic(
-        _("Add an e_xtra level of indentation for the contents of namespaces"));
-    gtk_toggle_button_set_active(
-        GTK_TOGGLE_BUTTON(indentNamespace),
-        prefs.get<bool>(INDENT_NAMESPACE_CONTENTS));
-    g_signal_connect(indentNamespace, "toggled",
-                     G_CALLBACK(onIndentNamespaceToggled), NULL);
-    gtk_grid_attach_next_to(grid, indentNamespace, indentCompleted,
-                            GTK_POS_BOTTOM, 1, 1);
-    gtk_widget_show_all(indentNamespace);
 }
 
 }

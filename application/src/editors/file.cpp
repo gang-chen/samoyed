@@ -696,7 +696,8 @@ File::File(const char *uri,
     m_firstEditor(NULL),
     m_lastEditor(NULL),
     m_freezeCount(0),
-    m_internalFreezeCount(0)
+    m_internalFreezeCount(0),
+    m_pastingClipboard(false)
 {
     Application::instance().addFile(*this);
     Window::onFileOpened(this->uri());

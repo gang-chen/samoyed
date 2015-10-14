@@ -80,7 +80,7 @@ void TextFileRecovererPreferencesExtension::setupPreferencesEditor(
         Application::instance().preferences().child(TEXT_EDITOR);
     GtkWidget *g = gtk_grid_new();
     GtkWidget *check = gtk_check_button_new_with_mnemonic(
-        _("_Save changed files every"));
+        _("Sa_ve changed files every"));
     GtkAdjustment *adjust = gtk_adjustment_new(
         prefs.get<int>(TEXT_EDIT_SAVE_INTERVAL),
         1.0, 100.0, 1.0, 5.0, 0.0);

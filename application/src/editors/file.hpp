@@ -240,6 +240,10 @@ public:
      */
     void unfreeze();
 
+    bool pastingClipboard() const { return m_pastingClipboard; }
+    void beginPastingClipboard() { m_pastingClipboard = true; }
+    void endPastingClipboard() { m_pastingClipboard = false; }
+
     void addEditor(Editor &editor);
 
     void removeEditor(Editor &editor);
@@ -509,6 +513,8 @@ private:
 
     int m_freezeCount;
     int m_internalFreezeCount;
+
+    bool m_pastingClipboard;
 
     boost::shared_ptr<FileLoader> m_loader;
     boost::signals2::connection m_loaderFinishedConn;

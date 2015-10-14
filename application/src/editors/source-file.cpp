@@ -7,6 +7,7 @@
 #include "source-file.hpp"
 #include "source-editor.hpp"
 #include "parsers/foreground-file-parser.hpp"
+#include "session/preferences-editor.hpp"
 #include "utilities/text-file-loader.hpp"
 #include "utilities/property-tree.hpp"
 #include "application.hpp"
@@ -26,15 +27,22 @@
 #define TAB_WIDTH "tab-width"
 #define INSERT_SPACES_INSTEAD_OF_TABS "insert-spaces-instead-of-tabs"
 #define INDENT "indent"
-#define INDENT_WIDTH "indent-width"
-#define INDENT_COMPLETED_DECL_STMT_CONTENTS \
-    "indent-completed-decl-stmt-contents"
+#define INDENTATION_WIDTH "indentation-width"
+#define REINDENT_PASTED_TEXT "reindent-pasted-text"
+#define REINDENT_COMPLETED_LINES "reindent-completed-lines"
+#define REINDENT_COMPLETED_DECL_STMT_CONTENTS \
+    "reindent-completed-decl-stmt-contents"
 #define INDENT_NAMESPACE_CONTENTS "indent-namespace-contents"
 #define HIGHLIGHT_SYNTAX "highlight-syntax"
 #define FOLD_STRUCTURED_TEXT "fold-structured-text"
 
 namespace
 {
+
+const bool DEFAULT_REINDENT_PASTED_TEXT = false;
+const bool DEFAULT_REINDENT_COMPLETED_LINES = true;
+const bool DEFAULT_REINDENT_COMPLETED_DECL_STMT_CONTENTS = true;
+const bool DEFAULT_INDENT_NAMESPACE_CONTENTS = false;
 
 struct MimeType
 {
@@ -81,6 +89,50 @@ struct StructureUpdateParam
     Samoyed::SourceFile &file;
     Samoyed::SourceFile::StructureNode *parentNode;
 };
+
+void onReindentPastedTextToggled(GtkToggleButton *toggle,
+                                 gpointer data)
+{
+    Samoyed::PropertyTree &prefs =
+        Samoyed::Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(REINDENT_PASTED_TEXT,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+}
+
+void onReindentCompletedLinesToggled(GtkToggleButton *toggle,
+                                     gpointer data)
+{
+    Samoyed::PropertyTree &prefs =
+        Samoyed::Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(REINDENT_COMPLETED_LINES,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+}
+
+void onReindentCompletedDeclStmtContentsToggled(GtkToggleButton *toggle,
+                                                gpointer data)
+{
+    Samoyed::PropertyTree &prefs =
+        Samoyed::Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(REINDENT_COMPLETED_DECL_STMT_CONTENTS,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+}
+
+void onIndentNamespaceContentsToggled(GtkToggleButton *toggle,
+                                      gpointer data)
+{
+    Samoyed::PropertyTree &prefs =
+        Samoyed::Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.set(INDENT_NAMESPACE_CONTENTS,
+              static_cast<bool>(gtk_toggle_button_get_active(toggle)),
+              false,
+              NULL);
+}
 
 gboolean isNonBlankChar(gunichar ch, gpointer data)
 {
@@ -646,9 +698,27 @@ void SourceFile::onChanged(const File::Change &change, bool interactive)
                      ++iter)
                     m_indentLines.insert(*iter + dLines);
 
-                // Add the line numbers in [ins.line, ins.newLine].
                 if (interactive)
-                    indent(ins.line, ins.newLine + 1, ins.newLine);
+                {
+                    if (pastingClipboard())
+                    {
+                        if (Application::instance().preferences().
+                            child(TEXT_EDITOR).get<bool>(REINDENT_PASTED_TEXT))
+                            // Add the line numbers in [ins.line, ins.newLine].
+                            indent(ins.line, ins.newLine + 1, ins.newLine);
+                    }
+                    else
+                    {
+                        if (Application::instance().preferences().
+                            child(TEXT_EDITOR).get<bool>
+                            (REINDENT_COMPLETED_LINES))
+                            // Add the line numbers in [ins.line, ins.newLine].
+                            indent(ins.line, ins.newLine + 1, ins.newLine);
+                        else
+                            // Add ins.newLine only.
+                            indent(ins.newLine, ins.newLine + 1, ins.newLine);
+                    }
+                }
             }
         }
         else
@@ -815,7 +885,7 @@ int SourceFile::calculateIndentSize(int line,
                                     const std::map<int, int> &indentSizes)
 {
     int indentWidth = Application::instance().preferences().child(TEXT_EDITOR).
-        get<int>(INDENT_WIDTH);
+        get<int>(INDENTATION_WIDTH);
 
     // Set the iterator at the beginning of the line excluding blank characters.
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(
@@ -870,11 +940,11 @@ int SourceFile::calculateIndentSize(int line,
         checkToken(buffer, m_tu.get(), loc, CXToken_Punctuation, "}"))
     {
         // This "}" completes the declaration or the compound statement and
-        // completes the enclosed declarations or statements as well.  Indent
+        // completes the enclosed declarations or statements as well.  Reindent
         // these lines if allowed.  But if the beginning is not in this file, we
         // do not know how to do it.
         if (Application::instance().preferences().child(TEXT_EDITOR).
-            get<bool>(INDENT_COMPLETED_DECL_STMT_CONTENTS) &&
+            get<bool>(REINDENT_COMPLETED_DECL_STMT_CONTENTS) &&
             astFile == file)
         {
             unsigned beginLine;
@@ -1084,8 +1154,8 @@ void SourceFile::doIndent(int line, int indentSize)
     gtk_text_buffer_get_iter_at_line(buffer, &iter, line);
     int oldIndentSize = 0;
     if (!countBlankCharWidth(gtk_text_iter_get_char(&iter), &oldIndentSize))
-    gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
-    &oldIndentSize, NULL);
+        gtk_text_iter_forward_find_char(&iter, countBlankCharWidth,
+                                        &oldIndentSize, NULL);
     if (oldIndentSize == indentSize)
         return;
     std::string inserted;
@@ -1244,5 +1314,73 @@ void SourceFile::updateStructure()
     for (Editor *editor = editors(); editor; editor = editor->nextInFile())
         static_cast<SourceEditor *>(editor)->onFileStructureUpdated();
 }
+
+void SourceFile::installPreferences()
+{
+    PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.addChild(REINDENT_COMPLETED_LINES,
+                   DEFAULT_REINDENT_COMPLETED_LINES);
+    prefs.addChild(REINDENT_COMPLETED_DECL_STMT_CONTENTS,
+                   DEFAULT_REINDENT_COMPLETED_DECL_STMT_CONTENTS);
+    prefs.addChild(INDENT_NAMESPACE_CONTENTS,
+                   DEFAULT_INDENT_NAMESPACE_CONTENTS);
+    PreferencesEditor::registerPreferences(TEXT_EDITOR, setupPreferencesEditor);
+}
+
+void SourceFile::setupPreferencesEditor(GtkGrid *grid)
+{
+    const PropertyTree &prefs =
+        Application::instance().preferences().child(TEXT_EDITOR);
+
+    GtkWidget *reindentPastedText = gtk_check_button_new_with_mnemonic(
+        _("Reindent _pasted text"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(reindentPastedText),
+        prefs.get<bool>(REINDENT_COMPLETED_LINES));
+    g_signal_connect(reindentPastedText, "toggled",
+                     G_CALLBACK(onReindentPastedTextToggled), NULL);
+    gtk_grid_attach_next_to(grid, reindentPastedText, NULL,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(reindentPastedText);
+
+    GtkWidget *reindentCompletedLines = gtk_check_button_new_with_mnemonic(
+        _("_Reindent lines when completed by line separators"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(reindentCompletedLines),
+        prefs.get<bool>(REINDENT_COMPLETED_LINES));
+    g_signal_connect(reindentCompletedLines, "toggled",
+                     G_CALLBACK(onReindentCompletedLinesToggled), NULL);
+    gtk_grid_attach_next_to(grid, reindentCompletedLines, reindentPastedText,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(reindentCompletedLines);
+
+    GtkWidget *reindentCompletedContents = gtk_check_button_new_with_mnemonic(
+        _("Reindent the c_ontents of declarations or compound statements when "
+          "completed by \"}\""));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(reindentCompletedContents),
+        prefs.get<bool>(REINDENT_COMPLETED_DECL_STMT_CONTENTS));
+    g_signal_connect(reindentCompletedContents, "toggled",
+                     G_CALLBACK(onReindentCompletedDeclStmtContentsToggled),
+                     NULL);
+    gtk_grid_attach_next_to(grid,
+                            reindentCompletedContents, reindentCompletedLines,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(reindentCompletedContents);
+
+    GtkWidget *indentNamespaceContents = gtk_check_button_new_with_mnemonic(
+        _("Indent the contents of _namespaces"));
+    gtk_toggle_button_set_active(
+        GTK_TOGGLE_BUTTON(indentNamespaceContents),
+        prefs.get<bool>(INDENT_NAMESPACE_CONTENTS));
+    g_signal_connect(indentNamespaceContents, "toggled",
+                     G_CALLBACK(onIndentNamespaceContentsToggled), NULL);
+    gtk_grid_attach_next_to(grid,
+                            indentNamespaceContents, reindentCompletedContents,
+                            GTK_POS_BOTTOM, 1, 1);
+    gtk_widget_show_all(indentNamespaceContents);
+}
+
 
 }

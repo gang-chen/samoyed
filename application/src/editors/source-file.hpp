@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include <gtk/gtk.h>
 #include <clang-c/Index.h>
 
 namespace Samoyed
@@ -80,6 +81,8 @@ public:
     static const PropertyTree &defaultOptions();
 
     static const int TYPE = 2;
+
+    static void installPreferences();
 
     virtual PropertyTree *options() const;
 
@@ -151,6 +154,8 @@ private:
     static File *create(const char *uri,
                         const char *mimeType,
                         const PropertyTree &options);
+
+    static void setupPreferencesEditor(GtkGrid *grid);
 
     bool parse();
 

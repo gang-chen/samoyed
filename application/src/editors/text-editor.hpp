@@ -148,12 +148,8 @@ private:
                                          gpointer data);
     static void onHighlightSyntaxToggled(GtkToggleButton *toggle,
                                          gpointer data);
-    static void onIndentWidthChanged(GtkSpinButton *spin, gpointer data);
     static void onIndentToggled(GtkToggleButton *toggle, gpointer data);
-    static void onIndentCompletedToggled(GtkToggleButton *toggle,
-                                         gpointer data);
-    static void onIndentNamespaceToggled(GtkToggleButton *toggle,
-                                         gpointer data);
+    static void onIndentationWidthChanged(GtkSpinButton *spin, gpointer data);
 
     static GtkTextTagTable *s_sharedTagTable;
 
