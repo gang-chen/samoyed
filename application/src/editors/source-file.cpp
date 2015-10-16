@@ -1319,6 +1319,8 @@ void SourceFile::installPreferences()
 {
     PropertyTree &prefs =
         Application::instance().preferences().child(TEXT_EDITOR);
+    prefs.addChild(REINDENT_PASTED_TEXT,
+                   DEFAULT_REINDENT_PASTED_TEXT);
     prefs.addChild(REINDENT_COMPLETED_LINES,
                    DEFAULT_REINDENT_COMPLETED_LINES);
     prefs.addChild(REINDENT_COMPLETED_DECL_STMT_CONTENTS,

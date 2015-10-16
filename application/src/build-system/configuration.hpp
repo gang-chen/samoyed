@@ -15,8 +15,6 @@ namespace Samoyed
 class Configuration
 {
 public:
-    Configuration(): m_autoCompilerOptions(true) {}
-
     const char *name() const { return m_name.c_str(); }
     void setName(const char *name) { m_name = name; }
     const char *configureCommands() const { return m_configCommands.c_str(); }
@@ -28,16 +26,19 @@ public:
     const char *installCommands() const { return m_installCommands.c_str(); }
     void setInstallCommands(const char *commands)
     { m_installCommands = commands; }
-    const char *compiler() const { return m_compiler.c_str(); }
-    void setCompiler(const char *compiler)
-    { m_compiler = compiler; }
-    bool collectCompilerOptionsAutomatically() const
-    { return m_autoCompilerOptions; }
-    void setCollectCompilerOptionsAutomatically(bool autoCompilerOptions)
-    { m_autoCompilerOptions = autoCompilerOptions; }
-    const char *compilerOptions() const { return m_compilerOptions.c_str(); }
-    void setCompilerOptions(const char *options)
-    { m_compilerOptions = options; }
+    const char *cCompiler() const { return m_cCompiler.c_str(); }
+    void setCCompiler(const char *compiler)
+    { m_cCompiler = compiler; }
+    const char *cppCompiler() const { return m_cppCompiler.c_str(); }
+    void setCppCompiler(const char *compiler)
+    { m_cppCompiler = compiler; }
+    const char *cCompilerOptions() const { return m_cCompilerOptions.c_str(); }
+    void setCCompilerOptions(const char *options)
+    { m_cCompilerOptions = options; }
+    const char *cppCompilerOptions() const
+    { return m_cppCompilerOptions.c_str(); }
+    void setCppCompilerOptions(const char *options)
+    { m_cppCompilerOptions = options; }
 
     bool readXmlElement(xmlNodePtr node, std::list<std::string> *errors);
     xmlNodePtr writeXmlElement() const;
@@ -47,9 +48,10 @@ private:
     std::string m_configCommands;
     std::string m_buildCommands;
     std::string m_installCommands;
-    std::string m_compiler;
-    bool m_autoCompilerOptions;
-    std::string m_compilerOptions;
+    std::string m_cCompiler;
+    std::string m_cppCompiler;
+    std::string m_cCompilerOptions;
+    std::string m_cppCompilerOptions;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Configuration)
 };

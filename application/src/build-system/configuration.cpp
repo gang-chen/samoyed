@@ -8,20 +8,17 @@
 #include <string.h>
 #include <list>
 #include <string>
-#include <boost/lexical_cast.hpp>
 #include <libxml/tree.h>
-#include <glib.h>
-#include <glib/gi18n.h>
 
 #define CONFIGURATION "configuration"
 #define NAME "name"
 #define CONFIGURE_COMMANDS "configure-commands"
 #define BUILD_COMMANDS "build-commands"
 #define INSTALL_COMMANDS "install-commands"
-#define COMPILER "compiler"
-#define COLLECT_COMPILER_OPTIONS_AUTOMATICALLY \
-    "collect-compiler-options-automatically"
-#define COMPILER_OPTIONS "compiler-options"
+#define C_COMPILER "c-compiler"
+#define CPP_COMPILER "cpp-compiler"
+#define C_COMPILER_OPTIONS "c-compiler-options"
+#define CPP_COMPILER_OPTIONS "cpp-compiler-options"
 
 namespace Samoyed
 {
@@ -29,7 +26,7 @@ namespace Samoyed
 bool Configuration::readXmlElement(xmlNodePtr node,
                                    std::list<std::string> *errors)
 {
-    char *value, *cp;
+    char *value;
     for (xmlNodePtr child = node->children; child; child = child->next)
     {
         if (strcmp(reinterpret_cast<const char *>(child->name),
@@ -77,53 +74,46 @@ bool Configuration::readXmlElement(xmlNodePtr node,
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        COMPILER) == 0)
+                        C_COMPILER) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-            	m_compiler = value;
+                m_cCompiler = value;
                 xmlFree(value);
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        COLLECT_COMPILER_OPTIONS_AUTOMATICALLY) == 0)
+                        CPP_COMPILER) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-                try
-                {
-                    m_autoCompilerOptions = boost::lexical_cast<bool>(value);
-                }
-                catch (boost::bad_lexical_cast &error)
-                {
-                    if (errors)
-                    {
-                        cp = g_strdup_printf(
-                            _("Line %d: Invalid Boolean value \"%s\" for "
-                              "element \"%s\". %s.\n"),
-                            child->line,
-                            value,
-                            COLLECT_COMPILER_OPTIONS_AUTOMATICALLY,
-                            error.what());
-                        errors->push_back(cp);
-                        g_free(cp);
-                    }
-                }
+                m_cppCompiler = value;
                 xmlFree(value);
             }
         }
         else if (strcmp(reinterpret_cast<const char *>(child->name),
-                        COMPILER_OPTIONS) == 0)
+                        C_COMPILER_OPTIONS) == 0)
         {
             value = reinterpret_cast<char *>(
                 xmlNodeGetContent(child->children));
             if (value)
             {
-            	m_compilerOptions = value;
+                m_cCompilerOptions = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CPP_COMPILER_OPTIONS) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_cppCompilerOptions = value;
                 xmlFree(value);
             }
         }
@@ -133,7 +123,6 @@ bool Configuration::readXmlElement(xmlNodePtr node,
 
 xmlNodePtr Configuration::writeXmlElement() const
 {
-    std::string str;
     xmlNodePtr node =
         xmlNewNode(NULL,
                    reinterpret_cast<const xmlChar *>(CONFIGURATION));
@@ -150,16 +139,17 @@ xmlNodePtr Configuration::writeXmlElement() const
                     reinterpret_cast<const xmlChar *>(INSTALL_COMMANDS),
                     reinterpret_cast<const xmlChar *>(installCommands()));
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(COMPILER),
-                    reinterpret_cast<const xmlChar *>(compiler()));
-    str = boost::lexical_cast<std::string>(m_autoCompilerOptions);
+                    reinterpret_cast<const xmlChar *>(C_COMPILER),
+                    reinterpret_cast<const xmlChar *>(cCompiler()));
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(
-                        COLLECT_COMPILER_OPTIONS_AUTOMATICALLY),
-                    reinterpret_cast<const xmlChar *>(str.c_str()));
+                    reinterpret_cast<const xmlChar *>(CPP_COMPILER),
+                    reinterpret_cast<const xmlChar *>(cppCompiler()));
     xmlNewTextChild(node, NULL,
-                    reinterpret_cast<const xmlChar *>(COMPILER_OPTIONS),
-                    reinterpret_cast<const xmlChar *>(compilerOptions()));
+                    reinterpret_cast<const xmlChar *>(C_COMPILER_OPTIONS),
+                    reinterpret_cast<const xmlChar *>(cCompilerOptions()));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(CPP_COMPILER_OPTIONS),
+                    reinterpret_cast<const xmlChar *>(cppCompilerOptions()));
     return node;
 }
 

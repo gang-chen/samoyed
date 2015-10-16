@@ -13,6 +13,7 @@
 #include "project/project.hpp"
 #include "window/window.hpp"
 #include "application.hpp"
+#include <string.h>
 #include <string>
 #ifdef OS_WINDOWS
 # include <windows.h>
@@ -23,6 +24,7 @@
 # include <signal.h>
 #endif
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <glib/gi18n.h>
 
@@ -93,7 +95,7 @@ bool Builder::run()
 {
     char *cwd = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
     const char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
-    char **envv = NULL;
+    char **envv = g_get_environ();
 
     std::string commands;
 
@@ -117,22 +119,35 @@ bool Builder::run()
     }
 
 #ifdef OS_WINDOWS
+
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     char *arg0;
     arg0 = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
-    argv[0] = arg0;
+    if (!g_file_test(arg0, G_FILE_TEST_IS_EXECUTABLE))
+    {
+        char *base = g_path_get_basename(instDir);
+        if (strcmp(base, "mingw32") == 0 ||
+            strcmp(base, "mingw64") == 0)
+        {
+            char *parent = g_path_get_dirname(instDir);
+            g_free(arg0);
+            arg0 = g_strconcat(parent, "\\usr\\bin\\bash.exe", NULL);
+            g_free(parent);
+        }
+        g_free(base);
+    }
     g_free(instDir);
+    argv[0] = arg0;
     argv[1] = "-l";
     argv[2] = "-c";
     argv[3] = commands.c_str();
 
     if (!g_getenv("MSYSTEM"))
-    {
-        envv = g_get_environ();
         envv = g_environ_setenv(envv, "MSYSTEM", "MINGW32", FALSE);
-    }
+
 #else
+
     const char *shell = g_getenv("SHELL");
     if (shell)
         argv[0] = shell;
@@ -149,7 +164,72 @@ bool Builder::run()
     }
     argv[1] = "-c";
     argv[2] = commands.c_str();
+
 #endif
+
+    // Create the builder output directory.
+    std::string output(cwd);
+    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "builder-output";
+    g_mkdir(output.c_str(), 0775);
+
+    // Remove the old output file if existing.
+    output += G_DIR_SEPARATOR_S;
+    output += m_configuration.name();
+    output += '-';
+    output += actionText[m_action];
+    g_unlink(output.c_str());
+
+    // Setup the interceptor that will intercept invocations of the compiler
+    // during the build process.
+    std::string interceptor(Application::instance().librariesDirectoryName());
+#ifdef OS_WINDOWS
+    interceptor += G_DIR_SEPARATOR_S "compilerinvocationinterceptor.dll";
+    // Need to convert to POSIX format because ":" is a path separator in
+    // $LD_PRELOAD.
+    if (interceptor.length() >= 3 &&
+        isalpha(interceptor[0]) && interceptor[1] == ':')
+    {
+        if (interceptor[2] == '\\')
+        {
+            interceptor[1] = tolower(interceptor[0]);
+            interceptor[0] = '/';
+            interceptor[2] = '/';
+        }
+        else
+        {
+            interceptor.insert(0, 1, '/');
+            interceptor[1] = tolower(interceptor[1]);
+            interceptor[2] = '/';
+        }
+        for (int i = 3; i < interceptor.length(); i++)
+            if (interceptor[i] == '\\')
+                interceptor[i] = '/';
+    }
+    else
+        interceptor.clear();
+#else
+    interceptor += G_DIR_SEPARATOR_S "compilerinvocationinterceptor.so";
+#endif
+    if (!interceptor.empty())
+    {
+        envv = g_environ_setenv(envv,
+                                "LD_PRELOAD",
+                                interceptor.c_str(),
+                                TRUE);
+        envv = g_environ_setenv(envv,
+                                "SAMOYED_BUILDER_CC",
+                                m_configuration.cCompiler(),
+                                TRUE);
+        envv = g_environ_setenv(envv,
+                                "SAMOYED_BUILDER_CXX",
+                                m_configuration.cppCompiler(),
+                                TRUE);
+        envv = g_environ_setenv(envv,
+                                "SAMOYED_BUILDER_OUTPUT_FILE",
+                                output.c_str(),
+                                TRUE);
+    }
+
     GError *error = NULL;
     if (!spawnSubprocess(cwd,
                          argv,

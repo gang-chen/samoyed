@@ -139,19 +139,22 @@ void ConfigurationManagementWindow::onEditConfiguration(
         GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                          "install-commands-entry")),
         config->installCommands());
-    gtk_combo_box_set_active_id(
-        GTK_COMBO_BOX(gtk_builder_get_object(window->m_builder,
-                                             "compiler-chooser")),
-        config->compiler());
-    gtk_toggle_button_set_active(
-        GTK_TOGGLE_BUTTON(gtk_builder_get_object(
-            window->m_builder,
-            "compiler-options-automatically")),
-        config->collectCompilerOptionsAutomatically());
     gtk_entry_set_text(
         GTK_ENTRY(gtk_builder_get_object(window->m_builder,
-                                         "compiler-options-entry")),
-        config->compilerOptions());
+                                         "c-compiler-entry")),
+        config->cCompiler());
+    gtk_entry_set_text(
+        GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                         "c++-compiler-entry")),
+        config->cppCompiler());
+    gtk_entry_set_text(
+        GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                         "c-compiler-options-entry")),
+        config->cCompilerOptions());
+    gtk_entry_set_text(
+        GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                         "c++-compiler-options-entry")),
+        config->cppCompilerOptions());
 
     if (!window->m_editorDialog)
     {
@@ -173,16 +176,18 @@ void ConfigurationManagementWindow::onEditConfiguration(
         config->setInstallCommands(gtk_entry_get_text(
             GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                              "install-commands-entry"))));
-        config->setCompiler(gtk_combo_box_get_active_id(
-            GTK_COMBO_BOX(gtk_builder_get_object(window->m_builder,
-                                                 "compiler-chooser"))));
-        config->setCollectCompilerOptionsAutomatically(
-            gtk_toggle_button_get_active(
-                GTK_TOGGLE_BUTTON(gtk_builder_get_object(window->m_builder,
-                                  "compiler-options-automatically"))));
-        config->setCompilerOptions(gtk_entry_get_text(
+        config->setCCompiler(gtk_entry_get_text(
             GTK_ENTRY(gtk_builder_get_object(window->m_builder,
-                                             "compiler-options-entry"))));
+                                             "c-compiler-entry"))));
+        config->setCppCompiler(gtk_entry_get_text(
+            GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                             "c++-compiler-entry"))));
+        config->setCCompilerOptions(gtk_entry_get_text(
+            GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                             "c-compiler-options-entry"))));
+        config->setCppCompilerOptions(gtk_entry_get_text(
+            GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                             "c++-compiler-options-entry"))));
     }
     gtk_widget_hide(GTK_WIDGET(window->m_editorDialog));
 

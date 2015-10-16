@@ -28,14 +28,6 @@ ConfigurationCreatorDialog::validateInput(gpointer object,
             FALSE);
         return;
     }
-    if (!gtk_combo_box_get_active_id(dialog->m_compilerChooser))
-    {
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(dialog->m_dialog,
-                                               GTK_RESPONSE_ACCEPT),
-            FALSE);
-        return;
-    }
     gtk_widget_set_sensitive(
         gtk_dialog_get_widget_for_response(dialog->m_dialog,
                                            GTK_RESPONSE_ACCEPT),
@@ -68,18 +60,20 @@ ConfigurationCreatorDialog::ConfigurationCreatorDialog(
     m_installCommandsEntry =
         GTK_ENTRY(gtk_builder_get_object(m_builder, "install-commands-entry"));
     gtk_entry_set_text(m_installCommandsEntry, config.installCommands());
-    m_compilerChooser =
-        GTK_COMBO_BOX(gtk_builder_get_object(m_builder, "compiler-chooser"));
-    gtk_combo_box_set_active_id(m_compilerChooser, config.compiler());
-    m_autoCompilerOptions = GTK_TOGGLE_BUTTON(gtk_builder_get_object(
-        m_builder,
-        "compiler-options-automatically"));
-    gtk_toggle_button_set_active(
-        m_autoCompilerOptions,
-        config.collectCompilerOptionsAutomatically());
-    m_compilerOptionsEntry =
-        GTK_ENTRY(gtk_builder_get_object(m_builder, "compiler-options-entry"));
-    gtk_entry_set_text(m_compilerOptionsEntry, config.compilerOptions());
+    m_cCompilerEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder, "c-compiler-entry"));
+    gtk_entry_set_text(m_cCompilerEntry, config.cCompiler());
+    m_cppCompilerEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder, "c++-compiler-entry"));
+    gtk_entry_set_text(m_cppCompilerEntry, config.cppCompiler());
+    m_cCompilerOptionsEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder,
+                                         "c-compiler-options-entry"));
+    gtk_entry_set_text(m_cCompilerOptionsEntry, config.cCompilerOptions());
+    m_cppCompilerOptionsEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder,
+                                         "c++-compiler-options-entry"));
+    gtk_entry_set_text(m_cppCompilerOptionsEntry, config.cppCompilerOptions());
     gtk_label_set_label(
         GTK_LABEL(gtk_builder_get_object(m_builder, "project-uri-label")),
         m_buildSystem.project().uri());
@@ -91,8 +85,6 @@ ConfigurationCreatorDialog::ConfigurationCreatorDialog(
     }
 
     g_signal_connect(GTK_EDITABLE(m_nameEntry), "changed",
-                     G_CALLBACK(validateInput), this);
-    g_signal_connect(m_compilerChooser, "changed",
                      G_CALLBACK(validateInput), this);
 
     validateInput(NULL, this);
@@ -114,10 +106,11 @@ Configuration *ConfigurationCreatorDialog::run()
     config->setConfigureCommands(gtk_entry_get_text(m_configCommandsEntry));
     config->setBuildCommands(gtk_entry_get_text(m_buildCommandsEntry));
     config->setInstallCommands(gtk_entry_get_text(m_installCommandsEntry));
-    config->setCompiler(gtk_combo_box_get_active_id(m_compilerChooser));
-    config->setCollectCompilerOptionsAutomatically(
-        gtk_toggle_button_get_active(m_autoCompilerOptions));
-    config->setCompilerOptions(gtk_entry_get_text(m_compilerOptionsEntry));
+    config->setCCompiler(gtk_entry_get_text(m_cCompilerEntry));
+    config->setCppCompiler(gtk_entry_get_text(m_cppCompilerEntry));
+    config->setCCompilerOptions(gtk_entry_get_text(m_cCompilerOptionsEntry));
+    config->setCppCompilerOptions(
+        gtk_entry_get_text(m_cppCompilerOptionsEntry));
     if (!m_buildSystem.addConfiguration(*config))
     {
         GtkWidget *dialog = gtk_message_dialog_new(

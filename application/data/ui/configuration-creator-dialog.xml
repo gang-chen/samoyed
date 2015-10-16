@@ -146,12 +146,9 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBoxText" id="compiler-chooser">
+              <object class="GtkEntry" id="c-compiler-entry">
                 <property name="visible">true</property>
                 <property name="hexpand">true</property>
-                <items>
-                  <item translatable="yes" id="gcc">GCC</item>
-                </items>
               </object>
               <packing>
                 <property name="left-attach">1</property>
@@ -161,12 +158,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="compiler-label">
+              <object class="GtkLabel" id="c-compiler-label">
                 <property name="visible">true</property>
                 <property name="use-underline">true</property>
-                <property name="label" translatable="yes">Com_piler:</property>
+                <property name="label" translatable="yes">C co_mpiler:</property>
                 <property name="halign">start</property>
-                <property name="mnemonic-widget">compiler-chooser</property>
+                <property name="mnemonic-widget">c-compiler-entry</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
@@ -176,54 +173,81 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="compiler-options-label">
+              <object class="GtkEntry" id="c++-compiler-entry">
                 <property name="visible">true</property>
-                <property name="label" translatable="yes">Compiler's command-line options:</property>
+                <property name="hexpand">true</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">6</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="c++-compiler-label">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">C++ com_piler:</property>
                 <property name="halign">start</property>
-                <property name="tooltip-text" translatable="yes">Samoyed needs to know the compiler's command-line options so that it can parse source files exactly as the compiler parses them. To achieve this, it is recommended that you add the "-v" option to the compiler's command lines if using GCC, and Samoyed can collect the compiler's command-line options from build processes automatically. Otherwise, specify the compiler's command-line options manually.</property>
+                <property name="mnemonic-widget">c++-compiler-entry</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
                 <property name="top-attach">6</property>
-                <property name="width">2</property>
+                <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
             </child>
             <child>
-              <object class="GtkRadioButton" id="compiler-options-automatically">
+              <object class="GtkEntry" id="c-compiler-options-entry">
+                <property name="visible">true</property>
+                <property name="hexpand">true</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">7</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="c-compiler-options-label">
                 <property name="visible">true</property>
                 <property name="use-underline">true</property>
-                <property name="label" translatable="yes">Added the "-_v" option to the compiler's command lines to let Samoyed collect the compiler's command-line options automatically.</property>
-                <property name="active">true</property>
+                <property name="label" translatable="yes">C compiler comman_d-line options:</property>
+                <property name="halign">start</property>
+                <property name="mnemonic-widget">c-compiler-options-entry</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
                 <property name="top-attach">7</property>
-                <property name="width">2</property>
+                <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
             </child>
             <child>
-              <object class="GtkRadioButton" id="compiler-options-manually">
+              <object class="GtkEntry" id="c++-compiler-options-entry">
                 <property name="visible">true</property>
-                <property name="use-underline">true</property>
-                <property name="label" translatable="yes">Specify _manually:</property>
-                <property name="group">compiler-options-automatically</property>
+                <property name="hexpand">true</property>
               </object>
               <packing>
-                <property name="left-attach">0</property>
+                <property name="left-attach">1</property>
                 <property name="top-attach">8</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="compiler-options-entry">
+              <object class="GtkLabel" id="c++-compiler-options-label">
                 <property name="visible">true</property>
-                <property name="hexpand">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">C++ compiler command-line _options:</property>
+                <property name="halign">start</property>
+                <property name="mnemonic-widget">c++-compiler-options-entry</property>
               </object>
               <packing>
-                <property name="left-attach">1</property>
+                <property name="left-attach">0</property>
                 <property name="top-attach">8</property>
                 <property name="width">1</property>
                 <property name="height">1</property>

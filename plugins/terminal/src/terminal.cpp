@@ -9,6 +9,7 @@
 #include "application.hpp"
 #include "window/window.hpp"
 #include "utilities/miscellaneous.hpp"
+#include <string.h>
 #ifndef OS_WINDOWS
 # include <pwd.h>
 # include <unistd.h>
@@ -47,8 +48,21 @@ GtkWidget *Terminal::setup()
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     argv[0] = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
-    argv[1] = g_strdup("--login");
+    if (!g_file_test(argv[0], G_FILE_TEST_IS_EXECUTABLE))
+    {
+        char *base = g_path_get_basename(instDir);
+        if (strcmp(base, "mingw32") == 0 ||
+            strcmp(base, "mingw64") == 0)
+        {
+            char *parent = g_path_get_dirname(instDir);
+            g_free(argv[0]);
+            argv[0] = g_strconcat(parent, "\\usr\\bin\\bash.exe", NULL);
+            g_free(parent);
+        }
+        g_free(base);
+    }
     g_free(instDir);
+    argv[1] = g_strdup("-l");
     if (!g_getenv("MSYSTEM"))
     {
         envv = g_get_environ();

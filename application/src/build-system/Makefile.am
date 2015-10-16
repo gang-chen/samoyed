@@ -7,7 +7,6 @@ libbuildsystem_la_SOURCES = \
     build-system.cpp \
     build-systems-extension-point.cpp \
     builder.cpp \
-    compilation-options-collector.cpp \
     configuration.cpp \
     configuration-creator-dialog.cpp \
     configuration-management-window.cpp \
@@ -19,7 +18,6 @@ libbuildsystem_la_SOURCES = \
     build-system-file.hpp \
     build-systems-extension-point.hpp \
     builder.hpp \
-    compilation-options-collector.hpp \
     configuration.hpp \
     configuration-creator-dialog.hpp \
     configuration-management-window.hpp

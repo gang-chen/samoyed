@@ -58,11 +58,11 @@ bool GnuBuildSystem::removeFile(const char *uri)
 Configuration GnuBuildSystem::defaultConfiguration() const
 {
     Configuration config;
-    config.setConfigureCommands("./configure CC='gcc -v' CXX='g++ -v'");
+    config.setConfigureCommands("./configure");
     config.setBuildCommands("make");
     config.setInstallCommands("make install");
-    config.setCompiler("gcc");
-    config.setCollectCompilerOptionsAutomatically(true);
+    config.setCCompiler("gcc");
+    config.setCppCompiler("g++");
     return config;
 }
 
