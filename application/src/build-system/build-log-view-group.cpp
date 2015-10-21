@@ -157,8 +157,33 @@ void BuildLogViewGroup::registerWithWindow()
     Window::addRestoredCallback(onWindowCreatedOrRestored);
 }
 
-BuildLogView *BuildLogViewGroup::buildLogView(const char *projectUri,
-                                              const char *configName)
+void BuildLogViewGroup::buildLogViewsForProject(
+    const char *projectUri,
+    std::list<BuildLogView *> &views)
+{
+    for (int i = 0; i < childCount(); i++)
+    {
+        BuildLogView &view = static_cast<BuildLogView &>(child(i));
+        if (strcmp(view.projectUri(), projectUri) == 0)
+            views.push_back(&view);
+    }
+}
+
+void BuildLogViewGroup::buildLogViewsForProject(
+    const char *projectUri,
+    std::list<const BuildLogView *> &views) const
+{
+    for (int i = 0; i < childCount(); i++)
+    {
+        const BuildLogView &view = static_cast<const BuildLogView &>(child(i));
+        if (strcmp(view.projectUri(), projectUri) == 0)
+            views.push_back(&view);
+    }
+}
+
+BuildLogView *
+BuildLogViewGroup::buildLogViewForConfiguration(const char *projectUri,
+                                                const char *configName)
 {
     for (int i = 0; i < childCount(); i++)
     {
@@ -171,8 +196,8 @@ BuildLogView *BuildLogViewGroup::buildLogView(const char *projectUri,
 }
 
 const BuildLogView *
-BuildLogViewGroup::buildLogView(const char *projectUri,
-                                const char *configName) const
+BuildLogViewGroup::buildLogViewForConfiguration(const char *projectUri,
+                                                const char *configName) const
 {
     for (int i = 0; i < childCount(); i++)
     {
@@ -187,7 +212,7 @@ BuildLogViewGroup::buildLogView(const char *projectUri,
 BuildLogView *BuildLogViewGroup::openBuildLogView(const char *projectUri,
                                                   const char *configName)
 {
-    BuildLogView *view = buildLogView(projectUri, configName);
+    BuildLogView *view = buildLogViewForConfiguration(projectUri, configName);
     if (!view)
     {
         view = BuildLogView::create(projectUri, configName);

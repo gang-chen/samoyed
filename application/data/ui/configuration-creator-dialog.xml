@@ -40,6 +40,7 @@
             <child>
               <object class="GtkEntry" id="name-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -67,6 +68,7 @@
             <child>
               <object class="GtkEntry" id="configure-commands-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -94,6 +96,7 @@
             <child>
               <object class="GtkEntry" id="build-commands-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -121,6 +124,7 @@
             <child>
               <object class="GtkEntry" id="install-commands-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -148,6 +152,7 @@
             <child>
               <object class="GtkEntry" id="c-compiler-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -175,6 +180,7 @@
             <child>
               <object class="GtkEntry" id="c++-compiler-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -202,6 +208,7 @@
             <child>
               <object class="GtkEntry" id="c-compiler-options-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>
@@ -229,6 +236,7 @@
             <child>
               <object class="GtkEntry" id="c++-compiler-options-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>

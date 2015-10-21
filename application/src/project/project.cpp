@@ -149,9 +149,9 @@ Project::Project(const char *uri):
 
 Project::~Project()
 {
-    assert(!m_db);
     assert(!m_firstEditor);
     assert(!m_lastEditor);
+    delete m_db;
     delete m_buildSystem;
     Application::instance().removeProject(*this);
 }
@@ -277,9 +277,11 @@ Project *Project::create(const char *uri,
         return NULL;
     }
     g_free(dbFileName);
-    int dbError = ProjectDb::create(dbUri.c_str(), project->m_db);
-    if (dbError)
+    project->m_db = new ProjectDb(dbUri.c_str());
+    ProjectDb::Error dbError = project->m_db->create();
+    if (dbError.code)
     {
+        project->m_db = NULL;
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?
             GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
@@ -291,8 +293,8 @@ Project *Project::create(const char *uri,
             uri);
         gtkMessageDialogAddDetails(
             dialog,
-            _("Samoyed failed to create project database \"%s\". %s."),
-            dbUri.c_str(), db_strerror(dbError));
+            _("Samoyed failed to create project database \"%s\". \"%s\": %s."),
+            dbUri.c_str(), dbError.dbUri, db_strerror(dbError.code));
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
             GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -485,8 +487,9 @@ Project *Project::open(const char *uri)
     // Open the project database.
     std::string dbUri(uri);
     dbUri += "/.samoyed/project-db";
-    int dbError = ProjectDb::open(dbUri.c_str(), project->m_db);
-    if (dbError)
+    project->m_db = new ProjectDb(dbUri.c_str());
+    ProjectDb::Error dbError = project->m_db->open();
+    if (dbError.code)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?
@@ -499,8 +502,8 @@ Project *Project::open(const char *uri)
             uri);
         gtkMessageDialogAddDetails(
             dialog,
-            _("Samoyed failed to open project database \"%s\". %s."),
-            dbUri.c_str(), db_strerror(dbError));
+            _("Samoyed failed to open project database \"%s\". \"%s\": %s."),
+            dbUri.c_str(), dbError.dbUri, db_strerror(dbError.code));
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
             GTK_RESPONSE_CLOSE);
         gtk_dialog_run(GTK_DIALOG(dialog));
@@ -595,8 +598,8 @@ bool Project::finishClosing()
     g_free(xmlFileName);
 
     // Close the project database.
-    int dbError = m_db->close();
-    if (dbError)
+    ProjectDb::Error dbError = m_db->close();
+    if (dbError.code)
     {
         GtkWidget *dialog = gtk_message_dialog_new(
             Application::instance().currentWindow() ?
@@ -611,8 +614,8 @@ bool Project::finishClosing()
         dbUri += "/.samoyed/project.db";
         gtkMessageDialogAddDetails(
             dialog,
-            _("Samoyed failed to close project database \"%s\". %s."),
-            dbUri.c_str(), db_strerror(dbError));
+            _("Samoyed failed to close project database \"%s\". \"%s\": %s."),
+            dbUri.c_str(), dbError.dbUri, db_strerror(dbError.code));
         gtk_dialog_set_default_response(GTK_DIALOG(dialog),
             GTK_RESPONSE_NO);
         int response = gtk_dialog_run(GTK_DIALOG(dialog));
@@ -710,7 +713,8 @@ bool Project::addFile(const char *uri, const ProjectFile &data)
 {
     if (!m_buildSystem->addFile(uri, data.buildSystemData()))
         return false;
-    if (!m_db->addFile(uri, data))
+    ProjectDb::Error dbError = m_db->addFile(uri, data);
+    if (dbError.code)
     {
         m_buildSystem->removeFile(uri);
         return false;
@@ -730,7 +734,8 @@ bool Project::removeFile(const char *uri)
 {
     if (!m_buildSystem->removeFile(uri))
         return false;
-    if (!m_db->removeFile(uri))
+    ProjectDb::Error dbError = m_db->removeFile(uri);
+    if (dbError.code)
         return false;
     for (Window *window = Application::instance().windows();
          window;

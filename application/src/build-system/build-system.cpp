@@ -8,9 +8,12 @@
 #include "configuration.hpp"
 #include "build-system-file.hpp"
 #include "build-systems-extension-point.hpp"
+#include "build-log-view.hpp"
+#include "build-log-view-group.hpp"
 #include "builder.hpp"
 #include "project/project.hpp"
 #include "plugin/extension-point-manager.hpp"
+#include "window/window.hpp"
 #include "application.hpp"
 #include <string.h>
 #include <map>
@@ -42,9 +45,26 @@ BuildSystem::BuildSystem(Project &project,
 
 BuildSystem::~BuildSystem()
 {
+    // Stop all the builders.
     BuilderTable::iterator it;
     while ((it = m_builders.begin()) != m_builders.end())
         stopBuild(it->first);
+
+    // Close all the build log views.
+    Window *window = Application::instance().currentWindow();
+    if (window)
+    {
+        BuildLogViewGroup *group = window->buildLogViewGroup();
+        if (group)
+        {
+            std::list<BuildLogView *> views;
+            group->buildLogViewsForProject(m_project.uri(), views);
+            for (std::list<BuildLogView *>::iterator it = views.begin();
+                 it != views.end();
+                 ++it)
+                (*it)->close();
+        }
+    }
 
     while (m_firstConfig)
     {

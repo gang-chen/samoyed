@@ -158,8 +158,6 @@ private:
 
     int m_presetCursorLine;
     int m_presetCursorColumn;
-
-    boost::shared_ptr<TextEditor *> m_weakReference;
 };
 
 }

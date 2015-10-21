@@ -34,6 +34,7 @@ AC_PROG_INSTALL
 PKG_PROG_PKG_CONFIG([0.26])
 
 AC_CANONICAL_HOST
+AC_DEFINE_UNQUOTED([HOST_OS], ["$host_os"], [Host OS])
 os_windows=no
 case "$host_os" in
   mingw*)

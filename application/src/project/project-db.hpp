@@ -20,23 +20,32 @@ class ProjectFile;
 class ProjectDb: public boost::noncopyable
 {
 public:
-    static int create(const char *uri, ProjectDb *&db);
+    struct Error
+    {
+        int code;
+        const char *dbUri;
+        Error(): code(0), dbUri(NULL) {}
+    };
 
-    static int open(const char *uri, ProjectDb *&db);
+    ProjectDb(const char *uri);
 
     ~ProjectDb();
 
-    int close();
+    Error create();
 
-    int addFile(const char *uri, const ProjectFile &data);
+    Error open();
 
-    int removeFile(const char *uri);
+    Error close();
 
-    int readFile(const Project &project,
-                 const char *uri,
-                 boost::shared_ptr<ProjectFile> &data);
+    Error addFile(const char *uri, const ProjectFile &data);
 
-    int writeFile(const char *uri, const ProjectFile &data);
+    Error removeFile(const char *uri);
+
+    Error readFile(const Project &project,
+                   const char *uri,
+                   boost::shared_ptr<ProjectFile> &data);
+
+    Error writeFile(const char *uri, const ProjectFile &data);
 
     /**
      * The file visitor callback function.
@@ -54,23 +63,25 @@ public:
      * @param uriPrefix The common URI prefix.
      * @param visitor The visitor callback function.
      */
-    int visitFiles(const Project &project,
-                   const char *uriPrefix,
-                   const Visitor &visitor);
+    Error visitFiles(const Project &project,
+                     const char *uriPrefix,
+                     const Visitor &visitor);
 
-    int readCompilationOptions(const char *uri,
-                               boost::shared_ptr<char> &compilationOpts);
+    Error readCompilerOptions(const char *uri,
+                              boost::shared_ptr<char> &compilerOpts);
 
-    int writeCompilationOptions(const char *uri,
-                                const char *compilationOpts);
+    Error writeCompilerOptions(const char *uri,
+                               const char *compilerOpts);
 
 private:
-    ProjectDb();
-
     DB_ENV *m_dbEnv;
 
     DB *m_fileTable;
-    DB *m_compilationOptionsTable;
+    DB *m_compilerOptionsTable;
+
+    std::string m_dbEnvUri;
+    std::string m_fileTableDbUri;
+    std::string m_compilerOptionsTableDbUri;
 };
 
 }

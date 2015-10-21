@@ -44,10 +44,19 @@ public:
 
     virtual Widget::XmlElement *save() const;
 
-    BuildLogView *buildLogView(const char *projectUri,
-                               const char *configName);
-    const BuildLogView *buildLogView(const char *projectUri,
-                                     const char *configName) const;
+    void buildLogViewsForProject(
+        const char *projectUri,
+        std::list<BuildLogView *> &views);
+    void buildLogViewsForProject(
+        const char *projectUri,
+        std::list<const BuildLogView *> &views) const;
+
+    BuildLogView *buildLogViewForConfiguration(
+        const char *projectUri,
+        const char *configName);
+    const BuildLogView *buildLogViewForConfiguration(
+        const char *projectUri,
+        const char *configName) const;
 
     BuildLogView *openBuildLogView(const char *projectUri,
                                    const char *configName);

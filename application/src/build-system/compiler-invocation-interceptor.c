@@ -9,8 +9,12 @@
 #include <strings.h>
 #include <unistd.h>
 #ifdef OS_WINDOWS
- #include <sys/cygwin.h>
- #include <windows.h>
+# define FWRITES(s, fp) fwrite(L##s, sizeof(wchar_t), wcslen(L##s) + 1, fp)
+# include <wchar.h>
+# include <sys/cygwin.h>
+# include <windows.h>
+#else
+# define FWRITES(s, fp) fwrite(s, sizeof(char), strlen(s) + 1, fp)
 #endif
 
 #ifdef OS_WINDOWS
@@ -51,30 +55,65 @@ static int match_exe(const char *a, const char *b)
 
 #endif
 
-static void print_word(FILE *fp, const char *word)
+static void print(FILE *fp, const char *s)
 {
-    fputc('"', fp);
-    while (*word)
+#if OS_WINDOWS
+    // Convert the word into a wide string.
+    mbstate_t state;
+    memset(&state, 0, sizeof(state));
+    while (s)
     {
-        if (*word == '"')
-            fputs("\\\"", fp);
-        else if (*word == '\\')
-            fputs("\\\\", fp);
-        else
-            fputc(*word, fp);
-        word++;
+        wchar_t buf[BUFSIZ];
+        size_t n;
+        n = mbsrtowcs(buf, &s, BUFSIZ, &state);
+        fwrite(buf, sizeof(wchar_t), n, fp);
     }
-    fputc('"', fp);
+#else
+    FWRITES(s, fp);
+#endif
+}
+
+const char *DIR_OPTIONS[] = { "-I", "-L", NULL };
+
+static void print_arg(FILE *fp, const char *arg)
+{
+#ifdef OS_WINDOWS
+    const char **opt;
+    for (opt = DIR_OPTIONS; *opt; opt++)
+    {
+        if (strncmp(*opt, arg, strlen(*opt)) == 0)
+        {
+            ssize_t size;
+            wchar_t *win;
+            print(fp, *opt);
+            arg += strlen(*opt);
+
+            // Convert the path into the Windows format.
+            size = cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
+                                    arg,
+                                    NULL,
+                                    0);
+            if (size >= 0)
+            {
+                win = (wchar_t *) malloc(size);
+                if (cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
+                                     arg,
+                                     win,
+                                     size) == 0)
+                    fwrite(win, 1, size, fp);
+                free(win);
+            }
+            return;
+        }
+    }
+#endif
+    print(fp, arg);
 }
 
 static void print_argv(FILE *fp, char *const argv[])
 {
-    char *const *p;
-    for (p = argv; *p; p++)
-    {
-        fputc(' ', fp);
-        print_word(fp, *p);
-    }
+    for (; *argv; argv++)
+        print_arg(fp, *argv);
 }
 
 int
@@ -114,27 +153,29 @@ execve(
     if (!fp)
         goto EXECVE;
 
-    fputs("EXE: ", fp);
-    print_word(fp, filename);
-    fputc('\n', fp);
+    FWRITES("EXE:", fp);
+    print(fp, filename);
+    FWRITES("", fp);
 
+    FWRITES("CWD:", fp);
     cwd = get_current_dir_name();
-    fputs("CWD: ", fp);
-    print_word(fp, cwd);
-    fputc('\n', fp);
+    print(fp, cwd);
     free(cwd);
+    FWRITES("", fp);
 
     if (is_cc)
     {
-        fprintf(fp, "CC ARGV:");
-        print_argv(fp, argv);
-        fputc('\n', fp);
+        FWRITES("CC ARGV:", fp);
+        print(fp, argv[0]);
+        print_argv(fp, argv + 1);
+        FWRITES("", fp);
     }
     if (is_cxx)
     {
-        fprintf(fp, "CXX ARGV:");
-        print_argv(fp, argv);
-        fputc('\n', fp);
+        FWRITES("CXX ARGV:", fp);
+        print(fp, argv[0]);
+        print_argv(fp, argv + 1);
+        FWRITES("", fp);
     }
 
     fclose(fp);

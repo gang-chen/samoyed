@@ -44,31 +44,52 @@ GtkWidget *Terminal::setup()
 
     char *argv[3] = { NULL, NULL, NULL };
     char **envv = NULL;
+
+    // Find a shell.
 #ifdef OS_WINDOWS
+
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     argv[0] = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
     if (!g_file_test(argv[0], G_FILE_TEST_IS_EXECUTABLE))
     {
+        g_free(argv[0]);
+        argv[0] = NULL;
         char *base = g_path_get_basename(instDir);
-        if (strcmp(base, "mingw32") == 0 ||
-            strcmp(base, "mingw64") == 0)
+        if (strcmp(base, "mingw32") == 0 || strcmp(base, "mingw64") == 0)
         {
             char *parent = g_path_get_dirname(instDir);
-            g_free(argv[0]);
             argv[0] = g_strconcat(parent, "\\usr\\bin\\bash.exe", NULL);
             g_free(parent);
+            if (g_file_test(argv[0], G_FILE_TEST_IS_EXECUTABLE))
+            {
+                g_free(argv[0]);
+                argv[0] = NULL;
+            }
         }
         g_free(base);
     }
     g_free(instDir);
-    argv[1] = g_strdup("-l");
-    if (!g_getenv("MSYSTEM"))
+    if (argv[0])
     {
-        envv = g_get_environ();
-        envv = g_environ_setenv(envv, "MSYSTEM", "MINGW32", FALSE);
+        argv[1] = g_strdup("-l");
+        if (!g_getenv("MSYSTEM"))
+        {
+            envv = g_get_environ();
+            char *hostOs = g_ascii_strup(HOST_OS, -1);
+            envv = g_environ_setenv(envv, "MSYSTEM", hostOs, FALSE);
+            g_free(hostOs);
+        }
     }
+    else
+    {
+        const char *cmd = g_getenv("COMSPEC");
+        if (cmd)
+            argv[0] = g_strdup(cmd);
+    }
+
 #else
+
     const char *shell = g_getenv("SHELL");
     if (shell)
         argv[0] = g_strdup(shell);
@@ -80,10 +101,36 @@ GtkWidget *Terminal::setup()
             argv[0] = g_strdup(pw->pw_shell);
         else if (g_file_test("/usr/bin/bash", G_FILE_TEST_IS_EXECUTABLE))
             argv[0] = g_strdup("/usr/bin/bash");
-        else
+        else if (g_file_test("/bin/bash", G_FILE_TEST_IS_EXECUTABLE))
+            argv[0] = g_strdup("/bin/bash");
+        else if (g_file_test("/bin/sh", G_FILE_TEST_IS_EXECUTABLE))
             argv[0] = g_strdup("/bin/sh");
     }
+
 #endif
+
+    if (!argv[0])
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+			Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+			NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to setup a terminal emulator."));
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to find a shell"));
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        gtk_widget_destroy(m_terminal);
+        g_free(argv[0]);
+        g_free(argv[1]);
+        g_strfreev(envv);
+        return NULL;
+    }
+
     GError *error = NULL;
 #if VTE_CHECK_VERSION(0, 38, 0)
     if (!vte_terminal_spawn_sync(VTE_TERMINAL(m_terminal),

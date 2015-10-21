@@ -67,6 +67,7 @@
             <child>
               <object class="GtkEntry" id="name-entry">
                 <property name="visible">true</property>
+                <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
               </object>
               <packing>

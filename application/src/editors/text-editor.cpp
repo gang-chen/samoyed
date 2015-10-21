@@ -82,21 +82,15 @@ void onMarkSet(GtkTextBuffer *buffer,
         onCursorChanged(buffer, editor);
 }
 
-gboolean scrollToCursor(gpointer editorPointer)
+gboolean scrollToCursor(gpointer textView)
 {
-    boost::shared_ptr<Samoyed::TextEditor *> *ep =
-        static_cast<boost::shared_ptr<Samoyed::TextEditor *> *>(editorPointer);
-    Samoyed::TextEditor *editor = **ep;
-    if (editor)
-    {
-        GtkTextView *view = GTK_TEXT_VIEW(editor->gtkSourceView());
-        gtk_text_view_scroll_to_mark(
-            GTK_TEXT_VIEW(view),
-            gtk_text_buffer_get_insert(
-                gtk_text_view_get_buffer(GTK_TEXT_VIEW(view))),
-            SCROLL_MARGIN, FALSE, 0., 0.);
-    }
-    delete ep;
+    GtkTextView *view = GTK_TEXT_VIEW(textView);
+    gtk_text_view_scroll_to_mark(
+        GTK_TEXT_VIEW(view),
+        gtk_text_buffer_get_insert(
+            gtk_text_view_get_buffer(GTK_TEXT_VIEW(view))),
+        SCROLL_MARGIN, FALSE, 0., 0.);
+    g_object_unref(view);
     return FALSE;
 }
 
@@ -402,14 +396,12 @@ TextEditor::TextEditor(TextFile &file, Project *project):
     m_fileChange(false),
     m_followCursor(false),
     m_presetCursorLine(0),
-    m_presetCursorColumn(0),
-    m_weakReference(new TextEditor *(this))
+    m_presetCursorColumn(0)
 {
 }
 
 TextEditor::~TextEditor()
 {
-    *m_weakReference = NULL;
 }
 
 bool TextEditor::setup(GtkTextTagTable *tagTable)
@@ -640,8 +632,7 @@ bool TextEditor::setCursor(int line, int column)
     GtkTextIter iter;
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter, line, column);
     gtk_text_buffer_place_cursor(buffer, &iter);
-    g_idle_add(scrollToCursor,
-               new boost::shared_ptr<TextEditor *>(m_weakReference));
+    g_idle_add(scrollToCursor, g_object_ref(view));
     return true;
 }
 
@@ -673,8 +664,7 @@ bool TextEditor::selectRange(int line, int column,
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter, line, column);
     gtk_text_buffer_get_iter_at_line_offset(buffer, &iter2, line2, column2);
     gtk_text_buffer_select_range(buffer, &iter, &iter2);
-    g_idle_add(scrollToCursor,
-               new boost::shared_ptr<TextEditor *>(m_weakReference));
+    g_idle_add(scrollToCursor, g_object_ref(view));
     return true;
 }
 
@@ -772,8 +762,7 @@ void TextEditor::onFileLoaded()
                                             m_presetCursorLine,
                                             m_presetCursorColumn);
     gtk_text_buffer_place_cursor(buffer, &iter);
-    g_idle_add(scrollToCursor,
-               new boost::shared_ptr<TextEditor *>(m_weakReference));
+    g_idle_add(scrollToCursor, g_object_ref(view));
     m_presetCursorLine = 0;
     m_presetCursorColumn = 0;
 }

@@ -31,14 +31,14 @@
 namespace
 {
 
-const char *actionText[] =
+const char *ACTION_TEXT[] =
 {
     N_("configure"),
     N_("build"),
     N_("install")
 };
 
-const char *actionText2[] =
+const char *ACTION_TEXT_2[] =
 {
     N_("configuring"),
     N_("building"),
@@ -93,18 +93,21 @@ bool Builder::running() const
 
 bool Builder::run()
 {
-    char *cwd = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
+    char *projectDir = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
     const char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
     char **envv = g_get_environ();
 
     std::string commands;
 
 #ifdef OS_WINDOWS
+    // Because the "-l" option is added to the shell, the start direcotry will
+    // be the user's home directory.  Need to change the current directory.
     commands += "cd \"";
-    commands += cwd;
+    commands += projectDir;
     commands += "\"; ";
 #endif
 
+    // Add the real commands.
     switch (m_action)
     {
     case ACTION_CONFIGURE:
@@ -118,33 +121,60 @@ bool Builder::run()
         break;
     }
 
+    // Find a shell.
 #ifdef OS_WINDOWS
 
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     char *arg0;
+    bool useWindowsCmd = false;
     arg0 = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
     if (!g_file_test(arg0, G_FILE_TEST_IS_EXECUTABLE))
     {
+        g_free(arg0);
+        arg0 = NULL;
         char *base = g_path_get_basename(instDir);
-        if (strcmp(base, "mingw32") == 0 ||
-            strcmp(base, "mingw64") == 0)
+        if (strcmp(base, "mingw32") == 0 || strcmp(base, "mingw64") == 0)
         {
             char *parent = g_path_get_dirname(instDir);
-            g_free(arg0);
             arg0 = g_strconcat(parent, "\\usr\\bin\\bash.exe", NULL);
             g_free(parent);
+            if (!g_file_test(arg0, G_FILE_TEST_IS_EXECUTABLE))
+            {
+                g_free(arg0);
+                arg0 = NULL;
+            }
         }
         g_free(base);
     }
     g_free(instDir);
-    argv[0] = arg0;
-    argv[1] = "-l";
-    argv[2] = "-c";
-    argv[3] = commands.c_str();
-
-    if (!g_getenv("MSYSTEM"))
-        envv = g_environ_setenv(envv, "MSYSTEM", "MINGW32", FALSE);
+    if (arg0)
+    {
+        argv[0] = arg0;
+        argv[1] = "-l";
+        argv[2] = "-c";
+        argv[3] = commands.c_str();
+        if (!g_getenv("MSYSTEM"))
+        {
+            char *hostOs = g_ascii_strup(HOST_OS, -1);
+            envv = g_environ_setenv(envv, "MSYSTEM", hostOs, FALSE);
+            g_free(hostOs);
+        }
+    }
+    else
+    {
+        // The last resort.  Hope it can make the build.  We didn't implement
+        // an interceptor to intercept command invocations from the Windows
+        // command interpreter.
+        const char *cmd = g_getenv("COMSPEC");
+        if (cmd)
+        {
+            useWindowsCmd = true;
+            argv[0] = cmd;
+            argv[1] = "\\c";
+            argv[2] = commands.c_str();
+        }
+    }
 
 #else
 
@@ -159,7 +189,9 @@ bool Builder::run()
             argv[0] = pw->pw_shell;
         else if (g_file_test("/usr/bin/bash", G_FILE_TEST_IS_EXECUTABLE))
             argv[0] = "/usr/bin/bash";
-        else
+        else if (g_file_test("/bin/bash", G_FILE_TEST_IS_EXECUTABLE))
+            argv[0] = "/bin/sh";
+        else if (g_file_test("/bin/sh", G_FILE_TEST_IS_EXECUTABLE))
             argv[0] = "/bin/sh";
     }
     argv[1] = "-c";
@@ -167,48 +199,83 @@ bool Builder::run()
 
 #endif
 
-    // Create the builder output directory.
-    std::string output(cwd);
-    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "builder-output";
+    if (!argv[0])
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to start a child process to %s project \"%s\" "
+              "with configuration \"%s\"."),
+            gettext(ACTION_TEXT[m_action]),
+            m_buildSystem.project().uri(),
+            m_configuration.name());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to find a shell."));
+        g_free(projectDir);
+#ifdef OS_WINDOWS
+        g_free(arg0);
+#endif
+        g_strfreev(envv);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+                                        GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        return false;
+    }
+
+#ifdef OS_WINDOWS
+    if (!useWindowsCmd)
+    {
+#endif
+
+    // Create the build output directory.
+    std::string output(projectDir);
+    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "build-output";
     g_mkdir(output.c_str(), 0775);
 
     // Remove the old output file if existing.
     output += G_DIR_SEPARATOR_S;
     output += m_configuration.name();
     output += '-';
-    output += actionText[m_action];
+    output += ACTION_TEXT[m_action];
     g_unlink(output.c_str());
 
     // Setup the interceptor that will intercept invocations of the compiler
-    // during the build process.
+    // during the build process and record the compiler's command-line options
+    // in a file.  If these options can be dumped to stdout, we don't need the
+    // interceptor.
     std::string interceptor(Application::instance().librariesDirectoryName());
 #ifdef OS_WINDOWS
     interceptor += G_DIR_SEPARATOR_S "compilerinvocationinterceptor.dll";
-    // Need to convert to POSIX format because ":" is a path separator in
-    // $LD_PRELOAD.
-    if (interceptor.length() >= 3 &&
-        isalpha(interceptor[0]) && interceptor[1] == ':')
+    if (g_file_test(interceptor.c_str(), G_FILE_TEST_IS_REGULAR))
     {
-        if (interceptor[2] == '\\')
+        // Convert the DLL path into the POSIX format to eliminate ":" because
+        // ":" is a path separator in $LD_PRELOAD.
+        if (interceptor.length() >= 3 &&
+            isalpha(interceptor[0]) && interceptor[1] == ':' &&
+            interceptor[2] == '\\')
         {
             interceptor[1] = tolower(interceptor[0]);
             interceptor[0] = '/';
             interceptor[2] = '/';
+            for (int i = 3; i < interceptor.length(); i++)
+                if (interceptor[i] == '\\')
+                    interceptor[i] = '/';
         }
         else
-        {
-            interceptor.insert(0, 1, '/');
-            interceptor[1] = tolower(interceptor[1]);
-            interceptor[2] = '/';
-        }
-        for (int i = 3; i < interceptor.length(); i++)
-            if (interceptor[i] == '\\')
-                interceptor[i] = '/';
+            interceptor.clear();
     }
     else
         interceptor.clear();
 #else
     interceptor += G_DIR_SEPARATOR_S "compilerinvocationinterceptor.so";
+    if (!g_file_test(interceptor.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+        interceptor.clear();
 #endif
     if (!interceptor.empty())
     {
@@ -230,8 +297,12 @@ bool Builder::run()
                                 TRUE);
     }
 
+#ifdef OS_WINDOWS
+    }
+#endif
+
     GError *error = NULL;
-    if (!spawnSubprocess(cwd,
+    if (!spawnSubprocess(projectDir,
                          argv,
                          const_cast<const char **>(envv),
                          SPAWN_SUBPROCESS_FLAG_STDIN_PIPE |
@@ -252,12 +323,12 @@ bool Builder::run()
             GTK_BUTTONS_CLOSE,
             _("Samoyed failed to start a child process to %s project \"%s\" "
               "with configuration \"%s\"."),
-            gettext(actionText[m_action]),
+            gettext(ACTION_TEXT[m_action]),
             m_buildSystem.project().uri(),
             m_configuration.name());
         gtkMessageDialogAddDetails(dialog, _("%s."), error->message);
         g_error_free(error);
-        g_free(cwd);
+        g_free(projectDir);
 #ifdef OS_WINDOWS
         g_free(arg0);
 #endif
@@ -268,7 +339,7 @@ bool Builder::run()
         gtk_widget_destroy(dialog);
         return false;
     }
-    g_free(cwd);
+    g_free(projectDir);
 #ifdef OS_WINDOWS
     g_free(arg0);
 #endif
@@ -294,6 +365,9 @@ bool Builder::run()
     m_logView = group->openBuildLogView(m_buildSystem.project().uri(),
                                         m_configuration.name());
     m_logView->startBuild(m_action);
+#ifdef OS_WINDOWS
+    m_logView->setUseWindowsCmd(useWindowsCmd);
+#endif
     m_logView->clear();
     m_logViewClosedConn = m_logView->addClosedCallback(
         boost::bind(onLogViewClosed, this, _1));
@@ -379,7 +453,7 @@ void Builder::onDataRead(GObject *stream,
                 g_warning(_("Samoyed failed to read the stdout or stderr of "
                             "the child process when %s project \"%s\" with "
                             "configuration \"%s\": %s."),
-                       gettext(actionText2[p->builder.m_action]),
+                       gettext(ACTION_TEXT_2[p->builder.m_action]),
                        p->builder.m_buildSystem.project().uri(),
                        p->builder.m_configuration.name(),
                        error->message);
