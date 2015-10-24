@@ -6,6 +6,7 @@
 
 #include "widget/widget.hpp"
 #include "builder.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <map>
 #include <string>
 #include <stack>
@@ -67,13 +68,21 @@ private:
 
     void parseLog(int beginLine, int endLine);
 
-    void onDoublyClicked();
-
-    static gboolean cancelSingleClick(gpointer buildLogView);
+    void openFile(const char *fileName, int line, int column);
 
     static gboolean onButtonPressEvent(GtkWidget *widget,
                                        GdkEvent *event,
                                        BuildLogView *buildLogView);
+
+#ifdef OS_WINDOWS
+    void cancelConvertingPath();
+
+    void convertPath(const char *path);
+
+    static void onPathConverterOutputRead(GObject *stream,
+                                          GAsyncResult *result,
+                                          gpointer param);
+#endif
 
     std::string m_projectUri;
     std::string m_configName;
@@ -84,18 +93,23 @@ private:
     GtkButton *m_stopButton;
     GtkTextView *m_log;
 
-    std::map<int, CompilerDiagnostic> m_diagnostics;
+    std::map<int, CompilerDiagnostic *> m_diagnostics;
 
     std::stack<std::string> m_directoryStack;
 
 #ifdef OS_WINDOWS
     bool m_useWindowsCmd;
+
+    CompilerDiagnostic *m_targetDiagnostic;
+
+    const char *m_pathInConversion;
+    GInputStream *m_pathConverterOutputPipe;
+    GCancellable *m_cancelReadingPathConverterOutput;
+
+    std::map<ComparablePointer<const char>, std::string> m_pathConversionCache;
 #endif
 
     GtkTextTag *m_diagnosticTags[CompilerDiagnostic::N_TYPES];
-
-    bool m_singlyClicked;
-    guint m_doubleClickWaitId;
 };
 
 }

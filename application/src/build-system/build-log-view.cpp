@@ -12,11 +12,15 @@
 #include "widget/widget-container.hpp"
 #include "widget/notebook.hpp"
 #include "window/window.hpp"
+#include "utilities/miscellaneous.hpp"
 #include "application.hpp"
+#include <assert.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 #include <boost/lexical_cast.hpp>
 #include <gtk/gtk.h>
+#include <gio/gio.h>
 #include <glib/gi18n.h>
 
 #define BUILD_LOG_VIEW_ID "build-log-view"
@@ -63,6 +67,22 @@ const char *COMPILER_DIAGNOSTIC_COLORS[
     "red"
 };
 
+#ifdef OS_WINDOWS
+struct DataReadParam
+{
+    GCancellable *cancellable;
+    Samoyed::BuildLogView &view;
+    char buffer[BUFSIZ];
+    DataReadParam(GCancellable *c,
+                  Samoyed::BuildLogView &v):
+        cancellable(c),
+        view(v)
+    { g_object_ref(cancellable); }
+    ~DataReadParam()
+    { g_object_unref(cancellable); }
+};
+#endif
+
 gboolean scrollToEnd(gpointer textView)
 {
     GtkAdjustment *adj =
@@ -103,18 +123,26 @@ namespace Samoyed
 BuildLogView::BuildLogView(const char *projectUri,
                            const char *configName):
     m_projectUri(projectUri),
-    m_configName(configName),
+    m_configName(configName)
 #ifdef OS_WINDOWS
+    ,
     m_useWindowsCmd(false),
+    m_targetDiagnostic(NULL),
+    m_pathInConversion(NULL)
 #endif
-    m_singlyClicked(false)
 {
 }
 
 BuildLogView::~BuildLogView()
 {
-    if (m_singlyClicked)
-        g_source_remove(m_doubleClickWaitId);
+    if (m_pathInConversion)
+        cancelConvertingPath();
+    m_pathConversionCache.clear();
+    for (std::map<int, CompilerDiagnostic *>::iterator it
+            = m_diagnostics.begin();
+         it != m_diagnostics.end();
+         ++it)
+        delete it->second;
 }
 
 bool BuildLogView::setup()
@@ -156,8 +184,8 @@ bool BuildLogView::setup()
         gtk_text_tag_table_add(tagTable, m_diagnosticTags[i]);
         g_object_unref(m_diagnosticTags[i]);
     }
-    g_signal_connect(m_log, "button-press-event",
-                     G_CALLBACK(onButtonPressEvent), this);
+    g_signal_connect_after(m_log, "button-press-event",
+                           G_CALLBACK(onButtonPressEvent), this);
     GtkWidget *grid = GTK_WIDGET(gtk_builder_get_object(m_builder, "grid"));
     setGtkWidget(grid);
     gtk_widget_show_all(grid);
@@ -311,60 +339,58 @@ void BuildLogView::parseLog(int beginLine, int endLine)
         char *colon = strstr(text, ": ");
         if (colon && colon != text)
         {
-            CompilerDiagnostic diag;
+            CompilerDiagnostic *diag = new CompilerDiagnostic;
             char *cp = colon;
             *cp = '\0';
-            if (parseInteger(text, cp, diag.column) &&
-                parseInteger(text, cp, diag.line))
+            if (parseInteger(text, cp, diag->column) &&
+                parseInteger(text, cp, diag->line))
             {
+                diag->line--;
+                diag->column--;
                 if (!m_directoryStack.empty())
-                    diag.fileName = m_directoryStack.top();
+                {
+                    diag->fileName = m_directoryStack.top();
 #ifdef OS_WINDOWS
-                if (m_useWindowsCmd)
-                    diag.fileName += '\\';
-                else
+                    if (m_useWindowsCmd)
+                        diag->fileName += '\\';
+                    else
 #endif
-                diag.fileName += '/';
-                diag.fileName += text;
+                    diag->fileName += '/';
+                }
+                diag->fileName += text;
 
                 bool diagMatched = true;
                 colon += 2;
                 if (strncmp(colon, "error: ", strlen("error: ")) == 0)
-                    diag.type = CompilerDiagnostic::TYPE_ERROR;
+                    diag->type = CompilerDiagnostic::TYPE_ERROR;
                 else if (strncmp(colon, "warning: ", strlen("warning: "))
                          == 0)
-                    diag.type = CompilerDiagnostic::TYPE_WARNING;
+                    diag->type = CompilerDiagnostic::TYPE_WARNING;
                 else if (strncmp(colon, "note: ", strlen("note: ")) == 0)
-                    diag.type = CompilerDiagnostic::TYPE_NOTE;
+                    diag->type = CompilerDiagnostic::TYPE_NOTE;
                 else
                     diagMatched = false;
                 if (diagMatched)
                 {
                     m_diagnostics[line] = diag;
                     gtk_text_buffer_apply_tag(buffer,
-                                              m_diagnosticTags[diag.type],
+                                              m_diagnosticTags[diag->type],
                                               &begin, &end);
                 }
+                else
+                    delete diag;
             }
+            else
+                delete diag;
         }
 
         g_free(text);
     }
 }
 
-void BuildLogView::onDoublyClicked()
+void BuildLogView::openFile(const char *fileName, int line, int column)
 {
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer(m_log);
-    GtkTextIter iter;
-    gtk_text_buffer_get_iter_at_mark(
-        buffer,
-        &iter,
-        gtk_text_buffer_get_insert(buffer));
-    std::map<int, CompilerDiagnostic>::iterator iter2 =
-        m_diagnostics.find(gtk_text_iter_get_line(&iter));
-    if (iter2 == m_diagnostics.end())
-        return;
-    char *uri = g_filename_to_uri(iter2->second.fileName.c_str(), NULL, NULL);
+    char *uri = g_filename_to_uri(fileName, NULL, NULL);
     std::pair<File *, Editor *> fileEditor =
         File::open(uri,
                    Application::instance().findProject(m_projectUri.c_str()),
@@ -385,49 +411,221 @@ void BuildLogView::onDoublyClicked()
         }
         fileEditor.second->setCurrent();
         static_cast<TextEditor *>(fileEditor.second)->setCursor(
-            iter2->second.line, iter2->second.column);
+            line, column);
     }
     g_free(uri);
-}
-
-gboolean BuildLogView::cancelSingleClick(gpointer buildLogView)
-{
-    BuildLogView *view = static_cast<BuildLogView *>(buildLogView);
-    assert(view->m_singlyClicked);
-    view->m_singlyClicked = false;
-    return FALSE;
 }
 
 gboolean BuildLogView::onButtonPressEvent(GtkWidget *widget,
                                           GdkEvent *event,
                                           BuildLogView *buildLogView)
 {
-    if (buildLogView->m_singlyClicked)
-    {
-        buildLogView->m_singlyClicked = false;
-        g_source_remove(buildLogView->m_doubleClickWaitId);
-        buildLogView->onDoublyClicked();
-    }
-    else
-    {
-        buildLogView->m_singlyClicked = true;
-        buildLogView->m_doubleClickWaitId =
-            g_timeout_add(DOUBLE_CLICK_INTERVAL,
-                          cancelSingleClick,
-                          buildLogView);
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget));
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_mark(
+        buffer,
+        &iter,
+        gtk_text_buffer_get_insert(buffer));
+    std::map<int, CompilerDiagnostic *>::iterator iter2 =
+        buildLogView->m_diagnostics.find(gtk_text_iter_get_line(&iter));
+    if (iter2 == buildLogView->m_diagnostics.end())
+        return FALSE;
 
+    CompilerDiagnostic *diag = iter2->second;
+    const char *fileName = diag->fileName.c_str();
+    if (event->type == GDK_2BUTTON_PRESS)
+    {
 #ifdef OS_WINDOWS
-        if (!m_useWindowsCmd)
+        bool wait = false;
+        if (!buildLogView->m_useWindowsCmd)
+        {
+            if (buildLogView->m_pathInConversion)
+            {
+                if (strcmp(buildLogView->m_pathInConversion, fileName) != 0)
+                    buildLogView->cancelConvertingPath();
+                else
+                {
+                    buildLogView->m_targetDiagnostic = diag;
+                    wait = true;
+                }
+            }
+            if (!wait)
+            {
+                std::map<ComparablePointer<const char>, std::string>::iterator
+                    it = buildLogView->m_pathConversionCache.find(fileName);
+                if (it != buildLogView->m_pathConversionCache.end())
+                    fileName = it->second.c_str();
+                else
+                {
+                    buildLogView->m_targetDiagnostic = diag;
+                    buildLogView->convertPath(fileName);
+                    wait = true;
+                }
+            }
+        }
+        if (!wait)
+#endif
+        buildLogView->openFile(fileName, diag->line, diag->column);
+    }
+#ifdef OS_WINDOWS
+    else if (event->type == GDK_BUTTON_PRESS)
+    {
+        if (!buildLogView->m_useWindowsCmd)
         {
             // We are using the MSYS2 shell.  The dumped paths are in the POSIX
             // format.  Need to convert them into the Windows format.  The
             // conversion is performed by an external program and may introduce
-            // delay.  To be responsive, we start the conversion here.
-            convert
+            // delay.  To improve responsiveness, we start the conversion here.
+            if (!buildLogView->m_targetDiagnostic)
+            {
+                if (buildLogView->m_pathInConversion)
+                {
+                    if (strcmp(buildLogView->m_pathInConversion, fileName) != 0)
+                    {
+                        buildLogView->cancelConvertingPath();
+                        buildLogView->convertPath(diag->fileName.c_str());
+                    }
+                }
+                else
+                    buildLogView->convertPath(diag->fileName.c_str());
+            }
         }
-#endif
     }
+#endif
+
     return FALSE;
 }
+
+#ifdef OS_WINDOWS
+
+void BuildLogView::cancelConvertingPath()
+{
+    assert(m_pathInConversion);
+    g_cancellable_cancel(m_cancelReadingPathConverterOutput);
+    g_object_unref(m_pathConverterOutputPipe);
+    m_pathInConversion = NULL;
+}
+
+void BuildLogView::convertPath(const char *path)
+{
+    assert(!m_pathInConversion);
+    if (m_pathConversionCache.find(path) != m_pathConversionCache.end())
+        return;
+
+    char *projectDir = g_filename_from_uri(m_projectUri.c_str(), NULL, NULL);
+    std::string converter(Application::instance().librariesDirectoryName());
+    converter += G_DIR_SEPARATOR_S "posixtowindowspathconverter.exe";
+    if (!g_file_test(converter.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+        return;
+    const char *argv[3] = { NULL, NULL, NULL };
+    argv[0] = converter.c_str();
+    argv[1] = path;
+
+    GError *error = NULL;
+    if (!spawnSubprocess(projectDir,
+                         argv,
+                         NULL,
+                         SPAWN_SUBPROCESS_FLAG_STDOUT_PIPE,
+                         NULL,
+                         NULL,
+                         &m_pathConverterOutputPipe,
+                         NULL,
+                         &error))
+    {
+        g_error_free(error);
+        g_free(projectDir);
+        return;
+    }
+    g_free(projectDir);
+    m_cancelReadingPathConverterOutput = g_cancellable_new();
+    DataReadParam *param = new DataReadParam(m_cancelReadingPathConverterOutput,
+                                             *this);
+    g_input_stream_read_all_async(
+        m_pathConverterOutputPipe,
+        param->buffer,
+        BUFSIZ,
+        G_PRIORITY_HIGH,
+        m_cancelReadingPathConverterOutput,
+        onPathConverterOutputRead,
+        param);
+
+    m_pathInConversion = path;
+}
+
+void BuildLogView::onPathConverterOutputRead(GObject *stream,
+                                             GAsyncResult *result,
+                                             gpointer param)
+{
+    DataReadParam *p = static_cast<DataReadParam *>(param);
+    if (!g_cancellable_is_cancelled(p->cancellable))
+    {
+        GError *error = NULL;
+        gsize length;
+        bool successful =
+            g_input_stream_read_all_finish(G_INPUT_STREAM(stream),
+                                           result,
+                                           &length,
+                                           &error);
+        if (!successful)
+        {
+            g_error_free(error);
+            g_object_unref(p->view.m_cancelReadingPathConverterOutput);
+            g_object_unref(p->view.m_pathConverterOutputPipe);
+            p->view.m_pathInConversion = NULL;
+            p->view.m_targetDiagnostic = NULL;
+            delete p;
+        }
+        else if (length < BUFSIZ)
+        {
+            g_object_unref(p->view.m_cancelReadingPathConverterOutput);
+            g_object_unref(p->view.m_pathConverterOutputPipe);
+
+            GError *convError = NULL;
+            char *windowsPath =
+                g_utf16_to_utf8(reinterpret_cast<gunichar2 *>(p->buffer),
+                                length / sizeof(gunichar2),
+                                NULL,
+                                NULL,
+                                &convError);
+            if (!windowsPath)
+            {
+                g_error_free(convError);
+                p->view.m_pathInConversion = NULL;
+                p->view.m_targetDiagnostic = NULL;
+            }
+            else
+            {
+                p->view.m_pathConversionCache[p->view.m_pathInConversion] =
+                    windowsPath;
+                p->view.m_pathInConversion = NULL;
+
+                if (p->view.m_targetDiagnostic)
+                {
+                    p->view.openFile(windowsPath,
+                                     p->view.m_targetDiagnostic->line,
+                                     p->view.m_targetDiagnostic->column);
+                    p->view.m_targetDiagnostic = NULL;
+                }
+                g_free(windowsPath);
+            }
+
+            delete p;
+        }
+        else
+        {
+            g_input_stream_read_all_async(G_INPUT_STREAM(stream),
+                                          p->buffer,
+                                          BUFSIZ,
+                                          G_PRIORITY_HIGH,
+                                          p->cancellable,
+                                          onPathConverterOutputRead,
+                                          p);
+        }
+    }
+    else
+        delete p;
+}
+
+#endif
 
 }

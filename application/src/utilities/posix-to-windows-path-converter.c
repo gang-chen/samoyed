@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <wchar.h>
 #include <sys/cygwin.h>
 
@@ -14,13 +15,27 @@ int main(int argc, char *argv[])
     wchar_t *win;
     if (argc < 2)
     {
-        printf("Usage: %s output-file path-1 path-2 ...\n", argv[0]);
+        printf("Usage: %s [-o output-file] path...\n", argv[0]);
         return 1;
     }
-    fp = fopen(argv[1], "w");
-    if (!fp)
-        return 2;
-    for (i = 2; i < argc; i++)
+    if (strcmp(argv[1], "-o") == 0)
+    {
+        if (argc < 4)
+        {
+            printf("Usage: %s [-o output-file] path...\n", argv[0]);
+            return 1;
+        }
+        fp = fopen(argv[2], "w");
+        if (!fp)
+            return 2;
+        i = 3;
+    }
+    else
+    {
+        fp = stdout;
+        i = 1;
+    }
+    for (; i < argc; i++)
     {
         size = cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
                                 argv[i],
@@ -59,6 +74,7 @@ int main(int argc, char *argv[])
             free(win);
         }
     }
-    fclose(fp);
+    if (fp != stdout)
+        fclose(fp);
     return 0;
 }

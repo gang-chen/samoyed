@@ -136,29 +136,30 @@ void SessionChooserDialog::buildNewSessionDialog()
 
 void SessionChooserDialog::buildRestoreSessionDialog()
 {
+    // Read sessions.
+    std::list<std::string> sessionNames;
+    std::list<Samoyed::Session::LockState> sessionStates;
+    readSessions(sessionNames, sessionStates);
+    GtkListStore *store =
+        GTK_LIST_STORE(gtk_builder_get_object(m_builder, "sessions"));
+    gtk_list_store_clear(store);
+    GtkTreeIter it;
+    std::list<std::string>::const_iterator it1 = sessionNames.begin();
+    std::list<Samoyed::Session::LockState>::const_iterator it2 =
+        sessionStates.begin();
+    for (; it1 != sessionNames.end(); ++it1, ++it2)
+    {
+        if (*it2 == Samoyed::Session::STATE_UNLOCKED)
+        {
+            gtk_list_store_append(store, &it);
+            gtk_list_store_set(store, &it,
+                               NAME_COLUMN, it1->c_str(),
+                               -1);
+        }
+    }
+
     if (!m_restoreSessionDialog)
     {
-        // Read sessions.
-        std::list<std::string> sessionNames;
-        std::list<Samoyed::Session::LockState> sessionStates;
-        readSessions(sessionNames, sessionStates);
-        GtkListStore *store =
-            GTK_LIST_STORE(gtk_builder_get_object(m_builder, "sessions"));
-        GtkTreeIter it;
-        std::list<std::string>::const_iterator it1 = sessionNames.begin();
-        std::list<Samoyed::Session::LockState>::const_iterator it2 =
-            sessionStates.begin();
-        for (; it1 != sessionNames.end(); ++it1, ++it2)
-        {
-            if (*it2 == Samoyed::Session::STATE_UNLOCKED)
-            {
-                gtk_list_store_append(store, &it);
-                gtk_list_store_set(store, &it,
-                                   NAME_COLUMN, it1->c_str(),
-                                   -1);
-            }
-        }
-
         m_restoreSessionDialog =
             GTK_DIALOG(gtk_builder_get_object(m_builder,
                                               "restore-session-dialog"));

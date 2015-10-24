@@ -1265,6 +1265,11 @@ void Window::createMenuItemForSidePane(Widget &pane)
     data->uiMergeId = mergeId;
 
     m_sidePaneData.insert(std::make_pair(pane.id(), data));
+
+    Notebook &notebook = static_cast<Notebook &>(pane);
+    for (int index = 0; index < notebook.childCount(); ++index)
+        notebook.child(index).addClosedCallback(
+            boost::bind(onSidePaneChildClosed, this, _1, boost::cref(pane)));
 }
 
 void Window::createMenuItemsForSidePanesRecursively(Widget &widget)

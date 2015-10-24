@@ -8,9 +8,11 @@
 #include "build-system.hpp"
 #include "build-log-view.hpp"
 #include "build-log-view-group.hpp"
+#include "compiler-options-collector.hpp"
 #include "configuration.hpp"
-#include "utilities/miscellaneous.hpp"
 #include "project/project.hpp"
+#include "utilities/miscellaneous.hpp"
+#include "utilities/scheduler.hpp"
 #include "window/window.hpp"
 #include "application.hpp"
 #include <string.h>
@@ -23,6 +25,7 @@
 # include <sys/types.h>
 # include <signal.h>
 #endif
+#include <boost/shared_ptr.hpp>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
@@ -93,7 +96,8 @@ bool Builder::running() const
 
 bool Builder::run()
 {
-    char *projectDir = g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
+    char *projectDir =
+        g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
     const char *argv[5] = { NULL, NULL, NULL, NULL, NULL };
     char **envv = g_get_environ();
 
@@ -127,7 +131,7 @@ bool Builder::run()
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     char *arg0;
-    bool useWindowsCmd = false;
+    m_useWindowsCmd = false;
     arg0 = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
     if (!g_file_test(arg0, G_FILE_TEST_IS_EXECUTABLE))
     {
@@ -169,7 +173,7 @@ bool Builder::run()
         const char *cmd = g_getenv("COMSPEC");
         if (cmd)
         {
-            useWindowsCmd = true;
+            m_useWindowsCmd = true;
             argv[0] = cmd;
             argv[1] = "\\c";
             argv[2] = commands.c_str();
@@ -229,13 +233,13 @@ bool Builder::run()
     }
 
 #ifdef OS_WINDOWS
-    if (!useWindowsCmd)
+    if (!m_useWindowsCmd)
     {
 #endif
 
     // Create the build output directory.
     std::string output(projectDir);
-    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "build-output";
+    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "compiler-options";
     g_mkdir(output.c_str(), 0775);
 
     // Remove the old output file if existing.
@@ -366,7 +370,7 @@ bool Builder::run()
                                         m_configuration.name());
     m_logView->startBuild(m_action);
 #ifdef OS_WINDOWS
-    m_logView->setUseWindowsCmd(useWindowsCmd);
+    m_logView->setUseWindowsCmd(m_useWindowsCmd);
 #endif
     m_logView->clear();
     m_logViewClosedConn = m_logView->addClosedCallback(
@@ -421,6 +425,34 @@ void Builder::onProcessExited(GPid processId,
 
     if (!b->m_outputPipe)
         b->m_buildSystem.onBuildFinished(b->m_configuration.name());
+
+    // Start the compiler options collector.
+#ifdef OS_WINDOWS
+    if (!b->m_useWindowsCmd)
+    {
+#endif
+
+    char *projectDir =
+        g_filename_from_uri(b->m_buildSystem.project().uri(), NULL, NULL);
+    std::string output(projectDir);
+    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "compiler-options"
+              G_DIR_SEPARATOR_S;
+    output += b->m_configuration.name();
+    output += '-';
+    output += ACTION_TEXT[b->m_action];
+    boost::shared_ptr<CompilerOptionsCollector> collector(new
+        CompilerOptionsCollector(
+            Application::instance().scheduler(),
+            Worker::PRIORITY_IDLE,
+            projectDir,
+            b->m_configuration.name(),
+            output.c_str()));
+    collector->submit(collector);
+    g_free(projectDir);
+
+#ifdef OS_WINDOWS
+    }
+#endif
 }
 
 void Builder::onDataRead(GObject *stream,

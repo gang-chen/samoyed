@@ -61,7 +61,7 @@ GtkWidget *Terminal::setup()
             char *parent = g_path_get_dirname(instDir);
             argv[0] = g_strconcat(parent, "\\usr\\bin\\bash.exe", NULL);
             g_free(parent);
-            if (g_file_test(argv[0], G_FILE_TEST_IS_EXECUTABLE))
+            if (!g_file_test(argv[0], G_FILE_TEST_IS_EXECUTABLE))
             {
                 g_free(argv[0]);
                 argv[0] = NULL;

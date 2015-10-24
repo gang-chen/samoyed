@@ -62,6 +62,10 @@ private:
     guint m_processWatchId;
     GInputStream *m_outputPipe;
     GCancellable *m_cancelReadingOutput;
+
+#ifdef OS_WINDOWS
+    bool m_useWindowsCmd;
+#endif
 };
 
 }
