@@ -11,6 +11,7 @@
 #include "build-log-view.hpp"
 #include "build-log-view-group.hpp"
 #include "builder.hpp"
+#include "compiler-options-collector.hpp"
 #include "project/project.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "window/window.hpp"
@@ -45,11 +46,6 @@ BuildSystem::BuildSystem(Project &project,
 
 BuildSystem::~BuildSystem()
 {
-    // Stop all the builders.
-    BuilderTable::iterator it;
-    while ((it = m_builders.begin()) != m_builders.end())
-        stopBuild(it->first);
-
     // Close all the build log views.
     Window *window = Application::instance().currentWindow();
     if (window)
@@ -272,11 +268,33 @@ void BuildSystem::stopBuild(const char *configName)
     }
 }
 
-void BuildSystem::onBuildFinished(const char *configName)
+void BuildSystem::onBuildFinished(const char *configName,
+                                  const char *compilerOptsFileName)
 {
     BuilderTable::iterator it = m_builders.find(configName);
     if (it != m_builders.end())
     {
+        // Start the compiler options collector.
+#ifdef OS_WINDOWS
+        if (compilerOptsFileName)
+        {
+#endif
+        boost::shared_ptr<CompilerOptionsCollector> compilerOptsCollector(new
+            CompilerOptionsCollector(
+                Application::instance().scheduler(),
+                Worker::PRIORITY_IDLE,
+                project(),
+                compilerOptsFileName));
+        m_compilerOptsCollectors.push_back(compilerOptsCollector);
+        compilerOptsCollector->addFinishedCallbackInMainThread(
+            boost::bind(onCompilerOptionsCollectorFinished, this, _1));
+        compilerOptsCollector->addCanceledCallbackInMainThread(
+            boost::bind(onCompilerOptionsCollectorCanceled, this, _1));
+        compilerOptsCollector->submit(compilerOptsCollector);
+#ifdef OS_WINDOWS
+        }
+#endif
+
         delete it->second;
         m_builders.erase(it);
     }
@@ -323,6 +341,64 @@ bool BuildSystem::removeConfiguration(Configuration &config)
     if (activeConfiguration() == &config)
         setActiveConfiguration(m_firstConfig);
     return true;
+}
+
+void BuildSystem::stopAllWorkers(
+    const boost::function<void (BuildSystem &)> &callback)
+{
+    // Stop all the builders.
+    BuilderTable::iterator it;
+    while ((it = m_builders.begin()) != m_builders.end())
+        stopBuild(it->first);
+
+    // Cancel all the compiler options collectors.
+    m_allWorkersStoppedCallback = callback;
+    if (m_compilerOptsCollectors.empty() && m_allWorkersStoppedCallback)
+    {
+        m_allWorkersStoppedCallback(*this);
+        return;
+    }
+    for (std::list<boost::shared_ptr<CompilerOptionsCollector> >::const_iterator
+            it = m_compilerOptsCollectors.begin();
+         it != m_compilerOptsCollectors.end();
+         ++it)
+        (*it)->cancel(*it);
+}
+
+void BuildSystem::onCompilerOptionsCollectorFinished(
+    const boost::shared_ptr<Worker> &worker)
+{
+    for (std::list<boost::shared_ptr<CompilerOptionsCollector> >::iterator
+            it = m_compilerOptsCollectors.begin();
+         it != m_compilerOptsCollectors.end();
+         ++it)
+    {
+        if (*it == worker)
+        {
+            m_compilerOptsCollectors.erase(it);
+            if (m_compilerOptsCollectors.empty() && m_allWorkersStoppedCallback)
+                m_allWorkersStoppedCallback(*this);
+            break;
+        }
+    }
+}
+
+void BuildSystem::onCompilerOptionsCollectorCanceled(
+    const boost::shared_ptr<Worker> &worker)
+{
+    for (std::list<boost::shared_ptr<CompilerOptionsCollector> >::iterator
+            it = m_compilerOptsCollectors.begin();
+         it != m_compilerOptsCollectors.end();
+         ++it)
+    {
+        if (*it == worker)
+        {
+            m_compilerOptsCollectors.erase(it);
+            if (m_compilerOptsCollectors.empty() && m_allWorkersStoppedCallback)
+                m_allWorkersStoppedCallback(*this);
+            break;
+        }
+    }
 }
 
 }

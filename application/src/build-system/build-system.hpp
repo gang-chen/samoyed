@@ -8,7 +8,10 @@
 #include <map>
 #include <list>
 #include <string>
+#include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
+#include <boost/signals2/signal.hpp>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -18,6 +21,8 @@ class Project;
 class Configuration;
 class BuildSystemFile;
 class Builder;
+class CompilerOptionsCollector;
+class Worker;
 
 class BuildSystem: public boost::noncopyable
 {
@@ -57,7 +62,8 @@ public:
 
     void stopBuild(const char *configName);
 
-    void onBuildFinished(const char *configName);
+    void onBuildFinished(const char *configName,
+                         const char *compilerOptsFileName);
 
     Project &project() { return m_project; }
     const Project &project() const { return m_project; }
@@ -83,6 +89,8 @@ public:
                                        std::list<std::string> *errors);
     xmlNodePtr writeXmlElement() const;
 
+    void stopAllWorkers(const boost::function<void (BuildSystem &)> &callback);
+
 protected:
     BuildSystem(Project &project, const char *extensionId);
 
@@ -91,6 +99,11 @@ private:
         ConfigurationTable;
 
     typedef std::map<ComparablePointer<const char>, Builder *> BuilderTable;
+
+    void onCompilerOptionsCollectorFinished(
+        const boost::shared_ptr<Worker> &worker);
+    void onCompilerOptionsCollectorCanceled(
+        const boost::shared_ptr<Worker> &worker);
 
     Project &m_project;
 
@@ -103,6 +116,11 @@ private:
     Configuration *m_activeConfig;
 
     BuilderTable m_builders;
+
+    std::list<boost::shared_ptr<CompilerOptionsCollector> >
+        m_compilerOptsCollectors;
+
+    boost::function<void (BuildSystem &)> m_allWorkersStoppedCallback;
 };
 
 }

@@ -24,7 +24,7 @@ protected:
     virtual bool step();
 
     boost::shared_ptr<char> m_contents;
-    unsigned int m_length;
+    int m_length;
 };
 
 }

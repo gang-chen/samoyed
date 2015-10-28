@@ -104,6 +104,8 @@ Project *ProjectCreatorDialog::run()
         gtk_combo_box_get_active_id(GTK_COMBO_BOX(m_buildSystemChooser));
     project = Project::create(uri, buildSystem);
     g_free(uri);
+    if (!project)
+        return run();
     return project;
 }
 

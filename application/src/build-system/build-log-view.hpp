@@ -54,8 +54,8 @@ public:
     const char *configurationName() const { return m_configName.c_str(); }
 
 #ifdef OS_WINDOWS
-    void setUseWindowsCmd(bool useWindowsCmd)
-    { m_useWindowsCmd = useWindowsCmd; }
+    void setUsingWindowsCmd(bool usingWindowsCmd)
+    { m_usingWindowsCmd = usingWindowsCmd; }
 #endif
 
 protected:
@@ -98,7 +98,7 @@ private:
     std::stack<std::string> m_directoryStack;
 
 #ifdef OS_WINDOWS
-    bool m_useWindowsCmd;
+    bool m_usingWindowsCmd;
 
     CompilerDiagnostic *m_targetDiagnostic;
 

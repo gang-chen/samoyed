@@ -76,10 +76,10 @@ AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
 AC_PATH_PROG([GLIB_GENMARSHAL], [glib-genmarshal])
 AC_PATH_PROG([GLIB_MKENUMS], [glib-mkenums])
 
-AC_CHECK_LIB([clang], [clang_createIndex])
-AC_CHECK_HEADERS([clang-c/Index.h])
+AC_CHECK_LIB([clang], [clang_createIndex], , [AC_MSG_ERROR([Could not find clang.])])
+AC_CHECK_HEADERS([clang-c/Index.h], , [AC_MSG_ERROR([Could not find clang-c/Index.h.])])
 
-AX_PATH_BDB([6])
+AX_PATH_BDB([6], , [AC_MSG_ERROR([Could not find Berkeley DB.])])
 
 if test "x$os_windows" = "xyes"; then
   SAMOYED_CPPFLAGS="-I\$(top_srcdir)/application/src -I\$(top_srcdir)/application/libs $BOOST_CPPFLAGS $GTK_CFLAGS $GMODULE_CFLAGS $XML_CFLAGS $GTKSOURCEVIEW_CFLAGS $GIO_WINDOWS_CFLAGS $BDB_CPPFLAGS"

@@ -122,13 +122,16 @@ private:
     typedef std::multimap<ComparablePointer<const char>, Editor *>
         EditorTable;
 
-    bool finishClosing();
+    bool closePhase2();
+    bool closePhase3();
 
     void setBuildSystem(const char *buildSystemExtensionId);
 
     bool readManifestFile(xmlNodePtr node, std::list<std::string> *errors);
 
     xmlNodePtr writeManifestFile() const;
+
+    void onAllBuildSystemWorkersStopped();
 
     const std::string m_uri;
 

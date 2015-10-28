@@ -50,6 +50,8 @@ private:
 
     void onLogViewClosed(Widget &widget);
 
+    void onFinished();
+
     BuildSystem &m_buildSystem;
     Configuration &m_configuration;
     Action m_action;
@@ -64,7 +66,7 @@ private:
     GCancellable *m_cancelReadingOutput;
 
 #ifdef OS_WINDOWS
-    bool m_useWindowsCmd;
+    bool m_usingWindowsCmd;
 #endif
 };
 

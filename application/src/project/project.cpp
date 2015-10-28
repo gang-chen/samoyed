@@ -524,7 +524,7 @@ Project *Project::open(const char *uri)
     return project;
 }
 
-bool Project::finishClosing()
+bool Project::closePhase2()
 {
     // Write the project manifest file.
     std::string xmlUri(uri());
@@ -597,6 +597,14 @@ bool Project::finishClosing()
     xmlFreeDoc(doc);
     g_free(xmlFileName);
 
+    // Ask the build system to stop its workers.
+    m_buildSystem->stopAllWorkers(
+        boost::bind(onAllBuildSystemWorkersStopped, this));
+    return true;
+}
+
+bool Project::closePhase3()
+{
     // Close the project database.
     ProjectDb::Error dbError = m_db->close();
     if (dbError.code)
@@ -644,9 +652,12 @@ bool Project::finishClosing()
 
 bool Project::close()
 {
+    if (m_closing)
+        return true;
+
     m_closing = true;
     if (!m_firstEditor)
-        return finishClosing();
+        return closePhase2();
 
     // Close all editors.
     for (Editor *editor = m_firstEditor, *next; editor; editor = next)
@@ -787,7 +798,12 @@ void Project::destroyEditor(Editor &editor)
 {
     editor.destroyInProject();
     if (m_closing && !m_firstEditor)
-        finishClosing();
+        closePhase2();
+}
+
+void Project::onAllBuildSystemWorkersStopped()
+{
+    closePhase3();
 }
 
 }

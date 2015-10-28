@@ -126,7 +126,7 @@ BuildLogView::BuildLogView(const char *projectUri,
     m_configName(configName)
 #ifdef OS_WINDOWS
     ,
-    m_useWindowsCmd(false),
+    m_usingWindowsCmd(false),
     m_targetDiagnostic(NULL),
     m_pathInConversion(NULL)
 #endif
@@ -351,7 +351,7 @@ void BuildLogView::parseLog(int beginLine, int endLine)
                 {
                     diag->fileName = m_directoryStack.top();
 #ifdef OS_WINDOWS
-                    if (m_useWindowsCmd)
+                    if (m_usingWindowsCmd)
                         diag->fileName += '\\';
                     else
 #endif
@@ -437,7 +437,7 @@ gboolean BuildLogView::onButtonPressEvent(GtkWidget *widget,
     {
 #ifdef OS_WINDOWS
         bool wait = false;
-        if (!buildLogView->m_useWindowsCmd)
+        if (!buildLogView->m_usingWindowsCmd)
         {
             if (buildLogView->m_pathInConversion)
             {
@@ -470,7 +470,7 @@ gboolean BuildLogView::onButtonPressEvent(GtkWidget *widget,
 #ifdef OS_WINDOWS
     else if (event->type == GDK_BUTTON_PRESS)
     {
-        if (!buildLogView->m_useWindowsCmd)
+        if (!buildLogView->m_usingWindowsCmd)
         {
             // We are using the MSYS2 shell.  The dumped paths are in the POSIX
             // format.  Need to convert them into the Windows format.  The
@@ -512,15 +512,39 @@ void BuildLogView::convertPath(const char *path)
     if (m_pathConversionCache.find(path) != m_pathConversionCache.end())
         return;
 
-    char *projectDir = g_filename_from_uri(m_projectUri.c_str(), NULL, NULL);
-    std::string converter(Application::instance().librariesDirectoryName());
-    converter += G_DIR_SEPARATOR_S "posixtowindowspathconverter.exe";
-    if (!g_file_test(converter.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+    char *instDir =
+        g_win32_get_package_installation_directory_of_module(NULL);
+    char *converter =
+        g_strconcat(instDir, "\\bin\\posixtowindowspathconverter.exe", NULL);
+    if (!g_file_test(converter, G_FILE_TEST_IS_EXECUTABLE))
+    {
+        g_free(converter);
+        converter = NULL;
+        char *base = g_path_get_basename(instDir);
+        if (strcmp(base, "mingw32") == 0 || strcmp(base, "mingw64") == 0)
+        {
+            char *parent = g_path_get_dirname(instDir);
+            converter =
+                g_strconcat(parent,
+                            "\\usr\\bin\\posixtowindowspathconverter.exe",
+                            NULL);
+            g_free(parent);
+            if (!g_file_test(converter, G_FILE_TEST_IS_EXECUTABLE))
+            {
+                g_free(converter);
+                converter = NULL;
+            }
+        }
+        g_free(base);
+    }
+    g_free(instDir);
+    if (!converter)
         return;
     const char *argv[3] = { NULL, NULL, NULL };
-    argv[0] = converter.c_str();
+    argv[0] = converter;
     argv[1] = path;
 
+    char *projectDir = g_filename_from_uri(m_projectUri.c_str(), NULL, NULL);
     GError *error = NULL;
     if (!spawnSubprocess(projectDir,
                          argv,
@@ -533,9 +557,11 @@ void BuildLogView::convertPath(const char *path)
                          &error))
     {
         g_error_free(error);
+        g_free(converter);
         g_free(projectDir);
         return;
     }
+    g_free(converter);
     g_free(projectDir);
     m_cancelReadingPathConverterOutput = g_cancellable_new();
     DataReadParam *param = new DataReadParam(m_cancelReadingPathConverterOutput,

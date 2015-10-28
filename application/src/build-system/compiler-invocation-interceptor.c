@@ -69,7 +69,7 @@ static void print(FILE *fp, const char *s)
         fwrite(buf, sizeof(wchar_t), n, fp);
     }
 #else
-    FWRITES(s, fp);
+    fwrite(s, sizeof(char), strlen(s), fp);
 #endif
 }
 
@@ -78,6 +78,39 @@ const char *DIR_OPTIONS[] = { "-I", "-L", NULL };
 static void print_arg(FILE *fp, const char *arg)
 {
 #ifdef OS_WINDOWS
+
+    if (*arg != '-')
+    {
+        // Convert the path into the Windows format.
+        ssize_t size;
+        wchar_t *win;
+        size = cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
+                                arg,
+                                NULL,
+                                0);
+        if (size >= 0)
+        {
+            win = (wchar_t *) malloc(size);
+            if (cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
+                                 arg,
+                                 win,
+                                 size) == 0)
+                fwrite(win, 1, size, fp);
+            else
+            {
+                print(fp, arg);
+                FWRITES("", fp);
+            }
+            free(win);
+        }
+        else
+        {
+            print(fp, arg);
+            FWRITES("", fp);
+        }
+        return;
+    }
+
     const char **opt;
     for (opt = DIR_OPTIONS; *opt; opt++)
     {
@@ -101,13 +134,25 @@ static void print_arg(FILE *fp, const char *arg)
                                      win,
                                      size) == 0)
                     fwrite(win, 1, size, fp);
+                else
+                {
+                    print(fp, arg);
+                    FWRITES("", fp);
+                }
                 free(win);
+            }
+            else
+            {
+                print(fp, arg);
+                FWRITES("", fp);
             }
             return;
         }
     }
+
 #endif
     print(fp, arg);
+    FWRITES("", fp);
 }
 
 static void print_argv(FILE *fp, char *const argv[])
@@ -156,17 +201,20 @@ execve(
     FWRITES("EXE:", fp);
     print(fp, filename);
     FWRITES("", fp);
+    FWRITES("", fp);
 
     FWRITES("CWD:", fp);
     cwd = get_current_dir_name();
     print(fp, cwd);
     free(cwd);
     FWRITES("", fp);
+    FWRITES("", fp);
 
     if (is_cc)
     {
         FWRITES("CC ARGV:", fp);
         print(fp, argv[0]);
+        FWRITES("", fp);
         print_argv(fp, argv + 1);
         FWRITES("", fp);
     }
@@ -174,6 +222,7 @@ execve(
     {
         FWRITES("CXX ARGV:", fp);
         print(fp, argv[0]);
+        FWRITES("", fp);
         print_argv(fp, argv + 1);
         FWRITES("", fp);
     }

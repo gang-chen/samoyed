@@ -49,10 +49,6 @@ TextFileLoader::TextFileLoader(Scheduler &scheduler,
                                const char *encoding):
     FileLoader(scheduler, priority, uri),
     m_encoding(encoding),
-    m_file(NULL),
-    m_fileStream(NULL),
-    m_encodingConverter(NULL),
-    m_converterStream(NULL),
     m_stream(NULL),
     m_readBuffer(NULL)
 {
@@ -65,50 +61,55 @@ TextFileLoader::TextFileLoader(Scheduler &scheduler,
 
 TextFileLoader::~TextFileLoader()
 {
+    if (m_stream)
+        g_object_unref(m_stream);
+    delete[] m_readBuffer;
 }
 
 bool TextFileLoader::step()
 {
-    if (!m_file)
+    if (!m_stream)
     {
         // Open the file.
-        m_file = g_file_new_for_uri(uri());
-        m_fileStream = g_file_read(m_file, NULL, &m_error);
-        if (m_error)
+        GFile *file = g_file_new_for_uri(uri());
+        GFileInputStream *fileStream = g_file_read(file, NULL, &m_error);
+        if (!fileStream)
         {
-            cleanUp();
+            g_object_unref(file);
             return true;
         }
 
         // Open the encoding converter and setup the input stream.
         if (m_encoding == "UTF-8")
-            m_stream = G_INPUT_STREAM(m_fileStream);
+            m_stream = G_INPUT_STREAM(fileStream);
         else
         {
-            m_encodingConverter =
+            GCharsetConverter *encodingConverter =
                 g_charset_converter_new("UTF-8", m_encoding.c_str(), &m_error);
-            if (m_error)
+            if (!encodingConverter)
             {
-                cleanUp();
+                g_object_unref(file);
+                g_object_unref(fileStream);
                 return true;
             }
-            m_converterStream =
-                g_converter_input_stream_new(G_INPUT_STREAM(m_fileStream),
-                                             G_CONVERTER(m_encodingConverter));
-            m_stream = m_converterStream;
+            m_stream =
+                g_converter_input_stream_new(G_INPUT_STREAM(fileStream),
+                                             G_CONVERTER(encodingConverter));
+            g_object_unref(fileStream);
+            g_object_unref(encodingConverter);
         }
 
         // Get the time when the file was last modified.
         GFileInfo *fileInfo;
         fileInfo =
-            g_file_query_info(m_file,
+            g_file_query_info(file,
                               G_FILE_ATTRIBUTE_TIME_MODIFIED,
                               G_FILE_QUERY_INFO_NONE,
                               NULL,
                               &m_error);
-        if (m_error)
+        if (!fileInfo)
         {
-            cleanUp();
+            g_object_unref(file);
             return true;
         }
         m_modifiedTime.seconds = g_file_info_get_attribute_uint64(
@@ -116,20 +117,21 @@ bool TextFileLoader::step()
             G_FILE_ATTRIBUTE_TIME_MODIFIED);
         g_object_unref(fileInfo);
         fileInfo =
-            g_file_query_info(m_file,
+            g_file_query_info(file,
                               G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC,
                               G_FILE_QUERY_INFO_NONE,
                               NULL,
                               &m_error);
-        if (m_error)
+        if (!fileInfo)
         {
-            cleanUp();
+            g_object_unref(file);
             return true;
         }
         m_modifiedTime.microSeconds = g_file_info_get_attribute_uint32(
             fileInfo,
             G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC);
         g_object_unref(fileInfo);
+        g_object_unref(file);
 
         m_readBuffer = new char[BUFFER_SIZE];
         m_readPointer = m_readBuffer;
@@ -141,25 +143,20 @@ bool TextFileLoader::step()
                                    m_readBuffer + BUFFER_SIZE - m_readPointer,
                                    NULL,
                                    &m_error);
-    if (m_error)
-    {
-        cleanUp();
+    if (size == -1)
         return true;
-    }
     if (size == 0)
     {
         if (m_readPointer != m_readBuffer)
         {
             m_error = g_error_new(G_IO_ERROR,
                                   G_IO_ERROR_PARTIAL_INPUT,
-                                  _("Incomplete UTF-8 encoded characters "
+                                  _("Incomplete \"%s\" encoded characters "
                                     "in file \"%s\""),
-                                  uri());
-            cleanUp();
+                                  m_encoding.c_str(), uri());
             return true;
         }
         g_input_stream_close(m_stream, NULL, &m_error);
-        cleanUp();
         return true;
     }
     size += m_readPointer - m_readBuffer;
@@ -169,10 +166,9 @@ bool TextFileLoader::step()
     {
         m_error = g_error_new(G_IO_ERROR,
                               G_IO_ERROR_INVALID_DATA,
-                              _("Invalid UTF-8 encoded characters in file "
+                              _("Invalid \"%s\" encoded characters in file "
                                 "\"%s\""),
-                              uri());
-        cleanUp();
+                              m_encoding.c_str(), uri());
         return true;
     }
     m_buffer.push_back(std::string(m_readBuffer, valid - m_readBuffer));
@@ -180,19 +176,6 @@ bool TextFileLoader::step()
     memmove(m_readBuffer, valid, size);
     m_readPointer = m_readBuffer + size;
     return false;
-}
-
-void TextFileLoader::cleanUp()
-{
-    if (m_converterStream)
-        g_object_unref(m_converterStream);
-    if (m_encodingConverter)
-        g_object_unref(m_encodingConverter);
-    if (m_fileStream)
-        g_object_unref(m_fileStream);
-    if (m_file)
-        g_object_unref(m_file);
-    delete[] m_readBuffer;
 }
 
 }

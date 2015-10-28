@@ -50,50 +50,63 @@ TextFileSaver::TextFileSaver(Scheduler &scheduler,
 
 bool TextFileSaver::step()
 {
-    GFile *file = NULL;
-    GFileOutputStream *fileStream = NULL;
-    GCharsetConverter *encodingConverter = NULL;
-    GOutputStream *converterStream = NULL;
     GOutputStream *stream = NULL;
 
     // Open the file.
-    file = g_file_new_for_uri(uri());
-    fileStream = g_file_replace(file,
-                                NULL,
-                                TRUE,
-                                G_FILE_CREATE_NONE,
-                                NULL,
-                                &m_error);
-    if (m_error)
-        goto CLEAN_UP;
+    GFile *file = g_file_new_for_uri(uri());
+    GFileOutputStream *fileStream = g_file_replace(file,
+                                                   NULL,
+                                                   TRUE,
+                                                   G_FILE_CREATE_NONE,
+                                                   NULL,
+                                                   &m_error);
+    if (!fileStream)
+    {
+        g_object_unref(file);
+        return true;
+    }
 
     // Open the encoding converter and setup the input stream.
     if (m_encoding == "UTF-8")
         stream = G_OUTPUT_STREAM(fileStream);
     else
     {
-        encodingConverter =
+        GCharsetConverter *encodingConverter =
             g_charset_converter_new(m_encoding.c_str(), "UTF-8", &m_error);
-        if (m_error)
-            goto CLEAN_UP;
-        converterStream =
+        if (!encodingConverter)
+        {
+            g_object_unref(file);
+            g_object_unref(fileStream);
+            return true;
+        }
+        stream =
             g_converter_output_stream_new(G_OUTPUT_STREAM(fileStream),
                                           G_CONVERTER(encodingConverter));
-        stream = converterStream;
+        g_object_unref(fileStream);
+        g_object_unref(encodingConverter);
     }
 
     // Convert and write.
-    g_output_stream_write(stream,
-                          m_text.get(),
-                          m_length == -1 ? strlen(m_text.get()) : m_length,
-                          NULL,
-                          &m_error);
-    if (m_error)
-        goto CLEAN_UP;
+    int size =
+        g_output_stream_write(stream,
+                              m_text.get(),
+                              m_length == -1 ? strlen(m_text.get()) : m_length,
+                              NULL,
+                              &m_error);
+    if (size == -1)
+    {
+        g_object_unref(file);
+        g_object_unref(stream);
+        return true;
+    }
 
-    g_output_stream_close(stream, NULL, &m_error);
-    if (m_error)
-        goto CLEAN_UP;
+    if (!g_output_stream_close(stream, NULL, &m_error))
+    {
+        g_object_unref(file);
+        g_object_unref(stream);
+        return true;
+    }
+    g_object_unref(stream);
 
     // Get the time when the file was last modified.
     GFileInfo *fileInfo;
@@ -103,8 +116,11 @@ bool TextFileSaver::step()
                           G_FILE_QUERY_INFO_NONE,
                           NULL,
                           &m_error);
-    if (m_error)
-        goto CLEAN_UP;
+    if (!fileInfo)
+    {
+        g_object_unref(file);
+        return true;
+    }
     m_modifiedTime.seconds = g_file_info_get_attribute_uint64(
         fileInfo,
         G_FILE_ATTRIBUTE_TIME_MODIFIED);
@@ -115,22 +131,16 @@ bool TextFileSaver::step()
                           G_FILE_QUERY_INFO_NONE,
                           NULL,
                           &m_error);
-    if (m_error)
-        goto CLEAN_UP;
+    if (!fileInfo)
+    {
+        g_object_unref(file);
+        return true;
+    }
     m_modifiedTime.microSeconds = g_file_info_get_attribute_uint32(
         fileInfo,
         G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC);
     g_object_unref(fileInfo);
-
-CLEAN_UP:
-    if (converterStream)
-        g_object_unref(converterStream);
-    if (encodingConverter)
-        g_object_unref(encodingConverter);
-    if (fileStream)
-        g_object_unref(fileStream);
-    if (file)
-        g_object_unref(file);
+    g_object_unref(file);
     return true;
 }
 

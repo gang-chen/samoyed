@@ -32,16 +32,10 @@ protected:
     virtual bool step();
 
 private:
-    void cleanUp();
-
     std::string m_encoding;
 
     std::list<std::string> m_buffer;
 
-    GFile *m_file;
-    GFileInputStream *m_fileStream;
-    GCharsetConverter *m_encodingConverter;
-    GInputStream *m_converterStream;
     GInputStream *m_stream;
     char *m_readBuffer;
     char *m_readPointer;

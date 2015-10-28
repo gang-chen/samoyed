@@ -2077,7 +2077,7 @@ void Window::onCurrentTextEditorCursorInput(GtkEntry *entry, Window *window)
     Notebook &editorGroup = window->currentEditorGroup();
     if (editorGroup.childCount() > 0)
     {
-        Samoyed::TextEditor &editor =
+        TextEditor &editor =
             static_cast<TextEditor &>(editorGroup.currentChild());
         const char *line = gtk_entry_get_text(GTK_ENTRY(window->m_currentLine));
         const char *column =

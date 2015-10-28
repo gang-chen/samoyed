@@ -57,7 +57,7 @@ bool GnuBuildSystem::removeFile(const char *uri)
 
 Configuration GnuBuildSystem::defaultConfiguration() const
 {
-    Configuration config;
+    Configuration config(BuildSystem::defaultConfiguration());
     config.setConfigureCommands("./configure");
     config.setBuildCommands("make");
     config.setInstallCommands("make install");

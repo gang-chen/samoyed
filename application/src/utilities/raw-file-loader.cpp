@@ -50,7 +50,7 @@ bool RawFileLoader::step()
                           G_FILE_QUERY_INFO_NONE,
                           NULL,
                           &m_error);
-    if (m_error)
+    if (!fileInfo)
     {
         g_object_unref(file);
         return true;
@@ -65,7 +65,7 @@ bool RawFileLoader::step()
                           G_FILE_QUERY_INFO_NONE,
                           NULL,
                           &m_error);
-    if (m_error)
+    if (!fileInfo)
     {
         g_object_unref(file);
         return true;
@@ -81,11 +81,13 @@ bool RawFileLoader::step()
         return true;
 
     char *contents;
+    gsize length;
     g_file_get_contents(fileName,
                         &contents,
-                        &m_length,
+                        &length,
                         &m_error);
     m_contents.reset(contents, g_free);
+    m_length = length;
 }
 
 }

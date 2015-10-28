@@ -126,7 +126,7 @@ Configuration *ConfigurationCreatorDialog::run()
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
         delete config;
-        return NULL;
+        return run();
     }
 
     return config;

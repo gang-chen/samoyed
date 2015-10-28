@@ -8,7 +8,6 @@
 #include "build-system.hpp"
 #include "build-log-view.hpp"
 #include "build-log-view-group.hpp"
-#include "compiler-options-collector.hpp"
 #include "configuration.hpp"
 #include "project/project.hpp"
 #include "utilities/miscellaneous.hpp"
@@ -131,7 +130,7 @@ bool Builder::run()
     char *instDir =
         g_win32_get_package_installation_directory_of_module(NULL);
     char *arg0;
-    m_useWindowsCmd = false;
+    m_usingWindowsCmd = false;
     arg0 = g_strconcat(instDir, "\\bin\\bash.exe", NULL);
     if (!g_file_test(arg0, G_FILE_TEST_IS_EXECUTABLE))
     {
@@ -173,7 +172,7 @@ bool Builder::run()
         const char *cmd = g_getenv("COMSPEC");
         if (cmd)
         {
-            m_useWindowsCmd = true;
+            m_usingWindowsCmd = true;
             argv[0] = cmd;
             argv[1] = "\\c";
             argv[2] = commands.c_str();
@@ -233,7 +232,7 @@ bool Builder::run()
     }
 
 #ifdef OS_WINDOWS
-    if (!m_useWindowsCmd)
+    if (!m_usingWindowsCmd)
     {
 #endif
 
@@ -370,7 +369,7 @@ bool Builder::run()
                                         m_configuration.name());
     m_logView->startBuild(m_action);
 #ifdef OS_WINDOWS
-    m_logView->setUseWindowsCmd(m_useWindowsCmd);
+    m_logView->setUsingWindowsCmd(m_usingWindowsCmd);
 #endif
     m_logView->clear();
     m_logViewClosedConn = m_logView->addClosedCallback(
@@ -404,6 +403,29 @@ void Builder::stop()
         m_logView->onBuildStopped();
 }
 
+void Builder::onFinished()
+{
+#ifdef OS_WINDOWS
+    if (!m_usingWindowsCmd)
+        m_buildSystem.onBuildFinished(m_configuration.name(), NULL);
+    else
+    {
+#endif
+    char *projectDir =
+        g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
+    std::string output(projectDir);
+    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "compiler-options"
+        G_DIR_SEPARATOR_S;
+    output += m_configuration.name();
+    output += '-';
+    output += ACTION_TEXT[m_action];
+    m_buildSystem.onBuildFinished(m_configuration.name(), output.c_str());
+    g_free(projectDir);
+#ifdef OS_WINDOWS
+    }
+#endif
+}
+
 void Builder::onProcessExited(GPid processId,
                               gint status,
                               gpointer builder)
@@ -424,35 +446,7 @@ void Builder::onProcessExited(GPid processId,
     }
 
     if (!b->m_outputPipe)
-        b->m_buildSystem.onBuildFinished(b->m_configuration.name());
-
-    // Start the compiler options collector.
-#ifdef OS_WINDOWS
-    if (!b->m_useWindowsCmd)
-    {
-#endif
-
-    char *projectDir =
-        g_filename_from_uri(b->m_buildSystem.project().uri(), NULL, NULL);
-    std::string output(projectDir);
-    output += G_DIR_SEPARATOR_S ".samoyed" G_DIR_SEPARATOR_S "compiler-options"
-              G_DIR_SEPARATOR_S;
-    output += b->m_configuration.name();
-    output += '-';
-    output += ACTION_TEXT[b->m_action];
-    boost::shared_ptr<CompilerOptionsCollector> collector(new
-        CompilerOptionsCollector(
-            Application::instance().scheduler(),
-            Worker::PRIORITY_IDLE,
-            projectDir,
-            b->m_configuration.name(),
-            output.c_str()));
-    collector->submit(collector);
-    g_free(projectDir);
-
-#ifdef OS_WINDOWS
-    }
-#endif
+        b->onFinished();
 }
 
 void Builder::onDataRead(GObject *stream,
@@ -498,8 +492,7 @@ void Builder::onDataRead(GObject *stream,
             p->builder.m_outputPipe = NULL;
 
             if (!p->builder.m_processRunning)
-                p->builder.m_buildSystem.onBuildFinished(
-                    p->builder.m_configuration.name());
+                p->builder.onFinished();
             delete p;
         }
     }

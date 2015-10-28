@@ -6,26 +6,36 @@
 
 #include "utilities/worker.hpp"
 #include <string>
+#include <gio/gio.h>
 
 namespace Samoyed
 {
+
+class Project;
 
 class CompilerOptionsCollector: public Worker
 {
 public:
     CompilerOptionsCollector(Scheduler &scheduler,
                              unsigned int priority,
-                             const char *projectUri,
-                             const char *configName,
+                             Project &project,
                              const char *inputFileName);
+
+    virtual ~CompilerOptionsCollector();
 
 protected:
     virtual bool step();
 
 private:
-    std::string m_projectUri;
-    std::string m_configName;
+    bool parse(const char *&begin, const char *end);
+
+    Project &m_project;
+
     std::string m_inputFileName;
+
+    GInputStream *m_stream;
+    char *m_readBuffer;
+    char *m_readPointer;
 };
 
 }

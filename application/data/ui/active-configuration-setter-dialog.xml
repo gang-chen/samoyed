@@ -16,6 +16,7 @@
                 <property name="visible">true</property>
                 <property name="hexpand">true</property>
                 <property name="halign">start</property>
+                <property name="selectable">true</property>
               </object>
               <packing>
                 <property name="left-attach">1</property>
