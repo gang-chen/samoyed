@@ -30,6 +30,9 @@ public:
         std::string fileName;
         int line;
         int column;
+#ifdef OS_WINDOWS
+        bool needPathConversion;
+#endif
     };
 
     static BuildLogView *create(const char *projectUri,

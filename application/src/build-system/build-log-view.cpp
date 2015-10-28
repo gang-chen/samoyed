@@ -347,17 +347,63 @@ void BuildLogView::parseLog(int beginLine, int endLine)
             {
                 diag->line--;
                 diag->column--;
-                if (!m_directoryStack.empty())
-                {
-                    diag->fileName = m_directoryStack.top();
+
+                // Check to see if the file name is an absolute path.
 #ifdef OS_WINDOWS
-                    if (m_usingWindowsCmd)
-                        diag->fileName += '\\';
-                    else
-#endif
-                    diag->fileName += '/';
+                if (isalpha(text[0]) && text[1] == ':' &&
+                    (text[2] == '\\' || text[2] == '/'))
+                {
+                    diag->needPathConversion = false;
+                    diag->fileName = text;
                 }
-                diag->fileName += text;
+                else if (!m_usingWindowsCmd && text[0] == '/')
+                {
+                    diag->needPathConversion = true;
+                    diag->fileName = text;
+                }
+#else
+                if (text[0] == '/')
+                {
+                    diag->fileName = text;
+                }
+#endif
+                else
+                {
+                    // If the file name is a relative path, prepend the current
+                    // directory.
+                    if (!m_directoryStack.empty())
+                    {
+                        diag->fileName = m_directoryStack.top();
+#ifdef OS_WINDOWS
+                        if (m_usingWindowsCmd ||
+                            (diag->fileName.length() >= 3 &&
+                             isalpha(diag->fileName[0]) &&
+                             diag->fileName[1] == ':' &&
+                             (diag->fileName[2] == '\\' ||
+                              diag->fileName[2] == '/')))
+                        {
+                            diag->needPathConversion = false;
+                            diag->fileName += '\\';
+                        }
+                        else
+                        {
+                            diag->needPathConversion = true;
+                            diag->fileName += '/';
+                        }
+#else
+                        diag->fileName += '/';
+#endif
+                    }
+                    diag->fileName += text;
+                }
+
+#ifdef OS_WINDOWS
+                // Unify directory separators.
+                if (!m_usingWindowsCmd && !diag->needPathConversion)
+                    for (int i = 0; i < diag->fileName.length(); i++)
+                        if (diag->fileName[i] == '/')
+                            diag->fileName[i] = '\\';
+#endif
 
                 bool diagMatched = true;
                 colon += 2;
@@ -437,7 +483,7 @@ gboolean BuildLogView::onButtonPressEvent(GtkWidget *widget,
     {
 #ifdef OS_WINDOWS
         bool wait = false;
-        if (!buildLogView->m_usingWindowsCmd)
+        if (diag->needPathConversion)
         {
             if (buildLogView->m_pathInConversion)
             {
@@ -470,7 +516,7 @@ gboolean BuildLogView::onButtonPressEvent(GtkWidget *widget,
 #ifdef OS_WINDOWS
     else if (event->type == GDK_BUTTON_PRESS)
     {
-        if (!buildLogView->m_usingWindowsCmd)
+        if (diag->needPathConversion)
         {
             // We are using the MSYS2 shell.  The dumped paths are in the POSIX
             // format.  Need to convert them into the Windows format.  The
