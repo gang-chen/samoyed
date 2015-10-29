@@ -7,8 +7,11 @@
 #include "compiler-options-collector.hpp"
 #include "project/project.hpp"
 #include "project/project-db.hpp"
-#include "utilities/utf8.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <string.h>
+#include <list>
+#include <string>
+#include <set>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
@@ -17,6 +20,60 @@ namespace
 {
 
 const int BUFFER_SIZE = 10000;
+
+const char *OPTIONS_NEEDING_ARGUMENTS[] =
+{
+    "-D",
+    "-I",
+    "-MF",
+    "-MQ",
+    "-MT",
+    "-T",
+    "-U",
+    "-V",
+    "-Xassembler",
+    "-Xlinker",
+    "-Xpreprocessor",
+    "-b",
+    "-idirafter",
+    "-imacros",
+    "-imultilib",
+    "-include",
+    "-iprefix",
+    "-iquote",
+    "-isysroot",
+    "-isystem",
+    "-iwithprefix",
+    "-iwithprefixbefore",
+    "-l",
+    "-o",
+    "-u",
+    "-x",
+    NULL
+};
+
+const char *OPTIONS_FILTERED_OUT[] =
+{
+    "-E",
+    "-MF",
+    "-MQ",
+    "-MT",
+    "-S",
+    "-c",
+    "-o",
+    NULL
+};
+
+const char *DIR_OPTIONS[] =
+{
+    "-I",
+    "-L",
+    NULL
+};
+
+std::set<Samoyed::ComparablePointer<const char> > optionsNeedingArguments;
+
+std::set<Samoyed::ComparablePointer<const char> > optionsFilteredOut;
 
 }
 
@@ -29,7 +86,7 @@ CompilerOptionsCollector::CompilerOptionsCollector(
     Project &project,
     const char *inputFileName):
         Worker(scheduler, priority),
-        m_project(project),
+        m_projectDb(project.db()),
         m_inputFileName(inputFileName),
         m_stream(NULL),
         m_readBuffer(NULL)
@@ -40,6 +97,17 @@ CompilerOptionsCollector::CompilerOptionsCollector(
                         inputFileName, project.uri());
     setDescription(desc);
     g_free(desc);
+
+    if (optionsNeedingArguments.empty())
+    {
+        for (const char **opt = OPTIONS_NEEDING_ARGUMENTS; *opt; opt++)
+            optionsNeedingArguments.insert(*opt);
+    }
+    if (optionsFilteredOut.empty())
+    {
+        for (const char **opt = OPTIONS_FILTERED_OUT; *opt; opt++)
+            optionsFilteredOut.insert(*opt);
+    }
 }
 
 CompilerOptionsCollector::~CompilerOptionsCollector()
@@ -112,17 +180,15 @@ bool CompilerOptionsCollector::step()
             g_error_free(error);
             return true;
         }
-    }
-    const char *valid;
-    size += m_readPointer - m_readBuffer;
-    if (!Utf8::validate(m_readBuffer, size, valid))
         return true;
+    }
+    m_readPointer += size;
 
     const char *parsePointer = m_readBuffer;
-    if (!parse(parsePointer, valid))
+    if (!parse(parsePointer, m_readPointer))
         return true;
 
-    size -= parsePointer - m_readBuffer;
+    size = m_readPointer - parsePointer;
     memmove(m_readBuffer, parsePointer, size);
     m_readPointer = m_readBuffer + size;
     return false;
@@ -130,11 +196,12 @@ bool CompilerOptionsCollector::step()
 
 bool CompilerOptionsCollector::parse(const char *&begin, const char *end)
 {
-    std::string uri;
-    std::string compilerOpts;
-
     for (const char *cp = begin; begin < end; begin = cp)
     {
+        const char *cwd;
+        std::list<const char *> fileNames;
+        std::string compilerOpts;
+
         // "EXE:"
         if (end - cp < 5)
             return true;
@@ -164,13 +231,12 @@ bool CompilerOptionsCollector::parse(const char *&begin, const char *end)
         cp += 5;
 
         // "..."
-        const char *uriBegin = cp;
+        cwd = cp;
         while (*cp && cp < end)
             cp++;
         if (cp == end)
             return true;
         cp++;
-        uri = uriBegin;
 
         // ""
         if (cp == end)
@@ -182,28 +248,136 @@ bool CompilerOptionsCollector::parse(const char *&begin, const char *end)
         // "CC ARGV:" or "CXX ARGV:"
         if (end - cp < 10)
             return true;
-        if (strcmp(cp, "CC ARGV:") != 0)
+        if (strcmp(cp, "CC ARGV:") == 0)
             cp += 9;
-        else if (strcmp(cp, "CXX ARGV:") != 0)
+        else if (strcmp(cp, "CXX ARGV:") == 0)
             cp += 10;
         else
             return false;
 
         // Scan the arguments and find the source file names.
+        bool first = true;
         for (;;)
         {
-            const char *argBegin = cp;
+            const char *arg = cp;
             while (*cp && cp < end)
                 cp++;
             if (cp == end)
                 return true;
-            // ""
-            if (cp == argBegin)
+            // The terminating "".
+            if (cp == arg)
             {
                 cp++;
                 break;
             }
             cp++;
+
+            if (first)
+            {
+                first = false;
+                continue;
+            }
+
+            if (arg[0] != '-')
+            {
+                // A source file name is found.
+                fileNames.push_back(arg);
+            }
+            else if (optionsNeedingArguments.find(arg) ==
+                     optionsNeedingArguments.end())
+            {
+                // A compiler option is found.
+                if (optionsFilteredOut.find(arg) == optionsFilteredOut.end())
+                {
+                    const char **opt;
+                    for (opt = DIR_OPTIONS; *opt; opt++)
+                    {
+                        int l = strlen(*opt);
+                        if (strncmp(*opt, arg, l) == 0)
+                        {
+                            compilerOpts.append(arg, l);
+                            arg += l;
+                            if (g_path_is_absolute(arg))
+                                compilerOpts.append(arg, cp - arg);
+                            else
+                            {
+                                char *fn = g_build_filename(cwd, arg, NULL);
+                                compilerOpts.append(fn, strlen(fn) + 1);
+                                g_free(fn);
+                            }
+                            break;
+                        }
+                    }
+                    if (!*opt)
+                        compilerOpts.append(arg, cp - arg);
+                }
+            }
+            else
+            {
+                // This compiler option requires an argument.
+                const char *arg2 = cp;
+                while (*cp && cp < end)
+                    cp++;
+                if (cp == end)
+                    return true;
+                // The terminating "".
+                if (cp == arg2)
+                    return false;
+                cp++;
+
+                if (optionsFilteredOut.find(arg) == optionsFilteredOut.end())
+                {
+                    const char **opt;
+                    for (opt = DIR_OPTIONS; *opt; opt++)
+                    {
+                        if (strcmp(*opt, arg) == 0)
+                        {
+                            compilerOpts.append(arg, arg2 - arg);
+                            if (g_path_is_absolute(arg2))
+                                compilerOpts.append(arg2, cp - arg2);
+                            else
+                            {
+                                char *fn = g_build_filename(cwd, arg2, NULL);
+                                compilerOpts.append(fn, strlen(fn) + 1);
+                                g_free(fn);
+                            }
+                            break;
+                        }
+                    }
+                    if (!*opt)
+                        compilerOpts.append(arg, cp - arg);
+                }
+            }
+        }
+
+        // ""
+        if (cp == end)
+            return true;
+        if (*cp)
+            return false;
+        cp++;
+
+        for (std::list<const char *>::const_iterator it = fileNames.begin();
+             it != fileNames.end();
+             ++it)
+        {
+            char *fn = NULL, *uri;
+            if (g_path_is_absolute(*it))
+                uri = g_filename_to_uri(*it, NULL, NULL);
+            else
+            {
+                fn = g_build_filename(cwd, *it, NULL);
+                uri = g_filename_to_uri(fn, NULL, NULL);
+            }
+
+            // Check to see if this is a source file in the project.
+
+            // Write the compiler options.
+            m_projectDb.writeCompilerOptions(uri,
+                                             compilerOpts.c_str(),
+                                             compilerOpts.length());
+            g_free(fn);
+            g_free(uri);
         }
     }
 

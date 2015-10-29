@@ -12,6 +12,7 @@ namespace Samoyed
 {
 
 class Project;
+class ProjectDb;
 
 class CompilerOptionsCollector: public Worker
 {
@@ -29,7 +30,7 @@ protected:
 private:
     bool parse(const char *&begin, const char *end);
 
-    Project &m_project;
+    ProjectDb &m_projectDb;
 
     std::string m_inputFileName;
 

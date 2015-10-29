@@ -349,29 +349,24 @@ void BuildLogView::parseLog(int beginLine, int endLine)
                 diag->column--;
 
                 // Check to see if the file name is an absolute path.
+                if (g_path_is_absolute(text))
+                {
 #ifdef OS_WINDOWS
-                if (isalpha(text[0]) && text[1] == ':' &&
-                    (text[2] == '\\' || text[2] == '/'))
-                {
-                    diag->needPathConversion = false;
-                    diag->fileName = text;
-                }
-                else if (!m_usingWindowsCmd && text[0] == '/')
-                {
-                    diag->needPathConversion = true;
-                    diag->fileName = text;
-                }
-#else
-                if (text[0] == '/')
-                {
-                    diag->fileName = text;
-                }
+                    if (m_usingWindowsCmd ||
+                        (isalpha(text[0]) && text[1] == ':' &&
+                         G_IS_DIR_SEPARATOR(text[2])))
+                        diag->needPathConversion = false;
+                    else
+                        diag->needPathConversion = true;
 #endif
+                    diag->fileName = text;
+                }
                 else
                 {
                     // If the file name is a relative path, prepend the current
                     // directory.
-                    if (!m_directoryStack.empty())
+                    if (!m_directoryStack.empty() &&
+                        !m_directoryStack.top().empty())
                     {
                         diag->fileName = m_directoryStack.top();
 #ifdef OS_WINDOWS
@@ -379,20 +374,38 @@ void BuildLogView::parseLog(int beginLine, int endLine)
                             (diag->fileName.length() >= 3 &&
                              isalpha(diag->fileName[0]) &&
                              diag->fileName[1] == ':' &&
-                             (diag->fileName[2] == '\\' ||
-                              diag->fileName[2] == '/')))
+                             G_IS_DIR_SEPARATOR(diag->fileName[2])))
                         {
                             diag->needPathConversion = false;
-                            diag->fileName += '\\';
+                            if (!G_IS_DIR_SEPARATOR(diag->
+                                    fileName[diag->fileName.length() - 1]))
+                                diag->fileName += '\\';
                         }
                         else
                         {
                             diag->needPathConversion = true;
-                            diag->fileName += '/';
+                            if (!G_IS_DIR_SEPARATOR(diag->
+                                    fileName[diag->fileName.length() - 1]))
+                                diag->fileName += '/';
                         }
 #else
-                        diag->fileName += '/';
+                        if (!G_IS_DIR_SEPARATOR(diag->
+                                fileName[diag->fileName.length() - 1]))
+                            diag->fileName += G_DIR_SEPARATOR;
 #endif
+                    }
+                    else
+                    {
+#ifdef OS_WINDOWS
+                        diag->needPathConversion = false;
+#endif
+                        char *projectDir =
+                            g_filename_from_uri(m_projectUri.c_str(),
+                                                NULL,
+                                                NULL);
+                        diag->fileName = projectDir;
+                        g_free(projectDir);
+                        diag->fileName += G_DIR_SEPARATOR;
                     }
                     diag->fileName += text;
                 }

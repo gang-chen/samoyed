@@ -73,79 +73,67 @@ static void print(FILE *fp, const char *s)
 #endif
 }
 
+#ifdef OS_WINDOWS
+
+static void conv_print_path(FILE *fp, const char *path)
+{
+    // Convert the path into the Windows format.
+    ssize_t size;
+    wchar_t *win;
+    size = cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
+                            path,
+                            NULL,
+                            0);
+    if (size >= 0)
+    {
+        win = (wchar_t *) malloc(size);
+        if (cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
+                             path,
+                             win,
+                             size) == 0)
+            fwrite(win, 1, size, fp);
+        else
+        {
+            print(fp, path);
+            FWRITES("", fp);
+        }
+        free(win);
+    }
+    else
+    {
+        print(fp, path);
+        FWRITES("", fp);
+    }
+}
+
+#endif
+
+// On MSYS2 (Cygwin), the paths are probably in the POSIX format that need to
+// convert to the Windows format.  The arguments directly following the "-I" or
+// "-L" options without any space are paths.  We assume that all command-line
+// arguments except compiler options are paths and try to convert, if possible.
 const char *DIR_OPTIONS[] = { "-I", "-L", NULL };
 
 static void print_arg(FILE *fp, const char *arg)
 {
 #ifdef OS_WINDOWS
 
+    const char **opt;
+
     if (*arg != '-')
     {
-        // Convert the path into the Windows format.
-        ssize_t size;
-        wchar_t *win;
-        size = cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
-                                arg,
-                                NULL,
-                                0);
-        if (size >= 0)
-        {
-            win = (wchar_t *) malloc(size);
-            if (cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
-                                 arg,
-                                 win,
-                                 size) == 0)
-                fwrite(win, 1, size, fp);
-            else
-            {
-                print(fp, arg);
-                FWRITES("", fp);
-            }
-            free(win);
-        }
-        else
-        {
-            print(fp, arg);
-            FWRITES("", fp);
-        }
+        conv_print_path(fp, arg);
         return;
     }
 
-    const char **opt;
     for (opt = DIR_OPTIONS; *opt; opt++)
     {
-        if (strncmp(*opt, arg, strlen(*opt)) == 0)
+        int l = strlen(*opt);
+        if (strncmp(*opt, arg, l) == 0)
         {
-            ssize_t size;
-            wchar_t *win;
             print(fp, *opt);
-            arg += strlen(*opt);
-
-            // Convert the path into the Windows format.
-            size = cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
-                                    arg,
-                                    NULL,
-                                    0);
-            if (size >= 0)
-            {
-                win = (wchar_t *) malloc(size);
-                if (cygwin_conv_path(CCP_POSIX_TO_WIN_W | CCP_RELATIVE,
-                                     arg,
-                                     win,
-                                     size) == 0)
-                    fwrite(win, 1, size, fp);
-                else
-                {
-                    print(fp, arg);
-                    FWRITES("", fp);
-                }
-                free(win);
-            }
-            else
-            {
-                print(fp, arg);
-                FWRITES("", fp);
-            }
+            arg += l;
+            conv_print_path(fp, arg);
             return;
         }
     }
@@ -205,9 +193,8 @@ execve(
 
     FWRITES("CWD:", fp);
     cwd = get_current_dir_name();
-    print(fp, cwd);
+    conv_print_path(fp, cwd);
     free(cwd);
-    FWRITES("", fp);
     FWRITES("", fp);
 
     if (is_cc)
@@ -218,7 +205,7 @@ execve(
         print_argv(fp, argv + 1);
         FWRITES("", fp);
     }
-    if (is_cxx)
+    else if (is_cxx)
     {
         FWRITES("CXX ARGV:", fp);
         print(fp, argv[0]);
@@ -227,6 +214,7 @@ execve(
         FWRITES("", fp);
     }
 
+    FWRITES("", fp);
     fclose(fp);
 
 EXECVE:

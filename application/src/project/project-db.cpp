@@ -289,7 +289,8 @@ END:
 
 ProjectDb::Error
 ProjectDb::readCompilerOptions(const char *uri,
-                               boost::shared_ptr<char> &compilerOpts)
+                               boost::shared_ptr<char> &compilerOpts,
+                               int &compilerOptsLength)
 {
     Error error;
     DBT key, data;
@@ -304,11 +305,13 @@ ProjectDb::readCompilerOptions(const char *uri,
     if (error.code)
         return error;
     compilerOpts.reset(static_cast<char *>(data.data), free);
+    compilerOptsLength = data.size;
     return error;
 }
 
 ProjectDb::Error ProjectDb::writeCompilerOptions(const char *uri,
-                                                 const char *compilerOpts)
+                                                 const char *compilerOpts,
+                                                 int compilerOptsLength)
 {
     Error error;
     DBT key, data;
@@ -317,7 +320,7 @@ ProjectDb::Error ProjectDb::writeCompilerOptions(const char *uri,
     key.data = const_cast<char *>(uri);
     key.size = strlen(uri);
     data.data = const_cast<char *>(compilerOpts);
-    data.size = strlen(compilerOpts) + 1;
+    data.size = compilerOptsLength;
     error.dbUri = m_compilerOptionsTableDbUri.c_str();
     error.code = m_compilerOptionsTable->put(m_compilerOptionsTable, NULL,
                                              &key, &data, 0);

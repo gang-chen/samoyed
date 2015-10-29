@@ -275,25 +275,22 @@ void BuildSystem::onBuildFinished(const char *configName,
     if (it != m_builders.end())
     {
         // Start the compiler options collector.
-#ifdef OS_WINDOWS
         if (compilerOptsFileName)
         {
-#endif
-        boost::shared_ptr<CompilerOptionsCollector> compilerOptsCollector(new
-            CompilerOptionsCollector(
-                Application::instance().scheduler(),
-                Worker::PRIORITY_IDLE,
-                project(),
-                compilerOptsFileName));
-        m_compilerOptsCollectors.push_back(compilerOptsCollector);
-        compilerOptsCollector->addFinishedCallbackInMainThread(
-            boost::bind(onCompilerOptionsCollectorFinished, this, _1));
-        compilerOptsCollector->addCanceledCallbackInMainThread(
-            boost::bind(onCompilerOptionsCollectorCanceled, this, _1));
-        compilerOptsCollector->submit(compilerOptsCollector);
-#ifdef OS_WINDOWS
+            boost::shared_ptr<CompilerOptionsCollector>
+                compilerOptsCollector(new
+                    CompilerOptionsCollector(
+                        Application::instance().scheduler(),
+                        Worker::PRIORITY_IDLE,
+                        project(),
+                        compilerOptsFileName));
+            m_compilerOptsCollectors.push_back(compilerOptsCollector);
+            compilerOptsCollector->addFinishedCallbackInMainThread(
+                boost::bind(onCompilerOptionsCollectorFinished, this, _1));
+            compilerOptsCollector->addCanceledCallbackInMainThread(
+                boost::bind(onCompilerOptionsCollectorCanceled, this, _1));
+            compilerOptsCollector->submit(compilerOptsCollector);
         }
-#endif
 
         delete it->second;
         m_builders.erase(it);

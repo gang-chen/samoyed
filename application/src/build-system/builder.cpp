@@ -261,7 +261,7 @@ bool Builder::run()
         // ":" is a path separator in $LD_PRELOAD.
         if (interceptor.length() >= 3 &&
             isalpha(interceptor[0]) && interceptor[1] == ':' &&
-            interceptor[2] == '\\')
+            G_IS_DIR_SEPARATOR(interceptor[2]))
         {
             interceptor[1] = tolower(interceptor[0]);
             interceptor[0] = '/';
@@ -406,10 +406,11 @@ void Builder::stop()
 void Builder::onFinished()
 {
 #ifdef OS_WINDOWS
-    if (!m_usingWindowsCmd)
-        m_buildSystem.onBuildFinished(m_configuration.name(), NULL);
-    else
+    if (m_usingWindowsCmd)
     {
+        m_buildSystem.onBuildFinished(m_configuration.name(), NULL);
+        return;
+    }
 #endif
     char *projectDir =
         g_filename_from_uri(m_buildSystem.project().uri(), NULL, NULL);
@@ -421,9 +422,6 @@ void Builder::onFinished()
     output += ACTION_TEXT[m_action];
     m_buildSystem.onBuildFinished(m_configuration.name(), output.c_str());
     g_free(projectDir);
-#ifdef OS_WINDOWS
-    }
-#endif
 }
 
 void Builder::onProcessExited(GPid processId,

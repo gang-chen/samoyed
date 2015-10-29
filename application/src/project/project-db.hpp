@@ -68,10 +68,12 @@ public:
                      const Visitor &visitor);
 
     Error readCompilerOptions(const char *uri,
-                              boost::shared_ptr<char> &compilerOpts);
+                              boost::shared_ptr<char> &compilerOpts,
+                              int &compilerOptsLength);
 
     Error writeCompilerOptions(const char *uri,
-                               const char *compilerOpts);
+                               const char *compilerOpts,
+                               int compilerOptsLength);
 
 private:
     DB_ENV *m_dbEnv;

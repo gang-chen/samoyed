@@ -642,7 +642,19 @@ bool SourceFile::parse()
             Application::instance().foregroundFileParser().reparse(uri(), tu);
         }
         else
-            Application::instance().foregroundFileParser().parse(uri());
+        {
+            Project *project = NULL;
+            for (Editor *editor = editors();
+                 editor;
+                 editor = editor->nextInFile())
+                if (editor->project())
+                {
+                    project = editor->project();
+                    break;
+                }
+            Application::instance().foregroundFileParser().parse(uri(),
+                                                                 project);
+        }
         return true;
     }
     return false;
