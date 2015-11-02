@@ -152,7 +152,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="c-compiler-entry">
+              <object class="GtkEntry" id="clean-commands-entry">
                 <property name="visible">true</property>
                 <property name="activates-default">true</property>
                 <property name="hexpand">true</property>
@@ -160,6 +160,34 @@
               <packing>
                 <property name="left-attach">1</property>
                 <property name="top-attach">5</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="clean-commands-label">
+                <property name="visible">true</property>
+                <property name="use-underline">true</property>
+                <property name="label" translatable="yes">C_lean commands:</property>
+                <property name="halign">start</property>
+                <property name="mnemonic-widget">clean-commands-entry</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">5</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="c-compiler-entry">
+                <property name="visible">true</property>
+                <property name="activates-default">true</property>
+                <property name="hexpand">true</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">6</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -174,7 +202,7 @@
               </object>
               <packing>
                 <property name="left-attach">0</property>
-                <property name="top-attach">5</property>
+                <property name="top-attach">6</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -187,7 +215,7 @@
               </object>
               <packing>
                 <property name="left-attach">1</property>
-                <property name="top-attach">6</property>
+                <property name="top-attach">7</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -202,7 +230,7 @@
               </object>
               <packing>
                 <property name="left-attach">0</property>
-                <property name="top-attach">6</property>
+                <property name="top-attach">7</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -215,7 +243,7 @@
               </object>
               <packing>
                 <property name="left-attach">1</property>
-                <property name="top-attach">7</property>
+                <property name="top-attach">8</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -230,7 +258,7 @@
               </object>
               <packing>
                 <property name="left-attach">0</property>
-                <property name="top-attach">7</property>
+                <property name="top-attach">8</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -243,7 +271,7 @@
               </object>
               <packing>
                 <property name="left-attach">1</property>
-                <property name="top-attach">8</property>
+                <property name="top-attach">9</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -258,7 +286,7 @@
               </object>
               <packing>
                 <property name="left-attach">0</property>
-                <property name="top-attach">8</property>
+                <property name="top-attach">9</property>
                 <property name="width">1</property>
                 <property name="height">1</property>
               </packing>
@@ -271,7 +299,7 @@
       <object class="GtkButton" id="cancel-button">
         <property name="visible">true</property>
         <property name="use-underline">true</property>
-        <property name="label" translatable="yes">Cance_l</property>
+        <property name="label" translatable="yes">C_ancel</property>
       </object>
     </child>
     <child type="action">

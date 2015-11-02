@@ -34,6 +34,7 @@ private:
     GtkEntry *m_configCommandsEntry;
     GtkEntry *m_buildCommandsEntry;
     GtkEntry *m_installCommandsEntry;
+    GtkEntry *m_cleanCommandsEntry;
     GtkEntry *m_cCompilerEntry;
     GtkEntry *m_cppCompilerEntry;
     GtkEntry *m_cCompilerOptionsEntry;

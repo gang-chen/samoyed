@@ -278,7 +278,7 @@ gboolean Application::shutDown(gpointer app)
     delete a->m_preferencesExtensionPoint;
     delete a->m_viewsExtensionPoint;
 
-    delete a->m_foregroundFileParser;
+    a->m_foregroundFileParser->destroy();
 
     // The real shut-down may happen later but should happen in the GTK+ main
     // event loop.

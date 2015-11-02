@@ -133,6 +133,8 @@ private:
 
     void onAllBuildSystemWorkersStopped();
 
+    void onForegroundFileParserFinished();
+
     const std::string m_uri;
 
     ProjectDb *m_db;
@@ -140,6 +142,7 @@ private:
     BuildSystem *m_buildSystem;
 
     bool m_closing;
+    bool m_closePhase2;
 
     /**
      * The editors in the context of this project.
@@ -150,6 +153,10 @@ private:
 
     static Opened s_opened;
     Closed m_closed;
+
+    bool m_allBuildSystemWorkersStopped;
+    bool m_foregroundFileParserFinished;
+    boost::signals2::connection m_foregroundFileParserFinishedConn;
 
     SAMOYED_DEFINE_DOUBLY_LINKED(Project)
 };

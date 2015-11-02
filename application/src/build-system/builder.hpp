@@ -24,7 +24,8 @@ public:
     {
         ACTION_CONFIGURE,
         ACTION_BUILD,
-        ACTION_INSTALL
+        ACTION_INSTALL,
+        ACTION_CLEAN
     };
 
     Builder(BuildSystem &buildSystem,

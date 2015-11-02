@@ -61,6 +61,7 @@ Configuration GnuBuildSystem::defaultConfiguration() const
     config.setConfigureCommands("./configure");
     config.setBuildCommands("make");
     config.setInstallCommands("make install");
+    config.setCleanCommands("make clean");
     config.setCCompiler("gcc");
     config.setCppCompiler("g++");
     return config;

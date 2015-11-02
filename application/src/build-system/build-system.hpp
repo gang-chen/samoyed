@@ -12,6 +12,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 #include <boost/signals2/signal.hpp>
+#include <glib.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
@@ -60,6 +61,9 @@ public:
     bool canInstall() const;
     bool install();
 
+    bool canClean() const;
+    bool clean();
+
     void stopBuild(const char *configName);
 
     void onBuildFinished(const char *configName,
@@ -104,6 +108,8 @@ private:
         const boost::shared_ptr<Worker> &worker);
     void onCompilerOptionsCollectorCanceled(
         const boost::shared_ptr<Worker> &worker);
+
+    static gboolean onAllWorkersStoppedDeferred(gpointer buildSystem);
 
     Project &m_project;
 

@@ -26,6 +26,9 @@ public:
     const char *installCommands() const { return m_installCommands.c_str(); }
     void setInstallCommands(const char *commands)
     { m_installCommands = commands; }
+    const char *cleanCommands() const { return m_cleanCommands.c_str(); }
+    void setCleanCommands(const char *commands)
+    { m_cleanCommands = commands; }
     const char *cCompiler() const { return m_cCompiler.c_str(); }
     void setCCompiler(const char *compiler)
     { m_cCompiler = compiler; }
@@ -48,6 +51,7 @@ private:
     std::string m_configCommands;
     std::string m_buildCommands;
     std::string m_installCommands;
+    std::string m_cleanCommands;
     std::string m_cCompiler;
     std::string m_cppCompiler;
     std::string m_cCompilerOptions;

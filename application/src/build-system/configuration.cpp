@@ -15,6 +15,7 @@
 #define CONFIGURE_COMMANDS "configure-commands"
 #define BUILD_COMMANDS "build-commands"
 #define INSTALL_COMMANDS "install-commands"
+#define CLEAN_COMMANDS "clean-commands"
 #define C_COMPILER "c-compiler"
 #define CPP_COMPILER "cpp-compiler"
 #define C_COMPILER_OPTIONS "c-compiler-options"
@@ -36,7 +37,7 @@ bool Configuration::readXmlElement(xmlNodePtr node,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-            	m_name = value;
+                m_name = value;
                 xmlFree(value);
             }
         }
@@ -47,7 +48,7 @@ bool Configuration::readXmlElement(xmlNodePtr node,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-            	m_configCommands = value;
+                m_configCommands = value;
                 xmlFree(value);
             }
         }
@@ -58,7 +59,7 @@ bool Configuration::readXmlElement(xmlNodePtr node,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-            	m_buildCommands = value;
+                m_buildCommands = value;
                 xmlFree(value);
             }
         }
@@ -69,7 +70,18 @@ bool Configuration::readXmlElement(xmlNodePtr node,
                 xmlNodeGetContent(child->children));
             if (value)
             {
-            	m_installCommands = value;
+                m_installCommands = value;
+                xmlFree(value);
+            }
+        }
+        else if (strcmp(reinterpret_cast<const char *>(child->name),
+                        CLEAN_COMMANDS) == 0)
+        {
+            value = reinterpret_cast<char *>(
+                xmlNodeGetContent(child->children));
+            if (value)
+            {
+                m_cleanCommands = value;
                 xmlFree(value);
             }
         }
@@ -138,6 +150,9 @@ xmlNodePtr Configuration::writeXmlElement() const
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(INSTALL_COMMANDS),
                     reinterpret_cast<const xmlChar *>(installCommands()));
+    xmlNewTextChild(node, NULL,
+                    reinterpret_cast<const xmlChar *>(CLEAN_COMMANDS),
+                    reinterpret_cast<const xmlChar *>(cleanCommands()));
     xmlNewTextChild(node, NULL,
                     reinterpret_cast<const xmlChar *>(C_COMPILER),
                     reinterpret_cast<const xmlChar *>(cCompiler()));

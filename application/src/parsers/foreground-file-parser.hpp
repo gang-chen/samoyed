@@ -5,10 +5,13 @@
 #define SMYD_FOREGROUND_FILE_PARSER_HPP
 
 #include <queue>
+#include <string>
 #include <vector>
 #include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/signals2/signal.hpp>
+#include <glib.h>
 #include <clang-c/Index.h>
 
 namespace Samoyed
@@ -19,11 +22,15 @@ class Project;
 class ForegroundFileParser: public boost::noncopyable
 {
 public:
+    typedef boost::signals2::signal<void (ForegroundFileParser &)> Finished;
+
     ForegroundFileParser();
 
     ~ForegroundFileParser();
 
-    bool running() const { return m_procedure; }
+    void destroy();
+
+    bool running() const { return m_running; }
 
     void run();
 
@@ -32,29 +39,17 @@ public:
     void parse(const char *fileUri, Project *project);
 
     void reparse(const char *fileUri,
-                 boost::shared_ptr<CXTranslationUnitImpl> tu);
+                 boost::shared_ptr<CXTranslationUnitImpl> tu,
+                 Project *project);
 
     void completeCodeAt(const char *fileUri, int line, int column,
-                        boost::shared_ptr<CXTranslationUnitImpl> tu);
+                        boost::shared_ptr<CXTranslationUnitImpl> tu,
+                        Project *project);
+
+    boost::signals2::connection
+    addFinishedCallback(const Finished::slot_type &callback);
 
 private:
-    class CompilerOptions
-    {
-    public:
-        CompilerOptions(const boost::shared_ptr<char> &rawString,
-                        int rawStringLength);
-        ~CompilerOptions();
-        const char *const *compilerOptions() const
-        { return m_compilerOptions; }
-        int numCompilerOptions() const
-        { return m_numCompilerOptions; }
-
-    private:
-        const char **m_compilerOptions;
-        int m_numCompilerOptions;
-        boost::shared_ptr<char> m_rawString;
-    };
-
     class UnsavedFiles
     {
     public:
@@ -74,7 +69,7 @@ private:
     class Procedure
     {
     public:
-        Procedure();
+        Procedure(ForegroundFileParser &parser);
 
         ~Procedure();
 
@@ -82,33 +77,37 @@ private:
 
         void quit();
 
-        void parse(char *fileName,
-                   CompilerOptions *compilerOpts,
+        void parse(const char *fileUri,
+                   Project *project,
                    UnsavedFiles *unsavedFiles);
 
-        void reparse(char *fileName,
+        void reparse(const char *fileUri,
                      boost::shared_ptr<CXTranslationUnitImpl> tu,
+                     Project *project,
                      UnsavedFiles *unsavedFiles);
 
-        void completeCodeAt(char *fileName, int line, int column,
+        void completeCodeAt(const char *fileUri, int line, int column,
                             boost::shared_ptr<CXTranslationUnitImpl> tu,
+                            Project *project,
                             UnsavedFiles *unsavedFiles);
+
+        bool idle() const;
 
     private:
         class Job
         {
         public:
-            Job(char *fileName,
+            Job(const char *fileUri,
                 int ccLine,
                 int ccColumn,
                 boost::shared_ptr<CXTranslationUnitImpl> tu,
-                CompilerOptions *compilerOpts,
+                Project *project,
                 UnsavedFiles *unsavedFiles):
-                m_fileName(fileName),
+                m_fileUri(fileUri),
                 m_codeCompletionLine(ccLine),
                 m_codeCompletionColumn(ccColumn),
                 m_tu(tu),
-                m_compilerOptions(compilerOpts),
+                m_project(project),
                 m_unsavedFiles(unsavedFiles)
             {}
 
@@ -120,13 +119,15 @@ private:
             void updateSymbolTable();
             void updateDiagnosticList();
 
-            char *m_fileName;
+            std::string m_fileUri;
             int m_codeCompletionLine;
             int m_codeCompletionColumn;
             boost::shared_ptr<CXTranslationUnitImpl> m_tu;
-            CompilerOptions *m_compilerOptions;
+            Project *m_project;
             UnsavedFiles *m_unsavedFiles;
         };
+
+        ForegroundFileParser &m_parser;
 
         CXIndex m_index;
 
@@ -137,7 +138,17 @@ private:
         std::queue<Job *> m_jobQueue;
     };
 
-    Procedure *m_procedure;
+    static gboolean onQuittedInMainThread(gpointer parser);
+
+    static gboolean onFinishedInMainThread(gpointer parser);
+
+    Procedure m_procedure;
+
+    bool m_running;
+
+    bool m_destroy;
+
+    Finished m_finished;
 };
 
 }

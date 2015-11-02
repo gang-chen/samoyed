@@ -141,6 +141,10 @@ void ConfigurationManagementWindow::onEditConfiguration(
         config->installCommands());
     gtk_entry_set_text(
         GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                         "clean-commands-entry")),
+        config->cleanCommands());
+    gtk_entry_set_text(
+        GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                          "c-compiler-entry")),
         config->cCompiler());
     gtk_entry_set_text(
@@ -176,6 +180,9 @@ void ConfigurationManagementWindow::onEditConfiguration(
         config->setInstallCommands(gtk_entry_get_text(
             GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                              "install-commands-entry"))));
+        config->setCleanCommands(gtk_entry_get_text(
+            GTK_ENTRY(gtk_builder_get_object(window->m_builder,
+                                             "clean-commands-entry"))));
         config->setCCompiler(gtk_entry_get_text(
             GTK_ENTRY(gtk_builder_get_object(window->m_builder,
                                              "c-compiler-entry"))));

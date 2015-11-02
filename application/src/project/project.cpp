@@ -9,6 +9,7 @@
 #include "project-file.hpp"
 #include "project-explorer.hpp"
 #include "build-system/build-system.hpp"
+#include "parsers/foreground-file-parser.hpp"
 #include "editors/editor.hpp"
 #include "window/window.hpp"
 #include "utilities/miscellaneous.hpp"
@@ -141,6 +142,7 @@ Project::Project(const char *uri):
     m_db(NULL),
     m_buildSystem(NULL),
     m_closing(false),
+    m_closePhase2(false),
     m_firstEditor(NULL),
     m_lastEditor(NULL)
 {
@@ -597,9 +599,18 @@ bool Project::closePhase2()
     xmlFreeDoc(doc);
     g_free(xmlFileName);
 
-    // Ask the build system to stop its workers.
+    // Ask the build system to stop its workers and wait.
+    m_allBuildSystemWorkersStopped = false;
     m_buildSystem->stopAllWorkers(
         boost::bind(onAllBuildSystemWorkersStopped, this));
+
+    // Wait for the completion of the foreground file parser.
+    m_foregroundFileParserFinished = false;
+    m_foregroundFileParserFinishedConn =
+        Application::instance().foregroundFileParser().addFinishedCallback(
+            boost::bind(onForegroundFileParserFinished, this));
+
+    m_closePhase2 = true;
     return true;
 }
 
@@ -675,6 +686,7 @@ bool Project::close()
 void Project::cancelClosing()
 {
     m_closing = false;
+    m_closePhase2 = false;
     if (Application::instance().quitting())
         Application::instance().cancelQuitting();
 }
@@ -803,7 +815,21 @@ void Project::destroyEditor(Editor &editor)
 
 void Project::onAllBuildSystemWorkersStopped()
 {
-    closePhase3();
+    m_allBuildSystemWorkersStopped = true;
+    if (m_closePhase2 &&
+        m_allBuildSystemWorkersStopped &&
+        m_foregroundFileParserFinished)
+        closePhase3();
+}
+
+void Project::onForegroundFileParserFinished()
+{
+    m_foregroundFileParserFinished = true;
+    m_foregroundFileParserFinishedConn.disconnect();
+    if (m_closePhase2 &&
+        m_allBuildSystemWorkersStopped &&
+        m_foregroundFileParserFinished)
+        closePhase3();
 }
 
 }

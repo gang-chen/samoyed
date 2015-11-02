@@ -6,6 +6,7 @@
 #endif
 #include "source-file.hpp"
 #include "source-editor.hpp"
+#include "project/project.hpp"
 #include "parsers/foreground-file-parser.hpp"
 #include "session/preferences-editor.hpp"
 #include "utilities/text-file-loader.hpp"
@@ -635,23 +636,25 @@ bool SourceFile::parse()
     {
         m_parsePending = false;
         m_parsing = true;
+        Project *project = NULL;
+        for (Editor *editor = editors();
+             editor;
+             editor = editor->nextInFile())
+            if (editor->project() && !editor->project()->closing())
+            {
+                project = editor->project();
+                break;
+            }
         if (m_tu)
         {
             boost::shared_ptr<CXTranslationUnitImpl> tu;
             tu.swap(m_tu);
-            Application::instance().foregroundFileParser().reparse(uri(), tu);
+            Application::instance().foregroundFileParser().reparse(uri(),
+                                                                   tu,
+                                                                   project);
         }
         else
         {
-            Project *project = NULL;
-            for (Editor *editor = editors();
-                 editor;
-                 editor = editor->nextInFile())
-                if (editor->project())
-                {
-                    project = editor->project();
-                    break;
-                }
             Application::instance().foregroundFileParser().parse(uri(),
                                                                  project);
         }

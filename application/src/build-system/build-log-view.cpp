@@ -34,21 +34,24 @@ const char *ACTION_TEXT[] =
 {
     N_("Configuring"),
     N_("Building"),
-    N_("Installing")
+    N_("Installing"),
+    N_("Cleaning")
 };
 
 const char *ACTION_TEXT_2[] =
 {
     N_("configuring"),
     N_("building"),
-    N_("installing")
+    N_("installing"),
+    N_("cleaning")
 };
 
 const char *ACTION_TEXT_3[] =
 {
     N_("configure"),
     N_("build"),
-    N_("install")
+    N_("install"),
+    N_("clean")
 };
 
 const char *COMPILER_DIAGNOSTIC_TYPE_NAMES[

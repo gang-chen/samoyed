@@ -37,14 +37,16 @@ const char *ACTION_TEXT[] =
 {
     N_("configure"),
     N_("build"),
-    N_("install")
+    N_("install"),
+    N_("clean")
 };
 
 const char *ACTION_TEXT_2[] =
 {
     N_("configuring"),
     N_("building"),
-    N_("installing")
+    N_("installing"),
+    N_("cleaning")
 };
 
 struct DataReadParam
@@ -121,6 +123,9 @@ bool Builder::run()
         break;
     case ACTION_INSTALL:
         commands += m_configuration.installCommands();
+        break;
+    case ACTION_CLEAN:
+        commands += m_configuration.cleanCommands();
         break;
     }
 

@@ -21,6 +21,32 @@ namespace
 
 const int BUFFER_SIZE = 10000;
 
+const char *SOURCE_FILE_NAME_SUFFIXES[] =
+{
+    ".c",
+    ".cc",
+    ".cp",
+    ".cxx",
+    ".cpp",
+    ".CPP",
+    ".c++",
+    ".C",
+    ".h",
+    ".hh",
+    ".hpp",
+    ".H"
+#ifdef OS_WINDOWS
+    // Mixed case letters are not allowed.
+    ,
+    ".CC",
+    ".CP",
+    ".CXX",
+    ".C++",
+    ".HH",
+    ".HPP"
+#endif
+};
+
 const char *OPTIONS_NEEDING_ARGUMENTS[] =
 {
     "-D",
@@ -34,6 +60,7 @@ const char *OPTIONS_NEEDING_ARGUMENTS[] =
     "-Xassembler",
     "-Xlinker",
     "-Xpreprocessor",
+    "-aux-info",
     "-b",
     "-idirafter",
     "-imacros",
@@ -55,10 +82,17 @@ const char *OPTIONS_NEEDING_ARGUMENTS[] =
 const char *OPTIONS_FILTERED_OUT[] =
 {
     "-E",
+    "-M",
+    "-MD",
     "-MF",
+    "-MG",
+    "-MM",
+    "-MMD",
+    "-MP",
     "-MQ",
     "-MT",
     "-S",
+    "-aux-info",
     "-c",
     "-o",
     NULL
@@ -70,6 +104,8 @@ const char *DIR_OPTIONS[] =
     "-L",
     NULL
 };
+
+std::set<Samoyed::ComparablePointer<const char> > sourceFileNameSuffixes;
 
 std::set<Samoyed::ComparablePointer<const char> > optionsNeedingArguments;
 
@@ -98,6 +134,11 @@ CompilerOptionsCollector::CompilerOptionsCollector(
     setDescription(desc);
     g_free(desc);
 
+    if (sourceFileNameSuffixes.empty())
+    {
+        for (const char **suffix = SOURCE_FILE_NAME_SUFFIXES; *suffix; suffix++)
+            sourceFileNameSuffixes.insert(*suffix);
+    }
     if (optionsNeedingArguments.empty())
     {
         for (const char **opt = OPTIONS_NEEDING_ARGUMENTS; *opt; opt++)
@@ -361,22 +402,34 @@ bool CompilerOptionsCollector::parse(const char *&begin, const char *end)
              it != fileNames.end();
              ++it)
         {
-            char *fn = NULL, *uri;
+            char *buf = NULL;
+            const char *fn;
             if (g_path_is_absolute(*it))
-                uri = g_filename_to_uri(*it, NULL, NULL);
+                fn = *it;
             else
             {
-                fn = g_build_filename(cwd, *it, NULL);
-                uri = g_filename_to_uri(fn, NULL, NULL);
+                buf = g_build_filename(cwd, *it, NULL);
+                fn = buf;
             }
 
-            // Check to see if this is a source file in the project.
+            // Check to see if this is a source file.
+            char *ext = strrchr(fn, '.');
+            if (!ext ||
+                sourceFileNameSuffixes.find(ext) ==
+                sourceFileNameSuffixes.end())
+            {
+                g_free(buf);
+                continue;
+            }
+
+            char *uri = g_filename_to_uri(fn, NULL, NULL);
+
+            // Check to see if this source file is in the project.
 
             // Write the compiler options.
             m_projectDb.writeCompilerOptions(uri,
                                              compilerOpts.c_str(),
                                              compilerOpts.length());
-            g_free(fn);
             g_free(uri);
         }
     }

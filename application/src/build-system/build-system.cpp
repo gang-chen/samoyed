@@ -181,6 +181,8 @@ BuildSystemFile *BuildSystem::createFile(int type) const
 
 bool BuildSystem::canConfigure() const
 {
+    if (m_project.closing())
+        return false;
     const Configuration *config = activeConfiguration();
     if (!config || *config->configureCommands() == '\0')
         return false;
@@ -207,6 +209,8 @@ bool BuildSystem::configure()
 
 bool BuildSystem::canBuild() const
 {
+    if (m_project.closing())
+        return false;
     const Configuration *config = activeConfiguration();
     if (!config || *config->buildCommands() == '\0')
         return false;
@@ -233,6 +237,8 @@ bool BuildSystem::build()
 
 bool BuildSystem::canInstall() const
 {
+    if (m_project.closing())
+        return false;
     const Configuration *config = activeConfiguration();
     if (!config || *config->installCommands() == '\0')
         return false;
@@ -249,6 +255,34 @@ bool BuildSystem::install()
     Builder *builder = new Builder(*this,
                                    *config,
                                    Builder::ACTION_INSTALL);
+    m_builders.insert(std::make_pair(config->name(), builder));
+    if (builder->run())
+        return true;
+    m_builders.erase(config->name());
+    delete builder;
+    return false;
+}
+
+bool BuildSystem::canClean() const
+{
+    if (m_project.closing())
+        return false;
+    const Configuration *config = activeConfiguration();
+    if (!config || *config->cleanCommands() == '\0')
+        return false;
+    if (m_builders.find(config->name()) != m_builders.end())
+        return false;
+    return true;
+}
+
+bool BuildSystem::clean()
+{
+    if (!canClean())
+        return false;
+    Configuration *config = activeConfiguration();
+    Builder *builder = new Builder(*this,
+                                   *config,
+                                   Builder::ACTION_CLEAN);
     m_builders.insert(std::make_pair(config->name(), builder));
     if (builder->run())
         return true;
@@ -352,7 +386,10 @@ void BuildSystem::stopAllWorkers(
     m_allWorkersStoppedCallback = callback;
     if (m_compilerOptsCollectors.empty() && m_allWorkersStoppedCallback)
     {
-        m_allWorkersStoppedCallback(*this);
+        g_idle_add_full(G_PRIORITY_HIGH,
+                        onAllWorkersStoppedDeferred,
+                        this,
+                        NULL);
         return;
     }
     for (std::list<boost::shared_ptr<CompilerOptionsCollector> >::const_iterator
@@ -396,6 +433,13 @@ void BuildSystem::onCompilerOptionsCollectorCanceled(
             break;
         }
     }
+}
+
+gboolean BuildSystem::onAllWorkersStoppedDeferred(gpointer buildSystem)
+{
+    BuildSystem *b = static_cast<BuildSystem *>(buildSystem);
+    b->m_allWorkersStoppedCallback(*b);
+    return FALSE;
 }
 
 }

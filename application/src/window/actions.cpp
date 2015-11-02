@@ -334,6 +334,13 @@ void installProject(GtkAction *action, Samoyed::Window *window)
         project->buildSystem().install();
 }
 
+void cleanProject(GtkAction *action, Samoyed::Window *window)
+{
+    Samoyed::Project *project = window->currentProject();
+    if (project)
+        project->buildSystem().clean();
+}
+
 void createConfiguration(GtkAction *action, Samoyed::Window *window)
 {
     Samoyed::Project *project = window->currentProject();
@@ -595,6 +602,8 @@ const GtkActionEntry actionEntries[Samoyed::Actions::N_ACTIONS] =
       N_("Build the current project"), G_CALLBACK(buildProject) },
     { "install-project", NULL, N_("_Install"), NULL,
       N_("Install the current project"), G_CALLBACK(installProject) },
+    { "clean-project", NULL, N_("C_lean"), NULL,
+      N_("Clean the current project"), G_CALLBACK(cleanProject) },
     { "create-configuration", NULL, N_("_New Configuration"), NULL,
       N_("Create a configuration for the current project"),
       G_CALLBACK(createConfiguration) },

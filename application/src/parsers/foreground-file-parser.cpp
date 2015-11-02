@@ -16,6 +16,7 @@
 #include <boost/chrono/duration.hpp>
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <clang-c/Index.h>
 
 namespace
 {
@@ -33,10 +34,10 @@ Samoyed::SourceFile *findSourceFile(const char *fileUri)
 
 struct ParseDoneParam
 {
-    char *fileUri;
+    std::string fileUri;
     boost::shared_ptr<CXTranslationUnitImpl> tu;
     int error;
-    ParseDoneParam(char *f,
+    ParseDoneParam(const char *f,
                    boost::shared_ptr<CXTranslationUnitImpl> t,
                    int e):
         fileUri(f), tu(t), error(e)
@@ -46,20 +47,19 @@ struct ParseDoneParam
 gboolean onParseDone(gpointer param)
 {
     ParseDoneParam *p = static_cast<ParseDoneParam *>(param);
-    Samoyed::SourceFile *file = findSourceFile(p->fileUri);
+    Samoyed::SourceFile *file = findSourceFile(p->fileUri.c_str());
     if (file)
         file->onParseDone(p->tu, p->error);
-    g_free(p->fileUri);
     delete p;
     return FALSE;
 }
 
 struct CodeCompletionDoneParam
 {
-    char *fileUri;
+    std::string fileUri;
     boost::shared_ptr<CXTranslationUnitImpl> tu;
     CXCodeCompleteResults *results;
-    CodeCompletionDoneParam(char *f,
+    CodeCompletionDoneParam(const char *f,
                             boost::shared_ptr<CXTranslationUnitImpl> t,
                             CXCodeCompleteResults *r):
         fileUri(f), tu(t), results(r)
@@ -69,10 +69,9 @@ struct CodeCompletionDoneParam
 gboolean onCodeCompletionDone(gpointer param)
 {
     CodeCompletionDoneParam *p = static_cast<CodeCompletionDoneParam *>(param);
-    Samoyed::SourceFile *file = findSourceFile(p->fileUri);
+    Samoyed::SourceFile *file = findSourceFile(p->fileUri.c_str());
     if (file)
         file->onCodeCompletionDone(p->tu, p->results);
-    g_free(p->fileUri);
     delete p;
     return FALSE;
 }
@@ -84,8 +83,6 @@ namespace Samoyed
 
 ForegroundFileParser::Procedure::Job::~Job()
 {
-    g_free(m_fileName);
-    delete m_compilerOptions;
     delete m_unsavedFiles;
 }
 
@@ -101,30 +98,64 @@ void ForegroundFileParser::Procedure::Job::updateDiagnosticList()
 
 void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
 {
-    char *fileUri = g_filename_to_uri(m_fileName, NULL, NULL);
-    char *desc = g_strdup_printf(_("Parsing file \"%s\"."), fileUri);
+    char *fileName = g_filename_from_uri(m_fileUri.c_str(), NULL, NULL);
+    char *desc = g_strdup_printf(_("Parsing file \"%s\"."), m_fileUri.c_str());
     if (!m_tu)
     {
         Window::addMessage(desc);
         CXTranslationUnit tu;
+        boost::shared_ptr<char> compilerOptsStr;
+        int compilerOptsStrLength;
+        const char **compilerOpts = NULL;
+        int numCompilerOpts = 0;
+        if (m_project)
+        {
+            ProjectDb::Error dbError =
+                m_project->db().readCompilerOptions(m_fileUri.c_str(),
+                                                    compilerOptsStr,
+                                                    compilerOptsStrLength);
+            if (!dbError.code)
+            {
+                for (const char *cp = compilerOptsStr.get();
+                     cp < compilerOptsStr.get() + compilerOptsStrLength;
+                     cp++)
+                    if (*cp == '\0')
+                        numCompilerOpts++;
+                if (numCompilerOpts)
+                {
+                    compilerOpts = new const char *[numCompilerOpts];
+                    const char **cpp = compilerOpts;
+                    for (const char *cp = compilerOptsStr.get(),
+                                    *opt = compilerOptsStr.get();
+                         cp < compilerOptsStr.get() + compilerOptsStrLength;
+                         cp++)
+                        if (*cp == '\0')
+                        {
+                            *cpp++ = opt;
+                            opt = cp + 1;
+                        }
+                }
+            }
+        }
         CXErrorCode error = clang_parseTranslationUnit2(
             index,
-            m_fileName,
-            m_compilerOptions ? m_compilerOptions->compilerOptions() : NULL,
-            m_compilerOptions ? m_compilerOptions->numCompilerOptions() : 0,
+            fileName,
+            compilerOpts,
+            numCompilerOpts,
             m_unsavedFiles->unsavedFiles(),
             m_unsavedFiles->numUnsavedFiles(),
             clang_defaultEditingTranslationUnitOptions() |
             CXTranslationUnit_DetailedPreprocessingRecord |
             CXTranslationUnit_IncludeBriefCommentsInCodeCompletion,
             &tu);
+        delete[] compilerOpts;
         m_tu.reset(tu, clang_disposeTranslationUnit);
         if (error)
             m_tu.reset();
         Window::removeMessage(desc);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         onParseDone,
-                        new ParseDoneParam(fileUri, m_tu, error),
+                        new ParseDoneParam(m_fileUri.c_str(), m_tu, error),
                         NULL);
     }
     else if (m_codeCompletionLine < 0)
@@ -142,7 +173,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
         Window::removeMessage(desc);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         onParseDone,
-                        new ParseDoneParam(fileUri, m_tu, error),
+                        new ParseDoneParam(m_fileUri.c_str(), m_tu, error),
                         NULL);
     }
     else
@@ -150,7 +181,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
         Window::addMessage(desc);
         CXCodeCompleteResults *results = clang_codeCompleteAt(
             m_tu.get(),
-            m_fileName,
+            fileName,
             m_codeCompletionLine,
             m_codeCompletionColumn,
             m_unsavedFiles->unsavedFiles(),
@@ -163,15 +194,19 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
         Window::removeMessage(desc);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                         onCodeCompletionDone,
-                        new CodeCompletionDoneParam(fileUri, m_tu, results),
+                        new CodeCompletionDoneParam(m_fileUri.c_str(),
+                                                    m_tu,
+                                                    results),
                         NULL);
     }
+    g_free(fileName);
 
     updateSymbolTable();
     updateDiagnosticList();
 }
 
-ForegroundFileParser::Procedure::Procedure():
+ForegroundFileParser::Procedure::Procedure(ForegroundFileParser &parser):
+    m_parser(parser),
     m_quit(false)
 {
     m_index = clang_createIndex(0, 0);
@@ -191,7 +226,17 @@ void ForegroundFileParser::Procedure::operator()()
         {
             boost::mutex::scoped_lock lock(m_mutex);
             if (m_quit)
+            {
+                g_idle_add_full(G_PRIORITY_HIGH,
+                                ForegroundFileParser::onFinishedInMainThread,
+                                &m_parser,
+                                NULL);
+                g_idle_add_full(G_PRIORITY_HIGH,
+                                ForegroundFileParser::onQuittedInMainThread,
+                                &m_parser,
+                                NULL);
                 break;
+            }
             if (!m_jobQueue.empty())
             {
                 job = m_jobQueue.front();
@@ -206,6 +251,11 @@ void ForegroundFileParser::Procedure::operator()()
         }
         else if (i < SLOW_DOWN_CYCLES)
         {
+            if (i == 0)
+                g_idle_add_full(G_PRIORITY_HIGH,
+                                ForegroundFileParser::onFinishedInMainThread,
+                                &m_parser,
+                                NULL);
             boost::this_thread::
                 sleep_for(boost::chrono::milliseconds(i * BREAK_TIME /
                                                       SLOW_DOWN_CYCLES));
@@ -217,8 +267,6 @@ void ForegroundFileParser::Procedure::operator()()
                 sleep_for(boost::chrono::milliseconds(BREAK_TIME));
         }
     }
-
-    delete this;
 }
 
 void ForegroundFileParser::Procedure::quit()
@@ -228,101 +276,96 @@ void ForegroundFileParser::Procedure::quit()
 }
 
 void ForegroundFileParser::Procedure::parse(
-    char *fileName,
-    CompilerOptions *compilerOpts,
+    const char *fileUri,
+    Project *project,
     UnsavedFiles *unsavedFiles)
 {
     boost::mutex::scoped_lock lock(m_mutex);
-    m_jobQueue.push(new Job(fileName,
+    m_jobQueue.push(new Job(fileUri,
                             -1,
                             -1,
                             boost::shared_ptr<CXTranslationUnitImpl>(),
-                            compilerOpts,
+                            project,
                             unsavedFiles));
 }
 
 void ForegroundFileParser::Procedure::reparse(
-    char *fileName,
+    const char *fileUri,
     boost::shared_ptr<CXTranslationUnitImpl> tu,
+    Project *project,
     UnsavedFiles *unsavedFiles)
 {
     boost::mutex::scoped_lock lock(m_mutex);
-    m_jobQueue.push(new Job(fileName,
+    m_jobQueue.push(new Job(fileUri,
                             -1,
                             -1,
                             tu,
-                            NULL,
+                            project,
                             unsavedFiles));
 }
 
 void ForegroundFileParser::Procedure::completeCodeAt(
-    char *fileName,
+    const char *fileUri,
     int line,
     int column,
     boost::shared_ptr<CXTranslationUnitImpl> tu,
+    Project *project,
     UnsavedFiles *unsavedFiles)
 {
     boost::mutex::scoped_lock lock(m_mutex);
-    m_jobQueue.push(new Job(fileName,
+    m_jobQueue.push(new Job(fileUri,
                             line,
                             column,
                             tu,
-                            NULL,
+                            project,
                             unsavedFiles));
 }
 
+bool ForegroundFileParser::Procedure::idle() const
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+    return m_jobQueue.empty();
+}
+
 ForegroundFileParser::ForegroundFileParser():
-    m_procedure(NULL)
+    m_procedure(*this),
+    m_running(false),
+    m_destroy(true)
 {
 }
 
 ForegroundFileParser::~ForegroundFileParser()
 {
-    quit();
+}
+
+gboolean
+ForegroundFileParser::onQuittedInMainThread(gpointer parser)
+{
+    ForegroundFileParser *p = static_cast<ForegroundFileParser *>(parser);
+    p->m_running = false;
+    if (p->m_destroy)
+        delete p;
+    return FALSE;
+}
+
+void ForegroundFileParser::destroy()
+{
+    m_destroy = true;
+    if (m_running)
+        quit();
+    else
+        delete this;
 }
 
 void ForegroundFileParser::run()
 {
-    m_procedure = new Procedure;
-    boost::thread(boost::ref(*m_procedure));
+    m_running = true;
+    boost::thread(boost::ref(m_procedure));
 }
 
 void ForegroundFileParser::quit()
 {
-    if (m_procedure)
-        m_procedure->quit();
-}
-
-ForegroundFileParser::CompilerOptions::CompilerOptions(
-    const boost::shared_ptr<char> &rawString,
-    int rawStringLength):
-        m_compilerOptions(NULL),
-        m_numCompilerOptions(0),
-        m_rawString(rawString)
-{
-    for (const char *cp = rawString.get();
-         cp < rawString.get() + rawStringLength;
-         cp++)
-        if (*cp == '\0')
-            m_numCompilerOptions++;
-    if (m_numCompilerOptions)
-    {
-        m_compilerOptions = new const char *[m_numCompilerOptions];
-        const char **cpp = m_compilerOptions;
-        for (const char *cp = rawString.get(), *opt = rawString.get();
-             cp < rawString.get() + rawStringLength;
-             cp++)
-            if (*cp == '\0')
-            {
-                *cpp++ = opt;
-                opt = cp + 1;
-            }
-    }
-}
-
-ForegroundFileParser::CompilerOptions::~CompilerOptions()
-{
-    delete[] m_compilerOptions;
+    m_procedure.quit();
 }
 
 ForegroundFileParser::UnsavedFiles *
@@ -369,41 +412,47 @@ ForegroundFileParser::UnsavedFiles::~UnsavedFiles()
 
 void ForegroundFileParser::parse(const char *fileUri, Project *project)
 {
-    char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
-    CompilerOptions *compilerOpts = NULL;
-    if (project)
-    {
-        boost::shared_ptr<char> compilerOptsStr;
-        int compilerOptsStrLength;
-        ProjectDb::Error error =
-            project->db().readCompilerOptions(fileUri,
-                                              compilerOptsStr,
-                                              compilerOptsStrLength);
-        if (!error.code)
-            compilerOpts = new CompilerOptions(compilerOptsStr,
-                                               compilerOptsStrLength);
-    }
     UnsavedFiles *unsavedFiles = UnsavedFiles::collect();
-    m_procedure->parse(fileName, compilerOpts, unsavedFiles);
+    m_procedure.parse(fileUri, project, unsavedFiles);
 }
 
 void ForegroundFileParser::reparse(const char *fileUri,
-                                   boost::shared_ptr<CXTranslationUnitImpl> tu)
+                                   boost::shared_ptr<CXTranslationUnitImpl> tu,
+                                   Project *project)
 {
-    char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
     UnsavedFiles *unsavedFiles = UnsavedFiles::collect();
-    m_procedure->reparse(fileName, tu, unsavedFiles);
+    m_procedure.reparse(fileUri, tu, project, unsavedFiles);
 }
 
 void ForegroundFileParser::completeCodeAt(
     const char *fileUri,
     int line,
     int column,
-    boost::shared_ptr<CXTranslationUnitImpl> tu)
+    boost::shared_ptr<CXTranslationUnitImpl> tu,
+    Project *project)
 {
-    char *fileName = g_filename_from_uri(fileUri, NULL, NULL);
     UnsavedFiles *unsavedFiles = UnsavedFiles::collect();
-    m_procedure->completeCodeAt(fileName, line, column, tu, unsavedFiles);
+    m_procedure.completeCodeAt(fileUri, line, column,
+                                tu, project, unsavedFiles);
+}
+
+boost::signals2::connection
+ForegroundFileParser::addFinishedCallback(const Finished::slot_type &callback)
+{
+    boost::signals2::connection conn = m_finished.connect(callback);
+    if (m_procedure.idle())
+        g_idle_add_full(G_PRIORITY_HIGH,
+                        onFinishedInMainThread,
+                        this,
+                        NULL);
+    return conn;
+}
+
+gboolean ForegroundFileParser::onFinishedInMainThread(gpointer parser)
+{
+    ForegroundFileParser *p = static_cast<ForegroundFileParser *>(parser);
+    p->m_finished(*p);
+    return FALSE;
 }
 
 }

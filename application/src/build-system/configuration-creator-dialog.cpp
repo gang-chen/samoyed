@@ -60,6 +60,9 @@ ConfigurationCreatorDialog::ConfigurationCreatorDialog(
     m_installCommandsEntry =
         GTK_ENTRY(gtk_builder_get_object(m_builder, "install-commands-entry"));
     gtk_entry_set_text(m_installCommandsEntry, config.installCommands());
+    m_cleanCommandsEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder, "clean-commands-entry"));
+    gtk_entry_set_text(m_cleanCommandsEntry, config.cleanCommands());
     m_cCompilerEntry =
         GTK_ENTRY(gtk_builder_get_object(m_builder, "c-compiler-entry"));
     gtk_entry_set_text(m_cCompilerEntry, config.cCompiler());
@@ -106,6 +109,7 @@ Configuration *ConfigurationCreatorDialog::run()
     config->setConfigureCommands(gtk_entry_get_text(m_configCommandsEntry));
     config->setBuildCommands(gtk_entry_get_text(m_buildCommandsEntry));
     config->setInstallCommands(gtk_entry_get_text(m_installCommandsEntry));
+    config->setCleanCommands(gtk_entry_get_text(m_cleanCommandsEntry));
     config->setCCompiler(gtk_entry_get_text(m_cCompilerEntry));
     config->setCppCompiler(gtk_entry_get_text(m_cppCompilerEntry));
     config->setCCompilerOptions(gtk_entry_get_text(m_cCompilerOptionsEntry));
