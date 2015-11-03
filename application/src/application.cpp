@@ -538,11 +538,9 @@ int Application::run(int argc, char *argv[])
     gtk_window_set_auto_startup_notification(FALSE);
 
     // Show the splash screen.
-    {
-        std::string splashImage = m_dataDirName +
-            G_DIR_SEPARATOR_S "splash-screen.png";
-        m_splashScreen = new SplashScreen(_("Samoyed"), splashImage.c_str());
-    }
+    std::string splashImage = m_dataDirName +
+        G_DIR_SEPARATOR_S "splash-screen.png";
+    m_splashScreen = new SplashScreen(_("Samoyed"), splashImage.c_str());
     g_signal_connect(m_splashScreen->gtkWidget(),
                      "delete-event",
                      G_CALLBACK(onSplashScreenDeleteEvent),

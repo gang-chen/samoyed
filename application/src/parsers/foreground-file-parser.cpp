@@ -137,7 +137,7 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
                 }
             }
         }
-        CXErrorCode error = clang_parseTranslationUnit2(
+        int error = clang_parseTranslationUnit2(
             index,
             fileName,
             compilerOpts,
@@ -145,11 +145,25 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_unsavedFiles->unsavedFiles(),
             m_unsavedFiles->numUnsavedFiles(),
             clang_defaultEditingTranslationUnitOptions() |
+            CXTranslationUnit_PrecompiledPreamble |
+            CXTranslationUnit_CacheCompletionResults |
             CXTranslationUnit_DetailedPreprocessingRecord |
             CXTranslationUnit_IncludeBriefCommentsInCodeCompletion,
             &tu);
         delete[] compilerOpts;
         m_tu.reset(tu, clang_disposeTranslationUnit);
+        if (error)
+            m_tu.reset();
+        // Reparse...
+        error = clang_reparseTranslationUnit(
+            m_tu.get(),
+            m_unsavedFiles->numUnsavedFiles(),
+            m_unsavedFiles->unsavedFiles(),
+            clang_defaultReparseOptions(m_tu.get()) |
+            CXTranslationUnit_PrecompiledPreamble |
+            CXTranslationUnit_CacheCompletionResults |
+            CXTranslationUnit_DetailedPreprocessingRecord |
+            CXTranslationUnit_IncludeBriefCommentsInCodeCompletion);
         if (error)
             m_tu.reset();
         Window::removeMessage(desc);
@@ -166,6 +180,8 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_unsavedFiles->numUnsavedFiles(),
             m_unsavedFiles->unsavedFiles(),
             clang_defaultReparseOptions(m_tu.get()) |
+            CXTranslationUnit_PrecompiledPreamble |
+            CXTranslationUnit_CacheCompletionResults |
             CXTranslationUnit_DetailedPreprocessingRecord |
             CXTranslationUnit_IncludeBriefCommentsInCodeCompletion);
         if (error)
@@ -187,8 +203,8 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
             m_unsavedFiles->unsavedFiles(),
             m_unsavedFiles->numUnsavedFiles(),
             clang_defaultCodeCompleteOptions() |
-            CXTranslationUnit_DetailedPreprocessingRecord |
-            CXTranslationUnit_IncludeBriefCommentsInCodeCompletion);
+            CXCodeComplete_IncludeMacros |
+            CXCodeComplete_IncludeBriefComments);
         if (!results)
             m_tu.reset();
         Window::removeMessage(desc);

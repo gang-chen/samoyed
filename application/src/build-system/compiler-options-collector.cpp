@@ -422,11 +422,8 @@ bool CompilerOptionsCollector::parse(const char *&begin, const char *end)
                 continue;
             }
 
-            char *uri = g_filename_to_uri(fn, NULL, NULL);
-
-            // Check to see if this source file is in the project.
-
             // Write the compiler options.
+            char *uri = g_filename_to_uri(fn, NULL, NULL);
             m_projectDb.writeCompilerOptions(uri,
                                              compilerOpts.c_str(),
                                              compilerOpts.length());
