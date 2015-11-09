@@ -56,7 +56,7 @@ enum Response
     RESPONSE_SWITCH_TO_NEW_SESSION = 2
 };
 
-enum Columns
+enum Column
 {
     NAME_COLUMN,
     LOCKED_COLUMN,

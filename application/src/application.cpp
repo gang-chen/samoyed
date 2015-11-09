@@ -18,6 +18,7 @@
 #include "plugin/plugin-manager.hpp"
 #include "project/project.hpp"
 #include "project/project-explorer.hpp"
+#include "project/project-explorer-model.hpp"
 #include "session/file-recoverers-extension-point.hpp"
 #include "session/histories-extension-point.hpp"
 #include "session/preferences-editor.hpp"
@@ -94,7 +95,8 @@ Application::Application():
     m_newSessionName(NULL),
     m_chooseSession(0),
     m_splashScreen(NULL),
-    m_preferencesEditor(NULL)
+    m_preferencesEditor(NULL),
+    m_projectExplorerModel(NULL)
 {
     assert(!s_instance);
     s_instance = this;
@@ -369,6 +371,9 @@ bool Application::quit()
     // Destroy the preferences editor for this session.
     delete m_preferencesEditor;
     m_preferencesEditor = NULL;
+
+    delete m_projectExplorerModel;
+    m_projectExplorerModel = NULL;
 
     // If no project or file is open, quit immediately.
     if (!m_firstProject && !m_firstFile)
@@ -692,6 +697,13 @@ PreferencesEditor &Application::preferencesEditor()
     if (!m_preferencesEditor)
         m_preferencesEditor = new PreferencesEditor;
     return *m_preferencesEditor;
+}
+
+ProjectExplorerModel &Application::projectExplorerModel()
+{
+    if (!m_projectExplorerModel)
+        m_projectExplorerModel = new ProjectExplorerModel;
+    return *m_projectExplorerModel;
 }
 
 }

@@ -730,8 +730,8 @@ void SourceFile::onChanged(const File::Change &change, bool interactive)
                             // Add the line numbers in [ins.line, ins.newLine].
                             indent(ins.line, ins.newLine + 1, ins.newLine);
                         else
-                            // Add ins.newLine only.
-                            indent(ins.newLine, ins.newLine + 1, ins.newLine);
+                            // Exclude ins.line.
+                            indent(ins.line + 1, ins.newLine + 1, ins.newLine);
                     }
                 }
             }
@@ -1354,7 +1354,7 @@ void SourceFile::setupPreferencesEditor(GtkGrid *grid)
         _("Reindent _pasted text"));
     gtk_toggle_button_set_active(
         GTK_TOGGLE_BUTTON(reindentPastedText),
-        prefs.get<bool>(REINDENT_COMPLETED_LINES));
+        prefs.get<bool>(REINDENT_PASTED_TEXT));
     g_signal_connect(reindentPastedText, "toggled",
                      G_CALLBACK(onReindentPastedTextToggled), NULL);
     gtk_grid_attach_next_to(grid, reindentPastedText, NULL,

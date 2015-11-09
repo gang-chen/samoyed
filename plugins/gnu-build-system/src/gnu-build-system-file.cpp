@@ -42,12 +42,6 @@ void GnuBuildSystemFile::Editor::addGtkWidgets(GtkGrid *grid)
                             GTK_POS_RIGHT, 1, 1);
 }
 
-bool GnuBuildSystemFile::Editor::inputValid() const
-{
-    return BuildSystemFile::Editor::inputValid() &&
-           *gtk_entry_get_text(m_instDirEntry);
-}
-
 void GnuBuildSystemFile::Editor::getInput(BuildSystemFile &file) const
 {
     BuildSystemFile::Editor::getInput(file);

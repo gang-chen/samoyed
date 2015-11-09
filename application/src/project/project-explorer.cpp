@@ -5,6 +5,7 @@
 # include <config.h>
 #endif
 #include "project-explorer.hpp"
+#include "project-explorer-model.hpp"
 #include "project.hpp"
 #include "project-file.hpp"
 #include "window/window.hpp"
@@ -25,15 +26,6 @@ namespace
 {
 
 const int PROJECT_EXPLORER_INDEX_IN_NAVIGATION_PANE = 1;
-
-enum Column
-{
-    COLUMN_NAME,
-    COLUMN_TYPE,
-    COLUMN_URI,
-    COLUMN_ICON,
-    N_COLUMNS
-};
 
 }
 
@@ -132,33 +124,24 @@ Widget *ProjectExplorer::XmlElement::restoreWidget()
 
 bool ProjectExplorer::setupProjectExplorer()
 {
-    GtkTreeStore *store = gtk_tree_store_new(N_COLUMNS,
-                                             G_TYPE_STRING,
-                                             G_TYPE_UINT,
-                                             G_TYPE_STRING,
-                                             GDK_TYPE_PIXBUF);
-    GtkWidget *tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+    GtkWidget *tree = gtk_tree_view_new_with_model(
+        Application::instance().projectExplorerModel().model());
     GtkTreeViewColumn *column;
     GtkCellRenderer *renderer;
     column = gtk_tree_view_column_new();
     renderer = gtk_cell_renderer_pixbuf_new();
     gtk_tree_view_column_pack_start(column, renderer, FALSE);
     gtk_tree_view_column_add_attribute(column, renderer,
-                                       "pixbuf", COLUMN_ICON);
+                                       "icon-name",
+                                       ProjectExplorerModel::ICON_COLUMN);
     renderer = gtk_cell_renderer_text_new();
     gtk_tree_view_column_pack_start(column, renderer, TRUE);
     gtk_tree_view_column_add_attribute(column, renderer,
-                                       "markup", COLUMN_NAME);
+                                       "markup",
+                                       ProjectExplorerModel::NAME_COLUMN);
     gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
     setGtkWidget(tree);
-
-    // Load the existing projects.
-    for (Project *project = Application::instance().projects();
-         project;
-         project = project->next())
-        onProjectOpened(*project);
-
     return true;
 }
 
@@ -229,25 +212,6 @@ Project *ProjectExplorer::currentProject()
 const Project *ProjectExplorer::currentProject() const
 {
     return Application::instance().projects();
-}
-
-void ProjectExplorer::onProjectOpened(Project &project)
-{
-}
-
-void ProjectExplorer::onProjectClosed(Project &project)
-{
-}
-
-void ProjectExplorer::onProjectFileAdded(Project &project,
-                                         const char *uri,
-                                         const ProjectFile &data)
-{
-}
-
-void ProjectExplorer::onProjectFileRemoved(Project &project,
-                                           const char *uri)
-{
 }
 
 }

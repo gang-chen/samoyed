@@ -52,7 +52,7 @@ public:
 namespace
 {
 
-enum Columns
+enum Column
 {
     NAME_COLUMN,
     LOCKED_COLUMN,

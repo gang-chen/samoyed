@@ -138,9 +138,12 @@ BuildLogView::BuildLogView(const char *projectUri,
 
 BuildLogView::~BuildLogView()
 {
+#ifdef OS_WINDOWS
     if (m_pathInConversion)
         cancelConvertingPath();
     m_pathConversionCache.clear();
+#endif
+
     for (std::map<int, CompilerDiagnostic *>::iterator it
             = m_diagnostics.begin();
          it != m_diagnostics.end();
@@ -227,6 +230,22 @@ void BuildLogView::clear()
     gtk_text_buffer_get_start_iter(buffer, &begin);
     gtk_text_buffer_get_end_iter(buffer, &end);
     gtk_text_buffer_delete(buffer, &begin, &end);
+
+#ifdef OS_WINDOWS
+    if (m_pathInConversion)
+        cancelConvertingPath();
+    m_pathConversionCache.clear();
+#endif
+
+    for (std::map<int, CompilerDiagnostic *>::iterator it
+             = m_diagnostics.begin();
+         it != m_diagnostics.end();
+         ++it)
+        delete it->second;
+    m_diagnostics.clear();
+
+    while (!m_directoryStack.empty())
+        m_directoryStack.pop();
 }
 
 void BuildLogView::addLog(const char *log, int length)

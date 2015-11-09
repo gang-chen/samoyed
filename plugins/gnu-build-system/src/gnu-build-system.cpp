@@ -40,9 +40,26 @@ bool GnuBuildSystem::importFile(const char *uri)
 
 BuildSystemFile *GnuBuildSystem::createFile(int type) const
 {
-    if (type == ProjectFile::TYPE_DIRECTORY)
+    switch (type)
+    {
+    case ProjectFile::TYPE_DIRECTORY:
         return new BuildSystemFile;
-    return new GnuBuildSystemFile;
+    case ProjectFile::TYPE_SOURCE_FILE:
+        return new BuildSystemFile;
+    case ProjectFile::TYPE_HEADER_FILE:
+        return new GnuBuildSystemFile;
+    case ProjectFile::TYPE_GENERIC_FILE:
+        return new GnuBuildSystemFile;
+    case ProjectFile::TYPE_STATIC_LIBRARY:
+        return new GnuBuildSystemFile;
+    case ProjectFile::TYPE_SHARED_LIBRARY:
+        return new GnuBuildSystemFile;
+    case ProjectFile::TYPE_PROGRAM:
+        return new GnuBuildSystemFile;
+    case ProjectFile::TYPE_GENERIC_TARGET:
+        return new GnuBuildSystemFile;
+    }
+    return NULL;
 }
 
 bool GnuBuildSystem::addFile(const char *uri, const BuildSystemFile &data)

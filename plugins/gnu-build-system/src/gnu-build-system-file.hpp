@@ -23,7 +23,6 @@ public:
         Editor();
         virtual ~Editor();
         virtual void addGtkWidgets(GtkGrid *grid);
-        virtual bool inputValid() const;
         virtual void getInput(BuildSystemFile &file) const;
 
     private:

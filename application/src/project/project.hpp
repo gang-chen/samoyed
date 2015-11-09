@@ -33,6 +33,11 @@ class Project: public boost::noncopyable
 public:
     typedef boost::signals2::signal<void (Project &project)> Opened;
     typedef boost::signals2::signal<void (Project &project)> Closed;
+    typedef boost::signals2::signal<void (Project &project,
+                                          const char *uri,
+                                          const ProjectFile &data)> FileAdded;
+    typedef boost::signals2::signal<void (Project &project,
+                                          const char *uri)> FileRemoved;
 
     class XmlElement
     {
@@ -113,6 +118,14 @@ public:
     addClosedCallback(const Closed::slot_type &callback)
     { return m_closed.connect(callback); }
 
+    boost::signals2::connection
+    addFileAddedCallback(const FileAdded::slot_type &callback)
+    { return m_fileAdded.connect(callback); }
+
+    boost::signals2::connection
+    addFileRemovedCallback(const FileRemoved::slot_type &callback)
+    { return m_fileRemoved.connect(callback); }
+
 protected:
     Project(const char *uri);
 
@@ -153,6 +166,8 @@ private:
 
     static Opened s_opened;
     Closed m_closed;
+    FileAdded m_fileAdded;
+    FileRemoved m_fileRemoved;
 
     bool m_allBuildSystemWorkersStopped;
     bool m_foregroundFileParserFinished;

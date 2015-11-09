@@ -7,7 +7,6 @@
 #include "project.hpp"
 #include "project-db.hpp"
 #include "project-file.hpp"
-#include "project-explorer.hpp"
 #include "build-system/build-system.hpp"
 #include "parsers/foreground-file-parser.hpp"
 #include "editors/editor.hpp"
@@ -308,14 +307,6 @@ Project *Project::create(const char *uri,
     // Setup the build system.
     project->m_buildSystem->setup();
 
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        ProjectExplorer *explorer = window->projectExplorer();
-        if (explorer)
-            explorer->onProjectOpened(*project);
-    }
     s_opened(*project);
 
     return project;
@@ -514,14 +505,6 @@ Project *Project::open(const char *uri)
         return NULL;
     }
 
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        ProjectExplorer *explorer = window->projectExplorer();
-        if (explorer)
-            explorer->onProjectOpened(*project);
-    }
     s_opened(*project);
     return project;
 }
@@ -648,14 +631,6 @@ bool Project::closePhase3()
     delete m_db;
     m_db = NULL;
 
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        ProjectExplorer *explorer = window->projectExplorer();
-        if (explorer)
-            explorer->onProjectClosed(*this);
-    }
     m_closed(*this);
     Application::instance().destroyProject(*this);
     return true;
@@ -742,14 +717,7 @@ bool Project::addFile(const char *uri, const ProjectFile &data)
         m_buildSystem->removeFile(uri);
         return false;
     }
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        ProjectExplorer *explorer = window->projectExplorer();
-        if (explorer)
-            explorer->onProjectFileAdded(*this, uri, data);
-    }
+    m_fileAdded(*this, uri, data);
     return true;
 }
 
@@ -760,14 +728,7 @@ bool Project::removeFile(const char *uri)
     ProjectDb::Error dbError = m_db->removeFile(uri);
     if (dbError.code)
         return false;
-    for (Window *window = Application::instance().windows();
-         window;
-         window = window->next())
-    {
-        ProjectExplorer *explorer = window->projectExplorer();
-        if (explorer)
-            explorer->onProjectFileRemoved(*this, uri);
-    }
+    m_fileRemoved(*this, uri);
     return true;
 }
 

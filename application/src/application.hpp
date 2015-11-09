@@ -32,6 +32,7 @@ class File;
 class Window;
 class SplashScreen;
 class PreferencesEditor;
+class ProjectExplorerModel;
 
 /**
  * An application represents a running instance of this application.
@@ -157,6 +158,8 @@ public:
 
     PreferencesEditor &preferencesEditor();
 
+    ProjectExplorerModel &projectExplorerModel();
+
 private:
     typedef std::map<ComparablePointer<const char>, Project *> ProjectTable;
 
@@ -259,6 +262,8 @@ private:
     SplashScreen *m_splashScreen;
 
     PreferencesEditor *m_preferencesEditor;
+
+    ProjectExplorerModel *m_projectExplorerModel;
 
     std::string m_dataDirName;
     std::string m_librariesDirName;

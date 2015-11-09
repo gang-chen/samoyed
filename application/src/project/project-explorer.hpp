@@ -5,15 +5,17 @@
 #define SMYD_PROJECT_EXPLORER_HPP
 
 #include "widget/widget.hpp"
+#include "utilities/miscellaneous.hpp"
 #include <list>
 #include <string>
+#include <gtk/gtk.h>
 #include <libxml/tree.h>
 
 namespace Samoyed
 {
 
 class Project;
-class ProjectFile;
+class Window;
 
 class ProjectExplorer: public Widget
 {
@@ -47,15 +49,6 @@ public:
 
     Project *currentProject();
     const Project *currentProject() const;
-
-    void onProjectOpened(Project &project);
-    void onProjectClosed(Project &project);
-
-    void onProjectFileAdded(Project &project,
-                            const char *uri,
-                            const ProjectFile &data);
-    void onProjectFileRemoved(Project &project,
-                              const char *uri);
 
 protected:
     ProjectExplorer() {}
