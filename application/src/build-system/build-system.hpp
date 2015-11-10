@@ -49,7 +49,7 @@ public:
     virtual bool addFile(const char *uri, const BuildSystemFile &data)
     { return true; }
 
-    virtual bool removeFile(const char *uri)
+    virtual bool removeFile(const char *uri, const BuildSystemFile &data)
     { return true; }
 
     bool canConfigure() const;
@@ -97,6 +97,12 @@ public:
 
 protected:
     BuildSystem(Project &project, const char *extensionId);
+
+    static bool isSourceFile(const char *fileName);
+    static bool isHeaderFile(const char *fileName);
+    static bool isBuildSystemFile(const char *fileName);
+
+    bool importDirectory(const char *dirName);
 
 private:
     typedef std::map<ComparablePointer<const char>, Configuration *>

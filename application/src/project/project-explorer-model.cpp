@@ -14,6 +14,25 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
+namespace
+{
+
+const char *ICON_NAMES[Samoyed::ProjectExplorerModel::N_TYPES] =
+{
+    "package-x-generic",
+    "folder",
+    "text-x-generic",
+    "text-x-generic",
+    "text-x-generic",
+    "application-x-executable",
+    "application-x-executable",
+    "application-x-executable",
+    "application-x-executable",
+    ""
+};
+
+}
+
 namespace Samoyed
 {
 
@@ -22,6 +41,7 @@ ProjectExplorerModel::ProjectExplorerModel()
     m_store = gtk_tree_store_new(N_COLUMNS,
                                  G_TYPE_STRING,
                                  G_TYPE_STRING,
+                                 G_TYPE_INT,
                                  G_TYPE_INT);
 
     // Load the existing projects.
@@ -86,14 +106,17 @@ void ProjectExplorerModel::onProjectOpened(Project &project)
         gtk_tree_store_prepend(m_store, &it, NULL);
     gtk_tree_store_set(m_store, &it,
                        NAME_COLUMN, name.c_str(),
-                       ICON_COLUMN, "folder",
-                       FLAGS_COLUMN, FLAG_IS_DIRECTORY,
+                       ICON_COLUMN, ICON_NAMES[TYPE_PROJECT],
+                       TYPE_COLUMN, TYPE_PROJECT,
+                       FLAGS_COLUMN, 0,
                        -1);
     GtkTreeIter projIter(it);
     gtk_tree_store_append(m_store, &it, &projIter);
     gtk_tree_store_set(m_store, &it,
                        NAME_COLUMN, _("(Empty)"),
-                       FLAGS_COLUMN, FLAG_IS_DUMMY,
+                       ICON_COLUMN, ICON_NAMES[TYPE_DUMMY],
+                       TYPE_COLUMN, TYPE_DUMMY,
+                       FLAGS_COLUMN, 0,
                        -1);
 
     Connections conns;

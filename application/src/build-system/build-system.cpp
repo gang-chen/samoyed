@@ -13,16 +13,20 @@
 #include "builder.hpp"
 #include "compiler-options-collector.hpp"
 #include "project/project.hpp"
+#include "project/project-file.hpp"
 #include "plugin/extension-point-manager.hpp"
 #include "window/window.hpp"
+#include "utilities/miscellaneous.hpp"
 #include "application.hpp"
 #include <string.h>
 #include <map>
 #include <list>
+#include <set>
 #include <string>
 #include <utility>
 #include <libxml/tree.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
 #define BUILD_SYSTEM "build-system"
 #define EXTENSION_ID "extension-id"
@@ -30,6 +34,57 @@
 #define CONFIGURATION "configuration"
 #define ACTIVE_CONFIGURATION "active-configuration"
 #define BUILD_SYSTEMS "build-systems"
+
+namespace
+{
+
+const char *SOURCE_FILE_NAME_SUFFIXES[] =
+{
+    "c",
+    "cc",
+    "cp",
+    "cxx",
+    "cpp",
+    "CPP",
+    "c++",
+    "C",
+#ifdef OS_WINDOWS
+    // Mixed case letters are not allowed.
+    "CC",
+    "CP",
+    "CXX",
+    "C++",
+#endif
+    NULL
+};
+
+const char *HEADER_FILE_NAME_SUFFIXES[] =
+{
+    "h",
+    "hh",
+    "hpp",
+    "H",
+#ifdef OS_WINDOWS
+    // Mixed case letters are not allowed.
+    "HH",
+    "HPP",
+#endif
+    NULL
+};
+
+const char *BUILD_SYSTEM_FILE_NAMES[] =
+{
+    "GNUmakefile",
+    "makefile",
+    "Makefile",
+    NULL
+};
+
+std::set<Samoyed::ComparablePointer<const char> > sourceFileNameSuffixes;
+std::set<Samoyed::ComparablePointer<const char> > headerFileNameSuffixes;
+std::set<Samoyed::ComparablePointer<const char> > buildSystemFileNames;
+
+}
 
 namespace Samoyed
 {
@@ -42,6 +97,21 @@ BuildSystem::BuildSystem(Project &project,
     m_lastConfig(NULL),
     m_activeConfig(NULL)
 {
+    if (sourceFileNameSuffixes.empty())
+    {
+        for (const char **suffix = SOURCE_FILE_NAME_SUFFIXES; *suffix; suffix++)
+            sourceFileNameSuffixes.insert(*suffix);
+    }
+    if (headerFileNameSuffixes.empty())
+    {
+        for (const char **suffix = HEADER_FILE_NAME_SUFFIXES; *suffix; suffix++)
+            headerFileNameSuffixes.insert(*suffix);
+    }
+    if (buildSystemFileNames.empty())
+    {
+        for (const char **name = BUILD_SYSTEM_FILE_NAMES; *name; name++)
+            buildSystemFileNames.insert(*name);
+    }
 }
 
 BuildSystem::~BuildSystem()
@@ -169,8 +239,135 @@ xmlNodePtr BuildSystem::writeXmlElement() const
     return node;
 }
 
+bool BuildSystem::isSourceFile(const char *fileName)
+{
+    const char *ext = strrchr(fileName, '.');
+    if (ext &&
+        sourceFileNameSuffixes.find(ext + 1) != sourceFileNameSuffixes.end())
+        return true;
+    return false;
+}
+
+bool BuildSystem::isHeaderFile(const char *fileName)
+{
+    const char *ext = strrchr(fileName, '.');
+    if (ext &&
+        headerFileNameSuffixes.find(ext + 1) != headerFileNameSuffixes.end())
+        return true;
+    return false;
+}
+
+bool BuildSystem::isBuildSystemFile(const char *fileName)
+{
+    if (buildSystemFileNames.find(fileName) != buildSystemFileNames.end())
+        return true;
+    return false;
+}
+
+bool BuildSystem::importDirectory(const char *dirName)
+{
+    GError *error = NULL;
+    GDir *dir;
+    dir = g_dir_open(dirName, 0, &error);
+    if (!dir)
+    {
+        char *uri = g_filename_to_uri(dirName, NULL, NULL);
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to import files in directory \"%s\" into project "
+              "\"%s\"."),
+            uri, project().uri());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to open directory \"%s\". %s."),
+            uri, error->message);
+        g_free(uri);
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        g_error_free(error);
+        return false;
+    }
+    bool successful = true;
+    std::string name;
+    const char *entry;
+    while ((entry = g_dir_read_name(dir)) != NULL)
+    {
+        if (entry[0] == '.')
+            continue;
+        name = dirName;
+        name += G_DIR_SEPARATOR;
+        name += entry;
+        if (g_file_test(name.c_str(), G_FILE_TEST_IS_REGULAR))
+        {
+            if (isSourceFile(name.c_str()))
+            {
+                ProjectFile *file =
+                    project().createFile(ProjectFile::TYPE_SOURCE_FILE);
+                char *uri = g_filename_to_uri(name.c_str(), NULL, NULL);
+                if (!project().addFile(uri, *file, false))
+                {
+                    successful = false;
+                    g_free(uri);
+                    break;
+                }
+                g_free(uri);
+            }
+            else if (isHeaderFile(name.c_str()))
+            {
+                ProjectFile *file =
+                    project().createFile(ProjectFile::TYPE_HEADER_FILE);
+                char *uri = g_filename_to_uri(name.c_str(), NULL, NULL);
+                if (!project().addFile(uri, *file, false))
+                {
+                    successful = false;
+                    g_free(uri);
+                    break;
+                }
+                g_free(uri);
+            }
+            else if (isBuildSystemFile(name.c_str()))
+            {
+                ProjectFile *file =
+                    project().createFile(ProjectFile::TYPE_GENERIC_FILE);
+                char *uri = g_filename_to_uri(name.c_str(), NULL, NULL);
+                if (!project().addFile(uri, *file, false))
+                {
+                    successful = false;
+                    g_free(uri);
+                    break;
+                }
+                g_free(uri);
+            }
+        }
+        else if (g_file_test(name.c_str(), G_FILE_TEST_IS_DIR))
+        {
+            if (!importDirectory(name.c_str()))
+            {
+                successful = false;
+                break;
+            }
+        }
+    }
+    g_dir_close(dir);
+    return successful;
+}
+
 bool BuildSystem::setup()
 {
+    char *fileName = g_filename_from_uri(project().uri(), NULL, NULL);
+    if (!importDirectory(fileName))
+    {
+        g_free(fileName);
+        return false;
+    }
+    g_free(fileName);
     return true;
 }
 

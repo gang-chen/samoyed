@@ -23,28 +23,28 @@ const int BUFFER_SIZE = 10000;
 
 const char *SOURCE_FILE_NAME_SUFFIXES[] =
 {
-    ".c",
-    ".cc",
-    ".cp",
-    ".cxx",
-    ".cpp",
-    ".CPP",
-    ".c++",
-    ".C",
-    ".h",
-    ".hh",
-    ".hpp",
-    ".H"
+    "c",
+    "cc",
+    "cp",
+    "cxx",
+    "cpp",
+    "CPP",
+    "c++",
+    "C",
+    "h",
+    "hh",
+    "hpp",
+    "H",
 #ifdef OS_WINDOWS
     // Mixed case letters are not allowed.
-    ,
-    ".CC",
-    ".CP",
-    ".CXX",
-    ".C++",
-    ".HH",
-    ".HPP"
+    "CC",
+    "CP",
+    "CXX",
+    "C++",
+    "HH",
+    "HPP",
 #endif
+    NULL
 };
 
 const char *OPTIONS_NEEDING_ARGUMENTS[] =
@@ -415,7 +415,7 @@ bool CompilerOptionsCollector::parse(const char *&begin, const char *end)
             // Check to see if this is a source file.
             char *ext = strrchr(fn, '.');
             if (!ext ||
-                sourceFileNameSuffixes.find(ext) ==
+                sourceFileNameSuffixes.find(ext + 1) ==
                 sourceFileNameSuffixes.end())
             {
                 g_free(buf);

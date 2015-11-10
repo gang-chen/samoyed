@@ -8,7 +8,7 @@
     <id>build-system</id>
     <point>build-systems</point>
     <detail>
-     <_description>GNU build system</_description>
+     <_description>Managed GNU build system</_description>
     </detail>
   </extension>
 </plugin>

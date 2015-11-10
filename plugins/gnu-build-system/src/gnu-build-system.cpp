@@ -67,7 +67,7 @@ bool GnuBuildSystem::addFile(const char *uri, const BuildSystemFile &data)
     return true;
 }
 
-bool GnuBuildSystem::removeFile(const char *uri)
+bool GnuBuildSystem::removeFile(const char *uri, const BuildSystemFile &data)
 {
     return true;
 }

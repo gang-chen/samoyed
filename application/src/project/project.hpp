@@ -91,9 +91,11 @@ public:
 
     virtual ProjectFile *createFile(int type) const;
 
-    virtual bool addFile(const char *uri, const ProjectFile &data);
+    virtual bool addFile(const char *uri, const ProjectFile &data,
+                         bool createInStorage);
 
-    virtual bool removeFile(const char *uri);
+    virtual bool removeFile(const char *uri, const ProjectFile &data,
+                            bool removeFromStorage);
 
     Editor *findEditor(const char *uri);
     const Editor *findEditor(const char *uri) const;

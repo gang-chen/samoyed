@@ -29,7 +29,8 @@ public:
         TYPE_STATIC_LIBRARY,
         TYPE_SHARED_LIBRARY,
         TYPE_PROGRAM,
-        TYPE_GENERIC_TARGET
+        TYPE_GENERIC_TARGET,
+        N_TYPES
     };
 
     class Editor: public boost::noncopyable
@@ -63,9 +64,14 @@ public:
 
     int type() const { return m_type; }
 
+    const char *typeDescription() const;
+
     BuildSystemFile &buildSystemData() { return *m_buildSystemData; }
     const BuildSystemFile &buildSystemData() const
     { return *m_buildSystemData; }
+
+    virtual bool createInStorage(const char *uri) const;
+    virtual bool removeFromStorage(const char *uri) const;
 
     static ProjectFile *read(const Project &project,
                              const char *data,

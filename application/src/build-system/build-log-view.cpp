@@ -65,7 +65,7 @@ const char *COMPILER_DIAGNOSTIC_TYPE_NAMES[
 const char *COMPILER_DIAGNOSTIC_COLORS[
     Samoyed::BuildLogView::CompilerDiagnostic::N_TYPES] =
 {
-    "gray",
+    "blue",
     "orange",
     "red"
 };

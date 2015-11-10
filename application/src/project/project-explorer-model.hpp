@@ -22,16 +22,30 @@ public:
     {
         NAME_COLUMN,
         ICON_COLUMN,
+        TYPE_COLUMN,
         FLAGS_COLUMN,
         N_COLUMNS
     };
 
+    enum Type
+    {
+        TYPE_PROJECT,
+        TYPE_DIRECTORY,
+        TYPE_SOURCE_FILE,
+        TYPE_HEADER_FILE,
+        TYPE_GENERIC_FILE,
+        TYPE_STATIC_LIBRARY,
+        TYPE_SHARED_LIBRARY,
+        TYPE_PROGRAM,
+        TYPE_GENERIC_TARGET,
+        TYPE_DUMMY,
+        N_TYPES
+    };
+
     enum Flag
     {
-        FLAG_IS_DIRECTORY   = 1,
-        FLAG_IS_DUMMY       = 1 << 1,
-        FLAG_IS_LOADED      = 1 << 2,
-        FLAG_IS_LOADING     = 1 << 3
+        FLAG_IS_LOADED  = 1,
+        FLAG_IS_LOADING = 1 << 1
     };
 
     ProjectExplorerModel();

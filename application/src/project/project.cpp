@@ -707,27 +707,79 @@ ProjectFile *Project::createFile(int type) const
     return new ProjectFile(type, m_buildSystem->createFile(type));
 }
 
-bool Project::addFile(const char *uri, const ProjectFile &data)
+bool Project::addFile(const char *uri, const ProjectFile &data,
+                      bool createInStorage)
 {
+    if (createInStorage)
+    {
+        if (!data.createInStorage(uri))
+            return false;
+    }
     if (!m_buildSystem->addFile(uri, data.buildSystemData()))
         return false;
     ProjectDb::Error dbError = m_db->addFile(uri, data);
     if (dbError.code)
     {
-        m_buildSystem->removeFile(uri);
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to add %s \"%s\" from project \"%s\"."),
+            data.typeDescription(), uri, this->uri());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to add %s \"%s\" from project database. "
+              "\"%s\": %s."),
+            data.typeDescription(), uri,
+            dbError.dbUri, db_strerror(dbError.code));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+        m_buildSystem->removeFile(uri, data.buildSystemData());
         return false;
     }
     m_fileAdded(*this, uri, data);
     return true;
 }
 
-bool Project::removeFile(const char *uri)
+bool Project::removeFile(const char *uri, const ProjectFile &data,
+                         bool removeFromStorage)
 {
-    if (!m_buildSystem->removeFile(uri))
+    if (removeFromStorage)
+    {
+        if (!data.removeFromStorage(uri))
+            return false;
+    }
+    if (!m_buildSystem->removeFile(uri, data.buildSystemData()))
         return false;
     ProjectDb::Error dbError = m_db->removeFile(uri);
     if (dbError.code)
+    {
+        GtkWidget *dialog = gtk_message_dialog_new(
+            Application::instance().currentWindow() ?
+            GTK_WINDOW(Application::instance().currentWindow()->gtkWidget()) :
+            NULL,
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            _("Samoyed failed to remove %s \"%s\" from project \"%s\"."),
+            data.typeDescription(), uri, this->uri());
+        gtkMessageDialogAddDetails(
+            dialog,
+            _("Samoyed failed to remove %s \"%s\" from project database. "
+              "\"%s\": %s."),
+            data.typeDescription(), uri,
+            dbError.dbUri, db_strerror(dbError.code));
+        gtk_dialog_set_default_response(GTK_DIALOG(dialog),
+            GTK_RESPONSE_CLOSE);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
         return false;
+    }
     m_fileRemoved(*this, uri);
     return true;
 }

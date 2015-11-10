@@ -106,7 +106,7 @@ boost::shared_ptr<ProjectFile> ProjectFileCreatorDialog::run()
     uri += name;
     g_free(dir);
     m_projectFileEditor->getInput(*m_projectFile);
-    if (!m_project.addFile(uri.c_str(), *m_projectFile))
+    if (!m_project.addFile(uri.c_str(), *m_projectFile, true))
         return run();
     projectFile.reset(m_projectFile);
     m_projectFile = NULL;
