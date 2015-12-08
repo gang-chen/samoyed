@@ -1,18 +1,18 @@
-// Session chooser dialog.
+// Session starter dialog.
 // Copyright (C) 2012 Gang Chen.
 
 /*
 UNIT TEST BUILD
-g++ session-chooser-dialog.cpp -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST -I.. \
-`pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o session-chooser-dialog
+g++ session-starter-dialog.cpp -DSMYD_SESSION_STARTER_DIALOG_UNIT_TEST -I.. \
+`pkg-config --cflags --libs gtk+-3.0` -Werror -Wall -o session-starter-dialog
 */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "session-chooser-dialog.hpp"
+#include "session-starter-dialog.hpp"
 #include "utilities/miscellaneous.hpp"
-#ifndef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
+#ifndef SMYD_SESSION_STARTER_DIALOG_UNIT_TEST
 # include "session.hpp"
 # include "application.hpp"
 #else
@@ -20,14 +20,14 @@ g++ session-chooser-dialog.cpp -DSMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST -I.. \
 #endif
 #include <list>
 #include <string>
-#ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
+#ifdef SMYD_SESSION_STARTER_DIALOG_UNIT_TEST
 # define _(T) T
 #else
 # include <glib/gi18n.h>
 #endif
 #include <gtk/gtk.h>
 
-#ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
+#ifdef SMYD_SESSION_STARTER_DIALOG_UNIT_TEST
 
 namespace Samoyed
 {
@@ -49,12 +49,6 @@ public:
 
 namespace
 {
-
-enum Response
-{
-    RESPONSE_SWITCH_TO_RESTORE_SESSION = 1,
-    RESPONSE_SWITCH_TO_NEW_SESSION = 2
-};
 
 enum Column
 {
@@ -114,29 +108,25 @@ namespace Samoyed
 
 void SessionChooserDialog::buildNewSessionDialog()
 {
-    if (!m_newSessionDialog)
+    m_newSessionDialog =
+        GTK_DIALOG(gtk_builder_get_object(m_builder, "new-session-dialog"));
+    if (m_parent)
     {
-        m_newSessionDialog =
-            GTK_DIALOG(gtk_builder_get_object(m_builder, "new-session-dialog"));
-        if (m_parent)
-        {
-            gtk_window_set_transient_for(GTK_WINDOW(m_newSessionDialog),
-                                         m_parent);
-            gtk_window_set_modal(GTK_WINDOW(m_newSessionDialog), TRUE);
-        }
-        m_newSessionNameEntry =
-            GTK_ENTRY(gtk_builder_get_object(m_builder,
-                                             "new-session-name-entry"));
-        g_signal_connect(GTK_EDITABLE(m_newSessionNameEntry), "changed",
-                         G_CALLBACK(onNewSessionChanged), m_newSessionDialog);
-        g_signal_connect(GTK_WIDGET(m_newSessionDialog), "delete-event",
-                         G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+        gtk_window_set_transient_for(GTK_WINDOW(m_newSessionDialog),
+                                     m_parent);
+        gtk_window_set_modal(GTK_WINDOW(m_newSessionDialog), TRUE);
     }
+    m_newSessionNameEntry =
+        GTK_ENTRY(gtk_builder_get_object(m_builder,
+                                         "new-session-name-entry"));
+    g_signal_connect(GTK_EDITABLE(m_newSessionNameEntry), "changed",
+                     G_CALLBACK(onNewSessionChanged), m_newSessionDialog);
+    g_signal_connect(GTK_WIDGET(m_newSessionDialog), "delete-event",
+                     G_CALLBACK(gtk_widget_hide_on_delete), NULL);
 }
 
-void SessionChooserDialog::buildRestoreSessionDialog()
+void SessionChooserDialog::readSessions()
 {
-    // Read sessions.
     std::list<std::string> sessionNames;
     std::list<Samoyed::Session::LockState> sessionStates;
     readSessions(sessionNames, sessionStates);
@@ -157,26 +147,29 @@ void SessionChooserDialog::buildRestoreSessionDialog()
                                -1);
         }
     }
+}
 
-    if (!m_restoreSessionDialog)
+void SessionChooserDialog::buildRestoreSessionDialog()
+{
+    readSessions();
+
+    m_restoreSessionDialog =
+        GTK_DIALOG(gtk_builder_get_object(m_builder,
+                                          "restore-session-dialog"));
+    if (m_parent)
     {
-        m_restoreSessionDialog =
-            GTK_DIALOG(gtk_builder_get_object(m_builder,
-                                              "restore-session-dialog"));
-        if (m_parent)
-        {
-            gtk_window_set_transient_for(GTK_WINDOW(m_restoreSessionDialog),
-                                         m_parent);
-            gtk_window_set_modal(GTK_WINDOW(m_restoreSessionDialog), TRUE);
-        }
-        m_sessionList =
-            GTK_TREE_VIEW(gtk_builder_get_object(m_builder, "session-list"));
-        gtk_widget_set_sensitive(
-            GTK_WIDGET(gtk_builder_get_object(m_builder,
-                                              "restore-session-button")),
-            gtk_tree_selection_get_selected(
-                gtk_tree_view_get_selection(m_sessionList), NULL, NULL));
-        g_signal_connect(gtk_tree_view_get_selection(m_sessionList),
+        gtk_window_set_transient_for(GTK_WINDOW(m_restoreSessionDialog),
+                                     m_parent);
+        gtk_window_set_modal(GTK_WINDOW(m_restoreSessionDialog), TRUE);
+    }
+    m_sessionList =
+        GTK_TREE_VIEW(gtk_builder_get_object(m_builder, "session-list"));
+    gtk_widget_set_sensitive(
+        GTK_WIDGET(gtk_builder_get_object(m_builder,
+                                          "restore-session-button")),
+        gtk_tree_selection_get_selected(
+            gtk_tree_view_get_selection(m_sessionList), NULL, NULL));
+    g_signal_connect(gtk_tree_view_get_selection(m_sessionList),
                          "changed",
                          G_CALLBACK(onRestoreSessionChanged),
                          m_restoreSessionDialog);
@@ -188,9 +181,9 @@ void SessionChooserDialog::buildRestoreSessionDialog()
     }
 }
 
-SessionChooserDialog::SessionChooserDialog(Action action, GtkWindow *parent):
-    m_action(action),
+SessionChooserDialog::SessionChooserDialog(GtkWindow *parent):
     m_parent(parent),
+    m_sessionStarterDialog(NULL),
     m_newSessionDialog(NULL),
     m_restoreSessionDialog(NULL)
 {
@@ -206,6 +199,8 @@ SessionChooserDialog::SessionChooserDialog(Action action, GtkWindow *parent):
 
 SessionChooserDialog::~SessionChooserDialog()
 {
+    gtk_widget_destroy(GTK_WIDGET(
+        gtk_builder_get_object(m_builder, "session-starter-dialog")));
     gtk_widget_destroy(GTK_WIDGET(
         gtk_builder_get_object(m_builder, "new-session-dialog")));
     gtk_widget_destroy(GTK_WIDGET(
@@ -265,7 +260,7 @@ void SessionChooserDialog::run()
 
 }
 
-#ifdef SMYD_SESSION_CHOOSER_DIALOG_UNIT_TEST
+#ifdef SMYD_SESSION_STARTER_DIALOG_UNIT_TEST
 
 int main(int argc, char *argv[])
 {

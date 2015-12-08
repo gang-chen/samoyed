@@ -1,8 +1,8 @@
-// Session chooser dialog.
+// Session starter dialog.
 // Copyright (C) 2012 Gang Chen.
 
-#ifndef SMYD_SESSION_CHOOSER_DIALOG_HPP
-#define SMYD_SESSION_CHOOSER_DIALOG_HPP
+#ifndef SMYD_SESSION_STARTER_DIALOG_HPP
+#define SMYD_SESSION_STARTER_DIALOG_HPP
 
 #include <string>
 #include <boost/utility.hpp>
@@ -11,7 +11,7 @@
 namespace Samoyed
 {
 
-class SessionChooserDialog: public boost::noncopyable
+class SessionStarterDialog: public boost::noncopyable
 {
 public:
     enum Action
@@ -21,27 +21,24 @@ public:
         ACTION_RESTORE
     };
 
-    SessionChooserDialog(Action action, GtkWindow *parent);
+    SessionStarterDialog(GtkWindow *parent);
 
-    ~SessionChooserDialog();
+    ~SessionStarterDialog();
 
-    void run();
-
-    Action action() const { return m_action; }
-
-    const char *sessionName() const { return m_sessionName.c_str(); }
+    void run(Action &action, std::string &sessionName);
 
 private:
     void buildNewSessionDialog();
+
+    void readSessions();
+
     void buildRestoreSessionDialog();
-
-    Action m_action;
-
-    std::string m_sessionName;
 
     GtkWindow *m_parent;
 
     GtkBuilder *m_builder;
+
+    GtkDialog *m_sessionStarterDialog;
 
     GtkDialog *m_newSessionDialog;
     GtkEntry *m_newSessionNameEntry;

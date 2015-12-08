@@ -7,8 +7,8 @@ libsession_la_SOURCES = \
     preferences-editor.cpp \
     preferences-extension-point.cpp \
     session.cpp \
-    session-chooser-dialog.cpp \
     session-management-window.cpp \
+    session-starter-dialog.cpp \
     file-recoverer-extension.hpp \
     file-recoverers-extension-point.hpp \
     file-recovery-bar.hpp \
@@ -18,8 +18,8 @@ libsession_la_SOURCES = \
     preferences-extension.hpp \
     preferences-extension-point.hpp \
     session.hpp \
-    session-chooser-dialog.hpp \
-    session-management-window.hpp
+    session-management-window.hpp \
+    session-starter-dialog.hpp
 
 libsession_la_CPPFLAGS = $(SAMOYED_CPPFLAGS)
 
