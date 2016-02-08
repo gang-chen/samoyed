@@ -24,7 +24,8 @@
 #include "session/preferences-editor.hpp"
 #include "session/preferences-extension-point.hpp"
 #include "session/session.hpp"
-#include "session/session-chooser-dialog.hpp"
+#include "session/session-creator-dialog.hpp"
+#include "session/session-restorer-dialog.hpp"
 #include "utilities/miscellaneous.hpp"
 #include "utilities/property-tree.hpp"
 #include "utilities/scheduler.hpp"
@@ -37,6 +38,7 @@
 #include "window/views-extension-point.hpp"
 #include "window/window.hpp"
 #include <assert.h>
+#include <list>
 #include <utility>
 #include <string>
 #include <locale>
@@ -56,6 +58,20 @@ namespace
 {
 
 const int PLUGIN_CACHE_SIZE = 10;
+
+void readSessionNames(std::list<std::string> &sessionNames)
+{
+    Samoyed::Session::readAllSessionNames(sessionNames);
+    for (std::list<std::string>::iterator it = sessionNames.begin();
+         it != sessionNames.end();)
+    {
+        if (Samoyed::Session::queryLockStat(it->c_str()) !=
+            Samoyed::Session::STATE_UNLOCKED)
+            it = sessionNames.erase(it);
+        else
+            ++it;
+    }
+}
 
 }
 
@@ -109,63 +125,65 @@ Application::~Application()
     s_instance = NULL;
 }
 
-bool Application::chooseSessionToStart(bool restore)
+void Application::startSession()
 {
-    SessionChooserDialog::Action action;
-    if (restore)
-        action = SessionChooserDialog::ACTION_RESTORE;
-    else
-        action = SessionChooserDialog::ACTION_CREATE;
-
-    while (!m_session)
+    if (m_sessionName)
+        m_session = Session::restore(m_sessionName);
+    else if (m_newSessionName)
+        m_session = Session::create(m_newSessionName);
+    else if (m_chooseSession)
     {
-        // Pop up a dialog to let the user choose which session to start.
-        SessionChooserDialog dialog(action, NULL);
-        dialog.run();
-        if (dialog.action() == SessionChooserDialog::ACTION_RESTORE)
+        std::list<std::string> sessionNames;
+        readSessionNames(sessionNames);
+        if (sessionNames.empty())
         {
-            m_session = Session::restore(dialog.sessionName());
-            action = SessionChooserDialog::ACTION_RESTORE;
-        }
-        else if (dialog.action() == SessionChooserDialog::ACTION_CREATE)
-        {
-            m_session = Session::create(dialog.sessionName());
-            action = SessionChooserDialog::ACTION_CREATE;
+            GtkWidget *diag = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_QUESTION,
+                GTK_BUTTONS_YES_NO,
+                _("No saved session exists. Start a new session?"));
+            gtk_dialog_set_default_response(GTK_DIALOG(diag),
+                                            GTK_RESPONSE_YES);
+            if (gtk_dialog_run(GTK_DIALOG(diag)) == GTK_RESPONSE_YES)
+            {
+                SessionCreatorDialog diag(NULL);
+                if (diag.run())
+                    m_session = Session::create(diag.sessionName());
+            }
+            gtk_widget_destroy(diag);
         }
         else
-            break;
+        {
+            SessionRestorerDialog diag(sessionNames, NULL);
+            if (diag.run())
+                m_session = Session::restore(diag.sessionName().get());
+        }
     }
-    return m_session;
-}
-
-bool Application::startSession()
-{
-    bool restore;
-    if (m_sessionName)
-    {
-        m_session = Session::restore(m_sessionName);
-        restore = true;
-    }
-    else if (m_newSessionName)
-    {
-        m_session = Session::create(m_newSessionName);
-        restore = false;
-    }
-    else if (m_chooseSession)
-        restore = true;
     else
     {
         // By default restore the last session.
-        std::string name;
-        if (Session::readLastSessionName(name))
-        {
-            m_session = Session::restore(name.c_str());
-            restore = true;
-        }
+        std::string sessionName;
+        if (Session::readLastSessionName(sessionName))
+            m_session = Session::restore(sessionName.c_str());
         else
-            restore = false;
+        {
+            std::list<std::string> sessionNames;
+            readSessionNames(sessionNames);
+            if (sessionNames.empty())
+            {
+                SessionCreatorDialog diag(NULL);
+                if (diag.run())
+                    m_session = Session::create(diag.sessionName());
+            }
+            else
+            {
+                SessionRestorerDialog diag(sessionNames, NULL);
+                if (diag.run())
+                    m_session = Session::restore(diag.sessionName().get());
+            }
+        }
     }
-    return chooseSessionToStart(restore);
 }
 
 gboolean Application::startUp(gpointer app)
@@ -334,16 +352,42 @@ void Application::finishQuitting()
     m_session = NULL;
 
     // Start a new session, if requested.
-    bool restore;
     if (m_createSession)
-        restore = false;
-    if (m_switchSession)
-        restore = true;
-    if (m_createSession || m_switchSession)
     {
         m_createSession = false;
+        SessionCreatorDialog diag(NULL);
+        if (diag.run())
+            m_session = Session::create(diag.sessionName());
+    }
+    else if (m_switchSession)
+    {
         m_switchSession = false;
-        chooseSessionToStart(restore);
+        std::list<std::string> sessionNames;
+        readSessionNames(sessionNames);
+        if (sessionNames.empty())
+        {
+            GtkWidget *diag = gtk_message_dialog_new(
+                NULL,
+                GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_QUESTION,
+                GTK_BUTTONS_YES_NO,
+                _("No saved session exists. Start a new session?"));
+            gtk_dialog_set_default_response(GTK_DIALOG(diag),
+                                            GTK_RESPONSE_YES);
+            if (gtk_dialog_run(GTK_DIALOG(diag)) == GTK_RESPONSE_YES)
+            {
+                SessionCreatorDialog diag(NULL);
+                if (diag.run())
+                    m_session = Session::create(diag.sessionName());
+            }
+            gtk_widget_destroy(diag);
+        }
+        else
+        {
+            SessionRestorerDialog diag(sessionNames, NULL);
+            if (diag.run())
+                m_session = Session::restore(diag.sessionName().get());
+        }
     }
 
     // If no session is started, shut down.

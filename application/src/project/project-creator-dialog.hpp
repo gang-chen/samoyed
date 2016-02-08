@@ -5,12 +5,11 @@
 #define SMYD_PROJECT_CREATOR_DIALOG_HPP
 
 #include <boost/utility.hpp>
+#include <boost/shared_ptr.hpp>
 #include <gtk/gtk.h>
 
 namespace Samoyed
 {
-
-class Project;
 
 class ProjectCreatorDialog: public boost::noncopyable
 {
@@ -19,10 +18,14 @@ public:
 
     ~ProjectCreatorDialog();
 
-    Project *run();
+    bool run();
+
+    boost::shared_ptr<char> projectUri() const;
+
+    const char *projectBuildSystem() const;
 
 private:
-    static void validateInput(gpointer object, ProjectCreatorDialog *dialog);
+    static void validateInput(ProjectCreatorDialog *dialog);
 
     GtkBuilder *m_builder;
 

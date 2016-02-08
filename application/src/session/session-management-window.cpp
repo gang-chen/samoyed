@@ -1,53 +1,18 @@
 // Session management window.
 // Copyright (C) 2014 Gang Chen.
 
-/*
-UNIT TEST BUILD
-g++ session-management-window.cpp -DSMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST \
--I.. `pkg-config --cflags --libs gtk+-3.0` -Werror -Wall \
--o session-management-window
-*/
-
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "session-management-window.hpp"
 #include "utilities/miscellaneous.hpp"
-#ifndef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-# include "session.hpp"
-# include "application.hpp"
-#else
-# include <stdio.h>
-#endif
+#include "session.hpp"
+#include "application.hpp"
 #include <string.h>
 #include <list>
 #include <string>
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-# define _(T) T
-#else
-# include <glib/gi18n.h>
-#endif
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
-
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-
-namespace Samoyed
-{
-
-class Session
-{
-public:
-    enum LockState
-    {
-        STATE_UNLOCKED,
-        STATE_LOCKED_BY_THIS_PROCESS,
-        STATE_LOCKED_BY_ANOTHER_PROCESS
-    };
-};
-
-}
-
-#endif
 
 namespace
 {
@@ -62,15 +27,6 @@ enum Column
 bool readSessions(std::list<std::string> &sessionNames,
                   std::list<Samoyed::Session::LockState> &sessionStates)
 {
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-    sessionNames.push_back("unlocked");
-    sessionStates.push_back(Samoyed::Session::STATE_UNLOCKED);
-    sessionNames.push_back("locked-by-this");
-    sessionStates.push_back(Samoyed::Session::STATE_LOCKED_BY_THIS_PROCESS);
-    sessionNames.push_back("locked-by-another");
-    sessionStates.push_back(Samoyed::Session::STATE_LOCKED_BY_ANOTHER_PROCESS);
-    return true;
-#else
     bool successful;
     successful = Samoyed::Session::readAllSessionNames(sessionNames);
     for (std::list<std::string>::const_iterator it = sessionNames.begin();
@@ -78,7 +34,6 @@ bool readSessions(std::list<std::string> &sessionNames,
          ++it)
         sessionStates.push_back(Samoyed::Session::queryLockState(it->c_str()));
     return successful;
-#endif
 }
 
 void setSessionNameEditable(GtkTreeViewColumn *column,
@@ -121,13 +76,9 @@ void SessionManagementWindow::onSessionRenamed(GtkCellRendererText *renderer,
         gtk_tree_model_get(model, &it, NAME_COLUMN, &oldName, -1);
         if (strcmp(oldName, newName))
         {
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-            printf("Rename session \"%s\" with \"%s\".\n", oldName, newName);
-#else
             if (Session::rename(oldName, newName))
-#endif
-            gtk_list_store_set(GTK_LIST_STORE(model), &it,
-                               NAME_COLUMN, newName, -1);
+                gtk_list_store_set(GTK_LIST_STORE(model), &it,
+                                   NAME_COLUMN, newName, -1);
         }
         g_free(oldName);
     }
@@ -256,12 +207,8 @@ void SessionManagementWindow::deleteSelectedSession(bool confirm)
         gtk_widget_destroy(d);
     }
 
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-    printf("Remove session \"%s\".\n", sessionName);
-#else
     if (Session::remove(sessionName))
-#endif
-    gtk_list_store_remove(GTK_LIST_STORE(model), &it);
+        gtk_list_store_remove(GTK_LIST_STORE(model), &it);
     g_free(sessionName);
 }
 
@@ -318,11 +265,7 @@ SessionManagementWindow::SessionManagementWindow(
     const boost::function<void (SessionManagementWindow &)> &onDestroyed):
         m_onDestroyed(onDestroyed)
 {
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-    std::string uiFile(".." G_DIR_SEPARATOR_S ".." G_DIR_SEPARATOR_S "data");
-#else
     std::string uiFile(Application::instance().dataDirectoryName());
-#endif
     uiFile += G_DIR_SEPARATOR_S "ui" G_DIR_SEPARATOR_S
         "session-management-window.xml";
     m_builder = gtk_builder_new_from_file(uiFile.c_str());
@@ -402,29 +345,3 @@ void SessionManagementWindow::hide()
 }
 
 }
-
-#ifdef SMYD_SESSION_MANAGEMENT_WINDOW_UNIT_TEST
-
-namespace
-{
-
-void onWindowDestroyed(Samoyed::SessionManagementWindow &window)
-{
-    gtk_main_quit();
-}
-
-}
-
-int main(int argc, char *argv[])
-{
-    gtk_init(&argc, &argv);
-    Samoyed::SessionManagementWindow *window1, *window2;
-    window1 = new Samoyed::SessionManagementWindow(NULL, NULL);
-    window1->show();
-    window2 = new Samoyed::SessionManagementWindow(NULL, onWindowDestroyed);
-    window2->show();
-    gtk_main();
-    return 0;
-}
-
-#endif

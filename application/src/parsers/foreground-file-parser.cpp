@@ -21,9 +21,6 @@
 namespace
 {
 
-const int BREAK_TIME = 200;
-const int SLOW_DOWN_CYCLES = 100000;
-
 Samoyed::SourceFile *findSourceFile(const char *fileUri)
 {
     Samoyed::File *file = Samoyed::Application::instance().findFile(fileUri);
@@ -222,10 +219,10 @@ void ForegroundFileParser::Procedure::Job::doIt(CXIndex index)
 }
 
 ForegroundFileParser::Procedure::Procedure(ForegroundFileParser &parser):
-    m_parser(parser),
-    m_quit(false)
+    m_parser(parser)
 {
     m_index = clang_createIndex(0, 0);
+    m_jobQueue = g_async_queue_new();
 }
 
 ForegroundFileParser::Procedure::~Procedure()
@@ -235,60 +232,29 @@ ForegroundFileParser::Procedure::~Procedure()
 
 void ForegroundFileParser::Procedure::operator()()
 {
-    int i = 0;
     for (;;)
     {
-        Job *job = NULL;
+        Job *job = g_async_queue_pop(m_jobQueue);
+        if (!job)
         {
-            boost::mutex::scoped_lock lock(m_mutex);
-            if (m_quit)
-            {
-                g_idle_add_full(G_PRIORITY_HIGH,
-                                ForegroundFileParser::onFinishedInMainThread,
-                                &m_parser,
-                                NULL);
-                g_idle_add_full(G_PRIORITY_HIGH,
-                                ForegroundFileParser::onQuittedInMainThread,
-                                &m_parser,
-                                NULL);
-                break;
-            }
-            if (!m_jobQueue.empty())
-            {
-                job = m_jobQueue.front();
-                m_jobQueue.pop();
-            }
+            g_idle_add_full(G_PRIORITY_HIGH,
+                            ForegroundFileParser::onFinishedInMainThread,
+                            &m_parser,
+                            NULL);
+            g_idle_add_full(G_PRIORITY_HIGH,
+                            ForegroundFileParser::onQuittedInMainThread,
+                            &m_parser,
+                            NULL);
+            break;
         }
-        if (job)
-        {
-            job->doIt(m_index);
-            delete job;
-            i = 0;
-        }
-        else if (i < SLOW_DOWN_CYCLES)
-        {
-            if (i == 0)
-                g_idle_add_full(G_PRIORITY_HIGH,
-                                ForegroundFileParser::onFinishedInMainThread,
-                                &m_parser,
-                                NULL);
-            boost::this_thread::
-                sleep_for(boost::chrono::milliseconds(i * BREAK_TIME /
-                                                      SLOW_DOWN_CYCLES));
-            i++;
-        }
-        else
-        {
-            boost::this_thread::
-                sleep_for(boost::chrono::milliseconds(BREAK_TIME));
-        }
+        job->doIt(m_index);
+        delete job;
     }
 }
 
 void ForegroundFileParser::Procedure::quit()
 {
-    boost::mutex::scoped_lock lock(m_mutex);
-    m_quit = true;
+    g_async_queue_push
 }
 
 void ForegroundFileParser::Procedure::parse(

@@ -4,12 +4,10 @@
 #ifndef SMYD_FOREGROUND_FILE_PARSER_HPP
 #define SMYD_FOREGROUND_FILE_PARSER_HPP
 
-#include <queue>
 #include <string>
 #include <vector>
 #include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
 #include <boost/signals2/signal.hpp>
 #include <glib.h>
 #include <clang-c/Index.h>
@@ -131,11 +129,7 @@ private:
 
         CXIndex m_index;
 
-        mutable boost::mutex m_mutex;
-
-        bool m_quit;
-
-        std::queue<Job *> m_jobQueue;
+        GAsyncQueue *m_jobQueue;
     };
 
     static gboolean onQuittedInMainThread(gpointer parser);

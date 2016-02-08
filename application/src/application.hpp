@@ -183,13 +183,11 @@ private:
      */
     static gboolean shutDown(gpointer app);
 
-    bool chooseSessionToStart(bool restore);
-
     /**
      * Start the specified session or the default session, or let the user
      * choose a session during start-up.
      */
-    bool startSession();
+    void startSession();
 
     /**
      * Perform the second half of the quitting operation.  This function is

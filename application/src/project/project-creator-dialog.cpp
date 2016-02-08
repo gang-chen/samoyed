@@ -17,32 +17,25 @@
 namespace Samoyed
 {
 
-void ProjectCreatorDialog::validateInput(gpointer object,
-                                         ProjectCreatorDialog *dialog)
+void ProjectCreatorDialog::validateInput(ProjectCreatorDialog *dialog)
 {
-    char *dir = gtk_file_chooser_get_uri(dialog->m_locationChooser);
-    if (!dir)
+    if (!dialog->projectUri().get())
     {
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(dialog->m_dialog,
-                                               GTK_RESPONSE_ACCEPT),
-            FALSE);
+        gtk_dialog_set_response_sensitive(dialog->m_dialog,
+                                          GTK_RESPONSE_ACCEPT,
+                                          FALSE);
         return;
     }
-    g_free(dir);
-    if (!gtk_combo_box_get_active_id(
-            GTK_COMBO_BOX(dialog->m_buildSystemChooser)))
+    if (!dialog->projectBuildSystem())
     {
-        gtk_widget_set_sensitive(
-            gtk_dialog_get_widget_for_response(dialog->m_dialog,
-                                               GTK_RESPONSE_ACCEPT),
-            FALSE);
+        gtk_dialog_set_response_sensitive(dialog->m_dialog,
+                                          GTK_RESPONSE_ACCEPT,
+                                          FALSE);
         return;
     }
-    gtk_widget_set_sensitive(
-        gtk_dialog_get_widget_for_response(dialog->m_dialog,
-                                           GTK_RESPONSE_ACCEPT),
-        TRUE);
+    gtk_dialog_set_response_sensitive(dialog->m_dialog,
+                                      GTK_RESPONSE_ACCEPT,
+                                      TRUE);
 }
 
 ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
@@ -80,12 +73,12 @@ ProjectCreatorDialog::ProjectCreatorDialog(GtkWindow *parent)
                                   it->second->id.c_str(),
                                   it->second->description.c_str());
 
-    g_signal_connect(m_locationChooser, "selection-changed",
-                     G_CALLBACK(validateInput), this);
-    g_signal_connect(GTK_COMBO_BOX(m_buildSystemChooser), "changed",
-                     G_CALLBACK(validateInput), this);
+    g_signal_connect_swapped(m_locationChooser, "selection-changed",
+                             G_CALLBACK(validateInput), this);
+    g_signal_connect_swapped(GTK_COMBO_BOX(m_buildSystemChooser), "changed",
+                             G_CALLBACK(validateInput), this);
 
-    validateInput(NULL, this);
+    validateInput(this);
 }
 
 ProjectCreatorDialog::~ProjectCreatorDialog()
@@ -94,19 +87,20 @@ ProjectCreatorDialog::~ProjectCreatorDialog()
     g_object_unref(m_builder);
 }
 
-Project *ProjectCreatorDialog::run()
+bool ProjectCreatorDialog::run()
 {
-    if (gtk_dialog_run(m_dialog) != GTK_RESPONSE_ACCEPT)
-        return NULL;
-    Project *project;
-    char *uri = gtk_file_chooser_get_uri(m_locationChooser);
-    const char *buildSystem =
-        gtk_combo_box_get_active_id(GTK_COMBO_BOX(m_buildSystemChooser));
-    project = Project::create(uri, buildSystem);
-    g_free(uri);
-    if (!project)
-        return run();
-    return project;
+    return gtk_dialog_run(m_dialog) == GTK_RESPONSE_ACCEPT;
+}
+
+boost::shared_ptr<char> ProjectCreatorDialog::projectUri() const
+{
+    return boost::shared_ptr(gtk_file_chooser_get_uri(m_locationChooser),
+                             g_free);
+}
+
+const char *ProjectCreatorDialog::projectBuildSystem() const
+{
+    return gtk_combo_box_get_active_id(GTK_COMBO_BOX(m_buildSystemChooser));
 }
 
 }
